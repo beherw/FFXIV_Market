@@ -54,7 +54,6 @@ function App() {
   const lastProcessedURLRef = useRef('');
   const searchResultsRef = useRef([]);
   const [currentImage, setCurrentImage] = useState(() => Math.random() < 0.5 ? '/bear.png' : '/sheep.png');
-  const imageTimerRef = useRef(null);
 
   // Add toast function
   const addToast = useCallback((message, type = 'info') => {
@@ -67,25 +66,9 @@ function App() {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
 
-  // Random image swap timer
-  useEffect(() => {
-    const swapImage = () => {
-      setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
-      // Set next timer with random interval between 5-15 seconds
-      const nextInterval = Math.random() * (15000 - 5000) + 5000;
-      imageTimerRef.current = setTimeout(swapImage, nextInterval);
-    };
-
-    // Set initial timer with random interval between 5-15 seconds
-    const initialInterval = Math.random() * (15000 - 5000) + 5000;
-    imageTimerRef.current = setTimeout(swapImage, initialInterval);
-
-    // Cleanup on unmount
-    return () => {
-      if (imageTimerRef.current) {
-        clearTimeout(imageTimerRef.current);
-      }
-    };
+  // Handle image swap on click
+  const handleImageSwap = useCallback(() => {
+    setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
   }, []);
 
   // Load data centers and worlds on mount
@@ -1337,7 +1320,9 @@ function App() {
                     <img 
                       src={currentImage} 
                       alt="Random icon" 
-                      className="w-16 h-16 sm:w-24 sm:h-24 object-contain opacity-50"
+                      onClick={handleImageSwap}
+                      draggable={false}
+                      className="w-16 h-16 sm:w-24 sm:h-24 object-contain opacity-50 cursor-pointer hover:opacity-70 transition-opacity"
                     />
                   </div>
                   <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold mb-2">貝爾的FFXIV市場小屋</h2>
