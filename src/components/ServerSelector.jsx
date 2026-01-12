@@ -17,20 +17,22 @@ export default function ServerSelector({
   const allWorldsForDC = selectedWorld?.dcObj?.worlds || [];
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-1.5 mid:gap-2 detail:gap-3 w-full detail:w-auto">
       {/* Server Options: Data Center (全服搜尋) + All Worlds */}
       {selectedWorld && allWorldsForDC.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1 mid:gap-1.5 detail:gap-2 flex-wrap w-full detail:w-auto">
           {/* Data Center Option (全服搜尋) */}
           <button
             onClick={() => onServerOptionChange(selectedWorld.section)}
-            className={`px-4 py-2 rounded-lg text-xs font-medium transition-all border ${
+            className={`px-2 mid:px-3 detail:px-4 py-1 mid:py-1.5 detail:py-2 rounded-lg text-xs font-medium transition-all border whitespace-nowrap hover:!translate-y-0 ${
               selectedServerOption === selectedWorld.section
                 ? 'bg-gradient-to-r from-ffxiv-gold/30 to-ffxiv-gold/20 border-ffxiv-gold text-ffxiv-gold shadow-[0_0_10px_rgba(212,175,55,0.3)]'
-                : 'bg-slate-700/50 border-slate-600 text-gray-300 hover:border-slate-500 hover:bg-slate-700'
+                : 'bg-purple-800/50 border-purple-500/40 text-gray-300 hover:border-purple-400/60 hover:bg-purple-700/60'
             }`}
           >
-            {selectedWorld.section}（全服搜尋）
+            <span className="hidden detail:inline">{selectedWorld.section}（全服搜尋）</span>
+            <span className="hidden mid:inline detail:hidden">{selectedWorld.section}（全服）</span>
+            <span className="mid:hidden">全服</span>
           </button>
           
           {/* Individual World Options */}
@@ -42,10 +44,10 @@ export default function ServerSelector({
               <button
                 key={worldId}
                 onClick={() => onServerOptionChange(worldId)}
-                className={`px-4 py-2 rounded-lg text-xs font-medium transition-all border ${
+                className={`px-2 mid:px-3 detail:px-4 py-1 mid:py-1.5 detail:py-2 rounded-lg text-xs font-medium transition-all border whitespace-nowrap hover:!translate-y-0 ${
                   isSelected
                     ? 'bg-gradient-to-r from-ffxiv-gold/30 to-ffxiv-gold/20 border-ffxiv-gold text-ffxiv-gold shadow-[0_0_10px_rgba(212,175,55,0.3)]'
-                    : 'bg-slate-700/50 border-slate-600 text-gray-300 hover:border-slate-500 hover:bg-slate-700'
+                    : 'bg-purple-800/50 border-purple-500/40 text-gray-300 hover:border-purple-400/60 hover:bg-purple-700/60'
                 }`}
               >
                 {worldName}

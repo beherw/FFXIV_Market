@@ -298,6 +298,13 @@ function App() {
     searchResultsRef.current = searchResults;
   }, [searchResults]);
 
+  // Reset scroll position on mount and route changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [location.pathname, location.search]);
+
   // Initialize from URL on mount and when URL changes
   useEffect(() => {
     if (!isServerDataLoaded || isInitializingFromURLRef.current) {
@@ -743,7 +750,7 @@ function App() {
       try {
         const options = {
           listings: listSize,
-          entries: 10,
+          entries: listSize,
           signal: abortControllerRef.current.signal, // Use current abort controller
         };
 
@@ -798,7 +805,7 @@ function App() {
           // Apply listSize limit
           const listings = allListings.slice(0, listSize);
 
-          const history = (data.recentHistory || [])
+          const allHistory = (data.recentHistory || [])
             .map(entry => ({
               itemName: requestItemName, // Use captured item name
               pricePerUnit: entry.pricePerUnit,
@@ -811,6 +818,9 @@ function App() {
               hq: entry.hq || false,
             }))
             .sort((a, b) => b.timestamp - a.timestamp);
+          
+          // Apply listSize limit to history as well
+          const history = allHistory.slice(0, listSize);
 
           // Double-check request is still valid before updating state
           // Verify: request ID matches, not aborted, and item/server still match
@@ -917,105 +927,166 @@ function App() {
     : [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
-      {/* Logo - Top Left */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
+      {/* Logo - Desktop: Top Left, Mobile: In search bar row (when no item selected) or hidden (when item selected, shown in second row) */}
       <button
         onClick={handleReturnHome}
-        className="fixed top-4 left-4 z-50 flex items-center justify-center text-3xl hover:opacity-80 transition-opacity duration-200 cursor-pointer"
+        className={`fixed z-[60] flex items-center justify-center hover:opacity-80 transition-opacity duration-200 cursor-pointer ${
+          selectedItem 
+            ? 'mid:top-4 mid:left-4 hidden mid:flex w-10 h-10 mid:w-12 mid:h-12' // Desktop: top left when item selected, Mobile: hidden (shown in second row)
+            : 'mid:top-4 mid:left-4 top-2.5 left-2 w-8 h-8 mid:w-12 mid:h-12' // Mobile: same row as search when no item, Desktop: top left
+        }`}
         title="返回主頁"
       >
-        🐤
+        <img 
+          src="/logo.png" 
+          alt="返回主頁" 
+          className="w-full h-full object-contain pointer-events-none"
+        />
       </button>
 
-      {/* Fixed Search Bar and Data Center - Top Left (next to logo) */}
-      <div className="fixed top-4 left-20 z-50 flex items-center gap-3">
-        {/* Search Bar */}
-        <div className="w-96 h-12">
-          <div className="h-full">
-            <SearchBar 
-              onSearch={handleSearch} 
-              isLoading={isSearching}
-              value={searchText}
-              onChange={setSearchText}
-              disabled={!isServerDataLoaded}
-              disabledTooltip={!isServerDataLoaded ? '請等待伺服器資料載入完成' : undefined}
-            />
+      {/* Fixed Search Bar - Top Row (Mobile: Full Width, Desktop: Flexible) */}
+      <div className={`fixed top-2 left-0 right-0 mid:top-4 mid:right-auto z-50 ${
+        selectedItem 
+          ? 'px-1.5 mid:px-0 mid:left-20 py-1 mid:py-0' // 物品详情页面：搜索框离logo更远
+          : 'pl-12 pr-1.5 mid:pl-20 mid:pr-0 py-1 mid:py-0' // 主页：搜索框从logo右侧开始（logo w-12=48px + left-4=16px = 64px，搜索框从80px开始留出16px间隙）
+      } mid:w-auto`}>
+        <div className="relative flex flex-col mid:flex-row items-stretch mid:items-center gap-1.5 mid:gap-3">
+          {/* Search Bar - Flexible width */}
+          <div className="flex-1 mid:flex-initial mid:w-80 detail:w-96 h-9 mid:h-12 min-w-0">
+            <div className="h-full">
+              <SearchBar 
+                onSearch={handleSearch} 
+                isLoading={isSearching}
+                value={searchText}
+                onChange={setSearchText}
+                disabled={!isServerDataLoaded}
+                disabledTooltip={!isServerDataLoaded ? '請等待伺服器資料載入完成' : undefined}
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Data Center Display - Next to search bar */}
-        {selectedWorld && (
-          <div className="flex items-center gap-2 px-4 h-12 bg-gradient-to-r from-slate-700/50 to-slate-800/50 border border-slate-600/50 rounded-lg backdrop-blur-sm whitespace-nowrap">
-            <div className="w-2 h-2 rounded-full bg-ffxiv-gold animate-pulse"></div>
-            <span className="text-sm font-semibold text-ffxiv-gold">
+          {/* 主服务器按钮 - 显示服务器主类别（如：陸行鳥） */}
+          {/* Desktop: 在搜索栏右侧, Mobile: 在搜索栏右侧（主页/搜索页面）或第二排（物品详情页面） */}
+          {selectedWorld && (
+            <div className={`items-center gap-1.5 mid:gap-2 px-2 mid:px-3 detail:px-4 h-9 mid:h-12 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm whitespace-nowrap ${
+              selectedItem ? 'hidden mid:flex' : 'flex'
+            }`}>
+              <div className="w-1.5 h-1.5 mid:w-2 mid:h-2 rounded-full bg-ffxiv-gold animate-pulse"></div>
+              <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold truncate">
+                {selectedWorld.section}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Second Row - Data Center & External Links (Mobile: Below search, Desktop: Top Right) */}
+      {/* 在890px以下，搜索栏换排后：搜索栏h-9(36px) + py-1(上下8px) + top-2(8px) = 52px，但搜索栏容器是flex-col，实际高度可能更高 */}
+      {/* 物品详情页面：搜索栏单行，主服务器按钮隐藏，高度约52px；主页：搜索栏+主服务器按钮两行，高度约94px */}
+      {/* 增加与搜索栏的间隙：物品详情页面+8px，主页+8px */}
+      <div className={`fixed left-2 mid:left-auto mid:right-4 right-2 z-50 flex flex-wrap items-center gap-1.5 mid:gap-2 ${
+        selectedItem 
+          ? 'top-[68px] mid:top-4' // 物品详情页面：搜索栏单行，留更多空间（60px + 8px间隙）
+          : 'top-[102px] mid:top-4' // 主页：搜索栏+主服务器按钮两行（94px + 8px间隙）
+      }`}>
+        {/* Logo Button - Mobile only in second row when item is selected */}
+        {selectedItem && (
+          <>
+            <button
+              onClick={handleReturnHome}
+              className="mid:hidden flex items-center justify-center w-8 h-8 hover:opacity-80 transition-opacity duration-200 cursor-pointer"
+              title="返回主頁"
+            >
+              <img 
+                src="/logo.png" 
+                alt="返回主頁" 
+                className="w-full h-full object-contain"
+              />
+            </button>
+            <div className="mid:hidden w-px h-4 bg-slate-600/50"></div>
+          </>
+        )}
+        
+        {/* 主服务器按钮 - Mobile only in second row (物品详情页面) */}
+        {selectedWorld && selectedItem && (
+          <div className="mid:hidden flex items-center gap-1.5 px-2 py-1.5 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm whitespace-nowrap">
+            <div className="w-1.5 h-1.5 rounded-full bg-ffxiv-gold animate-pulse"></div>
+            <span className="text-xs font-semibold text-ffxiv-gold truncate max-w-[120px]">
               {selectedWorld.section}
             </span>
           </div>
         )}
+        
+        {/* External Links - Show when item is selected */}
+        {selectedItem && (
+          <>
+            {selectedWorld && <div className="mid:hidden w-px h-4 bg-slate-600/50"></div>}
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(selectedItem.name);
+                  addToast('已複製物品名稱', 'success');
+                } catch (err) {
+                  console.error('Failed to copy:', err);
+                  addToast('複製失敗', 'error');
+                }
+              }}
+              className="px-2 mid:px-3 py-1 mid:py-1.5 text-xs font-medium bg-purple-800/60 hover:bg-purple-700/70 text-gray-200 hover:text-white rounded-md border border-purple-500/40 hover:border-purple-400/60 transition-all duration-200 flex items-center gap-1 mid:gap-1.5 shadow-sm"
+              title="複製物品名稱"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-3 w-3 mid:h-3.5 mid:w-3.5" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" 
+                />
+              </svg>
+              <span className="hidden mid:inline">複製</span>
+            </button>
+            <div className="w-px h-4 bg-slate-600/50 mx-0.5 mid:mx-1"></div>
+            <a
+              href={`https://ff14.huijiwiki.com/wiki/${selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : ''}${encodeURIComponent(selectedItem.nameSimplified || selectedItem.name)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2 mid:px-3 py-1 mid:py-1.5 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors"
+            >
+              Wiki
+            </a>
+            <a
+              href={`https://www.garlandtools.cn/db/#item/${selectedItem.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2 mid:px-3 py-1 mid:py-1.5 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors"
+            >
+              Garland
+            </a>
+            <a
+              href={`https://universalis.app/market/${selectedItem.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2 mid:px-3 py-1 mid:py-1.5 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors"
+            >
+              Market
+            </a>
+          </>
+        )}
       </div>
 
-      {/* External Links - Top Right (when item is selected) */}
-      {selectedItem && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-          <button
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(selectedItem.name);
-                addToast('已複製物品名稱', 'success');
-              } catch (err) {
-                console.error('Failed to copy:', err);
-                addToast('複製失敗', 'error');
-              }
-            }}
-            className="px-3 py-1.5 text-xs font-medium bg-slate-700/70 hover:bg-slate-600/70 text-gray-300 hover:text-white rounded-md border border-slate-500/50 hover:border-slate-400/50 transition-all duration-200 flex items-center gap-1.5 shadow-sm"
-            title="複製物品名稱"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-3.5 w-3.5" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" 
-              />
-            </svg>
-            <span>複製</span>
-          </button>
-          <div className="w-px h-4 bg-slate-600/50 mx-1"></div>
-          <a
-            href={`https://ff14.huijiwiki.com/wiki/${selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : ''}${encodeURIComponent(selectedItem.nameSimplified || selectedItem.name)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-1.5 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-slate-700/50 rounded border border-slate-600 hover:border-ffxiv-gold transition-colors"
-          >
-            Wiki
-          </a>
-          <a
-            href={`https://www.garlandtools.cn/db/#item/${selectedItem.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-1.5 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-slate-700/50 rounded border border-slate-600 hover:border-ffxiv-gold transition-colors"
-          >
-            Garland
-          </a>
-          <a
-            href={`https://universalis.app/market/${selectedItem.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-1.5 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-slate-700/50 rounded border border-slate-600 hover:border-ffxiv-gold transition-colors"
-          >
-            Market
-          </a>
-        </div>
-      )}
 
-      {/* Toast Notifications - Below Links */}
-      <div className="fixed top-16 right-4 z-50 space-y-2">
+      {/* Toast Notifications - Top Right Corner - Responsive */}
+      <div className={`fixed right-2 mid:right-4 left-2 mid:left-auto z-50 space-y-2 max-w-sm mid:max-w-none ${
+        selectedItem 
+          ? 'top-[68px] mid:top-4' // 物品详情页面：从第二排下方开始（Mobile），或与搜索栏同一行（Desktop）
+          : 'top-[102px] mid:top-4' // 主页：从第二排下方开始（Mobile），或与搜索栏同一行（Desktop）
+      }`}>
         {toasts.map(toast => (
           <Toast
             key={toast.id}
@@ -1026,19 +1097,24 @@ function App() {
         ))}
       </div>
 
-      {/* Loading Indicator - Top Center */}
+      {/* Loading Indicator - Top Center - Responsive */}
       {isLoadingDB && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-40">
-          <div className="bg-slate-800/90 backdrop-blur-sm px-4 py-2 rounded-lg border border-ffxiv-gold/30 flex items-center gap-2">
+        <div className="fixed top-14 mid:top-4 left-1/2 transform -translate-x-1/2 z-40">
+          <div className="bg-gradient-to-r from-purple-900/80 to-indigo-900/80 backdrop-blur-sm px-3 mid:px-4 py-2 rounded-lg border border-ffxiv-gold/30 flex items-center gap-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-ffxiv-gold"></div>
-            <span className="text-sm text-gray-300">正在載入伺服器...</span>
+            <span className="text-xs mid:text-sm text-gray-300">正在載入伺服器...</span>
           </div>
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="pt-24 pb-8">
-        <div className="max-w-7xl mx-auto px-4">
+      {/* Main Content - Responsive Padding */}
+      {/* 在890px以下，物品详情页面需要更多顶部间距，避免与右上角按钮重叠 */}
+      <div className={`pb-8 ${
+        selectedItem 
+          ? 'pt-[120px] mid:pt-24' // 物品详情页面：按钮高度约68px + 按钮本身高度 + 间隙
+          : 'pt-16 mid:pt-24' // 主页：正常间距
+      }`}>
+        <div className="max-w-7xl mx-auto px-2 sm:px-4">
           {/* Search Results */}
           {searchResults.length > 0 && !selectedItem && (
             <div className="mb-6">
@@ -1052,25 +1128,27 @@ function App() {
 
           {/* Selected Item & Market Data */}
           {selectedItem && (
-            <div className="space-y-6">
-              {/* Item Info & Controls - Compact */}
-              <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg border border-slate-700/50 p-4">
-                {/* First Row: Item Image, Name & Server Selector */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-4">
+            <div className="space-y-4 sm:space-y-6">
+              {/* Item Info & Controls - Compact - Responsive */}
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg border border-slate-700/50 p-3 sm:p-4">
+                {/* First Row: Item Image, Name & Server Selector - Responsive */}
+                <div className="flex flex-col detail:flex-row detail:items-center detail:justify-between gap-4 detail:gap-4 mb-3 mid:mb-4">
+                  <div className="flex items-center gap-3 mid:gap-4 min-w-0 flex-1">
                     <div className="flex-shrink-0">
                       <ItemImage
                         itemId={selectedItem.id}
                         alt={selectedItem.name}
-                        className="w-20 h-20 object-contain rounded-lg border-2 border-ffxiv-gold/30 bg-slate-900/50 p-2 shadow-lg"
+                        className="w-16 h-16 mid:w-20 mid:h-20 object-contain rounded-lg border-2 border-ffxiv-gold/30 bg-slate-900/50 p-2 shadow-lg"
                       />
                     </div>
-                    <div>
-                      <h2 className="text-xl font-bold text-ffxiv-gold">{selectedItem.name}</h2>
-                      <p className="text-sm text-gray-400">ID: {selectedItem.id}</p>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-lg mid:text-xl font-bold text-ffxiv-gold break-words line-clamp-2" style={{ minHeight: '2.5em', maxWidth: '100%' }}>
+                        {selectedItem.name}
+                      </h2>
+                      <p className="text-xs mid:text-sm text-gray-400 mt-1">ID: {selectedItem.id}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3 detail:gap-4 overflow-x-auto min-w-0 detail:flex-shrink-0 detail:max-w-none">
                     <ServerSelector
                       datacenters={datacenters}
                       worlds={worlds}
@@ -1083,10 +1161,10 @@ function App() {
                   </div>
                 </div>
                 
-                {/* Second Row: Controls (Quantity & HQ) */}
-                <div className="flex items-center gap-6 pt-3 border-t border-slate-700/50">
-                  <div className="flex items-center gap-3">
-                    <label className="text-sm text-gray-400 whitespace-nowrap">數量:</label>
+                {/* Second Row: Controls (Quantity & HQ) - Responsive */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 pt-3 border-t border-slate-700/50">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <label className="text-xs sm:text-sm text-gray-400 whitespace-nowrap">數量:</label>
                     <input
                       type="range"
                       min="10"
@@ -1094,9 +1172,9 @@ function App() {
                       step="1"
                       value={listSize}
                       onChange={(e) => setListSize(parseInt(e.target.value, 10))}
-                      className="w-32 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-ffxiv-gold"
+                      className="flex-1 sm:w-32 h-1.5 bg-purple-800/50 rounded-lg appearance-none cursor-pointer accent-ffxiv-gold"
                     />
-                    <span className="text-sm text-ffxiv-gold w-10 font-medium">{listSize}</span>
+                    <span className="text-xs sm:text-sm text-ffxiv-gold w-8 sm:w-10 font-medium text-right">{listSize}</span>
                   </div>
                   
                   {selectedItem.canBeHQ && (
@@ -1112,7 +1190,7 @@ function App() {
                           w-10 h-6 rounded-full transition-all duration-300 ease-in-out
                           ${hqOnly 
                             ? 'bg-gradient-to-r from-ffxiv-gold to-yellow-500 shadow-[0_0_15px_rgba(212,175,55,0.5)]' 
-                            : 'bg-slate-700 border-2 border-slate-600'
+                            : 'bg-purple-800/50 border-2 border-purple-600/50'
                           }
                           group-hover:scale-105
                         `}>
@@ -1130,7 +1208,7 @@ function App() {
                         </div>
                       </div>
                       <span className={`
-                        text-sm font-semibold transition-colors duration-200
+                        text-xs sm:text-sm font-semibold transition-colors duration-200
                         ${hqOnly 
                           ? 'text-ffxiv-gold' 
                           : 'text-gray-400 group-hover:text-gray-300'
@@ -1143,123 +1221,131 @@ function App() {
                 </div>
               </div>
 
-              {/* Market Listings & History - Side by Side */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Market Listings & History - Side by Side - Responsive */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Market Listings */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-ffxiv-gold">在售列表</h3>
+                <div className="flex flex-col">
+                  <div className="flex items-center justify-between mb-2 sm:mb-3">
+                    <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold">在售列表</h3>
                     <button
                       onClick={() => setRefreshKey(prev => prev + 1)}
-                      className="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded border border-slate-600 transition-colors"
+                      className="text-xs px-2 sm:px-3 py-1 bg-purple-800/60 hover:bg-purple-700/70 rounded border border-purple-500/40 transition-colors"
                     >
                       刷新
                     </button>
                   </div>
-                  {isLoadingMarket ? (
-                    <div className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-12 text-center">
-                      {rateLimitMessage ? (
-                        <>
-                          <div className="text-4xl mb-4">⏳</div>
-                          <p className="text-sm text-yellow-400 mb-2">{rateLimitMessage}</p>
-                          <p className="text-xs text-gray-500">將在3秒後自動重試...</p>
-                        </>
-                      ) : (
-                        <>
-                          <div className="relative inline-block">
-                            <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold mx-auto"></div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="h-6 w-6 bg-ffxiv-gold/20 rounded-full animate-pulse"></div>
+                  <div className="flex-1 flex flex-col">
+                    {isLoadingMarket ? (
+                      <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-12 text-center flex-1 flex items-center justify-center">
+                        {rateLimitMessage ? (
+                          <>
+                            <div className="text-4xl mb-4">⏳</div>
+                            <p className="text-sm text-yellow-400 mb-2">{rateLimitMessage}</p>
+                            <p className="text-xs text-gray-500">將在3秒後自動重試...</p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="relative inline-block">
+                              <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold mx-auto"></div>
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="h-6 w-6 bg-ffxiv-gold/20 rounded-full animate-pulse"></div>
+                              </div>
                             </div>
-                          </div>
-                          <p className="mt-4 text-sm text-gray-400 animate-pulse">正在加載市場數據...</p>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <MarketListings listings={marketListings} onRefresh={() => setRefreshKey(prev => prev + 1)} />
-                  )}
+                            <p className="mt-4 text-sm text-gray-400 animate-pulse">正在加載市場數據...</p>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex flex-col">
+                        <MarketListings listings={marketListings} onRefresh={() => setRefreshKey(prev => prev + 1)} />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Market History */}
-                <div>
-                  <h3 className="text-lg font-semibold text-ffxiv-gold mb-3">歷史交易</h3>
-                  {isLoadingMarket ? (
-                    <div className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-12 text-center">
-                      {rateLimitMessage ? (
-                        <>
-                          <div className="text-4xl mb-4">⏳</div>
-                          <p className="text-sm text-yellow-400 mb-2">{rateLimitMessage}</p>
-                          <p className="text-xs text-gray-500">將在3秒後自動重試...</p>
-                        </>
-                      ) : (
-                        <>
-                          <div className="relative inline-block">
-                            <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold mx-auto"></div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="h-6 w-6 bg-ffxiv-gold/20 rounded-full animate-pulse"></div>
+                <div className="flex flex-col">
+                  <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold mb-2 sm:mb-3">歷史交易</h3>
+                  <div className="flex-1 flex flex-col">
+                    {isLoadingMarket ? (
+                      <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-12 text-center flex-1 flex items-center justify-center">
+                        {rateLimitMessage ? (
+                          <>
+                            <div className="text-4xl mb-4">⏳</div>
+                            <p className="text-sm text-yellow-400 mb-2">{rateLimitMessage}</p>
+                            <p className="text-xs text-gray-500">將在3秒後自動重試...</p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="relative inline-block">
+                              <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold mx-auto"></div>
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="h-6 w-6 bg-ffxiv-gold/20 rounded-full animate-pulse"></div>
+                              </div>
                             </div>
-                          </div>
-                          <p className="mt-4 text-sm text-gray-400 animate-pulse">正在加載歷史數據...</p>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <MarketHistory history={marketHistory} />
-                  )}
+                            <p className="mt-4 text-sm text-gray-400 animate-pulse">正在加載歷史數據...</p>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex flex-col">
+                        <MarketHistory history={marketHistory} />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Empty State - Show welcome content before search */}
+          {/* Empty State - Show welcome content before search - Responsive */}
           {!selectedItem && searchResults.length === 0 && !isSearching && (
-            <div className="space-y-8">
+            <div className="space-y-4 sm:space-y-8">
               {/* Welcome Section */}
-              <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg border border-slate-700/50 p-8">
-                <div className="text-center mb-6">
-                  <div className="text-6xl mb-4 opacity-50">⚔️</div>
-                  <h2 className="text-2xl font-bold text-ffxiv-gold mb-2">貝爾的FFXIV市場小屋</h2>
-                  <p className="text-gray-400">在左上角搜索物品名稱，比較不同服務器的價格</p>
+              <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-8">
+                <div className="text-center mb-4 sm:mb-6">
+                  <div className="text-4xl sm:text-6xl mb-3 sm:mb-4 opacity-50">⚔️</div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold mb-2">貝爾的FFXIV市場小屋</h2>
+                  <p className="text-sm sm:text-base text-gray-400">在左上角搜索物品名稱，比較不同服務器的價格</p>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                  <div className="bg-slate-700/30 rounded-lg p-4 border border-slate-600/50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6">
+                  <div className="bg-gradient-to-br from-purple-900/30 via-pink-900/20 to-indigo-900/30 rounded-lg p-3 sm:p-4 border border-purple-500/30">
                     <div className="text-2xl mb-2">🔍</div>
-                    <h3 className="text-sm font-semibold text-ffxiv-gold mb-1">快速搜索</h3>
+                    <h3 className="text-xs sm:text-sm font-semibold text-ffxiv-gold mb-1">快速搜索</h3>
                     <p className="text-xs text-gray-400">支持繁體中文和簡體中文輸入</p>
                   </div>
-                  <div className="bg-slate-700/30 rounded-lg p-4 border border-slate-600/50">
+                  <div className="bg-gradient-to-br from-purple-900/30 via-pink-900/20 to-indigo-900/30 rounded-lg p-3 sm:p-4 border border-purple-500/30">
                     <div className="text-2xl mb-2">🌐</div>
-                    <h3 className="text-sm font-semibold text-ffxiv-gold mb-1">全服搜索</h3>
+                    <h3 className="text-xs sm:text-sm font-semibold text-ffxiv-gold mb-1">全服搜索</h3>
                     <p className="text-xs text-gray-400">選擇數據中心可查看所有服務器價格</p>
                   </div>
-                  <div className="bg-slate-700/30 rounded-lg p-4 border border-slate-600/50">
+                  <div className="bg-gradient-to-br from-purple-900/30 via-pink-900/20 to-indigo-900/30 rounded-lg p-3 sm:p-4 border border-purple-500/30 sm:col-span-2 lg:col-span-1">
                     <div className="text-2xl mb-2">📊</div>
-                    <h3 className="text-sm font-semibold text-ffxiv-gold mb-1">價格對比</h3>
+                    <h3 className="text-xs sm:text-sm font-semibold text-ffxiv-gold mb-1">價格對比</h3>
                     <p className="text-xs text-gray-400">實時查看市場價格和歷史交易</p>
                   </div>
                 </div>
               </div>
 
               {/* Tips Section */}
-              <div className="bg-slate-800/30 rounded-lg border border-slate-700/30 p-6">
-                <h3 className="text-lg font-semibold text-ffxiv-gold mb-4">💡 使用提示</h3>
-                <ul className="space-y-2 text-sm text-gray-300">
+              <div className="bg-gradient-to-br from-slate-800/40 via-purple-900/15 to-slate-800/40 rounded-lg border border-purple-500/20 p-4 sm:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold mb-3 sm:mb-4">💡 使用提示</h3>
+                <ul className="space-y-2 text-xs sm:text-sm text-gray-300">
                   <li className="flex items-start gap-2">
-                    <span className="text-ffxiv-gold">•</span>
+                    <span className="text-ffxiv-gold flex-shrink-0">•</span>
                     <span>支持多關鍵詞搜索，用空格分隔（例如：「陳舊的 地圖」）</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-ffxiv-gold">•</span>
+                    <span className="text-ffxiv-gold flex-shrink-0">•</span>
                     <span>選擇數據中心名稱可查看該數據中心下所有服務器的價格</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-ffxiv-gold">•</span>
+                    <span className="text-ffxiv-gold flex-shrink-0">•</span>
                     <span>可以調整查詢數量（10-100）和過濾HQ物品</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-ffxiv-gold">•</span>
+                    <span className="text-ffxiv-gold flex-shrink-0">•</span>
                     <span>點擊物品表格中的鏈接可查看詳細信息</span>
                   </li>
                 </ul>

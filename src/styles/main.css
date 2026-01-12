@@ -3,6 +3,13 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-behavior: auto;
+    min-height: 100vh;
+  }
+
   body {
     @apply bg-ffxiv-dark text-white;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -10,11 +17,22 @@
       sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    min-height: 100vh;
     background-image: 
-      radial-gradient(circle at 20% 50%, rgba(30, 58, 95, 0.3) 0%, transparent 50%),
-      radial-gradient(circle at 80% 80%, rgba(74, 44, 90, 0.3) 0%, transparent 50%),
-      radial-gradient(circle at 40% 20%, rgba(91, 155, 213, 0.1) 0%, transparent 50%);
+      radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 60%),
+      radial-gradient(circle at 10% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 40%);
     background-attachment: fixed;
+  }
+
+  #root {
+    position: relative;
+    min-height: 100vh;
   }
 
   * {
@@ -24,7 +42,7 @@
 
 @layer utilities {
   .bg-ffxiv-dark {
-    background-color: #0a0e1a;
+    background-color: #0f172a;
   }
   
   .bg-ffxiv-blue {
@@ -32,51 +50,51 @@
   }
   
   .bg-ffxiv-purple {
-    background-color: #4a2c5a;
+    background-color: #6b21a8;
   }
   
   .bg-ffxiv-gold {
-    background-color: #d4af37;
+    background-color: #fbbf24;
   }
   
   .bg-ffxiv-accent {
-    background-color: #5b9bd5;
+    background-color: #8b5cf6;
   }
   
   .text-ffxiv-gold {
-    color: #d4af37;
+    color: #fbbf24;
   }
   
   .text-ffxiv-accent {
-    color: #5b9bd5;
+    color: #a78bfa;
   }
   
   .border-ffxiv-gold {
-    border-color: #d4af37;
+    border-color: #fbbf24;
   }
   
   .border-ffxiv-accent {
-    border-color: #5b9bd5;
+    border-color: #8b5cf6;
   }
 
   /* Fantasy game-style effects */
   .glow-gold {
-    box-shadow: 0 0 10px rgba(212, 175, 55, 0.3), 0 0 20px rgba(212, 175, 55, 0.1);
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.4), 0 0 20px rgba(251, 191, 36, 0.15);
   }
 
   .glow-blue {
-    box-shadow: 0 0 10px rgba(91, 155, 213, 0.3), 0 0 20px rgba(91, 155, 213, 0.1);
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.4), 0 0 20px rgba(139, 92, 246, 0.15);
   }
 
   .card-glow {
     box-shadow: 
       0 4px 6px rgba(0, 0, 0, 0.3),
-      0 0 20px rgba(212, 175, 55, 0.1),
+      0 0 20px rgba(251, 191, 36, 0.15),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
   .text-glow {
-    text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
   }
 }
 
@@ -87,19 +105,19 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0e1a;
-  border-left: 1px solid rgba(91, 155, 213, 0.1);
+  background: #0f172a;
+  border-left: 1px solid rgba(139, 92, 246, 0.15);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #1e3a5f 0%, #4a2c5a 100%);
+  background: linear-gradient(180deg, #8b5cf6 0%, #ec4899 50%, #6366f1 100%);
   border-radius: 6px;
-  border: 2px solid #0a0e1a;
+  border: 2px solid #0f172a;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #2a4a6f 0%, #5a3c6a 100%);
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+  background: linear-gradient(180deg, #a78bfa 0%, #f472b6 50%, #818cf8 100%);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
 }
 
 /* Smooth animations */
@@ -131,9 +149,9 @@
   animation: shimmer 2s infinite;
   background: linear-gradient(
     90deg,
-    rgba(212, 175, 55, 0.1) 0%,
-    rgba(212, 175, 55, 0.3) 50%,
-    rgba(212, 175, 55, 0.1) 100%
+    rgba(251, 191, 36, 0.15) 0%,
+    rgba(139, 92, 246, 0.3) 50%,
+    rgba(251, 191, 36, 0.15) 100%
   );
   background-size: 1000px 100%;
 }
@@ -144,9 +162,9 @@ table tbody tr {
 }
 
 table tbody tr:hover {
-  background: linear-gradient(90deg, rgba(30, 58, 95, 0.4) 0%, rgba(74, 44, 90, 0.4) 100%);
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.2) 0%, rgba(236, 72, 153, 0.15) 50%, rgba(99, 102, 241, 0.2) 100%);
   transform: translateX(2px);
-  box-shadow: -2px 0 8px rgba(212, 175, 55, 0.2);
+  box-shadow: -2px 0 8px rgba(251, 191, 36, 0.3);
 }
 
 /* Button effects */
@@ -166,17 +184,17 @@ button:active {
 /* Input focus effects */
 input:focus {
   box-shadow: 
-    0 0 0 3px rgba(212, 175, 55, 0.1),
-    0 0 20px rgba(212, 175, 55, 0.2);
+    0 0 0 3px rgba(251, 191, 36, 0.15),
+    0 0 20px rgba(139, 92, 246, 0.3);
 }
 
 /* Card effects */
 .card-fantasy {
-  background: linear-gradient(135deg, rgba(30, 58, 95, 0.4) 0%, rgba(74, 44, 90, 0.4) 100%);
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(236, 72, 153, 0.15) 50%, rgba(99, 102, 241, 0.2) 100%);
+  border: 1px solid rgba(251, 191, 36, 0.25);
   box-shadow: 
     0 8px 16px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 0 30px rgba(212, 175, 55, 0.1);
+    0 0 30px rgba(251, 191, 36, 0.15);
   backdrop-filter: blur(10px);
 }

@@ -6,26 +6,30 @@ export default {
   ],
   theme: {
     extend: {
+      screens: {
+        'mid': '890px',  // 搜索栏换排断点
+        'detail': '980px', // 物品详情换排断点
+      },
       colors: {
-        'ffxiv-dark': '#0a0e1a',
-        'ffxiv-darker': '#050810',
-        'ffxiv-blue': '#1e3a5f',
-        'ffxiv-blue-light': '#2a4a6f',
-        'ffxiv-purple': '#4a2c5a',
-        'ffxiv-purple-light': '#5a3c6a',
-        'ffxiv-gold': '#d4af37',
-        'ffxiv-gold-dark': '#b8941f',
-        'ffxiv-accent': '#5b9bd5',
-        'ffxiv-accent-light': '#7bb5e5',
+        'ffxiv-dark': '#0f172a',
+        'ffxiv-darker': '#020617',
+        'ffxiv-blue': '#3b82f6',
+        'ffxiv-blue-light': '#60a5fa',
+        'ffxiv-purple': '#8b5cf6',
+        'ffxiv-purple-light': '#a78bfa',
+        'ffxiv-gold': '#fbbf24',
+        'ffxiv-gold-dark': '#f59e0b',
+        'ffxiv-accent': '#a78bfa',
+        'ffxiv-accent-light': '#c4b5fd',
       },
       backgroundImage: {
-        'gradient-fantasy': 'linear-gradient(135deg, rgba(30, 58, 95, 0.4) 0%, rgba(74, 44, 90, 0.4) 100%)',
-        'gradient-header': 'linear-gradient(135deg, #1e3a5f 0%, #4a2c5a 50%, #1e3a5f 100%)',
+        'gradient-fantasy': 'linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(236, 72, 153, 0.25) 50%, rgba(99, 102, 241, 0.3) 100%)',
+        'gradient-header': 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 50%, #6366f1 100%)',
       },
       boxShadow: {
-        'fantasy': '0 8px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 30px rgba(212, 175, 55, 0.1)',
-        'glow-gold': '0 0 10px rgba(212, 175, 55, 0.3), 0 0 20px rgba(212, 175, 55, 0.1)',
-        'glow-blue': '0 0 10px rgba(91, 155, 213, 0.3), 0 0 20px rgba(91, 155, 213, 0.1)',
+        'fantasy': '0 8px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 30px rgba(251, 191, 36, 0.15)',
+        'glow-gold': '0 0 10px rgba(251, 191, 36, 0.4), 0 0 20px rgba(251, 191, 36, 0.15)',
+        'glow-blue': '0 0 10px rgba(139, 92, 246, 0.4), 0 0 20px rgba(139, 92, 246, 0.15)',
       },
     },
   },
