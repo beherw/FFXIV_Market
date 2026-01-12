@@ -57,7 +57,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
   const isDisabled = disabled || isLoading;
 
   return (
-    <div className="w-full">
+    <div className="w-full min-w-[280px] sm:min-w-[320px]">
       <div className="relative group">
         <div className="absolute left-2.5 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10">
           <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
