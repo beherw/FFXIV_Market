@@ -974,9 +974,15 @@ function App() {
           ? 'px-1.5 mid:px-0 mid:left-20 py-1 mid:py-0' // 物品详情页面：搜索框离logo更远
           : 'pl-12 pr-1.5 mid:pl-20 mid:pr-0 py-1 mid:py-0' // 主页：搜索框从logo右侧开始（logo w-12=48px + left-4=16px = 64px，搜索框从80px开始留出16px间隙）
       } mid:w-auto`}>
-        <div className="relative flex flex-col mid:flex-row items-stretch mid:items-center gap-1.5 mid:gap-3">
+        <div className={`relative flex items-stretch mid:items-center gap-1.5 mid:gap-3 ${
+          selectedItem ? 'flex-col mid:flex-row' : 'flex-row'
+        }`}>
           {/* Search Bar - Flexible width */}
-          <div className="flex-1 mid:flex-initial mid:w-80 detail:w-96 h-9 mid:h-12 min-w-0">
+          <div className={`h-9 mid:h-12 min-w-0 ${
+            selectedItem 
+              ? 'flex-1 mid:flex-initial mid:w-80 detail:w-96' 
+              : 'flex-1'
+          }`}>
             <div className="h-full">
               <SearchBar 
                 onSearch={handleSearch} 
@@ -992,7 +998,7 @@ function App() {
           {/* 主服务器按钮 - 显示服务器主类别（如：陸行鳥） */}
           {/* Desktop: 在搜索栏右侧, Mobile: 在搜索栏右侧（主页/搜索页面）或第二排（物品详情页面） */}
           {selectedWorld && (
-            <div className={`items-center gap-1.5 mid:gap-2 px-2 mid:px-3 detail:px-4 h-9 mid:h-12 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm whitespace-nowrap ${
+            <div className={`items-center gap-1.5 mid:gap-2 px-2 mid:px-3 detail:px-4 h-9 mid:h-12 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm whitespace-nowrap flex-shrink-0 ${
               selectedItem ? 'hidden mid:flex' : 'flex'
             }`}>
               <div className="w-1.5 h-1.5 mid:w-2 mid:h-2 rounded-full bg-ffxiv-gold animate-pulse"></div>
