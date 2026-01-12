@@ -1,3 +1,6 @@
+# Author: 
+貝爾
+
 # FFXIV Market Price Comparison
 
 A modern, dark-themed website for searching and comparing Final Fantasy XIV market item prices across different servers.
