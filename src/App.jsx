@@ -53,6 +53,8 @@ function App() {
   const isInitializingFromURLRef = useRef(false);
   const lastProcessedURLRef = useRef('');
   const searchResultsRef = useRef([]);
+  const [currentImage, setCurrentImage] = useState(() => Math.random() < 0.5 ? '/bear.png' : '/sheep.png');
+  const imageTimerRef = useRef(null);
 
   // Add toast function
   const addToast = useCallback((message, type = 'info') => {
@@ -63,6 +65,27 @@ function App() {
   // Remove toast function
   const removeToast = useCallback((id) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
+  }, []);
+
+  // Random image swap timer
+  useEffect(() => {
+    const swapImage = () => {
+      setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
+      // Set next timer with random interval between 5-15 seconds
+      const nextInterval = Math.random() * (15000 - 5000) + 5000;
+      imageTimerRef.current = setTimeout(swapImage, nextInterval);
+    };
+
+    // Set initial timer with random interval between 5-15 seconds
+    const initialInterval = Math.random() * (15000 - 5000) + 5000;
+    imageTimerRef.current = setTimeout(swapImage, initialInterval);
+
+    // Cleanup on unmount
+    return () => {
+      if (imageTimerRef.current) {
+        clearTimeout(imageTimerRef.current);
+      }
+    };
   }, []);
 
   // Load data centers and worlds on mount
@@ -1304,7 +1327,13 @@ function App() {
               {/* Welcome Section */}
               <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-8">
                 <div className="text-center mb-4 sm:mb-6">
-                  <div className="text-4xl sm:text-6xl mb-3 sm:mb-4 opacity-50">⚔️</div>
+                  <div className="mb-3 sm:mb-4 flex justify-center items-center">
+                    <img 
+                      src={currentImage} 
+                      alt="Random icon" 
+                      className="w-16 h-16 sm:w-24 sm:h-24 object-contain opacity-50"
+                    />
+                  </div>
                   <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold mb-2">貝爾的FFXIV市場小屋</h2>
                   <p className="text-sm sm:text-base text-gray-400">在左上角搜索物品名稱，比較不同服務器的價格</p>
                 </div>
