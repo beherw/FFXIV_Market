@@ -1,12 +1,214 @@
 // Item database service - loads Traditional Chinese item data from local tw-items.json
 // Items are already in Traditional Chinese, so no translation needed for item names
 
-import { convertSimplifiedToTraditional } from '../utils/chineseConverter';
+import { convertSimplifiedToTraditional, convertTraditionalToSimplified } from '../utils/chineseConverter';
 import twItemsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-items.json';
 
 let itemsDatabase = null;
 let shopItemsDatabase = null;
 let isLoading = false;
+
+// Cache for Simplified Chinese names from CSV
+const simplifiedNameCache = new Map();
+let simplifiedItemsDatabase = null;
+let isLoadingSimplified = false;
+let simplifiedItemsAbortController = null;
+
+/**
+ * Load Simplified Chinese items database from CSV (same as old method)
+ * Uses the same CSV source: https://raw.githubusercontent.com/thewakingsands/ffxiv-datamining-cn/master/Item.csv
+ */
+async function loadSimplifiedItemDatabase(signal = null) {
+  if (simplifiedItemsDatabase) {
+    return simplifiedItemsDatabase;
+  }
+
+  if (isLoadingSimplified) {
+    // Wait for existing load to complete
+    while (isLoadingSimplified) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return simplifiedItemsDatabase;
+  }
+
+  isLoadingSimplified = true;
+
+  try {
+    // Cancel previous request if exists and no signal provided
+    if (!signal && simplifiedItemsAbortController) {
+      simplifiedItemsAbortController.abort();
+    }
+    
+    // Use provided signal or create new abort controller
+    let abortController;
+    let fetchSignal;
+    if (signal) {
+      // Use provided signal
+      fetchSignal = signal;
+    } else {
+      // Create new abort controller
+      abortController = new AbortController();
+      simplifiedItemsAbortController = abortController;
+      fetchSignal = abortController.signal;
+    }
+
+    // Fetch CSV from the same source as old method
+    const response = await fetch(
+      'https://raw.githubusercontent.com/thewakingsands/ffxiv-datamining-cn/master/Item.csv',
+      { signal: fetchSignal }
+    );
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const text = await response.text();
+    
+    // Parse CSV using the same method as old code
+    const lineend0 = text.indexOf('\n'); // key,0,1 ...
+    const lineend1 = text.indexOf('\n', lineend0 + 1); // #, Name, ...
+    const lineend2 = text.indexOf('\n', lineend1 + 1); // int,str, ...
+    const lineend3 = text.indexOf('\n', lineend2 + 1); // 0, '', ...
+    
+    const idxes = text.slice(0, lineend0).split(',');
+    const labels = text.slice(lineend0 + 1, lineend1).split(',');
+    
+    // Parse CSV rows
+    const dataLines = text.slice(lineend3 + 1).split('\n').filter(line => line.trim());
+    
+    const items = dataLines.map(line => {
+      // Handle CSV with quoted values that may contain commas
+      const values = parseCSVLine(line);
+      const obj = {};
+      idxes.forEach((idx, i) => {
+        if (i < labels.length) {
+          const key = `${idx}: ${labels[i]}`;
+          obj[key] = (i < values.length && values[i] !== undefined) ? values[i] : '';
+        }
+      });
+      return obj;
+    }).filter(obj => Object.keys(obj).length > 0);
+
+    simplifiedItemsDatabase = items;
+    isLoadingSimplified = false;
+    if (!signal) {
+      simplifiedItemsAbortController = null;
+    }
+    return simplifiedItemsDatabase;
+  } catch (error) {
+    isLoadingSimplified = false;
+    if (!signal) {
+      simplifiedItemsAbortController = null;
+    }
+    if (error.name === 'AbortError') {
+      // Request was cancelled, return null
+      return null;
+    }
+    console.error('Failed to load Simplified Chinese item database:', error);
+    throw error;
+  }
+}
+
+/**
+ * Parse a CSV line, handling quoted values
+ * Removes quotes from field values
+ */
+function parseCSVLine(line) {
+  const values = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      values.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  values.push(current);
+  return values.map(v => v.trim());
+}
+
+/**
+ * Get Simplified Chinese name from CSV (same method as old implementation)
+ * @param {number} itemId - Item ID
+ * @param {AbortSignal} signal - Optional abort signal to cancel the request
+ * @returns {Promise<string|null>} - Simplified Chinese name or null if not found
+ */
+export async function getSimplifiedChineseName(itemId, signal = null) {
+  if (!itemId || itemId <= 0) {
+    return null;
+  }
+
+  // Check cache first
+  if (simplifiedNameCache.has(itemId)) {
+    return simplifiedNameCache.get(itemId);
+  }
+
+  try {
+    // Load Simplified Chinese items database from CSV
+    const items = await loadSimplifiedItemDatabase(signal);
+    
+    // Check if request was cancelled
+    if (!items) {
+      return null;
+    }
+    
+    // Find the item by ID
+    const item = items.find(item => {
+      const id = item['key: #'];
+      return id && parseInt(id, 10) === itemId;
+    });
+
+    if (!item) {
+      return null;
+    }
+
+    // Get Simplified Chinese name from "9: Name" field (same as old method)
+    let simplifiedName = item['9: Name'] || '';
+    if (!simplifiedName || simplifiedName.trim() === '') {
+      simplifiedName = item['0: Singular'] || '';
+    }
+
+    if (!simplifiedName || simplifiedName.trim() === '') {
+      return null;
+    }
+
+    // Clean the name (remove quotes)
+    const cleanName = simplifiedName.replace(/^["']|["']$/g, '').trim();
+
+    // Cache the result
+    if (cleanName) {
+      simplifiedNameCache.set(itemId, cleanName);
+    }
+
+    return cleanName;
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      // Request was cancelled, return null
+      return null;
+    }
+    console.error(`Failed to get Simplified Chinese name for item ${itemId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Cancel any pending Simplified Chinese name fetches
+ */
+export function cancelSimplifiedNameFetch() {
+  if (simplifiedItemsAbortController) {
+    simplifiedItemsAbortController.abort();
+    simplifiedItemsAbortController = null;
+    isLoadingSimplified = false;
+  }
+}
 
 /**
  * Load items database from local tw-items.json
@@ -57,81 +259,6 @@ export async function loadItemDatabase() {
     console.error('Failed to load item database:', error);
     throw error;
   }
-}
-
-/**
- * Parse CSV in the format used by ObservableHQ
- * Format: key,0,1... (first line), #, Name, ... (second line), int,str,... (third line), data... (fourth line+)
- */
-function parseCSV(text) {
-  const lines = text.split('\n').filter(line => line.trim());
-  
-  if (lines.length < 4) {
-    console.error('Invalid CSV format');
-    return [];
-  }
-
-  // First line: key,0,1,2...
-  const idxes = lines[0].split(',');
-  
-  // Second line: #, Name, Description, ...
-  const labels = lines[1].split(',');
-  
-  // Third line: int,str,str,... (type info, we skip this)
-  
-  // Fourth line onwards: actual data
-  const dataLines = lines.slice(3);
-  
-  const data = dataLines.map(line => {
-    // Handle CSV with quoted values that may contain commas
-    const values = parseCSVLine(line);
-    const obj = {};
-    idxes.forEach((idx, i) => {
-      if (i < labels.length) {
-        const key = `${idx}: ${labels[i]}`;
-        // Preserve the value as-is (including empty strings), similar to d3.csvParseRows
-        // d3.csvParseRows returns the raw value, which could be empty string
-        // Use the value from array if available, otherwise empty string
-        obj[key] = (i < values.length && values[i] !== undefined) ? values[i] : '';
-      }
-    });
-    return obj;
-  }).filter(obj => Object.keys(obj).length > 0);
-
-  return data;
-}
-
-/**
- * Parse a CSV line, handling quoted values
- * Removes quotes from field values
- */
-function parseCSVLine(line) {
-  const values = [];
-  let current = '';
-  let inQuotes = false;
-  
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    
-    if (char === '"') {
-      // Toggle quote state
-      inQuotes = !inQuotes;
-      // Don't add the quote to the value
-    } else if (char === ',' && !inQuotes) {
-      // End of field - preserve empty strings (don't use || '' which would convert falsy values)
-      // This matches d3.csvParseRows behavior
-      values.push(current);
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-  
-  // Add last field
-  values.push(current);
-  
-  // Trim all values (but preserve empty strings as empty strings, not undefined)
-  return values.map(v => v.trim());
 }
 
 /**

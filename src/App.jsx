@@ -6,7 +6,7 @@ import ItemTable from './components/ItemTable';
 import MarketListings from './components/MarketListings';
 import MarketHistory from './components/MarketHistory';
 import Toast from './components/Toast';
-import { searchItems, getItemById } from './services/itemDatabase';
+import { searchItems, getItemById, getSimplifiedChineseName, cancelSimplifiedNameFetch } from './services/itemDatabase';
 import { getMarketData } from './services/universalis';
 import { containsChinese } from './utils/chineseConverter';
 import ItemImage from './components/ItemImage';
@@ -53,6 +53,7 @@ function App() {
   const isInitializingFromURLRef = useRef(false);
   const lastProcessedURLRef = useRef('');
   const searchResultsRef = useRef([]);
+  const simplifiedNameAbortControllerRef = useRef(null);
   const [currentImage, setCurrentImage] = useState(() => Math.random() < 0.5 ? '/bear.png' : '/sheep.png');
 
   // Add toast function
@@ -946,6 +947,49 @@ function App() {
     };
   }, [isLoadingDB, selectedItem, selectedServerOption, listSize, hqOnly, worlds, refreshKey, addToast, selectedWorld]);
 
+  // Pre-fetch Simplified Chinese name when entering item info page
+  useEffect(() => {
+    if (!selectedItem) {
+      // Cancel any pending fetch when leaving item page
+      if (simplifiedNameAbortControllerRef.current) {
+        cancelSimplifiedNameFetch();
+        simplifiedNameAbortControllerRef.current = null;
+      }
+      return;
+    }
+
+    // Create abort controller for this fetch
+    const abortController = new AbortController();
+    simplifiedNameAbortControllerRef.current = abortController;
+
+    // Pre-fetch Simplified Chinese name in the background
+    getSimplifiedChineseName(selectedItem.id, abortController.signal)
+      .then(simplifiedName => {
+        // Check if request was cancelled
+        if (abortController.signal.aborted) {
+          return;
+        }
+        // Name is now cached, ready for Wiki button click
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Pre-fetched Simplified Chinese name for item ${selectedItem.id}:`, simplifiedName);
+        }
+      })
+      .catch(error => {
+        // Ignore abort errors
+        if (error.name !== 'AbortError') {
+          console.error('Failed to pre-fetch Simplified Chinese name:', error);
+        }
+      });
+
+    // Cleanup: cancel fetch if component unmounts or selectedItem changes
+    return () => {
+      if (simplifiedNameAbortControllerRef.current === abortController) {
+        cancelSimplifiedNameFetch();
+        simplifiedNameAbortControllerRef.current = null;
+      }
+    };
+  }, [selectedItem]);
+
   const serverOptions = selectedWorld
     ? [selectedWorld.section, ...selectedWorld.dcObj.worlds]
     : [];
@@ -1082,14 +1126,29 @@ function App() {
               <span className="hidden mid:inline">複製</span>
             </button>
             <div className="w-px h-4 bg-slate-600/50 mx-0.5 mid:mx-1"></div>
-            <a
-              href={`https://ff14.huijiwiki.com/wiki/${selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : ''}${encodeURIComponent(selectedItem.nameSimplified || selectedItem.name)}`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={async () => {
+                try {
+                  const simplifiedName = await getSimplifiedChineseName(selectedItem.id);
+                  if (simplifiedName) {
+                    const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
+                    const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(simplifiedName)}`;
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  } else {
+                    // Fallback to Traditional Chinese name if API fails
+                    const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
+                    const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(selectedItem.name)}`;
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }
+                } catch (error) {
+                  console.error('Failed to open Wiki link:', error);
+                  addToast('無法打開Wiki連結', 'error');
+                }
+              }}
               className="px-2 mid:px-3 py-1 mid:py-1.5 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors"
             >
               Wiki
-            </a>
+            </button>
             <a
               href={`https://www.garlandtools.cn/db/#item/${selectedItem.id}`}
               target="_blank"
