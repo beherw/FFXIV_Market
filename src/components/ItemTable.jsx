@@ -66,7 +66,7 @@ export default function ItemTable({ items, onSelect, selectedItem }) {
                       Wiki
                     </a>
                     <a
-                      href={`https://www.garlandtools.cn/db/#item/${item.id}`}
+                      href={`https://www.garlandtools.org/db/#item/${item.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-ffxiv-accent hover:text-ffxiv-gold transition-colors whitespace-nowrap"

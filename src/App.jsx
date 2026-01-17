@@ -1150,7 +1150,7 @@ function App() {
               Wiki
             </button>
             <a
-              href={`https://www.garlandtools.cn/db/#item/${selectedItem.id}`}
+              href={`https://www.garlandtools.org/db/#item/${selectedItem.id}`}
               target="_blank"
               rel="noopener noreferrer"
               className="px-2 mid:px-3 py-1 mid:py-1.5 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors"
