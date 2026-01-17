@@ -383,79 +383,97 @@ function App() {
     // Check if we're on search page
     const searchQuery = searchParams.get('q');
     if (searchQuery && searchQuery.trim() !== '') {
-      // Only trigger search if we're not on item page or if search text is different
-      if (!itemId && searchText !== searchQuery) {
-        setSearchText(searchQuery);
-        // Perform search directly (skip navigation to avoid loop)
-        const performSearch = async () => {
-          // Check if URL hasn't changed while waiting
-          if (lastProcessedURLRef.current !== currentURLKey) {
-            return;
-          }
-
-          if (isLoadingDB || !isServerDataLoaded) {
-            return;
-          }
-
-          if (!containsChinese(searchQuery.trim())) {
-            return;
-          }
-
-          setIsSearching(true);
-          setError(null);
-          
-          // Clear selected item to show search results
-          setSelectedItem(null);
-          selectedItemRef.current = null;
-          
-          // Clear previous market data
-          setMarketInfo(null);
-          setMarketListings([]);
-          setMarketHistory([]);
-          setRateLimitMessage(null);
-
-          try {
-            const results = await searchItems(searchQuery.trim());
-            
-            // Check if URL hasn't changed while searching
+      // We're on search page - restore search state
+      if (!itemId) {
+        // Clear selected item to show search results
+        setSelectedItem(null);
+        selectedItemRef.current = null;
+        
+        // Clear market data when showing search results
+        setMarketInfo(null);
+        setMarketListings([]);
+        setMarketHistory([]);
+        setRateLimitMessage(null);
+        
+        // Store previous search text to detect if this is a new search or returning from back button
+        const previousSearchText = searchText;
+        
+        // Update search text to match URL
+        if (searchText !== searchQuery) {
+          setSearchText(searchQuery);
+        }
+        
+        // Always check if we need to perform search or restore results
+        // The key is: if searchResults state is empty OR search text doesn't match, we need to search
+        const needsSearch = searchResults.length === 0 || previousSearchText !== searchQuery;
+        
+        if (needsSearch) {
+          // Need to perform search - either no results or search text changed
+          const performSearch = async () => {
+            // Check if URL hasn't changed while waiting
             if (lastProcessedURLRef.current !== currentURLKey) {
               return;
             }
-            
-            setSearchResults(results);
-            searchResultsRef.current = results;
+
+            if (isLoadingDB || !isServerDataLoaded) {
+              return;
+            }
+
+            if (!containsChinese(searchQuery.trim())) {
+              return;
+            }
+
+            setIsSearching(true);
             setError(null);
-            if (results.length === 0) {
-              addToast('未找到相關物品', 'warning');
-            } else {
-              addToast(`找到 ${results.length} 個結果`, 'success');
-              // Auto-select first result if only one
-              if (results.length === 1) {
-                const item = results[0];
-                setSelectedItem(item);
-                selectedItemRef.current = item;
-                navigate(`/item/${item.id}`);
+
+            try {
+              const results = await searchItems(searchQuery.trim());
+              
+              // Check if URL hasn't changed while searching
+              if (lastProcessedURLRef.current !== currentURLKey) {
+                return;
+              }
+              
+              setSearchResults(results);
+              searchResultsRef.current = results;
+              setError(null);
+              if (results.length === 0) {
+                addToast('未找到相關物品', 'warning');
+              } else {
+                // Only show toast if this is a new search (not restoring from back button)
+                // We detect this by checking if previous search text was different from current query
+                if (previousSearchText !== searchQuery) {
+                  addToast(`找到 ${results.length} 個結果`, 'success');
+                }
+                // Auto-select first result if only one
+                if (results.length === 1) {
+                  const item = results[0];
+                  setSelectedItem(item);
+                  selectedItemRef.current = item;
+                  navigate(`/item/${item.id}`, { replace: false });
+                }
+              }
+            } catch (err) {
+              // Check if URL hasn't changed while searching
+              if (lastProcessedURLRef.current !== currentURLKey) {
+                return;
+              }
+              console.error('Search error:', err);
+              setError('搜索失敗，請稍後再試');
+              setSearchResults([]);
+              searchResultsRef.current = [];
+              addToast('搜索失敗', 'error');
+            } finally {
+              // Only update loading state if URL hasn't changed
+              if (lastProcessedURLRef.current === currentURLKey) {
+                setIsSearching(false);
               }
             }
-          } catch (err) {
-            // Check if URL hasn't changed while searching
-            if (lastProcessedURLRef.current !== currentURLKey) {
-              return;
-            }
-            console.error('Search error:', err);
-            setError('搜索失敗，請稍後再試');
-            setSearchResults([]);
-            searchResultsRef.current = [];
-            addToast('搜索失敗', 'error');
-          } finally {
-            // Only update loading state if URL hasn't changed
-            if (lastProcessedURLRef.current === currentURLKey) {
-              setIsSearching(false);
-            }
-          }
-        };
-        
-        performSearch();
+          };
+          
+          performSearch();
+        }
+        // If we have results and search text matches, we're good - no need to do anything
       }
     } else if (!itemId) {
       // We're on home page (no item ID and no search query)
@@ -505,8 +523,8 @@ function App() {
     dataReceivedRef.current = false;
     requestInProgressRef.current = false;
     
-    // Navigate to home
-    navigate('/');
+    // Navigate to home - create a new history entry
+    navigate('/', { replace: false });
   }, [navigate]);
 
   // Handle item selection
@@ -518,9 +536,8 @@ function App() {
     setError(null);
     setRateLimitMessage(null);
     
-    // Clear search text when entering item detail page
-    setSearchText('');
-    setSearchResults([]);
+    // Don't clear search text and results - keep them for browser back button
+    // This allows users to go back to search results
     
     // Clear any pending retries/timeouts
     if (retryTimeoutRef.current) {
@@ -543,8 +560,8 @@ function App() {
     setSelectedItem(item);
     selectedItemRef.current = item; // Update ref
     
-    // Navigate to item detail page
-    navigate(`/item/${item.id}`);
+    // Navigate to item detail page - this will create a new history entry
+    navigate(`/item/${item.id}`, { replace: false });
     
     addToast(`已選擇: ${item.name}`, 'info');
   }, [addToast, navigate]);
@@ -617,8 +634,9 @@ function App() {
     setRateLimitMessage(null);
 
     // Navigate to search page (skip if this is called from URL initialization)
+    // Always create a new history entry to ensure proper back button behavior
     if (!skipNavigation) {
-      navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+      navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`, { replace: false });
     }
 
     try {

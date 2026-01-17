@@ -1,15 +1,16 @@
-// Item database service - replicates ObservableHQ's local database approach
-// Loads Chinese item data from GitHub and provides search functionality
+// Item database service - loads Traditional Chinese item data from local tw-items.json
+// Items are already in Traditional Chinese, so no translation needed for item names
 
-import { convertTraditionalToSimplified, convertSimplifiedToTraditional } from '../utils/chineseConverter';
+import { convertSimplifiedToTraditional } from '../utils/chineseConverter';
+import twItemsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-items.json';
 
 let itemsDatabase = null;
 let shopItemsDatabase = null;
 let isLoading = false;
 
 /**
- * Load Chinese items database from GitHub
- * ObservableHQ uses: https://raw.githubusercontent.com/thewakingsands/ffxiv-datamining-cn/master/Item.csv
+ * Load items database from local tw-items.json
+ * Items are already in Traditional Chinese format
  */
 export async function loadItemDatabase() {
   if (itemsDatabase && shopItemsDatabase) {
@@ -27,19 +28,27 @@ export async function loadItemDatabase() {
   isLoading = true;
 
   try {
-    // Load Item.csv (Chinese items)
-    const itemsResponse = await fetch('https://raw.githubusercontent.com/thewakingsands/ffxiv-datamining-cn/master/Item.csv');
-    const itemsText = await itemsResponse.text();
-    
-    // Parse CSV (same format as ObservableHQ)
-    const itemsData = parseCSV(itemsText);
-    itemsDatabase = itemsData;
+    // Items are already loaded from the JSON import
+    // Convert the JSON structure to an array of items matching the CSV format
+    // JSON structure: { "13589": { "tw": "堅鋼投斧" }, ... }
+    // We need to convert to: [{ "key: #": "13589", "9: Name": "堅鋼投斧", ... }, ...]
+    const items = Object.entries(twItemsData).map(([id, data]) => {
+      const itemName = data.tw || '';
+      // Transform to match the expected CSV format
+      return {
+        'key: #': id,
+        '9: Name': itemName, // Traditional Chinese name from JSON
+        '0: Singular': itemName, // Use same as fallback
+        '11: Level{Item}': '', // Not available in JSON
+        '25: Price{Mid}': '', // Not available in JSON
+        '8: Description': '', // Not available in JSON
+        '22: IsUntradable': 'False', // Default to tradeable (we can't determine from JSON)
+        '27: CanBeHq': 'True', // Default to true (most items can be HQ)
+      };
+    }).filter(item => item['key: #'] && item['9: Name'].trim() !== '');
 
-    // Load GilShopItem.csv (shop items)
-    const shopResponse = await fetch('https://raw.githubusercontent.com/thewakingsands/ffxiv-datamining-cn/master/GilShopItem.csv');
-    const shopText = await shopResponse.text();
-    const shopData = parseCSV(shopText);
-    shopItemsDatabase = shopData;
+    itemsDatabase = items;
+    shopItemsDatabase = []; // Shop items not available in JSON, keep empty array
 
     isLoading = false;
     return { items: itemsDatabase, shopItems: shopItemsDatabase };
@@ -141,21 +150,22 @@ export async function searchItems(searchText) {
 
   const { items, shopItems } = await loadItemDatabase();
 
-  // Convert user input (Traditional or Simplified) to Simplified for search
-  // Database is in Simplified Chinese, so we need to search with Simplified
-  const simplifiedSearchText = convertTraditionalToSimplified(searchText.trim());
+  // Items are already in Traditional Chinese, so we can search directly
+  // Convert user input from Simplified to Traditional if needed
+  // This allows users to input Simplified Chinese but search Traditional Chinese items
+  const traditionalSearchText = convertSimplifiedToTraditional(searchText.trim());
   
   // Observable's behavior: if search text has spaces, split into words (AND condition)
   // If no spaces, search the entire string as-is
   // This matches Observable's SQL: "name like ? [for each word]"
-  const hasSpaces = simplifiedSearchText.includes(' ');
+  const hasSpaces = traditionalSearchText.includes(' ');
   const words = hasSpaces 
-    ? simplifiedSearchText.split(/\s+/).filter(w => w)
-    : [simplifiedSearchText]; // Single word, search entire string
+    ? traditionalSearchText.split(/\s+/).filter(w => w)
+    : [traditionalSearchText]; // Single word, search entire string
   
   // Debug: log search terms (only in development)
   if (process.env.NODE_ENV === 'development') {
-    console.log('Search terms:', { original: searchText, simplified: simplifiedSearchText, words });
+    console.log('Search terms:', { original: searchText, traditional: traditionalSearchText, words });
     console.log('Total items in database:', items.length);
   }
 
@@ -224,7 +234,7 @@ export async function searchItems(searchText) {
       
       // Observable's SQL query: name like ? [for each word]
       // It only searches in name field, not description
-      // Match all words (AND condition) - search in cleaned name
+      // Match all words (AND condition) - search in cleaned name (Traditional Chinese)
       // Observable's SQL: name like '%word%' for each word
       const matches = words.every(word => {
         return cleanName.includes(word);
@@ -232,19 +242,19 @@ export async function searchItems(searchText) {
       
       if (matches) {
         matchCount++;
-      } else if (hasMapInName || cleanName.includes('地图')) {
+      } else if (hasMapInName || cleanName.includes('地圖')) {
         itemsWithMapButFiltered++;
       }
       
-      // Debug: log matches for "地图" search
-      if (process.env.NODE_ENV === 'development' && simplifiedSearchText.includes('地图')) {
-        if (cleanName.includes('地图') || cleanName.includes('鞣革')) {
+      // Debug: log matches for "地圖" search
+      if (process.env.NODE_ENV === 'development' && traditionalSearchText.includes('地圖')) {
+        if (cleanName.includes('地圖') || cleanName.includes('鞣革')) {
           console.log('Potential match:', { 
             cleanName, 
             rawName,
             words, 
             matches,
-            includesMap: cleanName.includes('地图'),
+            includesMap: cleanName.includes('地圖'),
             includesLeather: cleanName.includes('鞣革')
           });
         }
@@ -265,21 +275,18 @@ export async function searchItems(searchText) {
       const canBeHQ = item['27: CanBeHq'] !== 'False';
       const inShop = shopItemIds.has(id);
 
-      // Convert Simplified Chinese names to Traditional for display
+      // Items are already in Traditional Chinese, no conversion needed
       // Remove any quotes that might be in the name/description
       const cleanName = name.replace(/^["']|["']$/g, '').trim();
       const cleanDescription = description.replace(/^["']|["']$/g, '').trim();
-      
-      const traditionalName = convertSimplifiedToTraditional(cleanName);
-      const traditionalDescription = convertSimplifiedToTraditional(cleanDescription);
 
       return {
         id: parseInt(id, 10) || 0,
-        name: traditionalName, // Display in Traditional Chinese
-        nameSimplified: cleanName, // Simplified Chinese name for links
+        name: cleanName, // Already in Traditional Chinese, no conversion needed
+        nameSimplified: cleanName, // Keep same for compatibility (not used for matching)
         itemLevel: itemLevel,
         shopPrice: shopPrice,
-        description: traditionalDescription, // Display in Traditional Chinese
+        description: cleanDescription, // Already in Traditional Chinese
         inShop: inShop,
         canBeHQ: canBeHQ,
       };
@@ -290,7 +297,7 @@ export async function searchItems(searchText) {
   if (process.env.NODE_ENV === 'development') {
     console.log('Search results:', { 
       searchText, 
-      simplifiedSearchText, 
+      traditionalSearchText, 
       words, 
       matchCount, 
       resultCount: results.length,
@@ -348,21 +355,18 @@ export async function getItemById(itemId) {
   const canBeHQ = item['27: CanBeHq'] !== 'False';
   const inShop = shopItemIds.has(id);
 
-  // Convert Simplified Chinese names to Traditional for display
+  // Items are already in Traditional Chinese, no conversion needed
   // Remove any quotes that might be in the name/description
   const cleanName = name.replace(/^["']|["']$/g, '').trim();
   const cleanDescription = description.replace(/^["']|["']$/g, '').trim();
-  
-  const traditionalName = convertSimplifiedToTraditional(cleanName);
-  const traditionalDescription = convertSimplifiedToTraditional(cleanDescription);
 
   return {
     id: parseInt(id, 10) || 0,
-    name: traditionalName, // Display in Traditional Chinese
-    nameSimplified: cleanName, // Simplified Chinese name for links
+    name: cleanName, // Already in Traditional Chinese, no conversion needed
+    nameSimplified: cleanName, // Keep same for compatibility
     itemLevel: itemLevel,
     shopPrice: shopPrice,
-    description: traditionalDescription, // Display in Traditional Chinese
+    description: cleanDescription, // Already in Traditional Chinese
     inShop: inShop,
     canBeHQ: canBeHQ,
   };

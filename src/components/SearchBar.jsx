@@ -29,6 +29,23 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
     }
   };
 
+  // Handle Enter key to search immediately and break debounce
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !isComposing && !isDisabled) {
+      // Clear debounce timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      // Execute search immediately
+      if (searchTerm.trim()) {
+        onSearchRef.current(searchTerm.trim());
+      } else {
+        onSearchRef.current('');
+      }
+    }
+  };
+
   // Debounce search
   useEffect(() => {
     if (isComposing) {
@@ -42,7 +59,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
     if (searchTerm.trim()) {
       debounceTimerRef.current = setTimeout(() => {
         onSearchRef.current(searchTerm.trim());
-      }, 500);
+      }, 800);
     } else {
       onSearchRef.current('');
     }
@@ -69,6 +86,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
           type="text"
           value={searchTerm}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           onCompositionStart={() => setIsComposing(true)}
           onCompositionEnd={() => setIsComposing(false)}
           placeholder="多關鍵詞用空格分隔（例：豹 褲）"
