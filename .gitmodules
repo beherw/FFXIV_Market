@@ -1,0 +1,4 @@
+[submodule "teamcraft_git"]
+	path = teamcraft_git
+	url = https://github.com/ffxiv-teamcraft/ffxiv-teamcraft.git
+	branch = master
