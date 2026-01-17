@@ -10,6 +10,9 @@ import { searchItems, getItemById, getSimplifiedChineseName, cancelSimplifiedNam
 import { getMarketData } from './services/universalis';
 import { containsChinese } from './utils/chineseConverter';
 import ItemImage from './components/ItemImage';
+import HistoryButton from './components/HistoryButton';
+import HistorySection from './components/HistorySection';
+import { addItemToHistory, getItemHistory, clearItemHistory } from './utils/itemHistory';
 
 function App() {
   const navigate = useNavigate();
@@ -55,10 +58,13 @@ function App() {
   const searchResultsRef = useRef([]);
   const simplifiedNameAbortControllerRef = useRef(null);
   const [currentImage, setCurrentImage] = useState(() => Math.random() < 0.5 ? '/bear.png' : '/sheep.png');
+  const [historyItems, setHistoryItems] = useState([]);
+  const lastHistoryIdsRef = useRef([]);
+  const toastIdCounterRef = useRef(0);
 
   // Add toast function
   const addToast = useCallback((message, type = 'info') => {
-    const id = Date.now();
+    const id = Date.now() + (++toastIdCounterRef.current);
     setToasts(prev => [...prev, { id, message, type }]);
   }, []);
 
@@ -381,6 +387,75 @@ function App() {
       }
     }
 
+    // Check if we're on history page
+    if (location.pathname === '/history') {
+      // Load history items
+      const loadHistoryItems = async () => {
+        const historyIds = getItemHistory();
+        
+        // Check if URL changed (navigating to history page from another page)
+        const urlChanged = lastProcessedURLRef.current !== currentURLKey;
+        
+        // If URL changed, always load (navigating to history page)
+        // If URL didn't change, check if history has changed
+        if (!urlChanged) {
+          const historyChanged = JSON.stringify(historyIds) !== JSON.stringify(lastHistoryIdsRef.current);
+          if (!historyChanged) {
+            // URL and history both unchanged, skip reload
+            // But still mark URL as processed
+            lastProcessedURLRef.current = currentURLKey;
+            isInitializingFromURLRef.current = false;
+            return;
+          }
+        }
+        
+        // Update ref to track current history
+        lastHistoryIdsRef.current = historyIds;
+        
+        if (historyIds.length === 0) {
+          setHistoryItems([]);
+          setSearchResults([]);
+          searchResultsRef.current = [];
+          lastProcessedURLRef.current = currentURLKey;
+          isInitializingFromURLRef.current = false;
+          return;
+        }
+
+        try {
+          const items = await Promise.all(
+            historyIds.map(async (id) => {
+              try {
+                return await getItemById(id);
+              } catch (error) {
+                console.error(`Failed to load item ${id}:`, error);
+                return null;
+              }
+            })
+          );
+          
+          const validItems = items.filter(item => item !== null);
+          setHistoryItems(validItems);
+          setSearchResults(validItems);
+          searchResultsRef.current = validItems;
+          setSelectedItem(null);
+          selectedItemRef.current = null;
+          setSearchText('');
+        } catch (error) {
+          console.error('Failed to load history items:', error);
+          setHistoryItems([]);
+          setSearchResults([]);
+          searchResultsRef.current = [];
+        } finally {
+          // Always mark URL as processed after loading
+          lastProcessedURLRef.current = currentURLKey;
+          isInitializingFromURLRef.current = false;
+        }
+      };
+
+      loadHistoryItems();
+      return;
+    }
+
     // Check if we're on search page
     const searchQuery = searchParams.get('q');
     if (searchQuery && searchQuery.trim() !== '') {
@@ -560,6 +635,9 @@ function App() {
     // Set the new selected item
     setSelectedItem(item);
     selectedItemRef.current = item; // Update ref
+    
+    // Add to history
+    addItemToHistory(item.id);
     
     // Navigate to item detail page - this will create a new history entry
     navigate(`/item/${item.id}`, { replace: false });
@@ -990,6 +1068,76 @@ function App() {
     };
   }, [selectedItem]);
 
+  // Monitor history changes when on history page
+  useEffect(() => {
+    if (location.pathname !== '/history' || !isServerDataLoaded) {
+      return;
+    }
+
+    const loadHistoryItems = async () => {
+      const currentHistoryIds = getItemHistory();
+      const currentIdsStr = JSON.stringify(currentHistoryIds);
+      const lastIdsStr = JSON.stringify(lastHistoryIdsRef.current);
+
+      // If history hasn't changed, skip
+      if (currentIdsStr === lastIdsStr) {
+        return;
+      }
+
+      lastHistoryIdsRef.current = currentHistoryIds;
+      
+      if (currentHistoryIds.length === 0) {
+        setHistoryItems([]);
+        setSearchResults([]);
+        searchResultsRef.current = [];
+        return;
+      }
+
+      try {
+        const items = await Promise.all(
+          currentHistoryIds.map(async (id) => {
+            try {
+              return await getItemById(id);
+            } catch (error) {
+              console.error(`Failed to load item ${id}:`, error);
+              return null;
+            }
+          })
+        );
+        
+        const validItems = items.filter(item => item !== null);
+        setHistoryItems(validItems);
+        setSearchResults(validItems);
+        searchResultsRef.current = validItems;
+      } catch (error) {
+        console.error('Failed to load history items:', error);
+        setHistoryItems([]);
+        setSearchResults([]);
+        searchResultsRef.current = [];
+      }
+    };
+
+    // Load immediately
+    loadHistoryItems();
+
+    // Listen for storage changes (when history is updated in another tab or component)
+    const handleStorageChange = (e) => {
+      if (e.key === 'ffxiv_market_item_history') {
+        loadHistoryItems();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Also check periodically (in case storage event doesn't fire for same-tab changes)
+    const interval = setInterval(loadHistoryItems, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [location.pathname, isServerDataLoaded]);
+
   const serverOptions = selectedWorld
     ? [selectedWorld.section, ...selectedWorld.dcObj.worlds]
     : [];
@@ -1039,6 +1187,9 @@ function App() {
               />
             </div>
           </div>
+
+          {/* History Button - Between search bar and server selector */}
+          <HistoryButton onItemSelect={handleItemSelect} />
 
           {/* 主服务器按钮 - 显示服务器主类别（如：陸行鳥） */}
           {/* Desktop: 在搜索栏右侧, Mobile: 在搜索栏右侧（主页/搜索页面）或第二排（物品详情页面） */}
@@ -1204,6 +1355,60 @@ function App() {
           : 'pt-16 mid:pt-24' // 主页：正常间距
       }`}>
         <div className="max-w-7xl mx-auto px-2 sm:px-4">
+          {/* History Page Title */}
+          {location.pathname === '/history' && searchResults.length > 0 && !selectedItem && (
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-2xl sm:text-3xl font-bold text-ffxiv-gold flex items-center gap-3">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-6 w-6 sm:h-8 sm:w-8" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+                    />
+                  </svg>
+                  歷史記錄
+                </h2>
+                <button
+                  onClick={() => {
+                    if (window.confirm('確定要清空所有歷史記錄嗎？')) {
+                      clearItemHistory();
+                      setSearchResults([]);
+                      searchResultsRef.current = [];
+                      setHistoryItems([]);
+                    }
+                  }}
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium bg-red-800/60 hover:bg-red-700/70 text-gray-200 hover:text-white rounded-md border border-red-500/40 hover:border-red-400/60 transition-all duration-200 flex items-center gap-2"
+                  title="清空歷史記錄"
+                >
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-4 w-4 sm:h-5 sm:w-5" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
+                    />
+                  </svg>
+                  <span>清空歷史記錄</span>
+                </button>
+              </div>
+              <p className="text-sm sm:text-base text-gray-400">共 {searchResults.length} 個物品</p>
+            </div>
+          )}
+
           {/* Search Results */}
           {searchResults.length > 0 && !selectedItem && (
             <div className="mb-6">
@@ -1387,8 +1592,66 @@ function App() {
             </div>
           )}
 
+          {/* History Page Empty State */}
+          {location.pathname === '/history' && searchResults.length === 0 && !isSearching && (
+            <div>
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl sm:text-3xl font-bold text-ffxiv-gold flex items-center gap-3">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-6 w-6 sm:h-8 sm:w-8" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+                    />
+                  </svg>
+                  歷史記錄
+                </h2>
+                <button
+                  onClick={() => {
+                    if (window.confirm('確定要清空所有歷史記錄嗎？')) {
+                      clearItemHistory();
+                      setSearchResults([]);
+                      searchResultsRef.current = [];
+                      setHistoryItems([]);
+                    }
+                  }}
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium bg-red-800/60 hover:bg-red-700/70 text-gray-200 hover:text-white rounded-md border border-red-500/40 hover:border-red-400/60 transition-all duration-200 flex items-center gap-2"
+                  title="清空歷史記錄"
+                >
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-4 w-4 sm:h-5 sm:w-5" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
+                    />
+                  </svg>
+                  <span>清空歷史記錄</span>
+                </button>
+              </div>
+              <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-8 sm:p-12 text-center">
+                <div className="text-6xl mb-4">📜</div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-ffxiv-gold mb-2">暫無歷史記錄</h2>
+                <p className="text-sm sm:text-base text-gray-400">查看物品詳情後，會自動保存到歷史記錄</p>
+              </div>
+            </div>
+          )}
+
           {/* Empty State - Show welcome content before search - Responsive */}
-          {!selectedItem && searchResults.length === 0 && !isSearching && (
+          {!selectedItem && searchResults.length === 0 && !isSearching && location.pathname !== '/history' && (
             <div className="space-y-4 sm:space-y-8">
               {/* Welcome Section */}
               <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-8">
@@ -1425,6 +1688,9 @@ function App() {
                 </div>
               </div>
 
+              {/* History Items Section - Show on home page below welcome section */}
+              <HistorySection onItemSelect={handleItemSelect} />
+
               {/* Tips Section */}
               <div className="bg-gradient-to-br from-slate-800/40 via-purple-900/15 to-slate-800/40 rounded-lg border border-purple-500/20 p-4 sm:p-6">
                 <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold mb-3 sm:mb-4">💡 使用提示</h3>
@@ -1435,15 +1701,11 @@ function App() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-ffxiv-gold flex-shrink-0">•</span>
-                    <span>選擇數據中心名稱可查看該數據中心下所有服務器的價格</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-ffxiv-gold flex-shrink-0">•</span>
                     <span>可以調整查詢數量（10-100）和過濾HQ物品</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-ffxiv-gold flex-shrink-0">•</span>
-                    <span>點擊物品表格中的鏈接可查看詳細信息</span>
+                    <span>查看物品詳情會自動保存到歷史記錄，最多保存10個物品，可在搜索欄旁的歷史記錄按鈕查看</span>
                   </li>
                 </ul>
               </div>
