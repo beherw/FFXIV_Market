@@ -1,10 +1,11 @@
 // Ultimate Price King (究極查價王) - Secret page for advanced market search
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toast from './Toast';
 import ItemTable from './ItemTable';
 import SearchBar from './SearchBar';
 import ServerSelector from './ServerSelector';
+import HistoryButton from './HistoryButton';
 import { loadRecipeDatabase } from '../services/recipeDatabase';
 import { getMarketableItems } from '../services/universalis';
 import { getItemById } from '../services/itemDatabase';
@@ -57,11 +58,39 @@ export default function UltimatePriceKing({
   const getMaxRange = useCallback((jobCount) => {
     if (jobCount === 0) return 10;
     if (jobCount === 1) return 50;
-    if (jobCount === 2) return 40;
-    if (jobCount === 3) return 30;
-    if (jobCount === 4) return 20;
+    if (jobCount === 2) return 30;
+    if (jobCount === 3) return 20;
+    if (jobCount === 4) return 10;
     return 10;
   }, []);
+
+  // Check if current range is valid
+  const isRangeValid = useMemo(() => {
+    const maxRange = getMaxRange(selectedJobs.length);
+    const range = ilvlMax - ilvlMin;
+    return range >= 0 && range <= maxRange + 1 && ilvlMin >= 1 && ilvlMax <= 999;
+  }, [ilvlMin, ilvlMax, selectedJobs.length, getMaxRange]);
+
+  // Calculate suggested min/max values
+  const suggestedRange = useMemo(() => {
+    const maxRange = getMaxRange(selectedJobs.length);
+    const currentRange = ilvlMax - ilvlMin;
+    
+    if (currentRange <= maxRange + 1) {
+      // Range is valid, suggest keeping current values
+      return { suggestedMin: ilvlMin, suggestedMax: ilvlMax };
+    }
+    
+    // Range is too large, suggest adjusted values
+    // First try to lower min level
+    const adjustedMin = ilvlMax - maxRange - 1;
+    if (adjustedMin >= 1) {
+      return { suggestedMin: adjustedMin, suggestedMax: ilvlMax };
+    } else {
+      // If min can't be lowered enough, adjust max level
+      return { suggestedMin: 1, suggestedMax: 1 + maxRange + 1 };
+    }
+  }, [ilvlMin, ilvlMax, selectedJobs.length, getMaxRange]);
 
   // Handle ilvl input change (allow free typing)
   const handleIlvlInputChange = useCallback((field, value) => {
@@ -82,7 +111,7 @@ export default function UltimatePriceKing({
       ilvlValidationTimeoutRef.current = setTimeout(() => {
         const numValue = parseInt(value, 10);
         
-        // If empty or invalid, use current value
+        // If empty or invalid, reset to current value
         if (isNaN(numValue) || numValue < 1 || numValue > 999) {
           if (field === 'min') {
             setIlvlMinInput(ilvlMin.toString());
@@ -92,26 +121,16 @@ export default function UltimatePriceKing({
           return;
         }
 
-        const maxRange = getMaxRange(selectedJobs.length);
         let newMin = ilvlMin;
         let newMax = ilvlMax;
 
         if (field === 'min') {
           newMin = numValue;
-          if (newMax - newMin > maxRange) {
-            newMax = newMin + maxRange;
-            setIlvlMaxInput(newMax.toString());
-            addToast(`範圍過大！已自動調整為 ${newMin}-${newMax}`, 'warning');
-          }
         } else {
           newMax = numValue;
-          if (newMax - newMin > maxRange) {
-            newMin = newMax - maxRange;
-            setIlvlMinInput(newMin.toString());
-            addToast(`範圍過大！已自動調整為 ${newMin}-${newMax}`, 'warning');
-          }
         }
 
+        // Clamp values to valid range
         if (newMin < 1) {
           newMin = 1;
           setIlvlMinInput('1');
@@ -132,7 +151,7 @@ export default function UltimatePriceKing({
         setIlvlMax(newMax);
       }, 1300);
     }
-  }, [selectedJobs.length, ilvlMin, ilvlMax, getMaxRange, addToast]);
+  }, [ilvlMin, ilvlMax]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -146,48 +165,31 @@ export default function UltimatePriceKing({
   // Handle job selection
   const handleJobToggle = useCallback((jobId) => {
     const jobIdNum = parseInt(jobId, 10);
+    
     setSelectedJobs(prev => {
       if (prev.includes(jobIdNum)) {
-        // Deselect job
-        const newJobs = prev.filter(j => j !== jobIdNum);
-        const maxRange = getMaxRange(newJobs.length);
-        let newMin = ilvlMin;
-        let newMax = ilvlMax;
-        if (newMax - newMin > maxRange) {
-          newMax = newMin + maxRange;
-          setIlvlMax(newMax);
-          setIlvlMaxInput(newMax.toString());
-          addToast(`範圍已調整為 ${newMin}-${newMax}`, 'info');
-        }
-        return newJobs;
+        // Deselect job - don't change user input
+        return prev.filter(j => j !== jobIdNum);
       } else {
         // Select job (max 4)
         if (prev.length >= 4) {
-          addToast('最多只能選擇4個職業', 'warning');
-          return prev;
+          // Show toast after state update completes to avoid render warnings
+          Promise.resolve().then(() => {
+            addToast('最多只能選擇4個職業', 'warning');
+          });
+          return prev; // Don't add the job
         }
-        const newJobs = [...prev, jobIdNum];
-        const maxRange = getMaxRange(newJobs.length);
-        let newMin = ilvlMin;
-        let newMax = ilvlMax;
-        if (newMax - newMin > maxRange) {
-          newMax = newMin + maxRange;
-          setIlvlMax(newMax);
-          setIlvlMaxInput(newMax.toString());
-          addToast(`範圍已調整為 ${newMin}-${newMax}`, 'info');
-        }
-        return newJobs;
+        return [...prev, jobIdNum];
       }
     });
-  }, [ilvlMin, ilvlMax, getMaxRange, addToast]);
+  }, [addToast]);
 
   // Perform search
   const handleSearch = useCallback(async () => {
     if (isRecipeSearching) return;
 
-    const maxRange = getMaxRange(selectedJobs.length);
-    if (ilvlMax - ilvlMin > maxRange) {
-      addToast(`範圍過大！最多只能搜索 ${maxRange} 個等級範圍`, 'error');
+    if (!isRangeValid) {
+      addToast(`範圍過大！最多只能搜索 ${getMaxRange(selectedJobs.length)} 個等級範圍`, 'error');
       return;
     }
 
@@ -397,7 +399,7 @@ export default function UltimatePriceKing({
     } finally {
       setIsRecipeSearching(false);
     }
-  }, [ilvlMin, ilvlMax, selectedJobs, isRecipeSearching, getMaxRange, addToast, selectedWorld, selectedServerOption]);
+  }, [ilvlMin, ilvlMax, selectedJobs, isRecipeSearching, isRangeValid, getMaxRange, addToast, selectedWorld, selectedServerOption]);
 
   // Job icons mapping
   const jobIcons = {
@@ -424,19 +426,44 @@ export default function UltimatePriceKing({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
+      {/* Logo - Desktop: Fixed Top Left, Mobile: Inside search bar row */}
+      <button
+        onClick={() => navigate('/')}
+        className="fixed z-[60] mid:flex items-center justify-center hover:opacity-80 transition-opacity duration-200 cursor-pointer mid:top-4 mid:left-4 hidden mid:w-12 mid:h-12 bg-transparent border-none p-0"
+        title="返回主頁"
+      >
+        <img 
+          src="/logo.png" 
+          alt="返回主頁" 
+          className="w-full h-full object-contain pointer-events-none transition-all duration-200"
+          style={isServerDataLoaded ? {
+            filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.4))',
+            opacity: 1
+          } : {
+            opacity: 0.5
+          }}
+        />
+      </button>
+
       {/* Fixed Search Bar - Top Row */}
       <div className="fixed top-2 left-0 right-0 mid:top-4 mid:right-auto z-50 px-1.5 mid:px-0 mid:left-20 py-1 mid:py-0 mid:w-auto">
         <div className="relative flex items-center gap-1.5 mid:gap-3">
           {/* Mobile Logo */}
           <button
             onClick={() => navigate('/')}
-            className="mid:hidden flex-shrink-0 flex items-center justify-center w-9 h-9 hover:opacity-80 transition-opacity duration-200 cursor-pointer"
+            className="mid:hidden flex-shrink-0 flex items-center justify-center w-9 h-9 hover:opacity-80 transition-opacity duration-200 cursor-pointer bg-transparent border-none p-0"
             title="返回主頁"
           >
             <img 
               src="/logo.png" 
               alt="返回主頁" 
-              className="w-full h-full object-contain pointer-events-none"
+              className="w-full h-full object-contain pointer-events-none transition-all duration-200"
+              style={isServerDataLoaded ? {
+                filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.4))',
+                opacity: 1
+              } : {
+                opacity: 0.5
+              }}
             />
           </button>
 
@@ -452,6 +479,37 @@ export default function UltimatePriceKing({
               selectedDcName={selectedWorld?.section}
               onItemSelect={onItemSelect}
             />
+          </div>
+
+          {/* History Button */}
+          <div className="flex-shrink-0">
+            <HistoryButton onItemSelect={onItemSelect} />
+          </div>
+
+          {/* Ultimate Price King Button */}
+          <div className="flex-shrink-0">
+            <button
+              onClick={() => navigate('/ultimate-price-king')}
+              className="bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-ffxiv-gold/70 rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors px-2 mid:px-3 detail:px-4 h-9 mid:h-12 gap-1.5 mid:gap-2 shadow-[0_0_10px_rgba(212,175,55,0.3)]"
+              title="查價王"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4 mid:h-5 mid:w-5 text-ffxiv-gold" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                />
+              </svg>
+              <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">查價王</span>
+              <span className="text-xs font-semibold text-ffxiv-gold mid:hidden">查價</span>
+            </button>
           </div>
         </div>
       </div>
@@ -518,6 +576,11 @@ export default function UltimatePriceKing({
                 </span>
               )}
             </div>
+            {!isRangeValid && (
+              <div className="mt-2 text-xs text-yellow-400">
+                範圍過大！建議調整為: {suggestedRange.suggestedMin}-{suggestedRange.suggestedMax}
+              </div>
+            )}
           </div>
 
           {/* Job Selector */}
@@ -573,10 +636,10 @@ export default function UltimatePriceKing({
           {/* Search Button */}
           <button
             onClick={handleSearch}
-            disabled={isRecipeSearching || (ilvlMax - ilvlMin + 1 > maxRange)}
+            disabled={isRecipeSearching || !isRangeValid || selectedJobs.length === 0}
             className={`w-full py-3 rounded-lg font-semibold transition-all ${
-              isRecipeSearching || (ilvlMax - ilvlMin + 1 > maxRange)
-                ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed'
+              isRecipeSearching || !isRangeValid || selectedJobs.length === 0
+                ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed opacity-50'
                 : 'bg-gradient-to-r from-ffxiv-gold to-yellow-500 text-slate-900 hover:shadow-[0_0_20px_rgba(212,175,55,0.5)]'
             }`}
           >

@@ -46,6 +46,7 @@ function App() {
   const [toasts, setToasts] = useState([]);
   const [rateLimitMessage, setRateLimitMessage] = useState(null);
   const [currentImage, setCurrentImage] = useState(() => Math.random() < 0.5 ? '/bear.png' : '/sheep.png');
+  const [isManualMode, setIsManualMode] = useState(false);
   
   // Crafting tree states
   const [craftingTree, setCraftingTree] = useState(null);
@@ -84,12 +85,12 @@ function App() {
   const toastIdCounterRef = useRef(0);
   const lastProcessedURLRef = useRef('');
   const isInitializingFromURLRef = useRef(false);
-  const imageClickCountRef = useRef(0);
-  const lastImageClickTimeRef = useRef(0);
   const velocityFetchAbortControllerRef = useRef(null);
   const velocityFetchRequestIdRef = useRef(0);
   const velocityFetchInProgressRef = useRef(false);
   const lastFetchedItemIdsRef = useRef('');
+  const imageIntervalRef = useRef(null);
+  const manualModeTimeoutRef = useRef(null);
 
   // Add toast function
   const addToast = useCallback((message, type = 'info') => {
@@ -102,28 +103,98 @@ function App() {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
 
-  // Handle image swap on click with secret page unlock
-  const handleImageSwap = useCallback(() => {
-    const now = Date.now();
-    // Reset counter if more than 2 seconds passed since last click
-    if (now - lastImageClickTimeRef.current > 2000) {
-      imageClickCountRef.current = 0;
+  // Handle image swap on click - manual mode
+  const handleImageClick = useCallback(() => {
+    // Clear any pending timeout to return to auto mode
+    if (manualModeTimeoutRef.current) {
+      clearTimeout(manualModeTimeoutRef.current);
     }
     
-    lastImageClickTimeRef.current = now;
-    imageClickCountRef.current++;
+    // Enter manual mode
+    setIsManualMode(true);
     
+    // Stop auto alternation
+    if (imageIntervalRef.current) {
+      clearInterval(imageIntervalRef.current);
+      imageIntervalRef.current = null;
+    }
+    
+    // Swap image immediately
     setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
     
-    // If clicked 4 times in a row, navigate to secret page
-    if (imageClickCountRef.current >= 4) {
-      imageClickCountRef.current = 0; // Reset counter
-      addToast('你進入了究極查價王系統！這代表你已經準備好掌控市場的雷電了。請理性使用，善待系統。', 'success');
-      setTimeout(() => {
-        navigate('/ultimate-price-king');
-      }, 500);
+    // Set timeout to return to auto mode after 2 seconds of no clicks
+    manualModeTimeoutRef.current = setTimeout(() => {
+      setIsManualMode(false);
+      manualModeTimeoutRef.current = null;
+    }, 2000);
+  }, []);
+
+  // Auto-alternate images when not in manual mode
+  useEffect(() => {
+    const isOnHistoryPage = location.pathname === '/history';
+    const isOnUltimatePriceKingPage = location.pathname === '/ultimate-price-king';
+    
+    // Only run on home page (empty state)
+    if (selectedItem || searchResults.length > 0 || isSearching || isOnHistoryPage || isOnUltimatePriceKingPage) {
+      if (imageIntervalRef.current) {
+        clearInterval(imageIntervalRef.current);
+        imageIntervalRef.current = null;
+      }
+      return;
     }
-  }, [addToast, navigate]);
+
+    // Don't auto-alternate in manual mode
+    if (isManualMode) {
+      if (imageIntervalRef.current) {
+        clearInterval(imageIntervalRef.current);
+        imageIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Set up auto alternation (random interval between 2-5 seconds)
+    const getRandomInterval = () => Math.random() * 3000 + 2000; // 2000-5000ms
+    
+    const scheduleNext = () => {
+      if (imageIntervalRef.current) {
+        clearInterval(imageIntervalRef.current);
+      }
+      imageIntervalRef.current = setTimeout(() => {
+        const currentIsOnHistoryPage = location.pathname === '/history';
+        const currentIsOnUltimatePriceKingPage = location.pathname === '/ultimate-price-king';
+        if (!isManualMode && !selectedItem && searchResults.length === 0 && !isSearching && !currentIsOnHistoryPage && !currentIsOnUltimatePriceKingPage) {
+          setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
+          scheduleNext();
+        } else {
+          imageIntervalRef.current = null;
+        }
+      }, getRandomInterval());
+    };
+
+    scheduleNext();
+
+    return () => {
+      if (imageIntervalRef.current) {
+        clearTimeout(imageIntervalRef.current);
+        imageIntervalRef.current = null;
+      }
+    };
+  }, [isManualMode, selectedItem, searchResults.length, isSearching, location.pathname]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (imageIntervalRef.current) {
+        clearTimeout(imageIntervalRef.current);
+        imageIntervalRef.current = null;
+      }
+      if (manualModeTimeoutRef.current) {
+        clearTimeout(manualModeTimeoutRef.current);
+        manualModeTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
 
   // Load data centers and worlds on mount
   useEffect(() => {
@@ -1209,13 +1280,19 @@ function App() {
       {/* Logo - Desktop: Fixed Top Left, Mobile: Inside search bar row */}
       <button
         onClick={handleReturnHome}
-        className="fixed z-[60] mid:flex items-center justify-center hover:opacity-80 transition-opacity duration-200 cursor-pointer mid:top-4 mid:left-4 hidden mid:w-12 mid:h-12"
+        className="fixed z-[60] mid:flex items-center justify-center hover:opacity-80 transition-opacity duration-200 cursor-pointer mid:top-4 mid:left-4 hidden mid:w-12 mid:h-12 bg-transparent border-none p-0"
         title="返回主頁"
       >
         <img 
           src="/logo.png" 
           alt="返回主頁" 
-          className="w-full h-full object-contain pointer-events-none"
+          className="w-full h-full object-contain pointer-events-none transition-all duration-200"
+          style={isServerDataLoaded ? {
+            filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.4))',
+            opacity: 1
+          } : {
+            opacity: 0.5
+          }}
         />
       </button>
 
@@ -1229,13 +1306,19 @@ function App() {
           {/* Mobile Logo - Always visible on mobile, left of search bar */}
           <button
             onClick={handleReturnHome}
-            className="mid:hidden flex-shrink-0 flex items-center justify-center w-9 h-9 hover:opacity-80 transition-opacity duration-200 cursor-pointer"
+            className="mid:hidden flex-shrink-0 flex items-center justify-center w-9 h-9 hover:opacity-80 transition-opacity duration-200 cursor-pointer bg-transparent border-none p-0"
             title="返回主頁"
           >
             <img 
               src="/logo.png" 
               alt="返回主頁" 
-              className="w-full h-full object-contain pointer-events-none"
+              className="w-full h-full object-contain pointer-events-none transition-all duration-200"
+              style={isServerDataLoaded ? {
+                filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.4))',
+                opacity: 1
+              } : {
+                opacity: 0.5
+              }}
             />
           </button>
 
@@ -1262,17 +1345,35 @@ function App() {
             <HistoryButton onItemSelect={handleItemSelect} />
           </div>
 
-          {/* Main server button - hidden at narrow widths */}
-          {selectedWorld && (
-            <div className={`items-center gap-1.5 mid:gap-2 px-2 mid:px-3 detail:px-4 h-9 mid:h-12 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm whitespace-nowrap flex-shrink-0 ${
-              selectedItem ? 'hidden mid:flex' : 'hidden narrow:flex'
-            }`}>
-              <div className="w-1.5 h-1.5 mid:w-2 mid:h-2 rounded-full bg-ffxiv-gold animate-pulse"></div>
-              <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold truncate">
-                {selectedWorld.section}
-              </span>
-            </div>
-          )}
+          {/* Ultimate Price King Button - hidden on mobile for item info page (moves to second row) */}
+          <div className={`flex-shrink-0 ${selectedItem ? 'hidden mid:block' : ''}`}>
+            <button
+              onClick={() => navigate('/ultimate-price-king')}
+              className={`bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors px-2 mid:px-3 detail:px-4 h-9 mid:h-12 gap-1.5 mid:gap-2 ${
+                isOnUltimatePriceKingPage 
+                  ? 'border-ffxiv-gold/70 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
+                  : 'border-purple-500/30 hover:border-ffxiv-gold/50'
+              }`}
+              title="查價王"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4 mid:h-5 mid:w-5 text-ffxiv-gold" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                />
+              </svg>
+              <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">查價王</span>
+              <span className="text-xs font-semibold text-ffxiv-gold mid:hidden">查價</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1288,14 +1389,35 @@ function App() {
             <HistoryButton onItemSelect={handleItemSelect} compact />
           </div>
         )}
-        
-        {/* Main server button - Mobile only in second row (item detail page), hidden at narrow widths */}
-        {selectedWorld && selectedItem && (
-          <div className="mid:hidden hidden narrow:flex items-center gap-1.5 px-2 h-8 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm whitespace-nowrap">
-            <div className="w-1.5 h-1.5 rounded-full bg-ffxiv-gold animate-pulse"></div>
-            <span className="text-xs font-semibold text-ffxiv-gold truncate max-w-[120px]">
-              {selectedWorld.section}
-            </span>
+
+        {/* Ultimate Price King Button - Mobile only in second row for item info page */}
+        {selectedItem && (
+          <div className="mid:hidden flex-shrink-0">
+            <button
+              onClick={() => navigate('/ultimate-price-king')}
+              className={`bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors px-2 h-8 gap-1.5 ${
+                isOnUltimatePriceKingPage 
+                  ? 'border-ffxiv-gold/70 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
+                  : 'border-purple-500/30 hover:border-ffxiv-gold/50'
+              }`}
+              title="查價王"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4 text-ffxiv-gold" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                />
+              </svg>
+              <span className="text-xs font-semibold text-ffxiv-gold">查價</span>
+            </button>
           </div>
         )}
         
@@ -1736,17 +1858,18 @@ function App() {
             <div className="space-y-4 sm:space-y-8">
               {/* Welcome Section */}
               <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-8 relative z-10">
-                <div className="text-center mb-4 sm:mb-6">
-                  <div className="mb-3 sm:mb-4 flex justify-center items-center">
+                  <div className="text-center mb-4 sm:mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold mb-4">貝爾的FFXIV市場小屋</h2>
+                  {/* Bear/Sheep Image */}
+                  <div className="mb-4 sm:mb-6 flex justify-center items-center">
                     <img 
                       src={currentImage} 
                       alt="Random icon" 
-                      onClick={handleImageSwap}
+                      onClick={handleImageClick}
                       draggable={false}
                       className="w-16 h-16 sm:w-24 sm:h-24 object-contain opacity-50 cursor-pointer hover:opacity-70 transition-opacity"
                     />
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold mb-4">貝爾的FFXIV市場小屋</h2>
                   {/* Main Page Search Bar */}
                   <div className="max-w-md mx-auto h-10 sm:h-12 relative z-20">
                     <SearchBar 
