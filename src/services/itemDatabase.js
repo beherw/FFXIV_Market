@@ -3,6 +3,7 @@
 
 import { convertSimplifiedToTraditional, convertTraditionalToSimplified } from '../utils/chineseConverter';
 import twItemsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-items.json';
+import twItemDescriptionsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-item-descriptions.json';
 
 let itemsDatabase = null;
 let shopItemsDatabase = null;
@@ -398,9 +399,20 @@ export async function searchItems(searchText) {
       }
       const itemLevel = item['11: Level{Item}'] || '';
       const shopPrice = item['25: Price{Mid}'] || '';
-      const description = item['8: Description'] || '';
       const canBeHQ = item['27: CanBeHq'] !== 'False';
       const inShop = shopItemIds.has(id);
+
+      // Get description from tw-item-descriptions.json
+      const descriptionData = twItemDescriptionsData[id];
+      const description = descriptionData?.tw || '';
+
+      // Check if item is tradable (opposite of untradable)
+      const untradableValue = (item['22: IsUntradable'] || '').toString().trim();
+      const isUntradable = untradableValue === 'True' || 
+                          untradableValue === 'true' || 
+                          untradableValue === 'TRUE' ||
+                          untradableValue === '1';
+      const isTradable = !isUntradable;
 
       // Items are already in Traditional Chinese, no conversion needed
       // Remove any quotes that might be in the name/description
@@ -413,12 +425,24 @@ export async function searchItems(searchText) {
         nameSimplified: cleanName, // Keep same for compatibility (not used for matching)
         itemLevel: itemLevel,
         shopPrice: shopPrice,
-        description: cleanDescription, // Already in Traditional Chinese
+        description: cleanDescription, // From tw-item-descriptions.json
         inShop: inShop,
         canBeHQ: canBeHQ,
+        isTradable: isTradable, // Add tradable status
       };
     })
-    .filter(item => item.id > 0); // Ensure valid ID
+    .filter(item => item.id > 0) // Ensure valid ID
+    .sort((a, b) => {
+      // Primary sort: Tradable items first (true before false)
+      // Convert boolean to number: true=1, false=0
+      // b.isTradable - a.isTradable gives: tradable items (1) before non-tradable (0)
+      const tradableDiff = (b.isTradable ? 1 : 0) - (a.isTradable ? 1 : 0);
+      if (tradableDiff !== 0) {
+        return tradableDiff;
+      }
+      // Secondary sort: By item ID (ascending)
+      return a.id - b.id;
+    });
 
   // Debug: log results
   if (process.env.NODE_ENV === 'development') {
@@ -478,9 +502,20 @@ export async function getItemById(itemId) {
   }
   const itemLevel = item['11: Level{Item}'] || '';
   const shopPrice = item['25: Price{Mid}'] || '';
-  const description = item['8: Description'] || '';
   const canBeHQ = item['27: CanBeHq'] !== 'False';
   const inShop = shopItemIds.has(id);
+
+  // Get description from tw-item-descriptions.json
+  const descriptionData = twItemDescriptionsData[id];
+  const description = descriptionData?.tw || '';
+
+  // Check if item is tradable (opposite of untradable)
+  const untradableValue = (item['22: IsUntradable'] || '').toString().trim();
+  const isUntradable = untradableValue === 'True' || 
+                      untradableValue === 'true' || 
+                      untradableValue === 'TRUE' ||
+                      untradableValue === '1';
+  const isTradable = !isUntradable;
 
   // Items are already in Traditional Chinese, no conversion needed
   // Remove any quotes that might be in the name/description
@@ -493,8 +528,9 @@ export async function getItemById(itemId) {
     nameSimplified: cleanName, // Keep same for compatibility
     itemLevel: itemLevel,
     shopPrice: shopPrice,
-    description: cleanDescription, // Already in Traditional Chinese
+    description: cleanDescription, // From tw-item-descriptions.json
     inShop: inShop,
     canBeHQ: canBeHQ,
+    isTradable: isTradable, // Add tradable status
   };
 }

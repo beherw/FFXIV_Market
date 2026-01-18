@@ -7,7 +7,7 @@ import MarketListings from './components/MarketListings';
 import MarketHistory from './components/MarketHistory';
 import Toast from './components/Toast';
 import { searchItems, getItemById, getSimplifiedChineseName, cancelSimplifiedNameFetch } from './services/itemDatabase';
-import { getMarketData } from './services/universalis';
+import { getMarketData, getMarketableItems, getItemsVelocity } from './services/universalis';
 import { containsChinese } from './utils/chineseConverter';
 import ItemImage from './components/ItemImage';
 import HistoryButton from './components/HistoryButton';
@@ -16,6 +16,7 @@ import { addItemToHistory } from './utils/itemHistory';
 import { useHistory } from './hooks/useHistory';
 import CraftingTree from './components/CraftingTree';
 import { hasRecipe, buildCraftingTree } from './services/recipeDatabase';
+import UltimatePriceKing from './components/UltimatePriceKing';
 
 function App() {
   const navigate = useNavigate();
@@ -52,6 +53,15 @@ function App() {
   const [isCraftingTreeExpanded, setIsCraftingTreeExpanded] = useState(false);
   const [isLoadingCraftingTree, setIsLoadingCraftingTree] = useState(false);
   
+  // Marketable items and velocity states
+  const [marketableItems, setMarketableItems] = useState(null);
+  const [searchVelocities, setSearchVelocities] = useState({});
+  const [searchAveragePrices, setSearchAveragePrices] = useState({});
+  const [searchMinListings, setSearchMinListings] = useState({});
+  const [searchRecentPurchases, setSearchRecentPurchases] = useState({});
+  const [searchTradability, setSearchTradability] = useState({});
+  const [isLoadingVelocities, setIsLoadingVelocities] = useState(false);
+  
   // Use centralized history hook for history page
   const { historyItems, isLoading: isHistoryLoading, clearHistory } = useHistory();
   
@@ -74,6 +84,12 @@ function App() {
   const toastIdCounterRef = useRef(0);
   const lastProcessedURLRef = useRef('');
   const isInitializingFromURLRef = useRef(false);
+  const imageClickCountRef = useRef(0);
+  const lastImageClickTimeRef = useRef(0);
+  const velocityFetchAbortControllerRef = useRef(null);
+  const velocityFetchRequestIdRef = useRef(0);
+  const velocityFetchInProgressRef = useRef(false);
+  const lastFetchedItemIdsRef = useRef('');
 
   // Add toast function
   const addToast = useCallback((message, type = 'info') => {
@@ -86,10 +102,28 @@ function App() {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
 
-  // Handle image swap on click
+  // Handle image swap on click with secret page unlock
   const handleImageSwap = useCallback(() => {
+    const now = Date.now();
+    // Reset counter if more than 2 seconds passed since last click
+    if (now - lastImageClickTimeRef.current > 2000) {
+      imageClickCountRef.current = 0;
+    }
+    
+    lastImageClickTimeRef.current = now;
+    imageClickCountRef.current++;
+    
     setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
-  }, []);
+    
+    // If clicked 4 times in a row, navigate to secret page
+    if (imageClickCountRef.current >= 4) {
+      imageClickCountRef.current = 0; // Reset counter
+      addToast('你進入了究極查價王系統！這代表你已經準備好掌控市場的雷電了。請理性使用，善待系統。', 'success');
+      setTimeout(() => {
+        navigate('/ultimate-price-king');
+      }, 500);
+    }
+  }, [addToast, navigate]);
 
   // Load data centers and worlds on mount
   useEffect(() => {
@@ -280,6 +314,13 @@ function App() {
     };
   }, [addToast]);
 
+  // Load marketable items on mount
+  useEffect(() => {
+    getMarketableItems().then(items => {
+      setMarketableItems(items);
+    });
+  }, []);
+
   // Sync selectedItem and searchResults to refs
   useEffect(() => {
     selectedItemRef.current = selectedItem;
@@ -287,6 +328,221 @@ function App() {
 
   useEffect(() => {
     searchResultsRef.current = searchResults;
+  }, [searchResults]);
+
+  // Fetch velocity, average price, and tradability data for search results
+  useEffect(() => {
+    // Cancel any in-progress fetch
+    if (velocityFetchAbortControllerRef.current) {
+      velocityFetchAbortControllerRef.current.abort();
+      velocityFetchInProgressRef.current = false;
+    }
+    
+    // Reset state if no search results
+    if (!searchResults || searchResults.length === 0) {
+      setSearchVelocities({});
+      setSearchAveragePrices({});
+      setSearchMinListings({});
+      setSearchRecentPurchases({});
+      setSearchTradability({});
+      setIsLoadingVelocities(false);
+      velocityFetchInProgressRef.current = false;
+      lastFetchedItemIdsRef.current = '';
+      return;
+    }
+
+    // Get all item IDs from search results (check all items via API)
+    const allItemIds = searchResults.map(item => item.id);
+
+    if (allItemIds.length === 0) {
+      setSearchVelocities({});
+      setSearchAveragePrices({});
+      setSearchMinListings({});
+      setSearchRecentPurchases({});
+      setSearchTradability({});
+      setIsLoadingVelocities(false);
+      velocityFetchInProgressRef.current = false;
+      lastFetchedItemIdsRef.current = '';
+      return;
+    }
+
+    // Create a stable key from item IDs to detect if items actually changed
+    const itemIdsKey = [...allItemIds].sort((a, b) => a - b).join(',');
+    
+    // Skip if already fetching or if items haven't changed
+    if (velocityFetchInProgressRef.current || lastFetchedItemIdsRef.current === itemIdsKey) {
+      return;
+    }
+
+    // Create new abort controller and request ID
+    const currentRequestId = ++velocityFetchRequestIdRef.current;
+    velocityFetchAbortControllerRef.current = new AbortController();
+    const abortSignal = velocityFetchAbortControllerRef.current.signal;
+    velocityFetchInProgressRef.current = true;
+
+    const fetchData = async () => {
+      setIsLoadingVelocities(true);
+      try {
+        // Use DC name for query (陸行鳥 is the Chinese DC)
+        const dcName = '陸行鳥';
+        
+        // Batch requests if more than 100 items
+        const batchSize = 100;
+        const allVelocities = {};
+        const allAveragePrices = {};
+        const allMinListings = {};
+        const allRecentPurchases = {};
+        const allTradability = {};
+        
+        // Process all batches first, then update state once at the end
+        for (let i = 0; i < allItemIds.length; i += batchSize) {
+          // Check if request was cancelled or superseded
+          if (abortSignal.aborted || currentRequestId !== velocityFetchRequestIdRef.current) {
+            return;
+          }
+          
+          const batch = allItemIds.slice(i, i + batchSize);
+          const itemIdsString = batch.join(',');
+          
+          try {
+            const response = await fetch(`https://universalis.app/api/v2/aggregated/${encodeURIComponent(dcName)}/${itemIdsString}`, {
+              signal: abortSignal
+            });
+            
+            // Check again after fetch
+            if (abortSignal.aborted || currentRequestId !== velocityFetchRequestIdRef.current) {
+              return;
+            }
+            
+            const data = await response.json();
+            
+            if (data && data.results) {
+              data.results.forEach(item => {
+                const itemId = item.itemId;
+                
+                // Get region velocity - compare NQ and HQ, pick higher
+                const nqVelocity = item.nq?.dailySaleVelocity?.region?.quantity;
+                const hqVelocity = item.hq?.dailySaleVelocity?.region?.quantity;
+                let velocity = null;
+                if (nqVelocity !== undefined || hqVelocity !== undefined) {
+                  velocity = Math.max(nqVelocity || 0, hqVelocity || 0);
+                }
+                
+                // Get region average price - compare NQ and HQ, pick lower
+                const nqAvgPrice = item.nq?.averageSalePrice?.region?.price;
+                const hqAvgPrice = item.hq?.averageSalePrice?.region?.price;
+                let averagePrice = null;
+                if (nqAvgPrice !== undefined && hqAvgPrice !== undefined) {
+                  averagePrice = Math.min(nqAvgPrice, hqAvgPrice);
+                } else if (hqAvgPrice !== undefined) {
+                  averagePrice = hqAvgPrice;
+                } else if (nqAvgPrice !== undefined) {
+                  averagePrice = nqAvgPrice;
+                }
+                
+                // Get region min listing - compare NQ and HQ, pick lower
+                const nqMinListing = item.nq?.minListing?.region?.price;
+                const hqMinListing = item.hq?.minListing?.region?.price;
+                let minListing = null;
+                if (nqMinListing !== undefined && hqMinListing !== undefined) {
+                  minListing = Math.min(nqMinListing, hqMinListing);
+                } else if (hqMinListing !== undefined) {
+                  minListing = hqMinListing;
+                } else if (nqMinListing !== undefined) {
+                  minListing = nqMinListing;
+                }
+                
+                // Get region recent purchase - compare NQ and HQ, pick lower
+                const nqRecentPurchase = item.nq?.recentPurchase?.region?.price;
+                const hqRecentPurchase = item.hq?.recentPurchase?.region?.price;
+                let recentPurchase = null;
+                if (nqRecentPurchase !== undefined && hqRecentPurchase !== undefined) {
+                  recentPurchase = Math.min(nqRecentPurchase, hqRecentPurchase);
+                } else if (hqRecentPurchase !== undefined) {
+                  recentPurchase = hqRecentPurchase;
+                } else if (nqRecentPurchase !== undefined) {
+                  recentPurchase = nqRecentPurchase;
+                }
+                
+                if (velocity !== null && velocity !== undefined) {
+                  allVelocities[itemId] = velocity;
+                }
+                if (averagePrice !== null && averagePrice !== undefined) {
+                  allAveragePrices[itemId] = Math.round(averagePrice);
+                }
+                if (minListing !== null && minListing !== undefined) {
+                  allMinListings[itemId] = minListing;
+                }
+                if (recentPurchase !== null && recentPurchase !== undefined) {
+                  allRecentPurchases[itemId] = recentPurchase;
+                }
+                allTradability[itemId] = true;
+              });
+            }
+            
+            // Items not in results are non-tradable
+            batch.forEach(itemId => {
+              if (!allTradability.hasOwnProperty(itemId)) {
+                allTradability[itemId] = false;
+              }
+            });
+          } catch (error) {
+            // Ignore abort errors
+            if (error.name === 'AbortError' || abortSignal.aborted) {
+              return;
+            }
+            console.error('Error fetching market data:', error);
+            batch.forEach(itemId => {
+              if (!allTradability.hasOwnProperty(itemId)) {
+                allTradability[itemId] = false;
+              }
+            });
+          }
+        }
+        
+        // Only update state if this is still the current request
+        if (!abortSignal.aborted && currentRequestId === velocityFetchRequestIdRef.current) {
+          setSearchVelocities(allVelocities);
+          setSearchAveragePrices(allAveragePrices);
+          setSearchMinListings(allMinListings);
+          setSearchRecentPurchases(allRecentPurchases);
+          setSearchTradability(allTradability);
+          // Mark fetch as complete - items have been fetched successfully
+          velocityFetchInProgressRef.current = false;
+          // Remember that we've fetched these items (don't refetch unless they change)
+          lastFetchedItemIdsRef.current = itemIdsKey;
+        } else {
+          // Request was superseded, reset the in-progress flag
+          velocityFetchInProgressRef.current = false;
+          // Don't update lastFetchedItemIdsRef - let the new request handle it
+        }
+      } catch (error) {
+        // Ignore abort errors
+        if (error.name === 'AbortError' || abortSignal.aborted) {
+          return;
+        }
+        console.error('Error fetching velocities, average prices, and tradability:', error);
+        // On error, reset so it can retry
+        if (currentRequestId === velocityFetchRequestIdRef.current) {
+          velocityFetchInProgressRef.current = false;
+          lastFetchedItemIdsRef.current = '';
+        }
+      } finally {
+        // Only update loading state if this is still the current request
+        if (currentRequestId === velocityFetchRequestIdRef.current) {
+          setIsLoadingVelocities(false);
+        }
+      }
+    };
+
+    fetchData();
+    
+    // Cleanup function
+    return () => {
+      if (velocityFetchAbortControllerRef.current) {
+        velocityFetchAbortControllerRef.current.abort();
+      }
+    };
   }, [searchResults]);
 
   // Reset scroll position on mount and route changes
@@ -326,6 +582,13 @@ function App() {
       setSelectedItem(null);
       selectedItemRef.current = null;
       // Don't touch searchResults - history page uses historyItems from hook
+      lastProcessedURLRef.current = currentURLKey;
+      isInitializingFromURLRef.current = false;
+      return;
+    }
+
+    // Handle secret page - don't interfere with it
+    if (location.pathname === '/ultimate-price-king') {
       lastProcessedURLRef.current = currentURLKey;
       isInitializingFromURLRef.current = false;
       return;
@@ -545,7 +808,8 @@ function App() {
         setMarketHistory([]);
         setError(null);
         setRateLimitMessage(null);
-        if (!skipNavigation && !currentItemId) {
+        // Don't navigate if we're on ultimate-price-king or history page
+        if (!skipNavigation && !currentItemId && location.pathname !== '/ultimate-price-king' && location.pathname !== '/history') {
           navigate('/');
         }
       }
@@ -580,7 +844,8 @@ function App() {
     setMarketHistory([]);
     setRateLimitMessage(null);
 
-    if (!skipNavigation) {
+    // Don't navigate if we're on ultimate-price-king or history page
+    if (!skipNavigation && location.pathname !== '/ultimate-price-king' && location.pathname !== '/history') {
       navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`, { replace: false });
     }
 
@@ -913,6 +1178,31 @@ function App() {
 
   // Determine what to show based on current route
   const isOnHistoryPage = location.pathname === '/history';
+  const isOnUltimatePriceKingPage = location.pathname === '/ultimate-price-king';
+
+  // Render secret page if on that route
+  if (isOnUltimatePriceKingPage) {
+    return (
+      <UltimatePriceKing 
+        addToast={addToast} 
+        removeToast={removeToast} 
+        toasts={toasts}
+        datacenters={datacenters}
+        worlds={worlds}
+        selectedWorld={selectedWorld}
+        onWorldChange={setSelectedWorld}
+        selectedServerOption={selectedServerOption}
+        onServerOptionChange={handleServerOptionChange}
+        serverOptions={selectedWorld && selectedWorld.dcObj ? [selectedWorld.section, ...selectedWorld.dcObj.worlds] : []}
+        onSearch={handleSearch}
+        searchText={searchText}
+        setSearchText={setSearchText}
+        isSearching={isSearching}
+        isServerDataLoaded={isServerDataLoaded}
+        onItemSelect={handleItemSelect}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
@@ -1149,6 +1439,13 @@ function App() {
                     items={historyItems}
                     onSelect={handleItemSelect}
                     selectedItem={selectedItem}
+                    marketableItems={marketableItems}
+                    itemVelocities={{}}
+                    itemAveragePrices={{}}
+                    itemMinListings={{}}
+                    itemRecentPurchases={{}}
+                    itemTradability={{}}
+                    isLoadingVelocities={false}
                   />
                 </>
               ) : (
@@ -1168,6 +1465,13 @@ function App() {
                 items={searchResults}
                 onSelect={handleItemSelect}
                 selectedItem={selectedItem}
+                marketableItems={marketableItems}
+                itemVelocities={searchVelocities}
+                itemAveragePrices={searchAveragePrices}
+                itemMinListings={searchMinListings}
+                itemRecentPurchases={searchRecentPurchases}
+                itemTradability={searchTradability}
+                isLoadingVelocities={isLoadingVelocities}
               />
             </div>
           )}

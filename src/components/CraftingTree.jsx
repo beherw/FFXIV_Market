@@ -108,13 +108,20 @@ function ItemCard({
       </div>
       
       {/* Price info - fixed height to prevent layout shift */}
-      <div className="mt-1 text-center h-[20px] flex flex-col justify-center">
+      <div className={`mt-1 text-center ${priceInfo?.worldName ? 'h-[32px]' : 'h-[20px]'} flex flex-col justify-center`}>
         {isLoading ? (
           <div className="text-xs text-gray-500 animate-pulse">載入中...</div>
         ) : priceInfo ? (
-          <span className={`text-xs font-semibold ${priceInfo.isHQ ? 'text-yellow-400' : 'text-green-400'}`}>
-            {priceInfo.isHQ ? '⭐ ' : ''}{priceInfo.price.toLocaleString()}
-          </span>
+          <div className="flex flex-col items-center gap-0.5">
+            <span className={`text-xs font-semibold ${priceInfo.isHQ ? 'text-yellow-400' : 'text-green-400'}`}>
+              {priceInfo.isHQ ? '⭐ ' : ''}{priceInfo.price.toLocaleString()}
+            </span>
+            {priceInfo.worldName && (
+              <span className="text-[10px] text-gray-500 truncate max-w-[80px]" title={priceInfo.worldName}>
+                {priceInfo.worldName}
+              </span>
+            )}
+          </div>
         ) : isPriceQueried ? (
           <span className="text-xs text-gray-500">無價格</span>
         ) : (
@@ -598,6 +605,13 @@ export default function CraftingTree({
   const [isLoadingPrices, setIsLoadingPrices] = useState(true);
   const [error, setError] = useState(null);
 
+  // Check if it's a DC query (not a specific server)
+  const isDcQuery = useMemo(() => {
+    if (!selectedServerOption) return false;
+    const dcName = selectedWorld?.section;
+    return selectedServerOption === dcName;
+  }, [selectedServerOption, selectedWorld]);
+
   // Get display name for the selected server/DC
   const serverDisplayName = useMemo(() => {
     if (!selectedServerOption) return null;
@@ -789,7 +803,7 @@ export default function CraftingTree({
             </svg>
             製作價格樹
           </h3>
-          {/* Server/DC info badge with average price note */}
+          {/* Server/DC info badge with price type note */}
           {selectedServerOption && (
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-purple-900/40 border border-purple-500/30 text-xs">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -797,16 +811,40 @@ export default function CraftingTree({
               </svg>
               <span className="text-purple-300">{serverDisplayName}</span>
               <span className="text-gray-500">·</span>
-              <span className="text-gray-400">平均價格</span>
+              <span className="text-gray-400">{isDcQuery ? '最低價' : '平均價格'}</span>
             </div>
           )}
         </div>
-        {isLoadingPrices && (
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-ffxiv-gold"></div>
-            載入價格中...
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Daily Sale Velocity for root item */}
+          {!isLoadingPrices && tree && itemPrices[tree.itemId] && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-800/60 border border-slate-600/40 text-xs">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              <span className="text-gray-400">日均銷量:</span>
+              {itemPrices[tree.itemId].velocityWorld !== undefined && (
+                <span className="text-cyan-300" title="單服日均銷量">
+                  單服 {itemPrices[tree.itemId].velocityWorld.toFixed(1)}
+                </span>
+              )}
+              {itemPrices[tree.itemId].velocityWorld !== undefined && itemPrices[tree.itemId].velocityDc !== undefined && (
+                <span className="text-gray-500">/</span>
+              )}
+              {itemPrices[tree.itemId].velocityDc !== undefined && (
+                <span className="text-emerald-300" title="全服日均銷量">
+                  全服 {itemPrices[tree.itemId].velocityDc.toFixed(1)}
+                </span>
+              )}
+            </div>
+          )}
+          {isLoadingPrices && (
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-ffxiv-gold"></div>
+              載入價格中...
+            </div>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -856,11 +894,11 @@ export default function CraftingTree({
         )}
         <div className="flex items-center gap-1.5">
           <span className="text-green-400 font-semibold">價格</span>
-          <span>= NQ平均價</span>
+          <span>= NQ{isDcQuery ? '最低價' : '平均價'}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-yellow-400 font-semibold">⭐ 價格</span>
-          <span>= HQ平均價</span>
+          <span>= HQ{isDcQuery ? '最低價' : '平均價'}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
