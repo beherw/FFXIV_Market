@@ -14,6 +14,8 @@ import HistoryButton from './components/HistoryButton';
 import HistorySection from './components/HistorySection';
 import { addItemToHistory } from './utils/itemHistory';
 import { useHistory } from './hooks/useHistory';
+import CraftingTree from './components/CraftingTree';
+import { hasRecipe, buildCraftingTree } from './services/recipeDatabase';
 
 function App() {
   const navigate = useNavigate();
@@ -43,6 +45,12 @@ function App() {
   const [toasts, setToasts] = useState([]);
   const [rateLimitMessage, setRateLimitMessage] = useState(null);
   const [currentImage, setCurrentImage] = useState(() => Math.random() < 0.5 ? '/bear.png' : '/sheep.png');
+  
+  // Crafting tree states
+  const [craftingTree, setCraftingTree] = useState(null);
+  const [hasCraftingRecipe, setHasCraftingRecipe] = useState(false);
+  const [isCraftingTreeExpanded, setIsCraftingTreeExpanded] = useState(false);
+  const [isLoadingCraftingTree, setIsLoadingCraftingTree] = useState(false);
   
   // Use centralized history hook for history page
   const { historyItems, isLoading: isHistoryLoading, clearHistory } = useHistory();
@@ -865,6 +873,40 @@ function App() {
     };
   }, [selectedItem]);
 
+  // Load crafting recipe when item changes
+  useEffect(() => {
+    if (!selectedItem) {
+      setCraftingTree(null);
+      setHasCraftingRecipe(false);
+      setIsCraftingTreeExpanded(false);
+      return;
+    }
+
+    // Check if item has a recipe
+    setIsLoadingCraftingTree(true);
+    setCraftingTree(null);
+    setIsCraftingTreeExpanded(false);
+    
+    hasRecipe(selectedItem.id)
+      .then(async (hasCraft) => {
+        setHasCraftingRecipe(hasCraft);
+        
+        if (hasCraft) {
+          // Build the crafting tree
+          const tree = await buildCraftingTree(selectedItem.id);
+          setCraftingTree(tree);
+        }
+        
+        setIsLoadingCraftingTree(false);
+      })
+      .catch(error => {
+        console.error('Failed to load crafting recipe:', error);
+        setHasCraftingRecipe(false);
+        setCraftingTree(null);
+        setIsLoadingCraftingTree(false);
+      });
+  }, [selectedItem]);
+
   const serverOptions = selectedWorld
     ? [selectedWorld.section, ...selectedWorld.dcObj.worlds]
     : [];
@@ -1252,8 +1294,59 @@ function App() {
                       </span>
                     </label>
                   )}
+                  
+                  {/* Crafting Price Tree Button */}
+                  <button
+                    onClick={() => setIsCraftingTreeExpanded(!isCraftingTreeExpanded)}
+                    disabled={!hasCraftingRecipe || isLoadingCraftingTree}
+                    className={`
+                      relative flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 overflow-hidden
+                      ${hasCraftingRecipe && !isLoadingCraftingTree
+                        ? isCraftingTreeExpanded
+                          ? 'bg-gradient-to-r from-amber-900/60 via-yellow-800/50 to-orange-900/60 border border-ffxiv-gold/60 text-ffxiv-gold shadow-[0_0_20px_rgba(212,175,55,0.4)]'
+                          : 'bg-gradient-to-r from-purple-900/50 via-indigo-900/40 to-purple-900/50 border border-purple-400/40 text-purple-200 hover:text-ffxiv-gold hover:border-ffxiv-gold/50 hover:shadow-[0_0_15px_rgba(212,175,55,0.2)] animate-[craftingPulse_3s_ease-in-out_infinite]'
+                        : 'bg-slate-800/30 border border-slate-600/20 text-gray-600 cursor-not-allowed'
+                      }
+                    `}
+                    title={
+                      isLoadingCraftingTree 
+                        ? '載入配方中...' 
+                        : hasCraftingRecipe 
+                          ? (isCraftingTreeExpanded ? '收起製作價格樹' : '展開製作價格樹')
+                          : '此物品無製作配方'
+                    }
+                  >
+                    {/* Shimmer effect for active button */}
+                    {hasCraftingRecipe && !isLoadingCraftingTree && !isCraftingTreeExpanded && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
+                    )}
+                    
+                    {isLoadingCraftingTree ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-400/30 border-t-purple-400"></div>
+                    ) : (
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isCraftingTreeExpanded ? 'rotate-90' : ''}`}
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                      </svg>
+                    )}
+                    <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">製作價格樹</span>
+                  </button>
                 </div>
               </div>
+
+              {/* Crafting Price Tree - Expandable */}
+              {isCraftingTreeExpanded && craftingTree && (
+                <CraftingTree
+                  tree={craftingTree}
+                  selectedServerOption={selectedServerOption}
+                  onItemSelect={handleItemSelect}
+                />
+              )}
 
               {/* Market Listings & History - Side by Side */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">

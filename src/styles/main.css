@@ -156,6 +156,28 @@
   background-size: 1000px 100%;
 }
 
+/* Crafting tree button soft pulse animation */
+@keyframes craftingPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(167, 139, 250, 0.3), 0 0 16px rgba(139, 92, 246, 0.15);
+    border-color: rgba(167, 139, 250, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.35), 0 0 24px rgba(251, 191, 36, 0.2);
+    border-color: rgba(251, 191, 36, 0.5);
+  }
+}
+
+/* Shimmer effect for crafting button */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
 /* Table hover effects */
 table tbody tr {
   transition: all 0.2s ease;
