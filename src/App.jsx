@@ -911,7 +911,7 @@ function App() {
           <div className={`min-w-0 h-9 mid:h-12 ${
             selectedItem 
               ? 'flex-1 mid:flex-initial mid:w-80 detail:w-96 min-w-[100px]' 
-              : 'flex-1 min-w-[100px]'
+              : 'flex-1 mid:flex-initial mid:w-[420px] detail:w-[520px] min-w-[100px]'
           }`}>
             <SearchBar 
               onSearch={handleSearch} 
@@ -1336,7 +1336,7 @@ function App() {
           {!selectedItem && searchResults.length === 0 && !isSearching && !isOnHistoryPage && (
             <div className="space-y-4 sm:space-y-8">
               {/* Welcome Section */}
-              <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-8">
+              <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-8 relative z-10">
                 <div className="text-center mb-4 sm:mb-6">
                   <div className="mb-3 sm:mb-4 flex justify-center items-center">
                     <img 
@@ -1347,8 +1347,20 @@ function App() {
                       className="w-16 h-16 sm:w-24 sm:h-24 object-contain opacity-50 cursor-pointer hover:opacity-70 transition-opacity"
                     />
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold mb-2">貝爾的FFXIV市場小屋</h2>
-                  <p className="text-sm sm:text-base text-gray-400">在左上角搜索物品名稱，比較不同服務器的價格</p>
+                  <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold mb-4">貝爾的FFXIV市場小屋</h2>
+                  {/* Main Page Search Bar */}
+                  <div className="max-w-md mx-auto h-10 sm:h-12 relative z-20">
+                    <SearchBar 
+                      onSearch={handleSearch} 
+                      isLoading={isSearching}
+                      value={searchText}
+                      onChange={setSearchText}
+                      disabled={!isServerDataLoaded}
+                      disabledTooltip={!isServerDataLoaded ? '請等待伺服器資料載入完成' : undefined}
+                      selectedDcName={selectedWorld?.section}
+                      onItemSelect={handleItemSelect}
+                    />
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6">
