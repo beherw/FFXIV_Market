@@ -210,32 +210,63 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
     const rootPrice = itemPrices[tree.itemId]?.price ?? null;
     if (rootPrice === null) return null;
     
+    // Check if any direct child has no price - if so, we can't make a valid comparison
+    let hasChildWithNoPrice = false;
+    let allChildrenQueried = true;
+    
+    for (const child of tree.children) {
+      if (!queriedItemIds.has(child.itemId)) {
+        // Still loading
+        allChildrenQueried = false;
+        break;
+      }
+      const childPrice = itemPrices[child.itemId]?.price;
+      if (childPrice === undefined || childPrice === null) {
+        // Child has been queried but has no price - can't craft this item
+        hasChildWithNoPrice = true;
+      }
+    }
+    
+    if (!allChildrenQueried) return null;
+    
+    // If any direct child has no price, we can't calculate crafting cost
+    if (hasChildWithNoPrice) {
+      return { hasChildWithNoPrice: true };
+    }
+    
     // Calculate cheapest route cost for all children
     let cheapestRouteCost = 0;
-    let allChildrenReady = true;
     
     for (const child of tree.children) {
       const childResult = getCheapestCost(child, itemPrices, queriedItemIds);
       if (childResult.cost !== null) {
         cheapestRouteCost += childResult.cost * child.amount;
-      } else if (!queriedItemIds.has(child.itemId)) {
-        // Still loading
-        allChildrenReady = false;
-        break;
       }
-      // If queried but no price, we skip (treat as 0 contribution, which may be wrong but better than blocking)
     }
-    
-    if (!allChildrenReady) return null;
     
     return {
       rootPrice,
       cheapestRouteCost,
       savings: rootPrice - cheapestRouteCost,
+      hasChildWithNoPrice: false,
     };
   }, [tree, itemPrices, queriedItemIds]);
   
   if (!result) return null;
+  
+  // If any direct child has no price, show message that we can't compare
+  if (result.hasChildWithNoPrice) {
+    return (
+      <div className="px-3 py-2 rounded-lg bg-gray-700/50 border border-gray-500/30 text-sm text-gray-400">
+        <div className="flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>材料缺少價格，無法比較</span>
+        </div>
+      </div>
+    );
+  }
   
   const { rootPrice, cheapestRouteCost, savings } = result;
   const isCraftCheaper = savings > 0;
@@ -702,6 +733,19 @@ export default function CraftingTree({
     const rootPrice = itemPrices[tree.itemId]?.price ?? null;
     if (rootPrice === null || !tree.children || tree.children.length === 0) {
       return { optimalPathMap: null, isCraftingCheaper: false };
+    }
+    
+    // Check if any direct child has no price - if so, can't calculate crafting cost
+    for (const child of tree.children) {
+      if (!queriedItemIds.has(child.itemId)) {
+        // Still loading
+        return { optimalPathMap: null, isCraftingCheaper: false };
+      }
+      const childPrice = itemPrices[child.itemId]?.price;
+      if (childPrice === undefined || childPrice === null) {
+        // Child has no price - can't craft this item, no highlighting
+        return { optimalPathMap: null, isCraftingCheaper: false };
+      }
     }
     
     // Calculate cheapest route cost for the root item
