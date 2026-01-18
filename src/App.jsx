@@ -1486,7 +1486,7 @@ function App() {
 
       {/* Loading Indicator */}
       {isLoadingDB && (
-        <div className="fixed top-14 mid:top-4 left-1/2 transform -translate-x-1/2 z-40">
+        <div className="fixed top-14 mid:top-4 left-1/2 transform -translate-x-1/2 z-[60]">
           <div className="bg-gradient-to-r from-purple-900/80 to-indigo-900/80 backdrop-blur-sm px-3 mid:px-4 py-2 rounded-lg border border-ffxiv-gold/30 flex items-center gap-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-ffxiv-gold"></div>
             <span className="text-xs mid:text-sm text-gray-300">正在載入伺服器...</span>
