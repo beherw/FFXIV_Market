@@ -1,53 +1,13 @@
-import { useState, useEffect } from 'react';
-import { getItemHistory, clearItemHistory } from '../utils/itemHistory';
-import { getItemById } from '../services/itemDatabase';
+import { useHistory } from '../hooks/useHistory';
 import ItemImage from './ItemImage';
 
 export default function HistorySection({ onItemSelect }) {
-  const [historyItems, setHistoryItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const loadHistoryItems = async () => {
-    const historyIds = getItemHistory();
-    if (historyIds.length === 0) {
-      setHistoryItems([]);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // Load all items in parallel
-      const items = await Promise.all(
-        historyIds.map(async (id) => {
-          try {
-            return await getItemById(id);
-          } catch (error) {
-            console.error(`Failed to load item ${id}:`, error);
-            return null;
-          }
-        })
-      );
-      
-      // Filter out null items and maintain order
-      const validItems = items.filter(item => item !== null);
-      setHistoryItems(validItems);
-    } catch (error) {
-      console.error('Failed to load history items:', error);
-      setHistoryItems([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadHistoryItems();
-  }, []);
+  // Use the centralized history hook
+  const { historyItems, isLoading, clearHistory } = useHistory();
 
   const handleClearHistory = () => {
     if (window.confirm('確定要清空所有歷史記錄嗎？')) {
-      clearItemHistory();
-      setHistoryItems([]);
+      clearHistory();
     }
   };
 

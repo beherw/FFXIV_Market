@@ -1,55 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getItemHistory, clearItemHistory } from '../utils/itemHistory';
-import { getItemById } from '../services/itemDatabase';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useHistory } from '../hooks/useHistory';
 import ItemImage from './ItemImage';
 
 export default function HistoryButton({ onItemSelect }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [historyItems, setHistoryItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef(null);
   const timeoutRef = useRef(null);
-
-  // Load history items
-  useEffect(() => {
-    const loadHistoryItems = async () => {
-      const historyIds = getItemHistory();
-      if (historyIds.length === 0) {
-        setHistoryItems([]);
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        // Load all items in parallel
-        const items = await Promise.all(
-          historyIds.map(async (id) => {
-            try {
-              return await getItemById(id);
-            } catch (error) {
-              console.error(`Failed to load item ${id}:`, error);
-              return null;
-            }
-          })
-        );
-        
-        // Filter out null items and maintain order
-        const validItems = items.filter(item => item !== null);
-        setHistoryItems(validItems);
-      } catch (error) {
-        console.error('Failed to load history items:', error);
-        setHistoryItems([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (isOpen) {
-      loadHistoryItems();
-    }
-  }, [isOpen]);
+  
+  // Use the centralized history hook
+  const { historyItems, isLoading, clearHistory } = useHistory();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -101,17 +63,22 @@ export default function HistoryButton({ onItemSelect }) {
       timeoutRef.current = null;
     }
     setIsOpen(false);
+    
+    // Navigate to history page directly (don't go through home)
+    // This prevents the issue where history gets cleared
     navigate('/history');
   };
 
   const handleClearHistory = (e) => {
     e.stopPropagation();
     if (window.confirm('確定要清空所有歷史記錄嗎？')) {
-      clearItemHistory();
-      setHistoryItems([]);
+      clearHistory();
       setIsOpen(false);
     }
   };
+
+  // Highlight button when on history page
+  const isOnHistoryPage = location.pathname === '/history';
 
   return (
     <div 
@@ -123,7 +90,11 @@ export default function HistoryButton({ onItemSelect }) {
       <button
         onClick={handleButtonClick}
         onMouseDown={(e) => e.stopPropagation()}
-        className="px-2 mid:px-3 detail:px-4 h-9 mid:h-12 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center gap-1.5 mid:gap-2 hover:border-ffxiv-gold/50 transition-colors"
+        className={`px-2 mid:px-3 detail:px-4 h-9 mid:h-12 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center gap-1.5 mid:gap-2 transition-colors ${
+          isOnHistoryPage 
+            ? 'border-ffxiv-gold/70 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
+            : 'border-purple-500/30 hover:border-ffxiv-gold/50'
+        }`}
         title="歷史記錄"
       >
         <svg 

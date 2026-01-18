@@ -1,6 +1,27 @@
-// Item history management using localStorage
+// Item history management using localStorage with event notification
 const HISTORY_KEY = 'ffxiv_market_item_history';
 const MAX_HISTORY_ITEMS = 10;
+
+// Event listeners for history changes
+const listeners = new Set();
+
+/**
+ * Subscribe to history changes
+ * @param {Function} callback - Called when history changes
+ * @returns {Function} Unsubscribe function
+ */
+export function subscribeToHistory(callback) {
+  listeners.add(callback);
+  return () => listeners.delete(callback);
+}
+
+/**
+ * Notify all listeners of history change
+ */
+function notifyChange() {
+  const history = getItemHistory();
+  listeners.forEach(callback => callback(history));
+}
 
 /**
  * Get all item IDs from history
@@ -37,6 +58,9 @@ export function addItemToHistory(itemId) {
     
     // Save back to localStorage
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    
+    // Notify listeners
+    notifyChange();
   } catch (error) {
     console.error('Failed to add item to history:', error);
   }
@@ -51,6 +75,9 @@ export function removeItemFromHistory(itemId) {
     let history = getItemHistory();
     history = history.filter(id => id !== itemId);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    
+    // Notify listeners
+    notifyChange();
   } catch (error) {
     console.error('Failed to remove item from history:', error);
   }
@@ -62,6 +89,9 @@ export function removeItemFromHistory(itemId) {
 export function clearItemHistory() {
   try {
     localStorage.removeItem(HISTORY_KEY);
+    
+    // Notify listeners
+    notifyChange();
   } catch (error) {
     console.error('Failed to clear item history:', error);
   }
