@@ -4,6 +4,41 @@ import { requestManager } from '../utils/requestManager';
 const UNIVERSALIS_BASE_URL = 'https://universalis.app/api/v2';
 
 /**
+ * Get most recently updated items for a data center
+ * @param {string} dcName - Data center name (e.g., '陸行鳥')
+ * @param {number} entries - Number of entries to return (default 20, max 200)
+ * @param {Object} options - Additional options like abort signal
+ * @returns {Promise<Array>} - Array of recently updated items with itemID, lastUploadTime, worldID, worldName
+ */
+export async function getMostRecentlyUpdatedItems(dcName, entries = 20, options = {}) {
+  if (options.signal && options.signal.aborted) {
+    return null;
+  }
+
+  try {
+    const config = {
+      params: {
+        dcName: dcName,
+        entries: entries,
+      },
+    };
+
+    if (options.signal) {
+      config.signal = options.signal;
+    }
+
+    const response = await axios.get(`${UNIVERSALIS_BASE_URL}/extra/stats/most-recently-updated`, config);
+    return response.data?.items || [];
+  } catch (error) {
+    if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || (options.signal && options.signal.aborted)) {
+      return null;
+    }
+    console.error('Error fetching most recently updated items:', error);
+    return [];
+  }
+}
+
+/**
  * Get market data for an item from a specific world/server
  * @param {number} itemId - Item ID
  * @param {string} worldName - World/server name

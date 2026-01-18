@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useHistory } from '../hooks/useHistory';
 import ItemImage from './ItemImage';
 
-export default function HistoryButton({ onItemSelect }) {
+export default function HistoryButton({ onItemSelect, compact = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -90,7 +90,11 @@ export default function HistoryButton({ onItemSelect }) {
       <button
         onClick={handleButtonClick}
         onMouseDown={(e) => e.stopPropagation()}
-        className={`px-2 mid:px-3 detail:px-4 h-9 mid:h-12 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center gap-1.5 mid:gap-2 transition-colors ${
+        className={`bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors ${
+          compact 
+            ? 'px-2 h-8 gap-1.5' 
+            : 'px-2 mid:px-3 detail:px-4 h-9 mid:h-12 gap-1.5 mid:gap-2'
+        } ${
           isOnHistoryPage 
             ? 'border-ffxiv-gold/70 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
             : 'border-purple-500/30 hover:border-ffxiv-gold/50'

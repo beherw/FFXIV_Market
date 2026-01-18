@@ -7,6 +7,7 @@ export default {
   theme: {
     extend: {
       screens: {
+        'narrow': '520px', // 隐藏服务器分类按钮断点
         'mid': '890px',  // 搜索栏换排断点
         'detail': '980px', // 物品详情换排断点
       },

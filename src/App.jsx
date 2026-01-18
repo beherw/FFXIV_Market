@@ -874,14 +874,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
-      {/* Logo - Desktop: Top Left, Mobile: In search bar row (when no item selected) or hidden (when item selected, shown in second row) */}
+      {/* Logo - Desktop: Fixed Top Left, Mobile: Inside search bar row */}
       <button
         onClick={handleReturnHome}
-        className={`fixed z-[60] flex items-center justify-center hover:opacity-80 transition-opacity duration-200 cursor-pointer ${
-          selectedItem 
-            ? 'mid:top-4 mid:left-4 hidden mid:flex w-10 h-10 mid:w-12 mid:h-12'
-            : 'mid:top-4 mid:left-4 top-2.5 left-2 w-8 h-8 mid:w-12 mid:h-12'
-        }`}
+        className="fixed z-[60] mid:flex items-center justify-center hover:opacity-80 transition-opacity duration-200 cursor-pointer mid:top-4 mid:left-4 hidden mid:w-12 mid:h-12"
         title="返回主頁"
       >
         <img 
@@ -895,36 +891,49 @@ function App() {
       <div className={`fixed top-2 left-0 right-0 mid:top-4 mid:right-auto z-50 ${
         selectedItem 
           ? 'px-1.5 mid:px-0 mid:left-20 py-1 mid:py-0'
-          : 'pl-12 pr-1.5 mid:pl-20 mid:pr-0 py-1 mid:py-0'
+          : 'px-1.5 mid:pl-20 mid:pr-0 py-1 mid:py-0'
       } mid:w-auto`}>
-        <div className={`relative flex items-stretch mid:items-center gap-1.5 mid:gap-3 ${
-          selectedItem ? 'flex-col mid:flex-row' : 'flex-row'
-        }`}>
+        <div className="relative flex items-center gap-1.5 mid:gap-3">
+          {/* Mobile Logo - Always visible on mobile, left of search bar */}
+          <button
+            onClick={handleReturnHome}
+            className="mid:hidden flex-shrink-0 flex items-center justify-center w-9 h-9 hover:opacity-80 transition-opacity duration-200 cursor-pointer"
+            title="返回主頁"
+          >
+            <img 
+              src="/logo.png" 
+              alt="返回主頁" 
+              className="w-full h-full object-contain pointer-events-none"
+            />
+          </button>
+
           {/* Search Bar */}
-          <div className={`h-9 mid:h-12 min-w-0 ${
+          <div className={`min-w-0 h-9 mid:h-12 ${
             selectedItem 
-              ? 'flex-1 mid:flex-initial mid:w-80 detail:w-96' 
-              : 'flex-1'
+              ? 'flex-1 mid:flex-initial mid:w-80 detail:w-96 min-w-[100px]' 
+              : 'flex-1 min-w-[100px]'
           }`}>
-            <div className="h-full">
-              <SearchBar 
-                onSearch={handleSearch} 
-                isLoading={isSearching}
-                value={searchText}
-                onChange={setSearchText}
-                disabled={!isServerDataLoaded}
-                disabledTooltip={!isServerDataLoaded ? '請等待伺服器資料載入完成' : undefined}
-              />
-            </div>
+            <SearchBar 
+              onSearch={handleSearch} 
+              isLoading={isSearching}
+              value={searchText}
+              onChange={setSearchText}
+              disabled={!isServerDataLoaded}
+              disabledTooltip={!isServerDataLoaded ? '請等待伺服器資料載入完成' : undefined}
+              selectedDcName={selectedWorld?.section}
+              onItemSelect={handleItemSelect}
+            />
           </div>
 
-          {/* History Button */}
-          <HistoryButton onItemSelect={handleItemSelect} />
+          {/* History Button - hidden on mobile for item info page (moves to second row) */}
+          <div className={`flex-shrink-0 ${selectedItem ? 'hidden mid:block' : ''}`}>
+            <HistoryButton onItemSelect={handleItemSelect} />
+          </div>
 
-          {/* Main server button */}
+          {/* Main server button - hidden at narrow widths */}
           {selectedWorld && (
             <div className={`items-center gap-1.5 mid:gap-2 px-2 mid:px-3 detail:px-4 h-9 mid:h-12 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm whitespace-nowrap flex-shrink-0 ${
-              selectedItem ? 'hidden mid:flex' : 'flex'
+              selectedItem ? 'hidden mid:flex' : 'hidden narrow:flex'
             }`}>
               <div className="w-1.5 h-1.5 mid:w-2 mid:h-2 rounded-full bg-ffxiv-gold animate-pulse"></div>
               <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold truncate">
@@ -938,30 +947,19 @@ function App() {
       {/* Second Row - Data Center & External Links */}
       <div className={`fixed left-2 mid:left-auto mid:right-4 right-2 z-50 flex flex-wrap items-center gap-1.5 mid:gap-2 ${
         selectedItem 
-          ? 'top-[68px] mid:top-4'
-          : 'top-[102px] mid:top-4'
+          ? 'top-[60px] mid:top-4'
+          : 'top-[60px] mid:top-4'
       }`}>
-        {/* Logo Button - Mobile only in second row when item is selected */}
+        {/* History Button - Mobile only in second row for item info page */}
         {selectedItem && (
-          <>
-            <button
-              onClick={handleReturnHome}
-              className="mid:hidden flex items-center justify-center w-8 h-8 hover:opacity-80 transition-opacity duration-200 cursor-pointer"
-              title="返回主頁"
-            >
-              <img 
-                src="/logo.png" 
-                alt="返回主頁" 
-                className="w-full h-full object-contain"
-              />
-            </button>
-            <div className="mid:hidden w-px h-4 bg-slate-600/50"></div>
-          </>
+          <div className="mid:hidden flex-shrink-0">
+            <HistoryButton onItemSelect={handleItemSelect} compact />
+          </div>
         )}
         
-        {/* Main server button - Mobile only in second row (item detail page) */}
+        {/* Main server button - Mobile only in second row (item detail page), hidden at narrow widths */}
         {selectedWorld && selectedItem && (
-          <div className="mid:hidden flex items-center gap-1.5 px-2 py-1.5 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm whitespace-nowrap">
+          <div className="mid:hidden hidden narrow:flex items-center gap-1.5 px-2 h-8 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm whitespace-nowrap">
             <div className="w-1.5 h-1.5 rounded-full bg-ffxiv-gold animate-pulse"></div>
             <span className="text-xs font-semibold text-ffxiv-gold truncate max-w-[120px]">
               {selectedWorld.section}
@@ -972,37 +970,7 @@ function App() {
         {/* External Links - Show when item is selected */}
         {selectedItem && (
           <>
-            {selectedWorld && <div className="mid:hidden w-px h-4 bg-slate-600/50"></div>}
-            <button
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(selectedItem.name);
-                  addToast('已複製物品名稱', 'success');
-                } catch (err) {
-                  console.error('Failed to copy:', err);
-                  addToast('複製失敗', 'error');
-                }
-              }}
-              className="px-2 mid:px-3 py-1 mid:py-1.5 text-xs font-medium bg-purple-800/60 hover:bg-purple-700/70 text-gray-200 hover:text-white rounded-md border border-purple-500/40 hover:border-purple-400/60 transition-all duration-200 flex items-center gap-1 mid:gap-1.5 shadow-sm"
-              title="複製物品名稱"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-3 w-3 mid:h-3.5 mid:w-3.5" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" 
-                />
-              </svg>
-              <span className="hidden mid:inline">複製</span>
-            </button>
-            <div className="w-px h-4 bg-slate-600/50 mx-0.5 mid:mx-1"></div>
+            <div className="mid:hidden w-px h-5 bg-slate-600/50"></div>
             <button
               onClick={async () => {
                 try {
@@ -1021,7 +989,7 @@ function App() {
                   addToast('無法打開Wiki連結', 'error');
                 }
               }}
-              className="px-2 mid:px-3 py-1 mid:py-1.5 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors"
+              className="px-2 mid:px-3 h-8 mid:h-10 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors flex items-center"
             >
               Wiki
             </button>
@@ -1029,7 +997,7 @@ function App() {
               href={`https://www.garlandtools.org/db/#item/${selectedItem.id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-2 mid:px-3 py-1 mid:py-1.5 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors"
+              className="px-2 mid:px-3 h-8 mid:h-10 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors flex items-center"
             >
               Garland
             </a>
@@ -1037,7 +1005,7 @@ function App() {
               href={`https://universalis.app/market/${selectedItem.id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-2 mid:px-3 py-1 mid:py-1.5 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors"
+              className="px-2 mid:px-3 h-8 mid:h-10 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors flex items-center"
             >
               Market
             </a>
@@ -1049,8 +1017,8 @@ function App() {
       {/* Toast Notifications */}
       <div className={`fixed right-2 mid:right-4 left-2 mid:left-auto z-50 space-y-2 max-w-sm mid:max-w-none ${
         selectedItem 
-          ? 'top-[68px] mid:top-4'
-          : 'top-[102px] mid:top-4'
+          ? 'top-[100px] mid:top-4'
+          : 'top-[60px] mid:top-4'
       }`}>
         {toasts.map(toast => (
           <Toast
@@ -1075,7 +1043,7 @@ function App() {
       {/* Main Content */}
       <div className={`pb-8 ${
         selectedItem 
-          ? 'pt-[120px] mid:pt-24'
+          ? 'pt-[108px] mid:pt-24'
           : 'pt-16 mid:pt-24'
       }`}>
         <div className="max-w-7xl mx-auto px-2 sm:px-4">
@@ -1178,9 +1146,39 @@ function App() {
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h2 className="text-lg mid:text-xl font-bold text-ffxiv-gold break-words line-clamp-2" style={{ minHeight: '2.5em', maxWidth: '100%' }}>
-                        {selectedItem.name}
-                      </h2>
+                      <div className="flex items-start gap-2">
+                        <h2 className="text-lg mid:text-xl font-bold text-ffxiv-gold break-words line-clamp-2 flex-1" style={{ minHeight: '1.5em', maxWidth: '100%' }}>
+                          {selectedItem.name}
+                        </h2>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(selectedItem.name);
+                              addToast('已複製物品名稱', 'success');
+                            } catch (err) {
+                              console.error('Failed to copy:', err);
+                              addToast('複製失敗', 'error');
+                            }
+                          }}
+                          className="flex-shrink-0 p-1.5 mid:p-2 text-gray-400 hover:text-ffxiv-gold hover:bg-purple-800/40 rounded-md border border-transparent hover:border-purple-500/40 transition-all duration-200"
+                          title="複製物品名稱"
+                        >
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            className="h-4 w-4 mid:h-5 mid:w-5" 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                          >
+                            <path 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              strokeWidth={2} 
+                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" 
+                            />
+                          </svg>
+                        </button>
+                      </div>
                       <p className="text-xs mid:text-sm text-gray-400 mt-1">ID: {selectedItem.id}</p>
                     </div>
                   </div>
