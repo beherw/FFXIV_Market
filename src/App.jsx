@@ -61,6 +61,7 @@ function App() {
   const [historyItems, setHistoryItems] = useState([]);
   const lastHistoryIdsRef = useRef([]);
   const toastIdCounterRef = useRef(0);
+  const historyPageLoadingRef = useRef(false);
 
   // Add toast function
   const addToast = useCallback((message, type = 'info') => {
@@ -327,14 +328,48 @@ function App() {
     // Create a unique key for the current URL state to avoid processing the same URL twice
     const currentURLKey = `${location.pathname}?${location.search}`;
     
-    // Skip if we've already processed this exact URL
-    if (lastProcessedURLRef.current === currentURLKey) {
+    // CRITICAL: Store the previous URL to detect navigation changes
+    // This must be done BEFORE any checks to accurately detect URL changes
+    const previousURL = lastProcessedURLRef.current;
+    
+    // CRITICAL: If we're navigating to history page, set protection flags immediately
+    // This must happen BEFORE any other checks to prevent race conditions
+    // when effect re-runs due to searchText changes or during navigation
+    if (location.pathname === '/history') {
+      // Set protection flags immediately to prevent home page logic from running
+      // even if this effect re-runs due to other dependency changes
+      historyPageLoadingRef.current = true;
+      // Mark URL as being processed to prevent duplicate processing
+      // But we'll check if URL actually changed to determine if we need to reload
+    }
+    
+    // CRITICAL: If history page is loading (historyPageLoadingRef is true),
+    // and current pathname is /, this is a transient state during navigation.
+    // Don't process as home page - return early to prevent state clearing.
+    // This check must be AFTER setting history flags but BEFORE other checks
+    const shouldProtectHistory = location.pathname === '/' && (historyPageLoadingRef.current || (lastProcessedURLRef.current && lastProcessedURLRef.current.includes('/history')));
+    if (shouldProtectHistory) {
+      // Don't process - history page is being loaded, pathname is temporarily /
       return;
+    }
+    
+    // Skip if we've already processed this exact URL
+    // BUT: If we're on history page and URL changed (navigating to history from another page), continue to load
+    // OR if we're on history page and it's still loading, continue
+    if (lastProcessedURLRef.current === currentURLKey) {
+      // If we're on history page and URL changed (navigating from another page), reload
+      // OR if we're on history page and it's still loading, continue
+      if (location.pathname === '/history' && (previousURL !== currentURLKey || historyPageLoadingRef.current)) {
+        // Continue to load history items below
+      } else {
+        // Already processed and not loading, skip
+        return;
+      }
     }
 
     isInitializingFromURLRef.current = true;
 
-    // Check if we're on item detail page
+    // Extract itemId first (needed for multiple checks below)
     // Extract itemId from params.id (if routes are configured) or from pathname (fallback)
     let itemId = params.id;
     if (!itemId && location.pathname.startsWith('/item/')) {
@@ -344,6 +379,88 @@ function App() {
         itemId = match[1];
       }
     }
+
+    // Check if we're on history page FIRST (before checking itemId)
+    // This ensures that when navigating from /item/xxx to /history, we handle history page correctly
+    if (location.pathname === '/history') {
+      // Protection flags are already set above, now load history items
+      const loadHistoryItems = async () => {
+        const historyIds = getItemHistory();
+        
+        // Check if URL changed (navigating to history page from another page)
+        // Use previousURL to detect if we navigated from a different page
+        const urlChanged = previousURL !== currentURLKey;
+        
+        // If URL changed, always load (navigating to history page from another page)
+        // This ensures that when navigating from /item/xxx or / to /history, we always load
+        // If URL didn't change (effect re-run due to other dependencies), check if history has changed
+        if (!urlChanged) {
+          const historyChanged = JSON.stringify(historyIds) !== JSON.stringify(lastHistoryIdsRef.current);
+          if (!historyChanged) {
+            // URL and history both unchanged, skip reload
+            // But still mark URL as processed
+            lastProcessedURLRef.current = currentURLKey;
+            isInitializingFromURLRef.current = false;
+            historyPageLoadingRef.current = false;
+            return;
+          }
+        }
+        
+        // Update ref to track current history
+        lastHistoryIdsRef.current = historyIds;
+        
+        if (historyIds.length === 0) {
+          setHistoryItems([]);
+          setSearchResults([]);
+          searchResultsRef.current = [];
+          lastProcessedURLRef.current = currentURLKey;
+          isInitializingFromURLRef.current = false;
+          historyPageLoadingRef.current = false;
+          return;
+        }
+
+        try {
+          const items = await Promise.all(
+            historyIds.map(async (id) => {
+              try {
+                return await getItemById(id);
+              } catch (error) {
+                console.error(`Failed to load item ${id}:`, error);
+                return null;
+              }
+            })
+          );
+          
+          const validItems = items.filter(item => item !== null);
+          setHistoryItems(validItems);
+          setSearchResults(validItems);
+          searchResultsRef.current = validItems;
+          setSelectedItem(null);
+          selectedItemRef.current = null;
+          // Don't set searchText to empty here - it will trigger effect re-run
+          // Only set if it's not already empty to avoid unnecessary re-renders
+          // Actually, we should NOT call setSearchText here at all during history page load
+          // as it triggers the URL init effect which may see pathname as / temporarily
+          // setSearchText('');
+        } catch (error) {
+          console.error('Failed to load history items:', error);
+          setHistoryItems([]);
+          setSearchResults([]);
+          searchResultsRef.current = [];
+        } finally {
+          // Always mark URL as processed after loading
+          lastProcessedURLRef.current = currentURLKey;
+          isInitializingFromURLRef.current = false;
+          // Clear history page loading flag after loading completes
+          historyPageLoadingRef.current = false;
+        }
+      };
+
+      loadHistoryItems();
+      return;
+    }
+
+    // Check if we're on item detail page
     if (itemId) {
       const id = parseInt(itemId, 10);
       if (id && !isNaN(id)) {
@@ -385,75 +502,6 @@ function App() {
           }
         }
       }
-    }
-
-    // Check if we're on history page
-    if (location.pathname === '/history') {
-      // Load history items
-      const loadHistoryItems = async () => {
-        const historyIds = getItemHistory();
-        
-        // Check if URL changed (navigating to history page from another page)
-        const urlChanged = lastProcessedURLRef.current !== currentURLKey;
-        
-        // If URL changed, always load (navigating to history page)
-        // If URL didn't change, check if history has changed
-        if (!urlChanged) {
-          const historyChanged = JSON.stringify(historyIds) !== JSON.stringify(lastHistoryIdsRef.current);
-          if (!historyChanged) {
-            // URL and history both unchanged, skip reload
-            // But still mark URL as processed
-            lastProcessedURLRef.current = currentURLKey;
-            isInitializingFromURLRef.current = false;
-            return;
-          }
-        }
-        
-        // Update ref to track current history
-        lastHistoryIdsRef.current = historyIds;
-        
-        if (historyIds.length === 0) {
-          setHistoryItems([]);
-          setSearchResults([]);
-          searchResultsRef.current = [];
-          lastProcessedURLRef.current = currentURLKey;
-          isInitializingFromURLRef.current = false;
-          return;
-        }
-
-        try {
-          const items = await Promise.all(
-            historyIds.map(async (id) => {
-              try {
-                return await getItemById(id);
-              } catch (error) {
-                console.error(`Failed to load item ${id}:`, error);
-                return null;
-              }
-            })
-          );
-          
-          const validItems = items.filter(item => item !== null);
-          setHistoryItems(validItems);
-          setSearchResults(validItems);
-          searchResultsRef.current = validItems;
-          setSelectedItem(null);
-          selectedItemRef.current = null;
-          setSearchText('');
-        } catch (error) {
-          console.error('Failed to load history items:', error);
-          setHistoryItems([]);
-          setSearchResults([]);
-          searchResultsRef.current = [];
-        } finally {
-          // Always mark URL as processed after loading
-          lastProcessedURLRef.current = currentURLKey;
-          isInitializingFromURLRef.current = false;
-        }
-      };
-
-      loadHistoryItems();
-      return;
     }
 
     // Check if we're on search page
@@ -553,6 +601,15 @@ function App() {
       }
     } else if (!itemId) {
       // We're on home page (no item ID and no search query)
+      // BUT: CRITICAL - If we're currently processing history page (historyPageLoadingRef is true),
+      // OR if lastProcessedURLRef contains /history, don't execute home page logic
+      // This prevents clearing state when navigating from /item/xxx to /history
+      if (historyPageLoadingRef.current || (lastProcessedURLRef.current && lastProcessedURLRef.current.includes('/history'))) {
+        // Don't process as home page - history page is being loaded or was just loaded
+        // Don't update lastProcessedURLRef here - keep it as /history? to maintain protection
+        isInitializingFromURLRef.current = false;
+        return;
+      }
       const currentSelectedItem = selectedItemRef.current;
       const currentSearchResults = searchResultsRef.current;
       if (currentSelectedItem || currentSearchResults.length > 0 || searchText) {
@@ -569,7 +626,12 @@ function App() {
     }
 
     // Mark this URL as processed
-    lastProcessedURLRef.current = currentURLKey;
+    // BUT: If we're on home page (/) and lastProcessedURLRef contains /history,
+    // don't update it - keep the /history? value to maintain protection
+    // This preserves the protection during transient / states
+    if (!(location.pathname === '/' && lastProcessedURLRef.current && lastProcessedURLRef.current.includes('/history'))) {
+      lastProcessedURLRef.current = currentURLKey;
+    }
     isInitializingFromURLRef.current = false;
   }, [location.pathname, location.search, isServerDataLoaded, params.id, searchParams, searchText, navigate, addToast, isLoadingDB]);
 

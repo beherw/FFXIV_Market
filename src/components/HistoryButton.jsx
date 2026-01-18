@@ -101,10 +101,7 @@ export default function HistoryButton({ onItemSelect }) {
       timeoutRef.current = null;
     }
     setIsOpen(false);
-    // Use setTimeout to ensure navigation happens after state updates
-    setTimeout(() => {
-      navigate('/history');
-    }, 0);
+    navigate('/history');
   };
 
   const handleClearHistory = (e) => {
