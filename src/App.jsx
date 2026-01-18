@@ -1146,8 +1146,8 @@ function App() {
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-start gap-2">
-                        <h2 className="text-lg mid:text-xl font-bold text-ffxiv-gold break-words line-clamp-2 flex-1" style={{ minHeight: '1.5em', maxWidth: '100%' }}>
+                      <div className="flex items-center gap-1 mid:gap-2 flex-wrap">
+                        <h2 className="text-lg mid:text-xl font-bold text-ffxiv-gold break-words line-clamp-2">
                           {selectedItem.name}
                         </h2>
                         <button
@@ -1160,12 +1160,12 @@ function App() {
                               addToast('複製失敗', 'error');
                             }
                           }}
-                          className="flex-shrink-0 p-1.5 mid:p-2 text-gray-400 hover:text-ffxiv-gold hover:bg-purple-800/40 rounded-md border border-transparent hover:border-purple-500/40 transition-all duration-200"
+                          className="flex-shrink-0 p-1 mid:p-1.5 text-gray-400 hover:text-ffxiv-gold hover:bg-purple-800/40 rounded-md border border-transparent hover:border-purple-500/40 transition-all duration-200"
                           title="複製物品名稱"
                         >
                           <svg 
                             xmlns="http://www.w3.org/2000/svg" 
-                            className="h-4 w-4 mid:h-5 mid:w-5" 
+                            className="h-4 w-4 mid:h-4 mid:w-4" 
                             fill="none" 
                             viewBox="0 0 24 24" 
                             stroke="currentColor"
