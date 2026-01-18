@@ -1344,6 +1344,8 @@ function App() {
                 <CraftingTree
                   tree={craftingTree}
                   selectedServerOption={selectedServerOption}
+                  selectedWorld={selectedWorld}
+                  worlds={worlds}
                   onItemSelect={handleItemSelect}
                 />
               )}

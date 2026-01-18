@@ -150,6 +150,105 @@ export async function getMarketDataByDataCenter(itemId, dataCenter) {
 }
 
 /**
+ * Get aggregated market data for multiple items (up to 100) - uses cached values, faster
+ * Returns AVERAGE SALE PRICE (based on last 4 days of sales)
+ * @param {string|number} worldDcRegion - World ID (number) or DC/region name (string)
+ * @param {Array<number>} itemIds - Array of item IDs (max 100)
+ * @param {Object} worlds - World ID to name mapping (unused now, kept for compatibility)
+ * @param {Object} options - Additional options like abort signal
+ * @returns {Promise<Object>} - Object with itemId as key and { price, isHQ } as value
+ */
+export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {}, options = {}) {
+  if (options.signal && options.signal.aborted) {
+    return {};
+  }
+
+  if (!itemIds || itemIds.length === 0) {
+    return {};
+  }
+
+  // Limit to 100 items per request
+  const limitedIds = itemIds.slice(0, 100);
+  const itemIdsString = limitedIds.join(',');
+
+  // Determine if we're querying a specific world (number) or a DC (string)
+  const isSpecificWorld = typeof worldDcRegion === 'number' || 
+    (typeof worldDcRegion === 'string' && !isNaN(Number(worldDcRegion)));
+
+  try {
+    const config = {};
+    if (options.signal) {
+      config.signal = options.signal;
+    }
+
+    const response = await axios.get(
+      `${UNIVERSALIS_BASE_URL}/aggregated/${encodeURIComponent(worldDcRegion)}/${itemIdsString}`,
+      config
+    );
+
+    const results = {};
+    const data = response.data;
+
+    if (data && data.results) {
+      data.results.forEach(item => {
+        const itemId = item.itemId;
+        
+        // Get average sale price based on query type:
+        // - Specific world (world ID): use averageSalePrice.world.price
+        // - DC (DC name): use averageSalePrice.dc.price
+        let nqAvgPrice = null;
+        let hqAvgPrice = null;
+
+        if (isSpecificWorld) {
+          // When querying specific world, use world-level average
+          nqAvgPrice = item.nq?.averageSalePrice?.world?.price;
+          hqAvgPrice = item.hq?.averageSalePrice?.world?.price;
+        } else {
+          // When querying DC, use DC-level average
+          nqAvgPrice = item.nq?.averageSalePrice?.dc?.price;
+          hqAvgPrice = item.hq?.averageSalePrice?.dc?.price;
+        }
+        
+        let bestPrice = null;
+        let isHQ = false;
+
+        // Compare NQ and HQ average prices, pick the cheaper one
+        if (nqAvgPrice && hqAvgPrice) {
+          if (hqAvgPrice <= nqAvgPrice) {
+            bestPrice = Math.round(hqAvgPrice);
+            isHQ = true;
+          } else {
+            bestPrice = Math.round(nqAvgPrice);
+            isHQ = false;
+          }
+        } else if (hqAvgPrice) {
+          bestPrice = Math.round(hqAvgPrice);
+          isHQ = true;
+        } else if (nqAvgPrice) {
+          bestPrice = Math.round(nqAvgPrice);
+          isHQ = false;
+        }
+
+        if (bestPrice !== null) {
+          results[itemId] = {
+            price: bestPrice,
+            isHQ: isHQ,
+          };
+        }
+      });
+    }
+
+    return results;
+  } catch (error) {
+    if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || (options.signal && options.signal.aborted)) {
+      return {};
+    }
+    console.error(`Error fetching aggregated market data for ${worldDcRegion}:`, error);
+    return {};
+  }
+}
+
+/**
  * Format market data for display
  * @param {Object} marketData - Raw market data from Universalis
  * @returns {Object} - Formatted market data
