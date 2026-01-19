@@ -269,6 +269,14 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
               <tr
                 key={item.id || index}
                 onClick={() => onSelect && onSelect(item)}
+                onMouseDown={(e) => {
+                  // Middle mouse button (button === 1)
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    const url = `${window.location.origin}/item/${item.id}`;
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }
+                }}
                 className={`border-b border-purple-500/20 cursor-pointer transition-colors ${
                   selectedItem?.id === item.id 
                     ? 'bg-ffxiv-gold/20' 

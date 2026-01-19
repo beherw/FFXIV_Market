@@ -690,7 +690,8 @@ export default function MSQPriceChecker({
               <ItemTable
                 items={searchResults}
                 onSelect={(item) => {
-                  onItemSelect(item);
+                  const url = `${window.location.origin}/item/${item.id}`;
+                  window.open(url, '_blank', 'noopener,noreferrer');
                 }}
                 selectedItem={null}
                 marketableItems={marketableItems}
