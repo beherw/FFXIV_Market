@@ -569,7 +569,7 @@ export default function MSQPriceChecker({
               主線裝備查價
             </h1>
             <p className="text-gray-400 text-sm sm:text-base">
-              依物品等級查詢主線裝備的市場價格，輕鬆掌握裝備市場動向。
+              主線拿到的箱子可以快速查看市場價格。
             </p>
           </div>
 
