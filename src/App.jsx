@@ -28,7 +28,9 @@ function App() {
   
   // Core states
   const [searchText, setSearchText] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
+  const [tradeableResults, setTradeableResults] = useState([]);
+  const [untradeableResults, setUntradeableResults] = useState([]);
+  const [showUntradeable, setShowUntradeable] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedWorld, setSelectedWorld] = useState(null);
   const [selectedServerOption, setSelectedServerOption] = useState(null);
@@ -144,7 +146,7 @@ function App() {
     const isOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
     
     // Only run on home page (empty state)
-    if (selectedItem || searchResults.length > 0 || isSearching || isOnHistoryPage || isOnUltimatePriceKingPage || isOnMSQPriceCheckerPage) {
+    if (selectedItem || (tradeableResults.length > 0 || untradeableResults.length > 0) || isSearching || isOnHistoryPage || isOnUltimatePriceKingPage || isOnMSQPriceCheckerPage) {
       if (imageIntervalRef.current) {
         clearInterval(imageIntervalRef.current);
         imageIntervalRef.current = null;
@@ -172,7 +174,7 @@ function App() {
         const currentIsOnHistoryPage = location.pathname === '/history';
         const currentIsOnUltimatePriceKingPage = location.pathname === '/ultimate-price-king';
         const currentIsOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
-        if (!isManualMode && !selectedItem && searchResults.length === 0 && !isSearching && !currentIsOnHistoryPage && !currentIsOnUltimatePriceKingPage && !currentIsOnMSQPriceCheckerPage) {
+        if (!isManualMode && !selectedItem && tradeableResults.length === 0 && untradeableResults.length === 0 && !isSearching && !currentIsOnHistoryPage && !currentIsOnUltimatePriceKingPage && !currentIsOnMSQPriceCheckerPage) {
           setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
           scheduleNext();
         } else {
@@ -189,7 +191,7 @@ function App() {
         imageIntervalRef.current = null;
       }
     };
-  }, [isManualMode, selectedItem, searchResults.length, isSearching, location.pathname]);
+  }, [isManualMode, selectedItem, tradeableResults.length, untradeableResults.length, isSearching, location.pathname]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -410,14 +412,14 @@ function App() {
     });
   }, []);
 
-  // Sync selectedItem and searchResults to refs
+  // Sync selectedItem to ref
   useEffect(() => {
     selectedItemRef.current = selectedItem;
   }, [selectedItem]);
 
   useEffect(() => {
-    searchResultsRef.current = searchResults;
-  }, [searchResults]);
+    searchResultsRef.current = showUntradeable ? untradeableResults : tradeableResults;
+  }, [tradeableResults, untradeableResults, showUntradeable]);
 
   // Fetch velocity, average price, and tradability data for search results
   useEffect(() => {
@@ -428,7 +430,8 @@ function App() {
     }
     
     // Reset state if no search results or no server selected
-    if (!searchResults || searchResults.length === 0 || !selectedServerOption || !selectedWorld) {
+    const displayedResults = showUntradeable ? untradeableResults : tradeableResults;
+    if (!displayedResults || displayedResults.length === 0 || !selectedServerOption || !selectedWorld) {
       setSearchVelocities({});
       setSearchAveragePrices({});
       setSearchMinListings({});
@@ -440,8 +443,8 @@ function App() {
       return;
     }
 
-    // Get all item IDs from search results (check all items via API)
-    const allItemIds = searchResults.map(item => item.id);
+    // Get all item IDs from displayed results (only fetch market data for tradeable items)
+    const allItemIds = displayedResults.map(item => item.id);
 
     if (allItemIds.length === 0) {
       setSearchVelocities({});
@@ -654,7 +657,7 @@ function App() {
         velocityFetchAbortControllerRef.current.abort();
       }
     };
-  }, [searchResults, selectedServerOption, selectedWorld]);
+  }, [tradeableResults, untradeableResults, selectedServerOption, selectedWorld]);
 
   // Reset scroll position on mount and route changes
   useEffect(() => {
@@ -700,11 +703,40 @@ function App() {
       setIsLoadingItemFromURL(false);
     }
 
+    // Apply server selection from query parameters if present
+    const serverParam = searchParams.get('server');
+    const worldParam = searchParams.get('world');
+    const dcParam = searchParams.get('dc');
+    
+    if (serverParam && isServerDataLoaded) {
+      // If server param matches a datacenter, set it as server option
+      const dcExists = datacenters.some(dc => dc.name === serverParam);
+      if (dcExists || (worldParam && worlds[serverParam])) {
+        // Valid server/world from query params
+        setSelectedServerOption(serverParam);
+        
+        // Also set the world if provided
+        if (worldParam) {
+          const worldToSet = Object.values(worlds).find(w => w && w.name === worldParam);
+          if (worldToSet) {
+            setSelectedWorld(worldToSet);
+          }
+        }
+      }
+    }
+
     // Handle history page - just clear selectedItem and let useHistory hook handle the data
     if (location.pathname === '/history') {
       setSelectedItem(null);
       selectedItemRef.current = null;
       // Don't touch searchResults - history page uses historyItems from hook
+      lastProcessedURLRef.current = currentURLKey;
+      isInitializingFromURLRef.current = false;
+      return;
+    }
+
+    // Handle MSQ price checker page - just apply server selection from URL, let component handle the rest
+    if (location.pathname === '/msq-price-checker') {
       lastProcessedURLRef.current = currentURLKey;
       isInitializingFromURLRef.current = false;
       return;
@@ -778,7 +810,7 @@ function App() {
           setSearchText(searchQuery);
         }
         
-        const needsSearch = searchResults.length === 0 || previousSearchText !== searchQuery;
+        const needsSearch = (tradeableResults.length === 0 && untradeableResults.length === 0) || previousSearchText !== searchQuery;
         
         if (needsSearch) {
           const performSearch = async () => {
@@ -804,17 +836,24 @@ function App() {
                 return;
               }
               
-              setSearchResults(results);
-              searchResultsRef.current = results;
+              // Separate tradeable and untradeable items
+              const marketableSet = await getMarketableItems();
+              const tradeable = results.filter(item => marketableSet.has(item.id));
+              const untradeable = results.filter(item => !marketableSet.has(item.id));
+              
+              setTradeableResults(tradeable);
+              setUntradeableResults(untradeable);
+              setShowUntradeable(false);
+              searchResultsRef.current = tradeable;
               setError(null);
               if (results.length === 0) {
                 addToast('未找到相關物品', 'warning');
               } else {
                 if (previousSearchText !== searchQuery) {
-                  addToast(`找到 ${results.length} 個結果`, 'success');
+                  addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
                 }
-                if (results.length === 1) {
-                  const item = results[0];
+                if (tradeable.length === 1) {
+                  const item = tradeable[0];
                   setSelectedItem(item);
                   selectedItemRef.current = item;
                   navigate(`/item/${item.id}`, { replace: false });
@@ -826,7 +865,9 @@ function App() {
               }
               console.error('Search error:', err);
               setError('搜索失敗，請稍後再試');
-              setSearchResults([]);
+              setTradeableResults([]);
+              setUntradeableResults([]);
+              setShowUntradeable(false);
               searchResultsRef.current = [];
               addToast('搜索失敗', 'error');
             } finally {
@@ -846,7 +887,9 @@ function App() {
       if (currentSelectedItem || currentSearchResults.length > 0 || searchText) {
         setSelectedItem(null);
         selectedItemRef.current = null;
-        setSearchResults([]);
+        setTradeableResults([]);
+        setUntradeableResults([]);
+        setShowUntradeable(false);
         searchResultsRef.current = [];
         setSearchText('');
         setMarketInfo(null);
@@ -857,13 +900,15 @@ function App() {
 
     lastProcessedURLRef.current = currentURLKey;
     isInitializingFromURLRef.current = false;
-  }, [location.pathname, location.search, isServerDataLoaded, params.id, searchParams, searchText, navigate, addToast, isLoadingDB]);
+  }, [location.pathname, location.search, isServerDataLoaded, params.id, searchParams, searchText, navigate, addToast, isLoadingDB, datacenters, worlds]);
 
   // Handle return to home page
   const handleReturnHome = useCallback(() => {
     setSelectedItem(null);
     selectedItemRef.current = null;
-    setSearchResults([]);
+    setTradeableResults([]);
+    setUntradeableResults([]);
+    setShowUntradeable(false);
     searchResultsRef.current = [];
     setSearchText('');
     setMarketInfo(null);
@@ -929,7 +974,9 @@ function App() {
       }
     }
     if (!searchTerm || searchTerm.trim() === '') {
-      setSearchResults([]);
+      setTradeableResults([]);
+      setUntradeableResults([]);
+      setShowUntradeable(false);
       if (!selectedItemRef.current) {
         setSelectedItem(null);
         setMarketInfo(null);
@@ -952,7 +999,9 @@ function App() {
 
     if (!containsChinese(searchTerm.trim())) {
       addToast('請輸入中文進行搜索', 'warning');
-      setSearchResults([]);
+      setTradeableResults([]);
+      setUntradeableResults([]);
+      setShowUntradeable(false);
       setSelectedItem(null);
       setMarketInfo(null);
       setMarketListings([]);
@@ -981,20 +1030,30 @@ function App() {
     try {
       const results = await searchItems(searchTerm.trim());
       
-      setSearchResults(results);
+      // Separate tradeable and untradeable items
+      const marketableSet = await getMarketableItems();
+      const tradeable = results.filter(item => marketableSet.has(item.id));
+      const untradeable = results.filter(item => !marketableSet.has(item.id));
+      
+      setTradeableResults(tradeable);
+      setUntradeableResults(untradeable);
+      setShowUntradeable(false); // Default to showing tradeable items
       setError(null);
+      
       if (results.length === 0) {
         addToast('未找到相關物品', 'warning');
       } else {
-        addToast(`找到 ${results.length} 個結果`, 'success');
-        if (results.length === 1) {
-          handleItemSelect(results[0]);
+        addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
+        if (tradeable.length === 1) {
+          handleItemSelect(tradeable[0]);
         }
       }
     } catch (err) {
       setError(err.message || '搜索失敗，請稍後再試');
       addToast('搜索失敗', 'error');
-      setSearchResults([]);
+      setTradeableResults([]);
+      setUntradeableResults([]);
+      setShowUntradeable(false);
     } finally {
       setIsSearching(false);
     }
@@ -1742,12 +1801,12 @@ function App() {
           )}
 
           {/* Search Results (not on history page) */}
-          {!isOnHistoryPage && searchResults.length > 0 && !selectedItem && (
+          {!isOnHistoryPage && (tradeableResults.length > 0 || untradeableResults.length > 0) && !selectedItem && (
             <div className="mb-6">
               {/* Search Results Header */}
               <div className="flex items-center gap-3 mb-4 flex-wrap">
                 <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold">
-                  搜索結果 ({searchResults.length} 個物品)
+                  搜索結果 ({showUntradeable ? untradeableResults.length : tradeableResults.length} 個物品)
                 </h2>
                 {selectedWorld && selectedServerOption && (
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm">
@@ -1759,6 +1818,18 @@ function App() {
                       }
                     </span>
                   </div>
+                )}
+                {untradeableResults.length > 0 && (
+                  <button
+                    onClick={() => setShowUntradeable(!showUntradeable)}
+                    className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                      showUntradeable
+                        ? 'bg-orange-600/40 text-orange-300 border border-orange-500/50 hover:bg-orange-600/60'
+                        : 'bg-slate-800/50 text-gray-300 border border-purple-500/30 hover:bg-purple-800/40 hover:border-purple-400/50'
+                    }`}
+                  >
+                    {showUntradeable ? `隱藏 (${untradeableResults.length} 個不可交易)` : `顯示 (${untradeableResults.length} 個不可交易)`}
+                  </button>
                 )}
               </div>
 
@@ -1780,7 +1851,7 @@ function App() {
                 </div>
               )}
               <ItemTable
-                items={searchResults}
+                items={showUntradeable ? untradeableResults : tradeableResults}
                 onSelect={handleItemSelect}
                 selectedItem={selectedItem}
                 marketableItems={marketableItems}
@@ -2118,7 +2189,7 @@ function App() {
             // Check if we're on an item page path - if so, don't show home page even if item isn't loaded yet
             const isOnItemPage = location.pathname.startsWith('/item/');
             // Don't show home page if we're loading an item from URL or if we're on an item page path
-            return !selectedItem && searchResults.length === 0 && !isSearching && !isOnHistoryPage && !isLoadingItemFromURL && !isOnItemPage;
+            return !selectedItem && tradeableResults.length === 0 && untradeableResults.length === 0 && !isSearching && !isOnHistoryPage && !isLoadingItemFromURL && !isOnItemPage;
           })() && (
             <div className="space-y-4 sm:space-y-8">
               {/* Welcome Section */}

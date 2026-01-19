@@ -1,6 +1,6 @@
 // MSQ Equipment Price Checker (主線裝備查價)
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Toast from './Toast';
 import ItemTable from './ItemTable';
 import SearchBar from './SearchBar';
@@ -48,9 +48,11 @@ export default function MSQPriceChecker({
   isSearching
 }) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [ilvlInput, setIlvlInput] = useState('');
   const [ilvlInputValidation, setIlvlInputValidation] = useState(null);
   const ilvlValidationTimeoutRef = useRef(null);
+  const initServerAppliedRef = useRef(false);
   
   const [selectedEquipCategory, setSelectedEquipCategory] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
@@ -68,6 +70,38 @@ export default function MSQPriceChecker({
       setMarketableItems(items);
     });
   }, []);
+
+  // Apply server selection from URL on mount
+  useEffect(() => {
+    if (!initServerAppliedRef.current && isServerDataLoaded) {
+      const serverParam = searchParams.get('server');
+      
+      if (serverParam) {
+        // Check if the server param is valid (matches a datacenter name or world ID)
+        const dcExists = datacenters.some(dc => dc.name === serverParam);
+        const worldExists = Object.values(worlds).some(w => w && w.name === serverParam);
+        
+        if (dcExists || worldExists) {
+          // Valid server from URL - call the callback to apply it
+          onServerOptionChange(serverParam);
+        }
+      }
+      
+      initServerAppliedRef.current = true;
+    }
+  }, [isServerDataLoaded, datacenters, worlds, searchParams, onServerOptionChange]);
+
+  // Update URL when server option changes
+  useEffect(() => {
+    if (selectedServerOption && initServerAppliedRef.current) {
+      // Update URL to include current server selection
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.set('server', selectedServerOption);
+        return newParams;
+      }, { replace: false });
+    }
+  }, [selectedServerOption, setSearchParams]);
 
   // Get unique item level values for the dropdown
   const uniqueILevels = useMemo(() => {
@@ -310,6 +344,7 @@ export default function MSQPriceChecker({
       const allRecentPurchases = {};
       const allTradability = {};
 
+      // Fetch market data in batches (100 items per request)
       for (let i = 0; i < tradeableItemIds.length; i += batchSize) {
         const batch = tradeableItemIds.slice(i, i + batchSize);
         const itemIdsString = batch.join(',');
@@ -699,7 +734,11 @@ export default function MSQPriceChecker({
               <ItemTable
                 items={searchResults}
                 onSelect={(item) => {
-                  const url = `${window.location.origin}/item/${item.id}`;
+                  const params = new URLSearchParams();
+                  params.append('server', selectedServerOption);
+                  params.append('world', selectedWorld?.name || '');
+                  params.append('dc', selectedWorld?.section || '');
+                  const url = `${window.location.origin}/item/${item.id}?${params.toString()}`;
                   window.open(url, '_blank', 'noopener,noreferrer');
                 }}
                 selectedItem={null}

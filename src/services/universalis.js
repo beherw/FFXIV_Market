@@ -1,14 +1,14 @@
 import axios from 'axios';
 import { requestManager } from '../utils/requestManager';
+import marketItemsData from '../../teamcraft_git/libs/data/src/lib/json/market-items.json';
 
 const UNIVERSALIS_BASE_URL = 'https://universalis.app/api/v2';
 
 // Cache for marketable items
-let marketableItemsCache = null;
 let marketableItemsSet = null;
 
 /**
- * Get the set of marketable item IDs
+ * Get the set of marketable item IDs from local market-items.json
  * @returns {Promise<Set<number>>} - Set of marketable item IDs
  */
 export async function getMarketableItems() {
@@ -17,12 +17,10 @@ export async function getMarketableItems() {
   }
 
   try {
-    const response = await axios.get(`${UNIVERSALIS_BASE_URL}/marketable`);
-    marketableItemsCache = response.data || [];
-    marketableItemsSet = new Set(marketableItemsCache);
+    marketableItemsSet = new Set(marketItemsData);
     return marketableItemsSet;
   } catch (error) {
-    console.error('Error fetching marketable items:', error);
+    console.error('Error loading marketable items:', error);
     return new Set();
   }
 }

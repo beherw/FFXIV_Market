@@ -384,7 +384,9 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                       </span>
                     )
                   ) : (
-                    <span className="text-gray-500">-</span>
+                    <span className="inline-block px-1.5 py-0.5 text-[10px] bg-red-900/50 text-red-400 border border-red-500/30 rounded">
+                      不可交易
+                    </span>
                   )}
                 </td>
                 <td className="px-2 sm:px-4 py-2">
