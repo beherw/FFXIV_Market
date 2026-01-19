@@ -6,6 +6,7 @@ import ItemTable from './ItemTable';
 import SearchBar from './SearchBar';
 import ServerSelector from './ServerSelector';
 import HistoryButton from './HistoryButton';
+import TopBar from './TopBar';
 import { loadRecipeDatabase } from '../services/recipeDatabase';
 import { getMarketableItems } from '../services/universalis';
 import { getItemById } from '../services/itemDatabase';
@@ -426,93 +427,17 @@ export default function CraftingJobPriceChecker({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
-      {/* Logo - Desktop: Fixed Top Left, Mobile: Inside search bar row */}
-      <button
-        onClick={() => navigate('/')}
-        className="fixed z-[60] mid:flex items-center justify-center hover:opacity-80 transition-opacity duration-200 cursor-pointer mid:top-4 mid:left-4 hidden mid:w-12 mid:h-12 bg-transparent border-none p-0"
-        title="返回主頁"
-      >
-        <img 
-          src="/logo.png" 
-          alt="返回主頁" 
-          className="w-full h-full object-contain pointer-events-none transition-all duration-200"
-          style={isServerDataLoaded ? {
-            filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.4))',
-            opacity: 1
-          } : {
-            opacity: 0.5
-          }}
-        />
-      </button>
-
-      {/* Fixed Search Bar - Top Row */}
-      <div className="fixed top-2 left-0 right-0 mid:top-4 mid:right-auto z-50 px-1.5 mid:px-0 mid:left-20 py-1 mid:py-0 mid:w-auto">
-        <div className="relative flex items-center gap-1.5 mid:gap-3">
-          {/* Mobile Logo */}
-          <button
-            onClick={() => navigate('/')}
-            className="mid:hidden flex-shrink-0 flex items-center justify-center w-9 h-9 hover:opacity-80 transition-opacity duration-200 cursor-pointer bg-transparent border-none p-0"
-            title="返回主頁"
-          >
-            <img 
-              src="/logo.png" 
-              alt="返回主頁" 
-              className="w-full h-full object-contain pointer-events-none transition-all duration-200"
-              style={isServerDataLoaded ? {
-                filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.4))',
-                opacity: 1
-              } : {
-                opacity: 0.5
-              }}
-            />
-          </button>
-
-          {/* Search Bar */}
-          <div className="min-w-0 h-9 mid:h-12 flex-1 mid:flex-initial mid:w-[420px] detail:w-[520px] min-w-[100px]">
-            <SearchBar 
-              onSearch={onSearch} 
-              isLoading={isSearching}
-              value={searchText}
-              onChange={setSearchText}
-              disabled={!isServerDataLoaded}
-              disabledTooltip={!isServerDataLoaded ? '請等待伺服器資料載入完成' : undefined}
-              selectedDcName={selectedWorld?.section}
-              onItemSelect={onItemSelect}
-            />
-          </div>
-
-          {/* History Button */}
-          <div className="flex-shrink-0">
-            <HistoryButton onItemSelect={onItemSelect} />
-          </div>
-
-          {/* Ultimate Price King Button */}
-          <div className="flex-shrink-0">
-            <button
-              onClick={() => navigate('/ultimate-price-king')}
-              className="bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-ffxiv-gold/70 rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors px-2 mid:px-3 detail:px-4 h-9 mid:h-12 gap-1.5 mid:gap-2 shadow-[0_0_10px_rgba(212,175,55,0.3)]"
-              title="查價王"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-4 w-4 mid:h-5 mid:w-5 text-ffxiv-gold" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
-                />
-              </svg>
-              <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">查價王</span>
-              <span className="text-xs font-semibold text-ffxiv-gold mid:hidden">查價</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <TopBar
+        onSearch={onSearch}
+        isSearching={isSearching}
+        searchText={searchText}
+        setSearchText={setSearchText}
+        isServerDataLoaded={isServerDataLoaded}
+        selectedDcName={selectedWorld?.section}
+        onItemSelect={onItemSelect}
+        showNavigationButtons={true}
+        activePage="ultimate-price-king"
+      />
 
       {/* Toast Notifications */}
       <div className="fixed right-2 mid:right-4 left-2 mid:left-auto z-50 space-y-2 max-w-sm mid:max-w-none top-[60px] mid:top-4">

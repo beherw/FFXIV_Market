@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate, useSearchParams, useParams, useLocation } from 'react-router-dom';
 import SearchBar from './components/SearchBar';
 import ServerSelector from './components/ServerSelector';
@@ -19,6 +20,7 @@ import { hasRecipe, buildCraftingTree, findRelatedItems } from './services/recip
 import CraftingJobPriceChecker from './components/UltimatePriceKing';
 import MSQPriceChecker from './components/MSQPriceChecker';
 import RelatedItems from './components/RelatedItems';
+import TopBar from './components/TopBar';
 
 function App() {
   const navigate = useNavigate();
@@ -484,22 +486,29 @@ function App() {
           ? selectedWorld.section  // DC name
           : selectedServerOption;   // World ID (number)
         
-        // Batch requests if more than 100 items
-        const batchSize = 100;
-        const allVelocities = {};
-        const allAveragePrices = {};
-        const allMinListings = {};
-        const allRecentPurchases = {};
-        const allTradability = {};
-        
-        // Process all batches first, then update state once at the end
-        for (let i = 0; i < allItemIds.length; i += batchSize) {
+        // Progressive batch sizes: 20, then 50, then 100 per batch
+        // Process each batch in a separate async function to break React's batching
+        const processBatch = async (batchNumber, startIndex) => {
           // Check if request was cancelled or superseded
           if (abortSignal.aborted || currentRequestId !== velocityFetchRequestIdRef.current) {
             return;
           }
           
-          const batch = allItemIds.slice(i, i + batchSize);
+          // Determine batch size: first batch = 20, second batch = 50, rest = 100
+          let batchSize;
+          if (batchNumber === 0) {
+            batchSize = 20; // First batch: 20 items for fast initial display
+          } else if (batchNumber === 1) {
+            batchSize = 50; // Second batch: 50 items
+          } else {
+            batchSize = 100; // Remaining batches: 100 items each
+          }
+          
+          const batch = allItemIds.slice(startIndex, startIndex + batchSize);
+          if (batch.length === 0) {
+            return;
+          }
+          
           const itemIdsString = batch.join(',');
           
           try {
@@ -513,6 +522,13 @@ function App() {
             }
             
             const data = await response.json();
+            
+            // Process batch results
+            const batchVelocities = {};
+            const batchAveragePrices = {};
+            const batchMinListings = {};
+            const batchRecentPurchases = {};
+            const batchTradability = {};
             
             if (data && data.results) {
               data.results.forEach(item => {
@@ -579,49 +595,116 @@ function App() {
                 );
                 
                 if (velocity !== null && velocity !== undefined) {
-                  allVelocities[itemId] = velocity;
+                  batchVelocities[itemId] = velocity;
                 }
                 if (averagePrice !== null && averagePrice !== undefined) {
-                  allAveragePrices[itemId] = Math.round(averagePrice);
+                  batchAveragePrices[itemId] = Math.round(averagePrice);
                 }
                 if (minListing !== null && minListing !== undefined) {
-                  allMinListings[itemId] = minListing;
+                  batchMinListings[itemId] = minListing;
                 }
                 if (recentPurchase !== null && recentPurchase !== undefined) {
-                  allRecentPurchases[itemId] = recentPurchase;
+                  batchRecentPurchases[itemId] = recentPurchase;
                 }
-                allTradability[itemId] = true;
+                batchTradability[itemId] = true;
               });
             }
             
             // Items not in results are non-tradable
             batch.forEach(itemId => {
-              if (!allTradability.hasOwnProperty(itemId)) {
-                allTradability[itemId] = false;
+              if (!batchTradability.hasOwnProperty(itemId)) {
+                batchTradability[itemId] = false;
               }
             });
+            
+            // Update state immediately after each batch (progressive rendering)
+            // First 20 items appear quickly, then 50 more, then the rest in batches of 100
+            // Use flushSync to force immediate synchronous rendering, breaking React's batching
+            if (!abortSignal.aborted && currentRequestId === velocityFetchRequestIdRef.current) {
+              flushSync(() => {
+                // Merge new batch data with existing state
+                setSearchVelocities(prev => ({ ...prev, ...batchVelocities }));
+                setSearchAveragePrices(prev => ({ ...prev, ...batchAveragePrices }));
+                setSearchMinListings(prev => ({ ...prev, ...batchMinListings }));
+                setSearchRecentPurchases(prev => ({ ...prev, ...batchRecentPurchases }));
+                setSearchTradability(prev => ({ ...prev, ...batchTradability }));
+              });
+              
+              // Set loading to false after first batch completes to show immediate feedback
+              // Subsequent batches will continue loading in background
+              if (batchNumber === 0) {
+                setIsLoadingVelocities(false);
+              }
+            }
           } catch (error) {
             // Ignore abort errors
             if (error.name === 'AbortError' || abortSignal.aborted) {
               return;
             }
             console.error('Error fetching market data:', error);
+            // Mark batch items as non-tradable on error
+            const batchTradability = {};
             batch.forEach(itemId => {
-              if (!allTradability.hasOwnProperty(itemId)) {
-                allTradability[itemId] = false;
-              }
+              batchTradability[itemId] = false;
+            });
+            // Update state even on error to mark items as non-tradable
+            if (!abortSignal.aborted && currentRequestId === velocityFetchRequestIdRef.current) {
+              flushSync(() => {
+                setSearchTradability(prev => ({ ...prev, ...batchTradability }));
+              });
+            }
+          }
+        };
+        
+        // Process batches recursively, scheduling each in separate event loop tick
+        // This ensures React processes each batch's state update before the next one
+        const processBatchesRecursively = async (batchNumber, startIndex) => {
+          // Check if request was cancelled or superseded
+          if (abortSignal.aborted || currentRequestId !== velocityFetchRequestIdRef.current) {
+            return;
+          }
+          
+          if (startIndex >= allItemIds.length) {
+            return; // All batches processed
+          }
+          
+          // Determine batch size
+          let batchSize;
+          if (batchNumber === 0) {
+            batchSize = 20;
+          } else if (batchNumber === 1) {
+            batchSize = 50;
+          } else {
+            batchSize = 100;
+          }
+          
+          // Process this batch
+          await processBatch(batchNumber, startIndex);
+          
+          // Check if we should continue
+          if (abortSignal.aborted || currentRequestId !== velocityFetchRequestIdRef.current) {
+            return;
+          }
+          
+          const nextIndex = startIndex + batchSize;
+          
+          // Schedule next batch in next event loop tick to break React batching
+          if (nextIndex < allItemIds.length) {
+            // Use setTimeout to ensure next batch runs in separate event loop tick
+            // No delay for first batch (render immediately), small delay for others to allow browser to paint
+            await new Promise(resolve => {
+              setTimeout(() => {
+                processBatchesRecursively(batchNumber + 1, nextIndex).then(resolve);
+              }, batchNumber === 0 ? 0 : 100); // No delay for first batch, 100ms for others
             });
           }
-        }
+        };
         
-        // Only update state if this is still the current request
+        // Start processing batches
+        await processBatchesRecursively(0, 0);
+        
+        // Mark fetch as complete
         if (!abortSignal.aborted && currentRequestId === velocityFetchRequestIdRef.current) {
-          setSearchVelocities(allVelocities);
-          setSearchAveragePrices(allAveragePrices);
-          setSearchMinListings(allMinListings);
-          setSearchRecentPurchases(allRecentPurchases);
-          setSearchTradability(allTradability);
-          // Mark fetch as complete - items have been fetched successfully
           velocityFetchInProgressRef.current = false;
           // Remember that we've fetched these items (don't refetch unless they change)
           lastFetchedItemIdsRef.current = cacheKey;
@@ -642,8 +725,9 @@ function App() {
           lastFetchedItemIdsRef.current = '';
         }
       } finally {
-        // Only update loading state if this is still the current request
-        if (currentRequestId === velocityFetchRequestIdRef.current) {
+        // Loading state is now set to false after first batch completes
+        // Only reset if request was cancelled or superseded
+        if (currentRequestId !== velocityFetchRequestIdRef.current) {
           setIsLoadingVelocities(false);
         }
       }
@@ -735,7 +819,7 @@ function App() {
       return;
     }
 
-    // Handle MSQ price checker page - just apply server selection from URL, let component handle the rest
+    // Handle MSQ price checker page - let component handle state restoration from URL
     if (location.pathname === '/msq-price-checker') {
       lastProcessedURLRef.current = currentURLKey;
       isInitializingFromURLRef.current = false;
@@ -1022,8 +1106,9 @@ function App() {
     setMarketHistory([]);
     setRateLimitMessage(null);
 
-    // Don't navigate if we're on ultimate-price-king, msq-price-checker or history page
-    if (!skipNavigation && location.pathname !== '/ultimate-price-king' && location.pathname !== '/msq-price-checker' && location.pathname !== '/history') {
+    // Navigate to search results page, except when explicitly skipping navigation or on history page
+    // Allow navigation from ultimate-price-king and msq-price-checker pages so search works
+    if (!skipNavigation && location.pathname !== '/history') {
       navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`, { replace: false });
     }
 
@@ -1436,262 +1521,30 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
-      {/* Logo - Desktop: Fixed Top Left, Mobile: Inside search bar row */}
-      <button
-        onClick={handleReturnHome}
-        className="fixed z-[60] mid:flex items-center justify-center hover:opacity-80 transition-opacity duration-200 cursor-pointer mid:top-4 mid:left-4 hidden mid:w-12 mid:h-12 bg-transparent border-none p-0"
-        title="返回主頁"
-      >
-        <img 
-          src="/logo.png" 
-          alt="返回主頁" 
-          className="w-full h-full object-contain pointer-events-none transition-all duration-200"
-          style={isServerDataLoaded ? {
-            filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.4))',
-            opacity: 1
-          } : {
-            opacity: 0.5
-          }}
-        />
-      </button>
-
-      {/* Fixed Search Bar - Top Row */}
-      <div className={`fixed top-2 left-0 right-0 mid:top-4 mid:right-auto z-50 ${
-        selectedItem 
-          ? 'px-1.5 mid:px-0 mid:left-20 py-1 mid:py-0'
-          : 'px-1.5 mid:pl-20 mid:pr-0 py-1 mid:py-0'
-      } mid:w-auto`}>
-        <div className="relative flex items-center gap-1.5 mid:gap-3">
-          {/* Mobile Logo - Always visible on mobile, left of search bar */}
-          <button
-            onClick={handleReturnHome}
-            className="mid:hidden flex-shrink-0 flex items-center justify-center w-9 h-9 hover:opacity-80 transition-opacity duration-200 cursor-pointer bg-transparent border-none p-0"
-            title="返回主頁"
-          >
-            <img 
-              src="/logo.png" 
-              alt="返回主頁" 
-              className="w-full h-full object-contain pointer-events-none transition-all duration-200"
-              style={isServerDataLoaded ? {
-                filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.4))',
-                opacity: 1
-              } : {
-                opacity: 0.5
-              }}
-            />
-          </button>
-
-          {/* Search Bar */}
-          <div className={`min-w-0 h-9 mid:h-12 ${
-            selectedItem 
-              ? 'flex-1 mid:flex-initial mid:w-80 detail:w-96 min-w-[100px]' 
-              : 'flex-1 mid:flex-initial mid:w-[420px] detail:w-[520px] min-w-[100px]'
-          }`}>
-            <SearchBar 
-              onSearch={handleSearch} 
-              isLoading={isSearching}
-              value={searchText}
-              onChange={setSearchText}
-              disabled={!isServerDataLoaded}
-              disabledTooltip={!isServerDataLoaded ? '請等待伺服器資料載入完成' : undefined}
-              selectedDcName={selectedWorld?.section}
-              onItemSelect={handleItemSelect}
-            />
-          </div>
-
-          {/* History Button - hidden on mobile for item info page (moves to second row) */}
-          <div className={`flex-shrink-0 ${selectedItem ? 'hidden mid:block' : ''}`}>
-            <HistoryButton onItemSelect={handleItemSelect} />
-          </div>
-
-          {/* Crafting Job Price Checker Button - hidden on mobile for item info page (moves to second row) */}
-          <div className={`flex-shrink-0 ${selectedItem ? 'hidden mid:block' : ''}`}>
-            <button
-              onClick={() => navigate('/ultimate-price-king')}
-              className={`bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors px-2 mid:px-3 detail:px-4 h-9 mid:h-12 gap-1.5 mid:gap-2 ${
-                isOnUltimatePriceKingPage 
-                  ? 'border-ffxiv-gold/70 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
-                  : 'border-purple-500/30 hover:border-ffxiv-gold/50'
-              }`}
-              title="製造職找價"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-4 w-4 mid:h-5 mid:w-5 text-ffxiv-gold" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
-                />
-              </svg>
-              <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">製造職</span>
-              <span className="text-xs font-semibold text-ffxiv-gold mid:hidden">職</span>
-            </button>
-          </div>
-
-          {/* MSQ Equipment Price Checker Button - hidden on mobile for item info page (moves to second row) */}
-          <div className={`flex-shrink-0 ${selectedItem ? 'hidden mid:block' : ''}`}>
-            <button
-              onClick={() => navigate('/msq-price-checker')}
-              className={`bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors px-2 mid:px-3 detail:px-4 h-9 mid:h-12 gap-1.5 mid:gap-2 ${
-                isOnMSQPriceCheckerPage 
-                  ? 'border-ffxiv-gold/70 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
-                  : 'border-purple-500/30 hover:border-ffxiv-gold/50'
-              }`}
-              title="主線裝備查價"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-4 w-4 mid:h-5 mid:w-5 text-ffxiv-gold" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
-                />
-              </svg>
-              <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">主線裝備</span>
-              <span className="text-xs font-semibold text-ffxiv-gold mid:hidden">裝備</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Second Row - Data Center & External Links */}
-      <div className={`fixed left-2 mid:left-auto mid:right-4 right-2 z-50 flex flex-wrap items-center gap-1.5 mid:gap-2 ${
-        selectedItem 
-          ? 'top-[60px] mid:top-4'
-          : 'top-[60px] mid:top-4'
-      }`}>
-        {/* History Button - Mobile only in second row for item info page */}
-        {selectedItem && (
-          <div className="mid:hidden flex-shrink-0">
-            <HistoryButton onItemSelect={handleItemSelect} compact />
-          </div>
-        )}
-
-        {/* Crafting Job Price Checker Button - Mobile only in second row for item info page */}
-        {selectedItem && (
-          <div className="mid:hidden flex-shrink-0">
-            <button
-              onClick={() => navigate('/ultimate-price-king')}
-              className={`bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors px-2 h-8 gap-1.5 ${
-                isOnUltimatePriceKingPage 
-                  ? 'border-ffxiv-gold/70 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
-                  : 'border-purple-500/30 hover:border-ffxiv-gold/50'
-              }`}
-              title="製造職找價"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-4 w-4 text-ffxiv-gold" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
-                />
-              </svg>
-              <span className="text-xs font-semibold text-ffxiv-gold">職</span>
-            </button>
-          </div>
-        )}
-
-        {/* MSQ Equipment Price Checker Button - Mobile only in second row for item info page */}
-        {selectedItem && (
-          <div className="mid:hidden flex-shrink-0">
-            <button
-              onClick={() => navigate('/msq-price-checker')}
-              className={`bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors px-2 h-8 gap-1.5 ${
-                isOnMSQPriceCheckerPage 
-                  ? 'border-ffxiv-gold/70 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
-                  : 'border-purple-500/30 hover:border-ffxiv-gold/50'
-              }`}
-              title="主線裝備查價"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-4 w-4 text-ffxiv-gold" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
-                />
-              </svg>
-              <span className="text-xs font-semibold text-ffxiv-gold">裝</span>
-            </button>
-          </div>
-        )}
-        
-        {/* External Links - Show when item is selected */}
-        {selectedItem && (
-          <>
-            <div className="mid:hidden w-px h-5 bg-slate-600/50"></div>
-            <button
-              onClick={async () => {
-                try {
-                  const simplifiedName = await getSimplifiedChineseName(selectedItem.id);
-                  if (simplifiedName) {
-                    const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
-                    const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(simplifiedName)}`;
-                    window.open(url, '_blank', 'noopener,noreferrer');
-                  } else {
-                    const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
-                    const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(selectedItem.name)}`;
-                    window.open(url, '_blank', 'noopener,noreferrer');
-                  }
-                } catch (error) {
-                  console.error('Failed to open Wiki link:', error);
-                  addToast('無法打開Wiki連結', 'error');
-                }
-              }}
-              className="px-2 mid:px-3 h-8 mid:h-10 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors flex items-center"
-            >
-              Wiki
-            </button>
-            <a
-              href={`https://www.garlandtools.org/db/#item/${selectedItem.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-2 mid:px-3 h-8 mid:h-10 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors flex items-center"
-            >
-              Garland
-            </a>
-            <a
-              href={`https://universalis.app/market/${selectedItem.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-2 mid:px-3 h-8 mid:h-10 text-xs font-medium text-ffxiv-accent hover:text-ffxiv-gold hover:bg-purple-800/40 rounded border border-purple-500/30 hover:border-ffxiv-gold transition-colors flex items-center"
-            >
-              Market
-            </a>
-          </>
-        )}
-      </div>
+      <TopBar
+        onSearch={handleSearch}
+        isSearching={isSearching}
+        searchText={searchText}
+        setSearchText={setSearchText}
+        isServerDataLoaded={isServerDataLoaded}
+        selectedDcName={selectedWorld?.section}
+        onItemSelect={handleItemSelect}
+        selectedItem={selectedItem}
+        getSimplifiedChineseName={getSimplifiedChineseName}
+        addToast={addToast}
+        showNavigationButtons={!selectedItem}
+        activePage={isOnUltimatePriceKingPage ? 'ultimate-price-king' : isOnMSQPriceCheckerPage ? 'msq-price-checker' : null}
+        onMSQPriceCheckerClick={() => {
+          setSearchText('');
+          navigate('/msq-price-checker');
+        }}
+      />
 
 
       {/* Toast Notifications */}
       <div className={`fixed right-2 mid:right-4 left-2 mid:left-auto z-50 space-y-2 max-w-sm mid:max-w-none ${
         selectedItem 
-          ? 'top-[100px] mid:top-4'
+          ? 'top-[180px] mid:top-24'
           : 'top-[60px] mid:top-4'
       }`}>
         {toasts.map(toast => (
@@ -1847,6 +1700,7 @@ function App() {
                     selectedServerOption={selectedServerOption}
                     onServerOptionChange={handleServerOptionChange}
                     serverOptions={serverOptions}
+                    disabled={isLoadingVelocities}
                   />
                 </div>
               )}
@@ -1918,7 +1772,7 @@ function App() {
                       <p className="text-xs mid:text-sm text-gray-400 mt-1">ID: {selectedItem.id}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 detail:gap-4 overflow-x-auto min-w-0 detail:flex-shrink-0 detail:max-w-none">
+                  <div className="flex items-center gap-3 detail:gap-4 overflow-x-auto min-w-0 detail:flex-shrink-0 detail:max-w-none relative z-10 scroll-pl-1 -ml-1 pl-1">
                     <ServerSelector
                       datacenters={datacenters}
                       worlds={worlds}

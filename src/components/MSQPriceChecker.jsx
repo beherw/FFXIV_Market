@@ -1,10 +1,11 @@
 // MSQ Equipment Price Checker (主線裝備查價)
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import Toast from './Toast';
 import ItemTable from './ItemTable';
 import SearchBar from './SearchBar';
 import ServerSelector from './ServerSelector';
+import TopBar from './TopBar';
 import { getMarketableItems } from '../services/universalis';
 import { getItemById } from '../services/itemDatabase';
 import axios from 'axios';
@@ -49,10 +50,12 @@ export default function MSQPriceChecker({
 }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const [ilvlInput, setIlvlInput] = useState('');
   const [ilvlInputValidation, setIlvlInputValidation] = useState(null);
   const ilvlValidationTimeoutRef = useRef(null);
-  const initServerAppliedRef = useRef(false);
+  const isInitializingFromURLRef = useRef(false);
+  const lastProcessedURLRef = useRef('');
   
   const [selectedEquipCategory, setSelectedEquipCategory] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
@@ -71,37 +74,79 @@ export default function MSQPriceChecker({
     });
   }, []);
 
-  // Apply server selection from URL on mount
+  // Restore state from URL parameters on mount or when returning from item page
   useEffect(() => {
-    if (!initServerAppliedRef.current && isServerDataLoaded) {
-      const serverParam = searchParams.get('server');
-      
-      if (serverParam) {
-        // Check if the server param is valid (matches a datacenter name or world ID)
-        const dcExists = datacenters.some(dc => dc.name === serverParam);
-        const worldExists = Object.values(worlds).some(w => w && w.name === serverParam);
-        
-        if (dcExists || worldExists) {
-          // Valid server from URL - call the callback to apply it
-          onServerOptionChange(serverParam);
-        }
-      }
-      
-      initServerAppliedRef.current = true;
+    if (isInitializingFromURLRef.current) {
+      return;
     }
-  }, [isServerDataLoaded, datacenters, worlds, searchParams, onServerOptionChange]);
 
-  // Update URL when server option changes
-  useEffect(() => {
-    if (selectedServerOption && initServerAppliedRef.current) {
-      // Update URL to include current server selection
-      setSearchParams(prev => {
-        const newParams = new URLSearchParams(prev);
-        newParams.set('server', selectedServerOption);
-        return newParams;
-      }, { replace: false });
+    const currentURLKey = `${location.pathname}?${location.search}`;
+    
+    // Skip if we've already processed this exact URL
+    if (lastProcessedURLRef.current === currentURLKey) {
+      return;
     }
-  }, [selectedServerOption, setSearchParams]);
+
+    const ilvlParam = searchParams.get('ilvl');
+    const categoryParam = searchParams.get('category');
+
+    // If we have URL parameters, restore state
+    if (ilvlParam) {
+      const numValue = parseInt(ilvlParam, 10);
+      if (!isNaN(numValue) && numValue >= 1 && numValue <= 999) {
+        isInitializingFromURLRef.current = true;
+        setIlvlInput(ilvlParam);
+        
+        // Set validation state
+        const itemsWithIlvl = Object.entries(ilvlsData).filter(
+          ([_, ilvl]) => ilvl === numValue
+        );
+        if (itemsWithIlvl.length > 0) {
+          setIlvlInputValidation({
+            valid: true,
+            message: `找到 ${itemsWithIlvl.length} 個物品`
+          });
+        }
+        
+        // Restore category if present
+        if (categoryParam) {
+          setSelectedEquipCategory(categoryParam);
+        } else {
+          setSelectedEquipCategory(null);
+        }
+        
+        lastProcessedURLRef.current = currentURLKey;
+      }
+    } else {
+      lastProcessedURLRef.current = currentURLKey;
+    }
+  }, [location.pathname, location.search, searchParams]);
+
+  // Auto-search when state is restored from URL
+  const [shouldAutoSearch, setShouldAutoSearch] = useState(false);
+  const handleSearchLocalRef = useRef(null);
+  
+  useEffect(() => {
+    const ilvlParam = searchParams.get('ilvl');
+    if (ilvlParam && isInitializingFromURLRef.current && ilvlInput === ilvlParam && ilvlInputValidation?.valid && isServerDataLoaded) {
+      // State has been restored, now trigger search
+      isInitializingFromURLRef.current = false;
+      setShouldAutoSearch(true);
+    }
+  }, [ilvlInput, ilvlInputValidation, searchParams, isServerDataLoaded]);
+
+  // Trigger search when auto-search flag is set
+  useEffect(() => {
+    if (shouldAutoSearch && ilvlInput && ilvlInputValidation?.valid && isServerDataLoaded && handleSearchLocalRef.current) {
+      setShouldAutoSearch(false);
+      // Use setTimeout to ensure state is fully updated
+      setTimeout(() => {
+        if (handleSearchLocalRef.current) {
+          handleSearchLocalRef.current();
+        }
+      }, 100);
+    }
+  }, [shouldAutoSearch, ilvlInput, ilvlInputValidation, isServerDataLoaded]);
 
   // Get unique item level values for the dropdown
   const uniqueILevels = useMemo(() => {
@@ -184,6 +229,32 @@ export default function MSQPriceChecker({
     }
   }, []);
 
+  // Helper function to check if an item matches any of the provided categories
+  const itemMatchesAnyCategory = useCallback((itemId) => {
+    const equipInfo = equipmentData[itemId.toString()];
+    if (!equipInfo || equipInfo.equipSlotCategory === undefined) return false;
+    
+    const categoryId = equipInfo.equipSlotCategory;
+    const categorySlots = equipSlotCategoriesData[categoryId.toString()];
+    
+    if (!categorySlots) return false;
+    
+    // Check if the item matches any of the categories we provide
+    return equipmentCategories.some(category => {
+      if (category.name === 'Rings') {
+        // Check for FingerL or FingerR
+        return categorySlots['FingerL'] === 1 || categorySlots['FingerL'] === -1 ||
+               categorySlots['FingerR'] === 1 || categorySlots['FingerR'] === -1;
+      } else if (category.name === 'SoulCrystal') {
+        // Skip SoulCrystal
+        return false;
+      } else {
+        // Regular slot matching
+        return categorySlots[category.name] === 1 || categorySlots[category.name] === -1;
+      }
+    });
+  }, [equipmentCategories]);
+
   // Handle ilvl input change
   const handleIlvlInputChange = useCallback((value) => {
     setIlvlInput(value);
@@ -248,6 +319,25 @@ export default function MSQPriceChecker({
       return;
     }
 
+    // Update URL parameters to persist state using navigate for better history control
+    // Only update if params are different to avoid unnecessary history manipulation
+    const currentIlvl = searchParams.get('ilvl');
+    const currentCategory = searchParams.get('category');
+    const paramsChanged = currentIlvl !== ilvlInput || currentCategory !== (selectedEquipCategory || '');
+    
+    if (paramsChanged) {
+      const newSearchParams = new URLSearchParams();
+      newSearchParams.set('ilvl', ilvlInput);
+      if (selectedEquipCategory) {
+        newSearchParams.set('category', selectedEquipCategory);
+      } else {
+        newSearchParams.delete('category');
+      }
+      // Use navigate with replace: true to update current entry without creating new one
+      // This ensures proper browser history when navigating back from item pages
+      navigate(`/msq-price-checker?${newSearchParams.toString()}`, { replace: true });
+    }
+
     setSearchResults([]);
     setItemVelocities({});
     setItemAveragePrices({});
@@ -267,20 +357,23 @@ export default function MSQPriceChecker({
         return;
       }
 
-      addToast(`找到 ${itemIds.length} 個物品，正在過濾可交易物品...`, 'info');
-
-      // Filter by equipment category if selected
+      // Filter by equipment category
+      // If a specific category is selected, filter by that category
+      // If "全部分類" is selected (null), filter to only items that match any of our provided categories
       if (selectedEquipCategory) {
         itemIds = itemIds.filter(itemId => 
           itemMatchesEquipCategory(itemId, selectedEquipCategory)
         );
+      } else {
+        // When "全部分類" is selected, only show items that match at least one of our provided categories
+        itemIds = itemIds.filter(itemId => 
+          itemMatchesAnyCategory(itemId)
+        );
+      }
 
-        if (itemIds.length === 0) {
-          addToast('該裝備分類中沒有相符的物品', 'warning');
-          return;
-        }
-
-        addToast(`在該分類中找到 ${itemIds.length} 個物品`, 'info');
+      if (itemIds.length === 0) {
+        addToast('該裝備分類中沒有相符的物品', 'warning');
+        return;
       }
 
       // Filter out non-tradeable items using marketable API
@@ -291,8 +384,6 @@ export default function MSQPriceChecker({
         addToast('沒有可交易的物品', 'warning');
         return;
       }
-
-      addToast(`找到 ${tradeableItemIds.length} 個可交易物品，正在獲取物品信息...`, 'info');
 
       // Fetch item details for display
       const itemPromises = tradeableItemIds.map(id => getItemById(id));
@@ -445,153 +536,37 @@ export default function MSQPriceChecker({
       setItemRecentPurchases(allRecentPurchases);
       setItemTradability(allTradability);
       setIsLoadingVelocities(false);
-
-      addToast(`搜索完成！找到 ${itemsWithInfo.length} 個可交易物品`, 'success');
     } catch (error) {
       console.error('Search error:', error);
       addToast('搜索失敗，請稍後再試', 'error');
       setIsLoadingVelocities(false);
     }
-  }, [ilvlInput, selectedEquipCategory, selectedWorld, selectedServerOption, addToast, itemMatchesEquipCategory]);
+  }, [ilvlInput, selectedEquipCategory, selectedWorld, selectedServerOption, addToast, itemMatchesEquipCategory, itemMatchesAnyCategory, searchParams, setSearchParams]);
+
+  // Store handleSearchLocal in ref for auto-search
+  useEffect(() => {
+    handleSearchLocalRef.current = handleSearchLocal;
+  }, [handleSearchLocal]);
 
   const maxRange = 50;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
-      {/* Logo - Desktop */}
-      <button
-        onClick={() => navigate('/')}
-        className="fixed z-[60] mid:flex items-center justify-center hover:opacity-80 transition-opacity duration-200 cursor-pointer mid:top-4 mid:left-4 hidden mid:w-12 mid:h-12 bg-transparent border-none p-0"
-        title="返回主頁"
-      >
-        <img
-          src="/logo.png"
-          alt="返回主頁"
-          className="w-full h-full object-contain pointer-events-none transition-all duration-200"
-          style={isServerDataLoaded ? {
-            filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.4))',
-            opacity: 1
-          } : {
-            opacity: 0.5
-          }}
-        />
-      </button>
-
-      {/* Fixed Search Bar - Top Row */}
-      <div className="fixed top-2 left-0 right-0 mid:top-4 mid:right-auto z-50 px-1.5 mid:px-0 mid:left-20 py-1 mid:py-0 mid:w-auto">
-        <div className="relative flex items-center gap-1.5 mid:gap-3">
-          {/* Mobile Logo */}
-          <button
-            onClick={() => navigate('/')}
-            className="mid:hidden flex-shrink-0 flex items-center justify-center w-9 h-9 hover:opacity-80 transition-opacity duration-200 cursor-pointer bg-transparent border-none p-0"
-            title="返回主頁"
-          >
-            <img
-              src="/logo.png"
-              alt="返回主頁"
-              className="w-full h-full object-contain pointer-events-none transition-all duration-200"
-              style={isServerDataLoaded ? {
-                filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.4))',
-                opacity: 1
-              } : {
-                opacity: 0.5
-              }}
-            />
-          </button>
-
-          {/* Search Bar */}
-          <div className="min-w-0 h-9 mid:h-12 flex-1 mid:flex-initial mid:w-[420px] detail:w-[520px] min-w-[100px]">
-            <SearchBar 
-              onSearch={onSearch} 
-              isLoading={isSearching}
-              value={searchText}
-              onChange={setSearchText}
-              disabled={!isServerDataLoaded}
-              disabledTooltip={!isServerDataLoaded ? '請等待伺服器資料載入完成' : undefined}
-              selectedDcName={selectedWorld?.section}
-              onItemSelect={onItemSelect}
-            />
-          </div>
-
-          {/* History Button */}
-          <div className="flex-shrink-0">
-            <button
-              onClick={() => navigate('/history')}
-              className="bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors px-2 mid:px-3 detail:px-4 h-9 mid:h-12 gap-1.5 mid:gap-2 hover:border-ffxiv-gold/50"
-              title="歷史記錄"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-4 w-4 mid:h-5 mid:w-5 text-ffxiv-gold" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
-                />
-              </svg>
-              <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">歷史</span>
-              <span className="text-xs font-semibold text-ffxiv-gold mid:hidden">記</span>
-            </button>
-          </div>
-
-          {/* Crafting Job Price Checker Button */}
-          <div className="flex-shrink-0">
-            <button
-              onClick={() => navigate('/ultimate-price-king')}
-              className="bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors px-2 mid:px-3 detail:px-4 h-9 mid:h-12 gap-1.5 mid:gap-2 hover:border-ffxiv-gold/50"
-              title="製造職找價"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-4 w-4 mid:h-5 mid:w-5 text-ffxiv-gold" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
-                />
-              </svg>
-              <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">製造職</span>
-              <span className="text-xs font-semibold text-ffxiv-gold mid:hidden">職</span>
-            </button>
-          </div>
-
-          {/* MSQ Equipment Price Checker Button - Active */}
-          <div className="flex-shrink-0">
-            <button
-              onClick={() => navigate('/msq-price-checker')}
-              className="bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-ffxiv-gold/70 rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors px-2 mid:px-3 detail:px-4 h-9 mid:h-12 gap-1.5 mid:gap-2 shadow-[0_0_10px_rgba(212,175,55,0.3)]"
-              title="主線裝備查價"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-4 w-4 mid:h-5 mid:w-5 text-ffxiv-gold" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
-                />
-              </svg>
-              <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">主線裝備</span>
-              <span className="text-xs font-semibold text-ffxiv-gold mid:hidden">裝備</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <TopBar
+        onSearch={onSearch}
+        isSearching={isSearching}
+        searchText={searchText}
+        setSearchText={setSearchText}
+        isServerDataLoaded={isServerDataLoaded}
+        selectedDcName={selectedWorld?.section}
+        onItemSelect={onItemSelect}
+        showNavigationButtons={true}
+        activePage="msq-price-checker"
+        onMSQPriceCheckerClick={() => {
+          setSearchText('');
+          navigate('/msq-price-checker');
+        }}
+      />
 
       {/* Toast Notifications */}
       <div className="fixed right-2 mid:right-4 left-2 mid:left-auto z-50 space-y-2 max-w-sm mid:max-w-none top-[60px] mid:top-4">
@@ -694,6 +669,7 @@ export default function MSQPriceChecker({
                   selectedServerOption={selectedServerOption}
                   onServerOptionChange={onServerOptionChange}
                   serverOptions={serverOptions}
+                  disabled={isLoadingVelocities}
                 />
               </div>
             )}
@@ -734,12 +710,26 @@ export default function MSQPriceChecker({
               <ItemTable
                 items={searchResults}
                 onSelect={(item) => {
-                  const params = new URLSearchParams();
-                  params.append('server', selectedServerOption);
-                  params.append('world', selectedWorld?.name || '');
-                  params.append('dc', selectedWorld?.section || '');
-                  const url = `${window.location.origin}/item/${item.id}?${params.toString()}`;
-                  window.open(url, '_blank', 'noopener,noreferrer');
+                  if (onItemSelect) {
+                    // Prepare navigation URL with server param
+                    const params = new URLSearchParams();
+                    if (selectedServerOption) {
+                      params.set('server', selectedServerOption);
+                    }
+                    const queryString = params.toString();
+                    const itemUrl = `/item/${item.id}${queryString ? '?' + queryString : ''}`;
+                    
+                    // Call onItemSelect which will navigate to /item/${item.id} (without server param)
+                    onItemSelect(item);
+                    
+                    // Immediately replace that navigation with our URL that includes server param
+                    // This ensures only one history entry is created
+                    requestAnimationFrame(() => {
+                      requestAnimationFrame(() => {
+                        navigate(itemUrl, { replace: true });
+                      });
+                    });
+                  }
                 }}
                 selectedItem={null}
                 marketableItems={marketableItems}
