@@ -1,6 +1,5 @@
 // Crafting Tree component - displays a vertical crafting price tree
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import ItemImage from './ItemImage';
 import { getItemById } from '../services/itemDatabase';
 import { getAggregatedMarketData } from '../services/universalis';
@@ -597,7 +596,6 @@ export default function CraftingTree({
   worlds = {},
   onItemSelect,
 }) {
-  const navigate = useNavigate();
   const [itemNames, setItemNames] = useState({});
   const [itemPrices, setItemPrices] = useState({});
   const [queriedItemIds, setQueriedItemIds] = useState(new Set());
@@ -722,7 +720,7 @@ export default function CraftingTree({
     fetchPrices();
   }, [tree, selectedServerOption, worlds, getAllItemIds]);
 
-  // Handle item click - navigate to item page
+  // Handle item click - open item page in new tab
   const handleItemClick = useCallback((itemId) => {
     if (onItemSelect) {
       // Use the callback if provided
@@ -730,13 +728,17 @@ export default function CraftingTree({
         if (item) {
           onItemSelect(item);
         } else {
-          navigate(`/item/${itemId}`);
+          // Open in new tab
+          const url = `${window.location.origin}/item/${itemId}`;
+          window.open(url, '_blank', 'noopener,noreferrer');
         }
       });
     } else {
-      navigate(`/item/${itemId}`);
+      // Open in new tab
+      const url = `${window.location.origin}/item/${itemId}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
-  }, [navigate, onItemSelect]);
+  }, [onItemSelect]);
 
   // Calculate optimal path for highlighting
   const { optimalPathMap, isCraftingCheaper } = useMemo(() => {

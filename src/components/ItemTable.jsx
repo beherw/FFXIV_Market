@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react';
 import ItemImage from './ItemImage';
 
-export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, averagePriceHeader = '全服平均價格' }) {
+export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities }) {
   const [sortColumn, setSortColumn] = useState(null);
   const [sortDirection, setSortDirection] = useState('asc'); // 'asc' or 'desc'
 
@@ -201,7 +201,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
               onClick={() => handleSort('averagePrice')}
             >
               <div className="flex items-center gap-1">
-                {averagePriceHeader}
+                全服平均價格
                 {isLoadingVelocities ? (
                   <div className="animate-spin rounded-full h-2.5 w-2.5 border-b border-ffxiv-gold"></div>
                 ) : (

@@ -201,3 +201,33 @@ export function getAllItemIds(tree) {
   traverse(tree);
   return Array.from(ids);
 }
+
+/**
+ * Find all items that use this item as an ingredient
+ * @param {number} itemId - The ingredient item ID to search for
+ * @returns {Promise<Array<number>>} - Array of unique result item IDs that use this item as ingredient
+ */
+export async function findRelatedItems(itemId) {
+  if (!itemId || itemId <= 0) {
+    return [];
+  }
+
+  const { recipes } = await loadRecipeDatabase();
+  const relatedItemIds = new Set();
+
+  // Search through all recipes
+  recipes.forEach(recipe => {
+    if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
+      // Check if this item is in the ingredients
+      const isIngredient = recipe.ingredients.some(
+        ingredient => ingredient.id === itemId
+      );
+      
+      if (isIngredient && recipe.result) {
+        relatedItemIds.add(recipe.result);
+      }
+    }
+  });
+
+  return Array.from(relatedItemIds);
+}

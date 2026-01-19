@@ -15,8 +15,9 @@ import HistorySection from './components/HistorySection';
 import { addItemToHistory } from './utils/itemHistory';
 import { useHistory } from './hooks/useHistory';
 import CraftingTree from './components/CraftingTree';
-import { hasRecipe, buildCraftingTree } from './services/recipeDatabase';
+import { hasRecipe, buildCraftingTree, findRelatedItems } from './services/recipeDatabase';
 import UltimatePriceKing from './components/UltimatePriceKing';
+import RelatedItems from './components/RelatedItems';
 
 function App() {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ function App() {
   const [worlds, setWorlds] = useState({});
   const [isLoadingDB, setIsLoadingDB] = useState(true);
   const [isServerDataLoaded, setIsServerDataLoaded] = useState(false);
+  const [isLoadingItemFromURL, setIsLoadingItemFromURL] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [toasts, setToasts] = useState([]);
   const [rateLimitMessage, setRateLimitMessage] = useState(null);
@@ -53,6 +55,11 @@ function App() {
   const [hasCraftingRecipe, setHasCraftingRecipe] = useState(false);
   const [isCraftingTreeExpanded, setIsCraftingTreeExpanded] = useState(false);
   const [isLoadingCraftingTree, setIsLoadingCraftingTree] = useState(false);
+  
+  // Related items states
+  const [hasRelatedItems, setHasRelatedItems] = useState(false);
+  const [isRelatedItemsExpanded, setIsRelatedItemsExpanded] = useState(false);
+  const [isLoadingRelatedItems, setIsLoadingRelatedItems] = useState(false);
   
   // Marketable items and velocity states
   const [marketableItems, setMarketableItems] = useState(null);
@@ -409,8 +416,8 @@ function App() {
       velocityFetchInProgressRef.current = false;
     }
     
-    // Reset state if no search results
-    if (!searchResults || searchResults.length === 0) {
+    // Reset state if no search results or no server selected
+    if (!searchResults || searchResults.length === 0 || !selectedServerOption || !selectedWorld) {
       setSearchVelocities({});
       setSearchAveragePrices({});
       setSearchMinListings({});
@@ -437,11 +444,13 @@ function App() {
       return;
     }
 
-    // Create a stable key from item IDs to detect if items actually changed
+    // Create a stable key from item IDs and server option to detect if items or server changed
     const itemIdsKey = [...allItemIds].sort((a, b) => a - b).join(',');
+    const serverKey = `${selectedServerOption}`;
+    const cacheKey = `${itemIdsKey}|${serverKey}`;
     
-    // Skip if already fetching or if items haven't changed
-    if (velocityFetchInProgressRef.current || lastFetchedItemIdsRef.current === itemIdsKey) {
+    // Skip if already fetching or if items and server haven't changed
+    if (velocityFetchInProgressRef.current || lastFetchedItemIdsRef.current === cacheKey) {
       return;
     }
 
@@ -454,8 +463,12 @@ function App() {
     const fetchData = async () => {
       setIsLoadingVelocities(true);
       try {
-        // Use DC name for query (陸行鳥 is the Chinese DC)
-        const dcName = '陸行鳥';
+        // Determine if we're querying DC or world
+        const isDCQuery = selectedServerOption === selectedWorld.section;
+        // When world is selected, use world ID; when DC is selected, use DC name
+        const queryTarget = isDCQuery 
+          ? selectedWorld.section  // DC name
+          : selectedServerOption;   // World ID (number)
         
         // Batch requests if more than 100 items
         const batchSize = 100;
@@ -476,7 +489,7 @@ function App() {
           const itemIdsString = batch.join(',');
           
           try {
-            const response = await fetch(`https://universalis.app/api/v2/aggregated/${encodeURIComponent(dcName)}/${itemIdsString}`, {
+            const response = await fetch(`https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`, {
               signal: abortSignal
             });
             
@@ -491,49 +504,65 @@ function App() {
               data.results.forEach(item => {
                 const itemId = item.itemId;
                 
-                // Get region velocity - compare NQ and HQ, pick higher
-                const nqVelocity = item.nq?.dailySaleVelocity?.region?.quantity;
-                const hqVelocity = item.hq?.dailySaleVelocity?.region?.quantity;
-                let velocity = null;
-                if (nqVelocity !== undefined || hqVelocity !== undefined) {
-                  velocity = Math.max(nqVelocity || 0, hqVelocity || 0);
-                }
+                // Helper function to get value preferring world over dc
+                const getValue = (nqData, hqData, field) => {
+                  // For world queries, prefer world value, fallback to dc
+                  // For DC queries, use dc value
+                  const nqWorld = nqData?.world?.[field];
+                  const hqWorld = hqData?.world?.[field];
+                  const nqDc = nqData?.dc?.[field];
+                  const hqDc = hqData?.dc?.[field];
+                  
+                  // Prefer world values if they exist, otherwise use dc
+                  const nqValue = nqWorld !== undefined ? nqWorld : nqDc;
+                  const hqValue = hqWorld !== undefined ? hqWorld : hqDc;
+                  
+                  // Compare NQ and HQ, return the appropriate value based on field type
+                  if (field === 'quantity') {
+                    // For velocity, add NQ and HQ together (use whichever is available)
+                    if (nqValue !== undefined || hqValue !== undefined) {
+                      return (nqValue || 0) + (hqValue || 0);
+                    }
+                  } else {
+                    // For prices, pick lower (cheaper)
+                    if (nqValue !== undefined && hqValue !== undefined) {
+                      return Math.min(nqValue, hqValue);
+                    } else if (hqValue !== undefined) {
+                      return hqValue;
+                    } else if (nqValue !== undefined) {
+                      return nqValue;
+                    }
+                  }
+                  return null;
+                };
                 
-                // Get region average price - compare NQ and HQ, pick lower
-                const nqAvgPrice = item.nq?.averageSalePrice?.region?.price;
-                const hqAvgPrice = item.hq?.averageSalePrice?.region?.price;
-                let averagePrice = null;
-                if (nqAvgPrice !== undefined && hqAvgPrice !== undefined) {
-                  averagePrice = Math.min(nqAvgPrice, hqAvgPrice);
-                } else if (hqAvgPrice !== undefined) {
-                  averagePrice = hqAvgPrice;
-                } else if (nqAvgPrice !== undefined) {
-                  averagePrice = nqAvgPrice;
-                }
+                // Get velocity - compare NQ and HQ, pick higher, prefer world over dc
+                const velocity = getValue(
+                  item.nq?.dailySaleVelocity,
+                  item.hq?.dailySaleVelocity,
+                  'quantity'
+                );
                 
-                // Get region min listing - compare NQ and HQ, pick lower
-                const nqMinListing = item.nq?.minListing?.region?.price;
-                const hqMinListing = item.hq?.minListing?.region?.price;
-                let minListing = null;
-                if (nqMinListing !== undefined && hqMinListing !== undefined) {
-                  minListing = Math.min(nqMinListing, hqMinListing);
-                } else if (hqMinListing !== undefined) {
-                  minListing = hqMinListing;
-                } else if (nqMinListing !== undefined) {
-                  minListing = nqMinListing;
-                }
+                // Get average price - compare NQ and HQ, pick lower (cheaper), prefer world over dc
+                const averagePrice = getValue(
+                  item.nq?.averageSalePrice,
+                  item.hq?.averageSalePrice,
+                  'price'
+                );
                 
-                // Get region recent purchase - compare NQ and HQ, pick lower
-                const nqRecentPurchase = item.nq?.recentPurchase?.region?.price;
-                const hqRecentPurchase = item.hq?.recentPurchase?.region?.price;
-                let recentPurchase = null;
-                if (nqRecentPurchase !== undefined && hqRecentPurchase !== undefined) {
-                  recentPurchase = Math.min(nqRecentPurchase, hqRecentPurchase);
-                } else if (hqRecentPurchase !== undefined) {
-                  recentPurchase = hqRecentPurchase;
-                } else if (nqRecentPurchase !== undefined) {
-                  recentPurchase = nqRecentPurchase;
-                }
+                // Get min listing - compare NQ and HQ, pick lower, prefer world over dc
+                const minListing = getValue(
+                  item.nq?.minListing,
+                  item.hq?.minListing,
+                  'price'
+                );
+                
+                // Get recent purchase - compare NQ and HQ, pick lower, prefer world over dc
+                const recentPurchase = getValue(
+                  item.nq?.recentPurchase,
+                  item.hq?.recentPurchase,
+                  'price'
+                );
                 
                 if (velocity !== null && velocity !== undefined) {
                   allVelocities[itemId] = velocity;
@@ -581,7 +610,7 @@ function App() {
           // Mark fetch as complete - items have been fetched successfully
           velocityFetchInProgressRef.current = false;
           // Remember that we've fetched these items (don't refetch unless they change)
-          lastFetchedItemIdsRef.current = itemIdsKey;
+          lastFetchedItemIdsRef.current = cacheKey;
         } else {
           // Request was superseded, reset the in-progress flag
           velocityFetchInProgressRef.current = false;
@@ -614,7 +643,7 @@ function App() {
         velocityFetchAbortControllerRef.current.abort();
       }
     };
-  }, [searchResults]);
+  }, [searchResults, selectedServerOption, selectedWorld]);
 
   // Reset scroll position on mount and route changes
   useEffect(() => {
@@ -626,6 +655,22 @@ function App() {
   // Initialize from URL on mount and when URL changes
   // SIMPLIFIED: History page now uses useHistory hook, no complex protection needed
   useEffect(() => {
+    // Extract itemId early to check if we need to wait for server data
+    let itemId = params.id;
+    if (!itemId && location.pathname.startsWith('/item/')) {
+      const match = location.pathname.match(/^\/item\/(\d+)$/);
+      if (match) {
+        itemId = match[1];
+      }
+    }
+    
+    // If we're on an item page but server data isn't loaded yet, set loading state
+    // This prevents showing the home page while waiting
+    if (itemId && !isServerDataLoaded) {
+      setIsLoadingItemFromURL(true);
+      return;
+    }
+    
     if (!isServerDataLoaded || isInitializingFromURLRef.current) {
       return;
     }
@@ -638,14 +683,10 @@ function App() {
     }
 
     isInitializingFromURLRef.current = true;
-
-    // Extract itemId from params.id or pathname
-    let itemId = params.id;
-    if (!itemId && location.pathname.startsWith('/item/')) {
-      const match = location.pathname.match(/^\/item\/(\d+)$/);
-      if (match) {
-        itemId = match[1];
-      }
+    
+    // Clear loading state if it was set
+    if (isLoadingItemFromURL) {
+      setIsLoadingItemFromURL(false);
     }
 
     // Handle history page - just clear selectedItem and let useHistory hook handle the data
@@ -676,20 +717,26 @@ function App() {
             setSelectedItem(foundItem);
             selectedItemRef.current = foundItem;
           } else {
+            // Set loading state to prevent showing home page
+            setIsLoadingItemFromURL(true);
             getItemById(id)
               .then(item => {
                 if (lastProcessedURLRef.current !== currentURLKey) {
+                  setIsLoadingItemFromURL(false);
                   return;
                 }
                 if (item) {
                   setSelectedItem(item);
                   selectedItemRef.current = item;
+                  setIsLoadingItemFromURL(false);
                 } else {
+                  setIsLoadingItemFromURL(false);
                   addToast('找不到該物品', 'error');
                   navigate('/');
                 }
               })
               .catch(error => {
+                setIsLoadingItemFromURL(false);
                 if (lastProcessedURLRef.current !== currentURLKey) {
                   return;
                 }
@@ -1215,6 +1262,8 @@ function App() {
       setCraftingTree(null);
       setHasCraftingRecipe(false);
       setIsCraftingTreeExpanded(false);
+      setHasRelatedItems(false);
+      setIsRelatedItemsExpanded(false);
       return;
     }
 
@@ -1240,6 +1289,21 @@ function App() {
         setHasCraftingRecipe(false);
         setCraftingTree(null);
         setIsLoadingCraftingTree(false);
+      });
+
+    // Check if item is used as ingredient in any recipe
+    setIsLoadingRelatedItems(true);
+    setIsRelatedItemsExpanded(false);
+    
+    findRelatedItems(selectedItem.id)
+      .then(ids => {
+        setHasRelatedItems(ids.length > 0);
+        setIsLoadingRelatedItems(false);
+      })
+      .catch(error => {
+        console.error('Failed to check related items:', error);
+        setHasRelatedItems(false);
+        setIsLoadingRelatedItems(false);
       });
   }, [selectedItem]);
 
@@ -1583,6 +1647,41 @@ function App() {
           {/* Search Results (not on history page) */}
           {!isOnHistoryPage && searchResults.length > 0 && !selectedItem && (
             <div className="mb-6">
+              {/* Search Results Header */}
+              <div className="flex items-center gap-3 mb-4 flex-wrap">
+                <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold">
+                  搜索結果 ({searchResults.length} 個物品)
+                </h2>
+                {selectedWorld && selectedServerOption && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm">
+                    <div className="w-1.5 h-1.5 rounded-full bg-ffxiv-gold animate-pulse"></div>
+                    <span className="text-xs sm:text-sm font-semibold text-ffxiv-gold">
+                      {selectedServerOption === selectedWorld.section 
+                        ? `${selectedWorld.section} (全服)`
+                        : worlds[selectedServerOption] || `伺服器 ${selectedServerOption}`
+                      }
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Server Selector for Search Results */}
+              {selectedWorld && (
+                <div className="mb-4 flex items-center gap-3 flex-wrap">
+                  <label className="text-sm font-semibold text-ffxiv-gold whitespace-nowrap">
+                    伺服器選擇:
+                  </label>
+                  <ServerSelector
+                    datacenters={datacenters}
+                    worlds={worlds}
+                    selectedWorld={selectedWorld}
+                    onWorldChange={setSelectedWorld}
+                    selectedServerOption={selectedServerOption}
+                    onServerOptionChange={handleServerOptionChange}
+                    serverOptions={serverOptions}
+                  />
+                </div>
+              )}
               <ItemTable
                 items={searchResults}
                 onSelect={handleItemSelect}
@@ -1594,6 +1693,7 @@ function App() {
                 itemRecentPurchases={searchRecentPurchases}
                 itemTradability={searchTradability}
                 isLoadingVelocities={isLoadingVelocities}
+                averagePriceHeader={selectedServerOption === selectedWorld?.section ? '全服平均價格' : '平均價格'}
               />
             </div>
           )}
@@ -1762,6 +1862,43 @@ function App() {
                     )}
                     <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">製作價格樹</span>
                   </button>
+
+                  {/* Related Items Button */}
+                  <button
+                    onClick={() => setIsRelatedItemsExpanded(!isRelatedItemsExpanded)}
+                    disabled={!hasRelatedItems || isLoadingRelatedItems}
+                    className={`
+                      flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300
+                      ${hasRelatedItems && !isLoadingRelatedItems
+                        ? isRelatedItemsExpanded
+                          ? 'bg-gradient-to-r from-amber-900/60 via-yellow-800/50 to-orange-900/60 border border-ffxiv-gold/60 text-ffxiv-gold'
+                          : 'bg-gradient-to-r from-purple-900/50 via-indigo-900/40 to-purple-900/50 border border-purple-400/40 text-purple-200 hover:text-ffxiv-gold hover:border-ffxiv-gold/50'
+                        : 'bg-slate-800/30 border border-slate-600/20 text-gray-600 cursor-not-allowed'
+                      }
+                    `}
+                    title={
+                      isLoadingRelatedItems 
+                        ? '載入中...' 
+                        : hasRelatedItems 
+                          ? (isRelatedItemsExpanded ? '收起相關物品' : '展開相關物品')
+                          : '此物品未被用作材料'
+                    }
+                  >
+                    {isLoadingRelatedItems ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-400/30 border-t-purple-400"></div>
+                    ) : (
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isRelatedItemsExpanded ? 'rotate-90' : ''}`}
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                    )}
+                    <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">相關物品</span>
+                  </button>
                 </div>
               </div>
 
@@ -1773,6 +1910,14 @@ function App() {
                   selectedWorld={selectedWorld}
                   worlds={worlds}
                   onItemSelect={handleItemSelect}
+                />
+              )}
+
+              {/* Related Items - Expandable */}
+              {isRelatedItemsExpanded && hasRelatedItems && (
+                <RelatedItems
+                  itemId={selectedItem?.id}
+                  onItemClick={handleItemSelect}
                 />
               )}
 
@@ -1853,8 +1998,31 @@ function App() {
             </div>
           )}
 
+          {/* Loading Item from URL - Show loading state instead of home page */}
+          {(() => {
+            const isOnItemPage = location.pathname.startsWith('/item/');
+            // Show loading if explicitly loading OR if on item page but item not loaded yet
+            const shouldShowLoading = (isLoadingItemFromURL || (isOnItemPage && !selectedItem && !isOnHistoryPage && location.pathname !== '/ultimate-price-king'));
+            return shouldShowLoading && (
+              <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-12 text-center">
+                <div className="relative inline-block">
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold mx-auto"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="h-6 w-6 bg-ffxiv-gold/20 rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+                <p className="mt-4 text-sm text-gray-400 animate-pulse">正在載入物品...</p>
+              </div>
+            );
+          })()}
+
           {/* Empty State - Show welcome content before search (not on history page) */}
-          {!selectedItem && searchResults.length === 0 && !isSearching && !isOnHistoryPage && (
+          {(() => {
+            // Check if we're on an item page path - if so, don't show home page even if item isn't loaded yet
+            const isOnItemPage = location.pathname.startsWith('/item/');
+            // Don't show home page if we're loading an item from URL or if we're on an item page path
+            return !selectedItem && searchResults.length === 0 && !isSearching && !isOnHistoryPage && !isLoadingItemFromURL && !isOnItemPage;
+          })() && (
             <div className="space-y-4 sm:space-y-8">
               {/* Welcome Section */}
               <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-8 relative z-10">

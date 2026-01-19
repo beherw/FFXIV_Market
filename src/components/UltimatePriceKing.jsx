@@ -306,9 +306,9 @@ export default function UltimatePriceKing({
                 
                 // Compare NQ and HQ, return the appropriate value based on field type
                 if (field === 'quantity') {
-                  // For velocity, pick higher
+                  // For velocity, add NQ and HQ together (use whichever is available)
                   if (nqValue !== undefined || hqValue !== undefined) {
-                    return Math.max(nqValue || 0, hqValue || 0);
+                    return (nqValue || 0) + (hqValue || 0);
                   }
                 } else {
                   // For prices, pick lower (cheaper)
@@ -534,7 +534,7 @@ export default function UltimatePriceKing({
               究極查價王
             </h1>
             <p className="text-gray-400 text-sm sm:text-base">
-              根據職業和物品等級範圍搜索可交易物品的市場數據
+              用來根據製作職業查找物價肥美的物品，掌控市場雷電。
             </p>
           </div>
 
@@ -669,7 +669,7 @@ export default function UltimatePriceKing({
             <ItemTable
               items={searchResults}
               onSelect={(item) => {
-                navigate(`/item/${item.id}`);
+                window.open(`/item/${item.id}`, '_blank', 'noopener,noreferrer');
               }}
               selectedItem={null}
               marketableItems={marketableItems}

@@ -77,13 +77,13 @@ export async function getItemsVelocity(dcName, itemIds, options = {}) {
         const itemId = item.itemId;
         tradableItemIds.add(itemId);
         
-        // Get DC velocity - compare NQ and HQ, pick higher
+        // Get DC velocity - add NQ and HQ together (use whichever is available)
         const nqVelocity = item.nq?.dailySaleVelocity?.dc?.quantity;
         const hqVelocity = item.hq?.dailySaleVelocity?.dc?.quantity;
         
         let velocity = null;
         if (nqVelocity !== undefined || hqVelocity !== undefined) {
-          velocity = Math.max(nqVelocity || 0, hqVelocity || 0);
+          velocity = (nqVelocity || 0) + (hqVelocity || 0);
         }
         
         // Get DC average price - compare NQ and HQ, pick lower (cheaper)
@@ -379,7 +379,7 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
           }
         }
 
-        // Get daily sale velocity - compare NQ and HQ, pick the higher one
+        // Get daily sale velocity - add NQ and HQ together (use whichever is available)
         let velocityWorld = null;
         let velocityDc = null;
         
@@ -388,14 +388,14 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
         const nqVelocityDc = item.nq?.dailySaleVelocity?.dc?.quantity;
         const hqVelocityDc = item.hq?.dailySaleVelocity?.dc?.quantity;
         
-        // Pick higher velocity between NQ and HQ for world
+        // Add NQ and HQ velocity together for world
         if (nqVelocityWorld !== undefined || hqVelocityWorld !== undefined) {
-          velocityWorld = Math.max(nqVelocityWorld || 0, hqVelocityWorld || 0);
+          velocityWorld = (nqVelocityWorld || 0) + (hqVelocityWorld || 0);
         }
         
-        // Pick higher velocity between NQ and HQ for DC
+        // Add NQ and HQ velocity together for DC
         if (nqVelocityDc !== undefined || hqVelocityDc !== undefined) {
-          velocityDc = Math.max(nqVelocityDc || 0, hqVelocityDc || 0);
+          velocityDc = (nqVelocityDc || 0) + (hqVelocityDc || 0);
         }
 
         if (bestPrice !== null) {
