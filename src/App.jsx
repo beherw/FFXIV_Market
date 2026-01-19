@@ -1335,6 +1335,10 @@ function App() {
         serverOptions={selectedWorld && selectedWorld.dcObj ? [selectedWorld.section, ...selectedWorld.dcObj.worlds] : []}
         isServerDataLoaded={isServerDataLoaded}
         onItemSelect={handleItemSelect}
+        onSearch={handleSearch}
+        searchText={searchText}
+        setSearchText={setSearchText}
+        isSearching={isSearching}
       />
     );
   }
