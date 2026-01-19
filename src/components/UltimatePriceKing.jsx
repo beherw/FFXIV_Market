@@ -1,4 +1,4 @@
-// Ultimate Price King (究極查價王) - Secret page for advanced market search
+// Crafting Job Price Checker (製造職找價) - Find profitable items to craft
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toast from './Toast';
@@ -12,7 +12,7 @@ import { getItemById } from '../services/itemDatabase';
 import axios from 'axios';
 import twJobAbbrData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json';
 
-export default function UltimatePriceKing({ 
+export default function CraftingJobPriceChecker({ 
   addToast, 
   removeToast, 
   toasts,
@@ -531,7 +531,7 @@ export default function UltimatePriceKing({
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-3xl sm:text-4xl font-bold text-ffxiv-gold mb-2">
-              究極查價王
+              製造職找價
             </h1>
             <p className="text-gray-400 text-sm sm:text-base">
               用來根據製作職業查找物價肥美的物品，掌控市場雷電。

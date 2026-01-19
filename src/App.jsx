@@ -16,7 +16,8 @@ import { addItemToHistory } from './utils/itemHistory';
 import { useHistory } from './hooks/useHistory';
 import CraftingTree from './components/CraftingTree';
 import { hasRecipe, buildCraftingTree, findRelatedItems } from './services/recipeDatabase';
-import UltimatePriceKing from './components/UltimatePriceKing';
+import CraftingJobPriceChecker from './components/UltimatePriceKing';
+import MSQPriceChecker from './components/MSQPriceChecker';
 import RelatedItems from './components/RelatedItems';
 
 function App() {
@@ -140,9 +141,10 @@ function App() {
   useEffect(() => {
     const isOnHistoryPage = location.pathname === '/history';
     const isOnUltimatePriceKingPage = location.pathname === '/ultimate-price-king';
+    const isOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
     
     // Only run on home page (empty state)
-    if (selectedItem || searchResults.length > 0 || isSearching || isOnHistoryPage || isOnUltimatePriceKingPage) {
+    if (selectedItem || searchResults.length > 0 || isSearching || isOnHistoryPage || isOnUltimatePriceKingPage || isOnMSQPriceCheckerPage) {
       if (imageIntervalRef.current) {
         clearInterval(imageIntervalRef.current);
         imageIntervalRef.current = null;
@@ -169,7 +171,8 @@ function App() {
       imageIntervalRef.current = setTimeout(() => {
         const currentIsOnHistoryPage = location.pathname === '/history';
         const currentIsOnUltimatePriceKingPage = location.pathname === '/ultimate-price-king';
-        if (!isManualMode && !selectedItem && searchResults.length === 0 && !isSearching && !currentIsOnHistoryPage && !currentIsOnUltimatePriceKingPage) {
+        const currentIsOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
+        if (!isManualMode && !selectedItem && searchResults.length === 0 && !isSearching && !currentIsOnHistoryPage && !currentIsOnUltimatePriceKingPage && !currentIsOnMSQPriceCheckerPage) {
           setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
           scheduleNext();
         } else {
@@ -926,8 +929,8 @@ function App() {
         setMarketHistory([]);
         setError(null);
         setRateLimitMessage(null);
-        // Don't navigate if we're on ultimate-price-king or history page
-        if (!skipNavigation && !currentItemId && location.pathname !== '/ultimate-price-king' && location.pathname !== '/history') {
+        // Don't navigate if we're on ultimate-price-king, msq-price-checker or history page
+        if (!skipNavigation && !currentItemId && location.pathname !== '/ultimate-price-king' && location.pathname !== '/msq-price-checker' && location.pathname !== '/history') {
           navigate('/');
         }
       }
@@ -962,8 +965,8 @@ function App() {
     setMarketHistory([]);
     setRateLimitMessage(null);
 
-    // Don't navigate if we're on ultimate-price-king or history page
-    if (!skipNavigation && location.pathname !== '/ultimate-price-king' && location.pathname !== '/history') {
+    // Don't navigate if we're on ultimate-price-king, msq-price-checker or history page
+    if (!skipNavigation && location.pathname !== '/ultimate-price-king' && location.pathname !== '/msq-price-checker' && location.pathname !== '/history') {
       navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`, { replace: false });
     }
 
@@ -1314,11 +1317,32 @@ function App() {
   // Determine what to show based on current route
   const isOnHistoryPage = location.pathname === '/history';
   const isOnUltimatePriceKingPage = location.pathname === '/ultimate-price-king';
+  const isOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
 
-  // Render secret page if on that route
+  // Render MSQ price checker if on that route
+  if (isOnMSQPriceCheckerPage) {
+    return (
+      <MSQPriceChecker
+        addToast={addToast}
+        removeToast={removeToast}
+        toasts={toasts}
+        datacenters={datacenters}
+        worlds={worlds}
+        selectedWorld={selectedWorld}
+        onWorldChange={setSelectedWorld}
+        selectedServerOption={selectedServerOption}
+        onServerOptionChange={handleServerOptionChange}
+        serverOptions={selectedWorld && selectedWorld.dcObj ? [selectedWorld.section, ...selectedWorld.dcObj.worlds] : []}
+        isServerDataLoaded={isServerDataLoaded}
+        onItemSelect={handleItemSelect}
+      />
+    );
+  }
+
+  // Render crafting job price checker if on that route
   if (isOnUltimatePriceKingPage) {
     return (
-      <UltimatePriceKing 
+      <CraftingJobPriceChecker 
         addToast={addToast} 
         removeToast={removeToast} 
         toasts={toasts}
@@ -1409,7 +1433,7 @@ function App() {
             <HistoryButton onItemSelect={handleItemSelect} />
           </div>
 
-          {/* Ultimate Price King Button - hidden on mobile for item info page (moves to second row) */}
+          {/* Crafting Job Price Checker Button - hidden on mobile for item info page (moves to second row) */}
           <div className={`flex-shrink-0 ${selectedItem ? 'hidden mid:block' : ''}`}>
             <button
               onClick={() => navigate('/ultimate-price-king')}
@@ -1418,7 +1442,7 @@ function App() {
                   ? 'border-ffxiv-gold/70 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
                   : 'border-purple-500/30 hover:border-ffxiv-gold/50'
               }`}
-              title="查價王"
+              title="製造職找價"
             >
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
@@ -1434,8 +1458,38 @@ function App() {
                   d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
                 />
               </svg>
-              <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">查價王</span>
-              <span className="text-xs font-semibold text-ffxiv-gold mid:hidden">查價</span>
+              <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">製造職</span>
+              <span className="text-xs font-semibold text-ffxiv-gold mid:hidden">職</span>
+            </button>
+          </div>
+
+          {/* MSQ Equipment Price Checker Button - hidden on mobile for item info page (moves to second row) */}
+          <div className={`flex-shrink-0 ${selectedItem ? 'hidden mid:block' : ''}`}>
+            <button
+              onClick={() => navigate('/msq-price-checker')}
+              className={`bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors px-2 mid:px-3 detail:px-4 h-9 mid:h-12 gap-1.5 mid:gap-2 ${
+                isOnMSQPriceCheckerPage 
+                  ? 'border-ffxiv-gold/70 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
+                  : 'border-purple-500/30 hover:border-ffxiv-gold/50'
+              }`}
+              title="主線裝備查價"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4 mid:h-5 mid:w-5 text-ffxiv-gold" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
+                />
+              </svg>
+              <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">主線裝備</span>
+              <span className="text-xs font-semibold text-ffxiv-gold mid:hidden">裝備</span>
             </button>
           </div>
         </div>
@@ -1454,7 +1508,7 @@ function App() {
           </div>
         )}
 
-        {/* Ultimate Price King Button - Mobile only in second row for item info page */}
+        {/* Crafting Job Price Checker Button - Mobile only in second row for item info page */}
         {selectedItem && (
           <div className="mid:hidden flex-shrink-0">
             <button
@@ -1464,7 +1518,7 @@ function App() {
                   ? 'border-ffxiv-gold/70 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
                   : 'border-purple-500/30 hover:border-ffxiv-gold/50'
               }`}
-              title="查價王"
+              title="製造職找價"
             >
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
@@ -1480,7 +1534,38 @@ function App() {
                   d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
                 />
               </svg>
-              <span className="text-xs font-semibold text-ffxiv-gold">查價</span>
+              <span className="text-xs font-semibold text-ffxiv-gold">職</span>
+            </button>
+          </div>
+        )}
+
+        {/* MSQ Equipment Price Checker Button - Mobile only in second row for item info page */}
+        {selectedItem && (
+          <div className="mid:hidden flex-shrink-0">
+            <button
+              onClick={() => navigate('/msq-price-checker')}
+              className={`bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors px-2 h-8 gap-1.5 ${
+                isOnMSQPriceCheckerPage 
+                  ? 'border-ffxiv-gold/70 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
+                  : 'border-purple-500/30 hover:border-ffxiv-gold/50'
+              }`}
+              title="主線裝備查價"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4 text-ffxiv-gold" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
+                />
+              </svg>
+              <span className="text-xs font-semibold text-ffxiv-gold">裝</span>
             </button>
           </div>
         )}
@@ -2002,7 +2087,7 @@ function App() {
           {(() => {
             const isOnItemPage = location.pathname.startsWith('/item/');
             // Show loading if explicitly loading OR if on item page but item not loaded yet
-            const shouldShowLoading = (isLoadingItemFromURL || (isOnItemPage && !selectedItem && !isOnHistoryPage && location.pathname !== '/ultimate-price-king'));
+            const shouldShowLoading = (isLoadingItemFromURL || (isOnItemPage && !selectedItem && !isOnHistoryPage && location.pathname !== '/ultimate-price-king' && location.pathname !== '/msq-price-checker'));
             return shouldShowLoading && (
               <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-12 text-center">
                 <div className="relative inline-block">
