@@ -101,8 +101,17 @@ export default function MSQPriceChecker({
       });
     });
     
-    // Sort by key
-    return Array.from(categories.values()).sort((a, b) => a.name.localeCompare(b.name));
+    // Custom order for equipment slots
+    const customOrder = ['MainHand', 'OffHand', 'Head', 'Body', 'Gloves', 'Legs', 'Feet', 'Ears', 'Neck', 'Wrists', 'Rings'];
+    
+    // Sort by custom order
+    return Array.from(categories.values()).sort((a, b) => {
+      const indexA = customOrder.indexOf(a.name);
+      const indexB = customOrder.indexOf(b.name);
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
   }, []);
 
   // Get job abbreviation to name mapping

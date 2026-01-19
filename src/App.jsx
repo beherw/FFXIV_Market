@@ -205,6 +205,14 @@ function App() {
     };
   }, []);
 
+  // Update document title based on selected item
+  useEffect(() => {
+    if (selectedItem && selectedItem.name) {
+      document.title = `${selectedItem.name}-貝爾市場`;
+    } else {
+      document.title = '貝爾的FFXIV市場小屋';
+    }
+  }, [selectedItem]);
 
   // Load data centers and worlds on mount
   useEffect(() => {
