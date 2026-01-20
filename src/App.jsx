@@ -23,6 +23,7 @@ import CraftingJobPriceChecker from './components/UltimatePriceKing';
 import MSQPriceChecker from './components/MSQPriceChecker';
 import RelatedItems from './components/RelatedItems';
 import TopBar from './components/TopBar';
+import NotFound from './components/NotFound';
 
 function App() {
   const navigate = useNavigate();
@@ -1241,9 +1242,9 @@ function App() {
     setMarketHistory([]);
     setRateLimitMessage(null);
 
-    // Navigate to search results page, except when explicitly skipping navigation or on history page
-    // Allow navigation from ultimate-price-king and msq-price-checker pages so search works
-    if (!skipNavigation && location.pathname !== '/history') {
+    // Navigate to search results page, except when explicitly skipping navigation
+    // Allow navigation from all pages including history, ultimate-price-king and msq-price-checker pages
+    if (!skipNavigation) {
       navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`, { replace: false });
     }
 
@@ -1608,6 +1609,30 @@ function App() {
   const isOnHistoryPage = location.pathname === '/history';
   const isOnUltimatePriceKingPage = location.pathname === '/ultimate-price-king';
   const isOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
+
+  // Check if current route is valid
+  const isValidRoute = () => {
+    const pathname = location.pathname;
+    // Valid routes: /, /history, /ultimate-price-king, /msq-price-checker, /item/:id, /search
+    if (pathname === '/' || 
+        pathname === '/history' || 
+        pathname === '/ultimate-price-king' || 
+        pathname === '/msq-price-checker' ||
+        pathname === '/search') {
+      return true;
+    }
+    // Check if it's an item page: /item/:id (where id is a number)
+    if (pathname.startsWith('/item/')) {
+      const match = pathname.match(/^\/item\/(\d+)$/);
+      return match !== null;
+    }
+    return false;
+  };
+
+  // Render 404 page if route is invalid
+  if (!isValidRoute()) {
+    return <NotFound />;
+  }
 
   // Render MSQ price checker if on that route
   if (isOnMSQPriceCheckerPage) {
