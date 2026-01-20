@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, Suspense, lazy } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useSearchParams, useParams, useLocation } from 'react-router-dom';
 import SearchBar from './components/SearchBar';
@@ -12,18 +12,20 @@ import { getMarketData, getMarketableItems, getItemsVelocity } from './services/
 import { containsChinese } from './utils/chineseConverter';
 import ItemImage from './components/ItemImage';
 import HistoryButton from './components/HistoryButton';
-import HistorySection from './components/HistorySection';
-import RecentUpdatesSection from './components/RecentUpdatesSection';
 import { addItemToHistory } from './utils/itemHistory';
 import { addSearchToHistory } from './utils/searchHistory';
 import { useHistory } from './hooks/useHistory';
-import CraftingTree from './components/CraftingTree';
 import { hasRecipe, buildCraftingTree, findRelatedItems } from './services/recipeDatabase';
-import CraftingJobPriceChecker from './components/UltimatePriceKing';
-import MSQPriceChecker from './components/MSQPriceChecker';
-import RelatedItems from './components/RelatedItems';
 import TopBar from './components/TopBar';
 import NotFound from './components/NotFound';
+
+// Lazy load route-based components
+const CraftingJobPriceChecker = lazy(() => import('./components/UltimatePriceKing'));
+const MSQPriceChecker = lazy(() => import('./components/MSQPriceChecker'));
+const CraftingTree = lazy(() => import('./components/CraftingTree'));
+const RelatedItems = lazy(() => import('./components/RelatedItems'));
+const HistorySection = lazy(() => import('./components/HistorySection'));
+const RecentUpdatesSection = lazy(() => import('./components/RecentUpdatesSection'));
 
 function App() {
   const navigate = useNavigate();
@@ -1637,48 +1639,60 @@ function App() {
   // Render MSQ price checker if on that route
   if (isOnMSQPriceCheckerPage) {
     return (
-      <MSQPriceChecker
-        addToast={addToast}
-        removeToast={removeToast}
-        toasts={toasts}
-        datacenters={datacenters}
-        worlds={worlds}
-        selectedWorld={selectedWorld}
-        onWorldChange={setSelectedWorld}
-        selectedServerOption={selectedServerOption}
-        onServerOptionChange={handleServerOptionChange}
-        serverOptions={selectedWorld && selectedWorld.dcObj ? [selectedWorld.section, ...selectedWorld.dcObj.worlds] : []}
-        isServerDataLoaded={isServerDataLoaded}
-        onItemSelect={handleItemSelect}
-        onSearch={handleSearch}
-        searchText={searchText}
-        setSearchText={setSearchText}
-        isSearching={isSearching}
-      />
+      <Suspense fallback={
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold"></div>
+        </div>
+      }>
+        <MSQPriceChecker
+          addToast={addToast}
+          removeToast={removeToast}
+          toasts={toasts}
+          datacenters={datacenters}
+          worlds={worlds}
+          selectedWorld={selectedWorld}
+          onWorldChange={setSelectedWorld}
+          selectedServerOption={selectedServerOption}
+          onServerOptionChange={handleServerOptionChange}
+          serverOptions={selectedWorld && selectedWorld.dcObj ? [selectedWorld.section, ...selectedWorld.dcObj.worlds] : []}
+          isServerDataLoaded={isServerDataLoaded}
+          onItemSelect={handleItemSelect}
+          onSearch={handleSearch}
+          searchText={searchText}
+          setSearchText={setSearchText}
+          isSearching={isSearching}
+        />
+      </Suspense>
     );
   }
 
   // Render crafting job price checker if on that route
   if (isOnUltimatePriceKingPage) {
     return (
-      <CraftingJobPriceChecker 
-        addToast={addToast} 
-        removeToast={removeToast} 
-        toasts={toasts}
-        datacenters={datacenters}
-        worlds={worlds}
-        selectedWorld={selectedWorld}
-        onWorldChange={setSelectedWorld}
-        selectedServerOption={selectedServerOption}
-        onServerOptionChange={handleServerOptionChange}
-        serverOptions={selectedWorld && selectedWorld.dcObj ? [selectedWorld.section, ...selectedWorld.dcObj.worlds] : []}
-        onSearch={handleSearch}
-        searchText={searchText}
-        setSearchText={setSearchText}
-        isSearching={isSearching}
-        isServerDataLoaded={isServerDataLoaded}
-        onItemSelect={handleItemSelect}
-      />
+      <Suspense fallback={
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold"></div>
+        </div>
+      }>
+        <CraftingJobPriceChecker 
+          addToast={addToast} 
+          removeToast={removeToast} 
+          toasts={toasts}
+          datacenters={datacenters}
+          worlds={worlds}
+          selectedWorld={selectedWorld}
+          onWorldChange={setSelectedWorld}
+          selectedServerOption={selectedServerOption}
+          onServerOptionChange={handleServerOptionChange}
+          serverOptions={selectedWorld && selectedWorld.dcObj ? [selectedWorld.section, ...selectedWorld.dcObj.worlds] : []}
+          onSearch={handleSearch}
+          searchText={searchText}
+          setSearchText={setSearchText}
+          isSearching={isSearching}
+          isServerDataLoaded={isServerDataLoaded}
+          onItemSelect={handleItemSelect}
+        />
+      </Suspense>
     );
   }
 
@@ -2090,21 +2104,35 @@ function App() {
 
               {/* Crafting Price Tree - Expandable */}
               {isCraftingTreeExpanded && craftingTree && (
-                <CraftingTree
-                  tree={craftingTree}
-                  selectedServerOption={selectedServerOption}
-                  selectedWorld={selectedWorld}
-                  worlds={worlds}
-                  onItemSelect={handleItemSelect}
-                />
+                <Suspense fallback={
+                  <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
+                    <p className="mt-4 text-sm text-gray-400">載入製作價格樹...</p>
+                  </div>
+                }>
+                  <CraftingTree
+                    tree={craftingTree}
+                    selectedServerOption={selectedServerOption}
+                    selectedWorld={selectedWorld}
+                    worlds={worlds}
+                    onItemSelect={handleItemSelect}
+                  />
+                </Suspense>
               )}
 
               {/* Related Items - Expandable */}
               {isRelatedItemsExpanded && hasRelatedItems && (
-                <RelatedItems
-                  itemId={selectedItem?.id}
-                  onItemClick={handleItemSelect}
-                />
+                <Suspense fallback={
+                  <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
+                    <p className="mt-4 text-sm text-gray-400">載入相關物品...</p>
+                  </div>
+                }>
+                  <RelatedItems
+                    itemId={selectedItem?.id}
+                    onItemClick={handleItemSelect}
+                  />
+                </Suspense>
               )}
 
               {/* Market Listings & History - Side by Side */}
@@ -2281,13 +2309,27 @@ function App() {
               </div>
 
               {/* History Items Section - Show on home page below welcome section */}
-              <HistorySection onItemSelect={handleItemSelect} />
+              <Suspense fallback={
+                <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
+                  <p className="mt-4 text-sm text-gray-400">載入歷史記錄...</p>
+                </div>
+              }>
+                <HistorySection onItemSelect={handleItemSelect} />
+              </Suspense>
               
               {/* Recent Updates Section - Show on home page below history section */}
-              <RecentUpdatesSection 
-                onItemSelect={handleItemSelect} 
-                selectedDcName={selectedWorld?.section}
-              />
+              <Suspense fallback={
+                <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
+                  <p className="mt-4 text-sm text-gray-400">載入最近更新...</p>
+                </div>
+              }>
+                <RecentUpdatesSection 
+                  onItemSelect={handleItemSelect} 
+                  selectedDcName={selectedWorld?.section}
+                />
+              </Suspense>
             </div>
           )}
         </div>
