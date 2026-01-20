@@ -1,7 +1,7 @@
 // Item database service - loads Traditional Chinese item data from local tw-items.json
 // Items are already in Traditional Chinese, so no translation needed for item names
 
-import { convertSimplifiedToTraditional, convertTraditionalToSimplified } from '../utils/chineseConverter';
+import { convertSimplifiedToTraditional, convertTraditionalToSimplified, isTraditionalChinese } from '../utils/chineseConverter';
 import twItemsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-items.json';
 import twItemDescriptionsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-item-descriptions.json';
 
@@ -281,7 +281,12 @@ export async function searchItems(searchText) {
   // Items are already in Traditional Chinese, so we can search directly
   // Convert user input from Simplified to Traditional if needed
   // This allows users to input Simplified Chinese but search Traditional Chinese items
-  const traditionalSearchText = convertSimplifiedToTraditional(searchText.trim());
+  const trimmedSearchText = searchText.trim();
+  // Check if input is already Traditional Chinese - if so, use as-is
+  // Otherwise, convert from Simplified to Traditional
+  const traditionalSearchText = isTraditionalChinese(trimmedSearchText) 
+    ? trimmedSearchText 
+    : convertSimplifiedToTraditional(trimmedSearchText);
   
   // Observable's behavior: if search text has spaces, split into words (AND condition)
   // If no spaces, search the entire string as-is
