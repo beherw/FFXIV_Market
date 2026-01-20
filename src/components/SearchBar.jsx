@@ -1,94 +1,157 @@
 import { useState, useEffect, useRef } from 'react';
-import { getMostRecentlyUpdatedItems } from '../services/universalis';
-import { getItemById } from '../services/itemDatabase';
+import { useHistory } from '../hooks/useHistory';
+import { getSearchHistory, removeSearchFromHistory } from '../utils/searchHistory';
+import { removeItemFromHistory } from '../utils/itemHistory';
 import ItemImage from './ItemImage';
 
-export default function SearchBar({ onSearch, isLoading, value, onChange, disabled, disabledTooltip, selectedDcName, onItemSelect }) {
+export default function SearchBar({ onSearch, isLoading, value, onChange, disabled, disabledTooltip, selectedDcName, onItemSelect, searchResults = [] }) {
   const [searchTerm, setSearchTerm] = useState(value || '');
   const [isComposing, setIsComposing] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [recentItems, setRecentItems] = useState([]);
-  const [isLoadingRecent, setIsLoadingRecent] = useState(false);
+  const [searchHistory, setSearchHistory] = useState([]);
   const debounceTimerRef = useRef(null);
   const onSearchRef = useRef(onSearch);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
-  const recentItemsAbortRef = useRef(null);
+  
+  // Get history items
+  const { historyItems } = useHistory();
+  
+  // Check if we have search results (on search page)
+  const hasSearchResults = searchResults && searchResults.length > 0;
 
   // Keep onSearch ref up to date
   useEffect(() => {
     onSearchRef.current = onSearch;
   }, [onSearch]);
 
-  // Format timestamp to GMT+8
-  const formatUploadTime = (timestamp) => {
-    const date = new Date(timestamp);
-    // Convert to GMT+8
-    const gmt8Date = new Date(date.getTime() + (8 * 60 * 60 * 1000));
-    const hours = gmt8Date.getUTCHours().toString().padStart(2, '0');
-    const minutes = gmt8Date.getUTCMinutes().toString().padStart(2, '0');
-    const seconds = gmt8Date.getUTCSeconds().toString().padStart(2, '0');
-    return `${hours}:${minutes}:${seconds}`;
-  };
-
-  // Fetch recently updated items when dropdown should show
-  const fetchRecentItems = async () => {
-    if (!selectedDcName || isLoadingRecent) return;
-    
-    // Cancel previous request
-    if (recentItemsAbortRef.current) {
-      recentItemsAbortRef.current.abort();
+  // Load search history when dropdown should show
+  useEffect(() => {
+    if (showDropdown && !searchTerm.trim()) {
+      const history = getSearchHistory();
+      setSearchHistory(history);
     }
-    
-    recentItemsAbortRef.current = new AbortController();
-    setIsLoadingRecent(true);
-    
-    try {
-      const items = await getMostRecentlyUpdatedItems(selectedDcName, 20, {
-        signal: recentItemsAbortRef.current.signal
-      });
-      
-      if (!items || items.length === 0) {
-        setRecentItems([]);
-        setIsLoadingRecent(false);
-        return;
-      }
-      
-      // Fetch item details for each item
-      const itemsWithDetails = await Promise.all(
-        items.map(async (item) => {
-          try {
-            const itemDetails = await getItemById(item.itemID);
-            return {
-              ...item,
-              name: itemDetails?.name || `物品 #${item.itemID}`,
-              itemDetails
-            };
-          } catch {
-            return {
-              ...item,
-              name: `物品 #${item.itemID}`,
-              itemDetails: null
-            };
-          }
-        })
-      );
-      
-      setRecentItems(itemsWithDetails);
-    } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error('Failed to fetch recent items:', error);
-      }
-    } finally {
-      setIsLoadingRecent(false);
-    }
-  };
+  }, [showDropdown, searchTerm]);
 
-  // Handle focus - show dropdown if search is empty
+  // Listen for storage changes to update search history
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'ffxiv_market_search_history') {
+        const history = getSearchHistory();
+        setSearchHistory(history);
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for custom events (for same-tab updates)
+    const handleCustomStorageChange = () => {
+      const history = getSearchHistory();
+      setSearchHistory(history);
+    };
+    
+    // Listen for custom event
+    window.addEventListener('searchHistoryChanged', handleCustomStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('searchHistoryChanged', handleCustomStorageChange);
+    };
+  }, []);
+
+  // Handle focus - show dropdown
   const handleFocus = () => {
-    if (!searchTerm.trim() && !disabled) {
+    if (!disabled) {
       setShowDropdown(true);
-      fetchRecentItems();
+    }
+  };
+  
+  // Extract keyword suggestions from search results
+  const getKeywordSuggestions = () => {
+    if (!hasSearchResults || !searchTerm.trim()) {
+      return [];
+    }
+    
+    const searchTermTrimmed = searchTerm.trim();
+    const lowerSearchTerm = searchTermTrimmed.toLowerCase();
+    
+    // B is the search term
+    // We want to find AB patterns (X + B) and BC patterns (B + X)
+    const abPatterns = new Set(); // Patterns like "围裙" (A + B)
+    const bcPatterns = new Set(); // Patterns like "裙子" (B + C)
+    
+    // Extract patterns from search results
+    searchResults.forEach(item => {
+      if (item.name) {
+        const itemName = item.name;
+        const lowerItemName = itemName.toLowerCase();
+        
+        // Find all occurrences of search term in item name
+        let searchIndex = 0;
+        while ((searchIndex = lowerItemName.indexOf(lowerSearchTerm, searchIndex)) !== -1) {
+          const termStart = searchIndex;
+          const termEnd = searchIndex + searchTermTrimmed.length;
+          
+          // Check if there's a character before B (AB pattern)
+          if (termStart > 0) {
+            const charBefore = itemName[termStart - 1];
+            // Extract AB pattern (1 character before + B, max 2-3 chars total)
+            if (/[\u4e00-\u9fa5]/.test(charBefore)) {
+              const abPattern = itemName.substring(termStart - 1, termEnd);
+              if (abPattern.length >= 2 && abPattern.length <= 3) {
+                abPatterns.add(abPattern);
+              }
+            }
+          }
+          
+          // Check if there's a character after B (BC pattern)
+          if (termEnd < itemName.length) {
+            const charAfter = itemName[termEnd];
+            if (/[\u4e00-\u9fa5]/.test(charAfter)) {
+              const bcPattern = itemName.substring(termStart, termEnd + 1);
+              if (bcPattern.length >= 2 && bcPattern.length <= 3) {
+                bcPatterns.add(bcPattern);
+              }
+            }
+          }
+          
+          // Move to next occurrence
+          searchIndex = termEnd;
+        }
+      }
+    });
+    
+    // Combine AB and BC patterns
+    const allPatterns = new Set([...abPatterns, ...bcPatterns]);
+    
+    // Sort and return
+    const sortedPatterns = Array.from(allPatterns)
+      .sort((a, b) => {
+        // Prefer shorter first
+        if (a.length !== b.length) {
+          return a.length - b.length;
+        }
+        // Then alphabetically
+        return a.localeCompare(b, 'zh-CN');
+      });
+    
+    // If <= 10 patterns, return all; otherwise return top 10
+    if (sortedPatterns.length <= 10) {
+      return sortedPatterns;
+    }
+    
+    return sortedPatterns.slice(0, 10);
+  };
+  
+  // Handle keyword suggestion click - fill search box with keyword
+  const handleKeywordSuggestionClick = (keyword) => {
+    setShowDropdown(false);
+    setSearchTerm(keyword);
+    if (onChange) {
+      onChange(keyword);
+    }
+    if (onSearch) {
+      onSearch(keyword);
     }
   };
 
@@ -111,28 +174,44 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
     };
   }, []);
 
-  // Close dropdown when search term changes
+  // Close dropdown when search term changes (only if not on search page)
   useEffect(() => {
-    if (searchTerm.trim()) {
+    if (searchTerm.trim() && !hasSearchResults) {
       setShowDropdown(false);
     }
-  }, [searchTerm]);
+  }, [searchTerm, hasSearchResults]);
 
-  // Cleanup abort controller on unmount
-  useEffect(() => {
-    return () => {
-      if (recentItemsAbortRef.current) {
-        recentItemsAbortRef.current.abort();
-      }
-    };
-  }, []);
-
-  // Handle item click from dropdown
-  const handleRecentItemClick = (item) => {
+  // Handle history item click
+  const handleHistoryItemClick = (item) => {
     setShowDropdown(false);
-    if (onItemSelect && item.itemDetails) {
-      onItemSelect(item.itemDetails);
+    if (onItemSelect) {
+      onItemSelect(item);
     }
+  };
+
+  // Handle search keyword click
+  const handleSearchKeywordClick = (keyword) => {
+    setShowDropdown(false);
+    setSearchTerm(keyword);
+    if (onChange) {
+      onChange(keyword);
+    }
+    if (onSearch) {
+      onSearch(keyword);
+    }
+  };
+
+  // Handle remove history item
+  const handleRemoveHistoryItem = (e, itemId) => {
+    e.stopPropagation();
+    removeItemFromHistory(itemId);
+  };
+
+  // Handle remove search keyword
+  const handleRemoveSearchKeyword = (e, keyword) => {
+    e.stopPropagation();
+    removeSearchFromHistory(keyword);
+    setSearchHistory(prev => prev.filter(k => k !== keyword));
   };
 
   // Sync with external value
@@ -149,6 +228,10 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
     setSearchTerm(value);
     if (onChange) {
       onChange(value);
+    }
+    // Show dropdown when typing on search page
+    if (hasSearchResults) {
+      setShowDropdown(true);
     }
   };
 
@@ -236,47 +319,195 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
           </div>
         )}
 
-        {/* Recently Updated Items Dropdown */}
-        {showDropdown && !searchTerm.trim() && (
+        {/* Dropdown - Show search results on search page, otherwise show history/keywords */}
+        {showDropdown && (
           <div 
             ref={dropdownRef}
             className="absolute top-full left-0 right-0 mt-1 bg-slate-900/95 backdrop-blur-sm border border-purple-500/30 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto"
           >
-            <div className="px-3 py-2 border-b border-slate-700/50">
-              <span className="text-xs text-gray-400 font-medium">最近更新的物品</span>
-            </div>
-            
-            {isLoadingRecent ? (
-              <div className="flex items-center justify-center py-6">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-ffxiv-gold"></div>
-                <span className="ml-2 text-xs text-gray-400">載入中...</span>
-              </div>
-            ) : recentItems.length === 0 ? (
-              <div className="py-4 text-center text-xs text-gray-500">
-                暫無數據
-              </div>
-            ) : (
-              <div className="py-1">
-                {recentItems.map((item, index) => (
-                  <button
-                    key={`${item.itemID}-${index}`}
-                    onClick={() => handleRecentItemClick(item)}
-                    className="w-full px-3 py-2 flex items-center gap-3 hover:bg-purple-800/40 transition-colors text-left"
-                  >
-                    <ItemImage
-                      itemId={item.itemID}
-                      alt={item.name}
-                      className="w-8 h-8 object-contain rounded border border-slate-600/50 bg-slate-800/50 flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-white truncate">{item.name}</div>
-                      <div className="text-xs text-gray-500">
-                        {item.worldName} · {formatUploadTime(item.lastUploadTime)}
+            {hasSearchResults && searchTerm.trim() ? (
+              /* Keyword Suggestions Dropdown - Show when on search page with input */
+              <>
+                <div className="px-3 py-2 border-b border-slate-700/50">
+                  <span className="text-xs text-gray-400 font-medium">關鍵字推薦</span>
+                </div>
+                <div className="py-1">
+                  {getKeywordSuggestions().map((keyword, index) => (
+                    <button
+                      key={`${keyword}-${index}`}
+                      onClick={() => handleKeywordSuggestionClick(keyword)}
+                      className="w-full px-3 py-2 flex items-center gap-3 hover:bg-purple-800/40 transition-colors text-left group"
+                    >
+                      <div className="flex-shrink-0">
+                        {/* Search keyword icon */}
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          className="h-4 w-4 text-ffxiv-gold" 
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          stroke="currentColor"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+                          />
+                        </svg>
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-white truncate">{keyword}</div>
+                      </div>
+                    </button>
+                  ))}
+                  {getKeywordSuggestions().length === 0 && (
+                    <div className="py-4 text-center text-xs text-gray-500">
+                      無匹配關鍵字
                     </div>
-                  </button>
-                ))}
-              </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              /* History and Search Keywords Dropdown - Show when not on search page */
+              <>
+                {/* Search Keywords Section - Show first */}
+                {searchHistory.length > 0 && (
+                  <>
+                    <div className="px-3 py-2 border-b border-slate-700/50">
+                      <span className="text-xs text-gray-400 font-medium">搜索關鍵字</span>
+                    </div>
+                    <div className="py-1">
+                      {searchHistory.slice(0, 3).map((keyword, index) => (
+                        <button
+                          key={`${keyword}-${index}`}
+                          onClick={() => handleSearchKeywordClick(keyword)}
+                          className="w-full px-3 py-2 flex items-center gap-3 hover:bg-purple-800/40 transition-colors text-left group"
+                        >
+                          <div className="flex-shrink-0">
+                            {/* Search keyword icon */}
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              className="h-4 w-4 text-ffxiv-gold" 
+                              fill="none" 
+                              viewBox="0 0 24 24" 
+                              stroke="currentColor"
+                            >
+                              <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth={2} 
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+                              />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-white truncate">{keyword}</div>
+                          </div>
+                          <button
+                            onClick={(e) => handleRemoveSearchKeyword(e, keyword)}
+                            className="flex-shrink-0 p-1 text-gray-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                            title="刪除"
+                          >
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              className="h-4 w-4" 
+                              fill="none" 
+                              viewBox="0 0 24 24" 
+                              stroke="currentColor"
+                            >
+                              <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth={2} 
+                                d="M6 18L18 6M6 6l12 12" 
+                              />
+                            </svg>
+                          </button>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* History Items Section - Show after search keywords */}
+                {historyItems.length > 0 && (
+                  <>
+                    {searchHistory.length > 0 && (
+                      <div className="px-3 py-2 border-t border-b border-slate-700/50">
+                        <span className="text-xs text-gray-400 font-medium">歷史記錄</span>
+                      </div>
+                    )}
+                    {searchHistory.length === 0 && (
+                      <div className="px-3 py-2 border-b border-slate-700/50">
+                        <span className="text-xs text-gray-400 font-medium">歷史記錄</span>
+                      </div>
+                    )}
+                    <div className="py-1">
+                      {historyItems.slice(0, 5).map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => handleHistoryItemClick(item)}
+                          className="w-full px-3 py-2 flex items-center gap-3 hover:bg-purple-800/40 transition-colors text-left group"
+                        >
+                          <div className="flex-shrink-0 flex items-center gap-2">
+                            {/* History icon */}
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              className="h-4 w-4 text-ffxiv-gold flex-shrink-0" 
+                              fill="none" 
+                              viewBox="0 0 24 24" 
+                              stroke="currentColor"
+                            >
+                              <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth={2} 
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+                              />
+                            </svg>
+                            <ItemImage
+                              itemId={item.id}
+                              alt={item.name}
+                              className="w-8 h-8 object-contain rounded border border-slate-600/50 bg-slate-800/50 flex-shrink-0"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-white truncate">{item.name}</div>
+                            <div className="text-xs text-gray-500">ID: {item.id}</div>
+                          </div>
+                          <button
+                            onClick={(e) => handleRemoveHistoryItem(e, item.id)}
+                            className="flex-shrink-0 p-1 text-gray-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                            title="刪除"
+                          >
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              className="h-4 w-4" 
+                              fill="none" 
+                              viewBox="0 0 24 24" 
+                              stroke="currentColor"
+                            >
+                              <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth={2} 
+                                d="M6 18L18 6M6 6l12 12" 
+                              />
+                            </svg>
+                          </button>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Empty state */}
+                {historyItems.length === 0 && searchHistory.length === 0 && (
+                  <div className="py-4 text-center text-xs text-gray-500">
+                    暫無記錄
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

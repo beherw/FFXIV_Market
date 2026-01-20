@@ -11,6 +11,7 @@ export default function TopBar({
   isServerDataLoaded,
   selectedDcName,
   onItemSelect,
+  searchResults = [], // Search results to show in dropdown
   
   // Optional: selected item for external links
   selectedItem,
@@ -49,6 +50,7 @@ export default function TopBar({
     if (onUltimatePriceKingClick) {
       onUltimatePriceKingClick();
     } else {
+      setSearchText('');
       navigate('/ultimate-price-king');
     }
   };
@@ -115,12 +117,13 @@ export default function TopBar({
               disabledTooltip={!isServerDataLoaded ? '請等待伺服器資料載入完成' : undefined}
               selectedDcName={selectedDcName}
               onItemSelect={onItemSelect}
+              searchResults={searchResults}
             />
           </div>
 
           {/* History Button - hidden on mobile for item info page (moves to second row) */}
           <div className={`flex-shrink-0 ${selectedItem ? 'hidden mid:block' : ''}`}>
-            <HistoryButton onItemSelect={onItemSelect} />
+            <HistoryButton onItemSelect={onItemSelect} setSearchText={setSearchText} />
           </div>
 
           {/* Navigation Buttons - Only show when not on item info page or on desktop */}

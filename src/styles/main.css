@@ -230,3 +230,48 @@ input:focus {
     0 0 30px rgba(251, 191, 36, 0.15);
   backdrop-filter: blur(10px);
 }
+
+/* Image shatter effect */
+@keyframes shatter {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx), var(--ty)) rotate(var(--rot)) scale(0.8);
+  }
+}
+
+.image-shatter-container {
+  position: relative;
+  display: inline-block;
+  width: fit-content;
+  height: fit-content;
+}
+
+.image-shatter-fragment {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--fragment-width);
+  height: var(--fragment-height);
+  background-image: var(--image-url);
+  background-size: var(--image-width) var(--image-height);
+  background-position: var(--bg-x) var(--bg-y);
+  background-repeat: no-repeat;
+  animation: shatter 0.8s ease-out forwards;
+  pointer-events: none;
+  z-index: 10;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+}
+
+.image-shatter-main {
+  transition: opacity 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.image-shatter-main.shattering {
+  opacity: 0;
+}

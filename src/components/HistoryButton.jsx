@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useHistory } from '../hooks/useHistory';
 import ItemImage from './ItemImage';
 
-export default function HistoryButton({ onItemSelect, compact = false }) {
+export default function HistoryButton({ onItemSelect, compact = false, setSearchText }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -63,6 +63,11 @@ export default function HistoryButton({ onItemSelect, compact = false }) {
       timeoutRef.current = null;
     }
     setIsOpen(false);
+    
+    // Clear search text like MSQ button does
+    if (setSearchText) {
+      setSearchText('');
+    }
     
     // Navigate to history page directly (don't go through home)
     // This prevents the issue where history gets cleared

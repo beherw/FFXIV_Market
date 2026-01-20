@@ -13,7 +13,9 @@ import { containsChinese } from './utils/chineseConverter';
 import ItemImage from './components/ItemImage';
 import HistoryButton from './components/HistoryButton';
 import HistorySection from './components/HistorySection';
+import RecentUpdatesSection from './components/RecentUpdatesSection';
 import { addItemToHistory } from './utils/itemHistory';
+import { addSearchToHistory } from './utils/searchHistory';
 import { useHistory } from './hooks/useHistory';
 import CraftingTree from './components/CraftingTree';
 import { hasRecipe, buildCraftingTree, findRelatedItems } from './services/recipeDatabase';
@@ -54,6 +56,11 @@ function App() {
   const [rateLimitMessage, setRateLimitMessage] = useState(null);
   const [currentImage, setCurrentImage] = useState(() => Math.random() < 0.5 ? '/bear.png' : '/sheep.png');
   const [isManualMode, setIsManualMode] = useState(false);
+  const [isShattering, setIsShattering] = useState(false);
+  const [shatterFragments, setShatterFragments] = useState([]);
+  const imageContainerRef = useRef(null);
+  const switchCountRef = useRef(0);
+  const currentIntervalRef = useRef(3500); // Start at 3.5 seconds
   
   // Crafting tree states
   const [craftingTree, setCraftingTree] = useState(null);
@@ -115,6 +122,58 @@ function App() {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
 
+  // Create shatter effect
+  const createShatterEffect = useCallback((imageUrl) => {
+    if (!imageContainerRef.current) return;
+    
+    const container = imageContainerRef.current;
+    const img = container.querySelector('img');
+    if (!img) return;
+    
+    const imgRect = img.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    
+    const fragmentSize = 8; // 8x8 grid = 64 fragments
+    const fragmentWidth = imgRect.width / fragmentSize;
+    const fragmentHeight = imgRect.height / fragmentSize;
+    
+    const fragments = [];
+    for (let row = 0; row < fragmentSize; row++) {
+      for (let col = 0; col < fragmentSize; col++) {
+        const tx = (Math.random() - 0.5) * 500; // Random horizontal movement
+        const ty = (Math.random() - 0.5) * 500 + 200; // Random vertical movement (mostly down)
+        const rot = (Math.random() - 0.5) * 720; // Random rotation
+        
+        // Calculate position relative to container
+        const relativeX = imgRect.left - containerRect.left;
+        const relativeY = imgRect.top - containerRect.top;
+        
+        fragments.push({
+          id: `${row}-${col}`,
+          x: relativeX + col * fragmentWidth,
+          y: relativeY + row * fragmentHeight,
+          width: fragmentWidth,
+          height: fragmentHeight,
+          tx,
+          ty,
+          rot,
+          bgX: -col * fragmentWidth,
+          bgY: -row * fragmentHeight,
+          imgWidth: imgRect.width,
+          imgHeight: imgRect.height,
+        });
+      }
+    }
+    
+    setShatterFragments(fragments);
+    setIsShattering(true);
+    
+    // Clear fragments after animation
+    setTimeout(() => {
+      setShatterFragments([]);
+    }, 800);
+  }, []);
+
   // Handle image swap on click - manual mode
   const handleImageClick = useCallback(() => {
     // Clear any pending timeout to return to auto mode
@@ -127,9 +186,19 @@ function App() {
     
     // Stop auto alternation
     if (imageIntervalRef.current) {
-      clearInterval(imageIntervalRef.current);
+      clearTimeout(imageIntervalRef.current);
       imageIntervalRef.current = null;
     }
+    
+    // Reset switch count and interval when manually clicking
+    // This ensures the acceleration cycle restarts from the beginning
+    switchCountRef.current = 0;
+    currentIntervalRef.current = 3500;
+    
+    // Clear any shatter effects if active
+    // This ensures clicking during shatter effect immediately stops it
+    setIsShattering(false);
+    setShatterFragments([]);
     
     // Swap image immediately
     setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
@@ -150,39 +219,105 @@ function App() {
     // Only run on home page (empty state)
     if (selectedItem || (tradeableResults.length > 0 || untradeableResults.length > 0) || isSearching || isOnHistoryPage || isOnUltimatePriceKingPage || isOnMSQPriceCheckerPage) {
       if (imageIntervalRef.current) {
-        clearInterval(imageIntervalRef.current);
+        clearTimeout(imageIntervalRef.current);
         imageIntervalRef.current = null;
       }
+      // Reset when leaving home page
+      switchCountRef.current = 0;
+      currentIntervalRef.current = 3500;
+      setIsShattering(false);
+      setShatterFragments([]);
       return;
     }
 
-    // Don't auto-alternate in manual mode
-    if (isManualMode) {
+    // Don't auto-alternate in manual mode or when shattering
+    if (isManualMode || isShattering) {
       if (imageIntervalRef.current) {
-        clearInterval(imageIntervalRef.current);
+        clearTimeout(imageIntervalRef.current);
         imageIntervalRef.current = null;
       }
       return;
     }
 
-    // Set up auto alternation (random interval between 2-5 seconds)
-    const getRandomInterval = () => Math.random() * 3000 + 2000; // 2000-5000ms
+    // Calculate next interval with acceleration
+    // Start at 3500ms, accelerate until reaching 100ms (0.1s)
+    // Use exponential decay: interval = 3500 * (100/3500)^(switchCount/maxSwitches)
+    // Accelerate faster to reach 100ms after about 30 switches (15% faster acceleration)
+    const getNextInterval = () => {
+      const maxSwitches = 30; // Reduced from 35 to 30 for ~15% faster acceleration
+      const minInterval = 100; // 0.1 second
+      const maxInterval = 3500;
+      
+      if (switchCountRef.current >= maxSwitches) {
+        return minInterval;
+      }
+      
+      // Exponential decay formula with steeper curve for faster acceleration
+      const progress = switchCountRef.current / maxSwitches;
+      // Use a slightly steeper curve by adjusting the exponent
+      const interval = maxInterval * Math.pow(minInterval / maxInterval, progress * 1.15);
+      return Math.max(interval, minInterval);
+    };
     
     const scheduleNext = () => {
       if (imageIntervalRef.current) {
-        clearInterval(imageIntervalRef.current);
+        clearTimeout(imageIntervalRef.current);
       }
+      
+      const interval = getNextInterval();
+      currentIntervalRef.current = interval;
+      
       imageIntervalRef.current = setTimeout(() => {
         const currentIsOnHistoryPage = location.pathname === '/history';
         const currentIsOnUltimatePriceKingPage = location.pathname === '/ultimate-price-king';
         const currentIsOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
-        if (!isManualMode && !selectedItem && tradeableResults.length === 0 && untradeableResults.length === 0 && !isSearching && !currentIsOnHistoryPage && !currentIsOnUltimatePriceKingPage && !currentIsOnMSQPriceCheckerPage) {
-          setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
-          scheduleNext();
+        
+        if (!isManualMode && !selectedItem && tradeableResults.length === 0 && untradeableResults.length === 0 && !isSearching && !currentIsOnHistoryPage && !currentIsOnUltimatePriceKingPage && !currentIsOnMSQPriceCheckerPage && !isShattering) {
+          switchCountRef.current++;
+          
+          // Check if we should trigger shatter effect
+          // Trigger when interval reaches 100ms (0.1s) and we've been at 100ms for about 4 seconds
+          // At 100ms, 4 seconds = 40 switches
+          // We reach 100ms around switch 30 (due to faster acceleration), so count switches after that
+          const minIntervalReached = interval <= 100;
+          const switchesAtMinInterval = Math.max(0, switchCountRef.current - 30);
+          
+          // Trigger shatter after maintaining 0.1s speed for about 4 seconds (40 switches)
+          if (minIntervalReached && switchesAtMinInterval >= 40) {
+            // Trigger shatter effect on current image before switching
+            // Use setTimeout to ensure the effect triggers after the current render
+            setTimeout(() => {
+              createShatterEffect(currentImage);
+            }, 0);
+            
+            // After shatter animation (0.8s) + maintain shatter (5-6s), restore and reset
+            setTimeout(() => {
+              setIsShattering(false);
+              setShatterFragments([]);
+              
+              // Reset counters and restart
+              switchCountRef.current = 0;
+              currentIntervalRef.current = 3500;
+              
+              // Restore image (switch to other one)
+              setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
+              
+              // Restart the cycle after a brief pause
+              setTimeout(() => {
+                if (!isManualMode && !selectedItem && tradeableResults.length === 0 && untradeableResults.length === 0 && !isSearching) {
+                  scheduleNext();
+                }
+              }, 100);
+            }, 5800); // 0.8s shatter animation + 5s maintain
+          } else {
+            // Normal switch
+            setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
+            scheduleNext();
+          }
         } else {
           imageIntervalRef.current = null;
         }
-      }, getRandomInterval());
+      }, interval);
     };
 
     scheduleNext();
@@ -193,7 +328,7 @@ function App() {
         imageIntervalRef.current = null;
       }
     };
-  }, [isManualMode, selectedItem, tradeableResults.length, untradeableResults.length, isSearching, location.pathname]);
+  }, [isManualMode, selectedItem, tradeableResults.length, untradeableResults.length, isSearching, location.pathname, isShattering, currentImage, createShatterEffect]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -1128,6 +1263,9 @@ function App() {
       if (results.length === 0) {
         addToast('未找到相關物品', 'warning');
       } else {
+        // Record search keyword to history
+        addSearchToHistory(searchTerm.trim());
+        
         addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
         if (tradeable.length === 1) {
           handleItemSelect(tradeable[0]);
@@ -1538,6 +1676,7 @@ function App() {
           setSearchText('');
           navigate('/msq-price-checker');
         }}
+        searchResults={showUntradeable ? untradeableResults : tradeableResults}
       />
 
 
@@ -2052,13 +2191,38 @@ function App() {
                   <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold mb-4">貝爾的FFXIV市場小屋</h2>
                   {/* Bear/Sheep Image */}
                   <div className="mb-4 sm:mb-6 flex justify-center items-center">
-                    <img 
-                      src={currentImage} 
-                      alt="Random icon" 
-                      onClick={handleImageClick}
-                      draggable={false}
-                      className="w-16 h-16 sm:w-24 sm:h-24 object-contain opacity-50 cursor-pointer hover:opacity-70 transition-opacity"
-                    />
+                    <div 
+                      ref={imageContainerRef}
+                      className="image-shatter-container relative"
+                    >
+                      <img 
+                        src={currentImage} 
+                        alt="Random icon" 
+                        onClick={handleImageClick}
+                        draggable={false}
+                        className={`w-16 h-16 sm:w-24 sm:h-24 object-contain opacity-50 cursor-pointer hover:opacity-70 transition-opacity image-shatter-main ${isShattering ? 'shattering' : ''}`}
+                      />
+                      {shatterFragments.map(fragment => (
+                        <div
+                          key={fragment.id}
+                          className="image-shatter-fragment"
+                          style={{
+                            '--fragment-width': `${fragment.width}px`,
+                            '--fragment-height': `${fragment.height}px`,
+                            '--image-url': `url(${currentImage})`,
+                            '--image-width': `${fragment.imgWidth}px`,
+                            '--image-height': `${fragment.imgHeight}px`,
+                            '--bg-x': `${fragment.bgX}px`,
+                            '--bg-y': `${fragment.bgY}px`,
+                            '--tx': `${fragment.tx}px`,
+                            '--ty': `${fragment.ty}px`,
+                            '--rot': `${fragment.rot}deg`,
+                            left: `${fragment.x}px`,
+                            top: `${fragment.y}px`,
+                          }}
+                        />
+                      ))}
+                    </div>
                   </div>
                   {/* Main Page Search Bar */}
                   <div className="max-w-md mx-auto h-10 sm:h-12 relative z-20">
@@ -2075,46 +2239,30 @@ function App() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mt-4 sm:mt-6">
-                  <div className="bg-gradient-to-br from-purple-900/30 via-pink-900/20 to-indigo-900/30 rounded-lg p-3 sm:p-4 border border-purple-500/30">
-                    <div className="text-2xl mb-2">🔍</div>
-                    <h3 className="text-xs sm:text-sm font-semibold text-ffxiv-gold mb-1">快速搜索</h3>
-                    <p className="text-xs text-gray-400">支持繁體中文和簡體中文輸入</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-900/30 via-pink-900/20 to-indigo-900/30 rounded-lg p-3 sm:p-4 border border-purple-500/30">
-                    <div className="text-2xl mb-2">🌐</div>
-                    <h3 className="text-xs sm:text-sm font-semibold text-ffxiv-gold mb-1">全服搜索</h3>
-                    <p className="text-xs text-gray-400">選擇數據中心可查看所有服務器價格</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-900/30 via-pink-900/20 to-indigo-900/30 rounded-lg p-3 sm:p-4 border border-purple-500/30 sm:col-span-2 lg:col-span-1">
-                    <div className="text-2xl mb-2">📊</div>
-                    <h3 className="text-xs sm:text-sm font-semibold text-ffxiv-gold mb-1">價格對比</h3>
-                    <p className="text-xs text-gray-400">實時查看市場價格和歷史交易</p>
-                  </div>
+                {/* Tips Section */}
+                <div className="bg-gradient-to-br from-slate-800/40 via-purple-900/15 to-slate-800/40 rounded-lg border border-purple-500/20 p-4 sm:p-6 mt-4 sm:mt-6">
+                  <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold mb-3 sm:mb-4">💡 使用提示</h3>
+                  <ul className="space-y-2 text-xs sm:text-sm text-gray-300">
+                    <li className="flex items-start gap-2">
+                      <span className="text-ffxiv-gold flex-shrink-0">•</span>
+                      <span>支持多關鍵詞搜索，用空格分隔（例如：「陳舊的 地圖」）</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-ffxiv-gold flex-shrink-0">•</span>
+                      <span>查看物品詳情會自動保存到歷史記錄，最多保存10個物品，可在搜索欄旁的歷史記錄按鈕查看</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
 
               {/* History Items Section - Show on home page below welcome section */}
               <HistorySection onItemSelect={handleItemSelect} />
-
-              {/* Tips Section */}
-              <div className="bg-gradient-to-br from-slate-800/40 via-purple-900/15 to-slate-800/40 rounded-lg border border-purple-500/20 p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold mb-3 sm:mb-4">💡 使用提示</h3>
-                <ul className="space-y-2 text-xs sm:text-sm text-gray-300">
-                  <li className="flex items-start gap-2">
-                    <span className="text-ffxiv-gold flex-shrink-0">•</span>
-                    <span>支持多關鍵詞搜索，用空格分隔（例如：「陳舊的 地圖」）</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-ffxiv-gold flex-shrink-0">•</span>
-                    <span>可以調整查詢數量（10-100）和過濾HQ物品</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-ffxiv-gold flex-shrink-0">•</span>
-                    <span>查看物品詳情會自動保存到歷史記錄，最多保存10個物品，可在搜索欄旁的歷史記錄按鈕查看</span>
-                  </li>
-                </ul>
-              </div>
+              
+              {/* Recent Updates Section - Show on home page below history section */}
+              <RecentUpdatesSection 
+                onItemSelect={handleItemSelect} 
+                selectedDcName={selectedWorld?.section}
+              />
             </div>
           )}
         </div>
