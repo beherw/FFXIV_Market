@@ -888,6 +888,38 @@ function App() {
     document.body.scrollTop = 0;
   }, [location.pathname, location.search]);
 
+  // Handle item selection
+  const handleItemSelect = useCallback((item) => {
+    setMarketInfo(null);
+    setMarketListings([]);
+    setMarketHistory([]);
+    setError(null);
+    setRateLimitMessage(null);
+    
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    retryCountRef.current = 0;
+    dataReceivedRef.current = false;
+    requestInProgressRef.current = false;
+    
+    setIsLoadingMarket(true);
+    
+    setSelectedItem(item);
+    selectedItemRef.current = item;
+    
+    addItemToHistory(item.id);
+    
+    navigate(`/item/${item.id}`, { replace: false });
+    
+    addToast(`已選擇: ${item.name}`, 'info');
+  }, [addToast, navigate]);
+
   // Initialize from URL on mount and when URL changes
   // SIMPLIFIED: History page now uses useHistory hook, no complex protection needed
   useEffect(() => {
@@ -1072,13 +1104,15 @@ function App() {
                 addToast('未找到相關物品', 'warning');
               } else {
                 if (previousSearchText !== searchQuery) {
-                  addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
+                  // Don't show toast if only one tradeable item (will be shown by handleItemSelect)
+                  if (tradeable.length !== 1) {
+                    addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
+                  }
                 }
                 if (tradeable.length === 1) {
                   const item = tradeable[0];
-                  setSelectedItem(item);
-                  selectedItemRef.current = item;
-                  navigate(`/item/${item.id}`, { replace: false });
+                  // Use handleItemSelect to ensure consistent behavior and avoid duplicate toasts
+                  handleItemSelect(item);
                 }
               }
             } catch (err) {
@@ -1122,7 +1156,7 @@ function App() {
 
     lastProcessedURLRef.current = currentURLKey;
     isInitializingFromURLRef.current = false;
-  }, [location.pathname, location.search, isServerDataLoaded, params.id, searchParams, searchText, navigate, addToast, isLoadingDB, datacenters, worlds]);
+  }, [location.pathname, location.search, isServerDataLoaded, params.id, searchParams, searchText, navigate, addToast, isLoadingDB, datacenters, worlds, handleItemSelect, containsChinese, tradeableResults.length, untradeableResults.length]);
 
   // Handle return to home page
   const handleReturnHome = useCallback(() => {
@@ -1153,38 +1187,6 @@ function App() {
     
     navigate('/', { replace: false });
   }, [navigate]);
-
-  // Handle item selection
-  const handleItemSelect = useCallback((item) => {
-    setMarketInfo(null);
-    setMarketListings([]);
-    setMarketHistory([]);
-    setError(null);
-    setRateLimitMessage(null);
-    
-    if (retryTimeoutRef.current) {
-      clearTimeout(retryTimeoutRef.current);
-      retryTimeoutRef.current = null;
-    }
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    retryCountRef.current = 0;
-    dataReceivedRef.current = false;
-    requestInProgressRef.current = false;
-    
-    setIsLoadingMarket(true);
-    
-    setSelectedItem(item);
-    selectedItemRef.current = item;
-    
-    addItemToHistory(item.id);
-    
-    navigate(`/item/${item.id}`, { replace: false });
-    
-    addToast(`已選擇: ${item.name}`, 'info');
-  }, [addToast, navigate]);
 
   // Handle search
   const handleSearch = useCallback(async (searchTerm, skipNavigation = false) => {
@@ -1269,7 +1271,10 @@ function App() {
         // Record search keyword to history
         addSearchToHistory(searchTerm.trim());
         
-        addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
+        // Don't show toast if only one tradeable item (will be shown by handleItemSelect)
+        if (tradeable.length !== 1) {
+          addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
+        }
         if (tradeable.length === 1) {
           handleItemSelect(tradeable[0]);
         }
@@ -1716,6 +1721,7 @@ function App() {
           navigate('/msq-price-checker');
         }}
         searchResults={showUntradeable ? untradeableResults : tradeableResults}
+        marketableItems={marketableItems}
       />
 
 

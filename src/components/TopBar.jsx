@@ -12,6 +12,7 @@ export default function TopBar({
   selectedDcName,
   onItemSelect,
   searchResults = [], // Search results to show in dropdown
+  marketableItems = null, // Marketable items set for filtering
   
   // Optional: selected item for external links
   selectedItem,
@@ -118,6 +119,7 @@ export default function TopBar({
               selectedDcName={selectedDcName}
               onItemSelect={onItemSelect}
               searchResults={searchResults}
+              marketableItems={marketableItems}
             />
           </div>
 

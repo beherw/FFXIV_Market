@@ -4,7 +4,7 @@ import { getSearchHistory, removeSearchFromHistory } from '../utils/searchHistor
 import { removeItemFromHistory } from '../utils/itemHistory';
 import ItemImage from './ItemImage';
 
-export default function SearchBar({ onSearch, isLoading, value, onChange, disabled, disabledTooltip, selectedDcName, onItemSelect, searchResults = [] }) {
+export default function SearchBar({ onSearch, isLoading, value, onChange, disabled, disabledTooltip, selectedDcName, onItemSelect, searchResults = [], marketableItems = null }) {
   const [searchTerm, setSearchTerm] = useState(value || '');
   const [isComposing, setIsComposing] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -80,8 +80,13 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
     const abPatterns = new Set(); // Patterns like "围裙" (A + B)
     const bcPatterns = new Set(); // Patterns like "裙子" (B + C)
     
-    // Extract patterns from search results
-    searchResults.forEach(item => {
+    // Filter to only tradeable items if marketableItems is available
+    const tradeableResults = marketableItems 
+      ? searchResults.filter(item => marketableItems.has(item.id))
+      : searchResults;
+    
+    // Extract patterns from tradeable search results only
+    tradeableResults.forEach(item => {
       if (item.name) {
         const itemName = item.name;
         const lowerItemName = itemName.toLowerCase();
@@ -135,12 +140,12 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
         return a.localeCompare(b, 'zh-CN');
       });
     
-    // If <= 10 patterns, return all; otherwise return top 10
-    if (sortedPatterns.length <= 10) {
+    // If <= 50 patterns, return all; otherwise return top 50
+    if (sortedPatterns.length <= 50) {
       return sortedPatterns;
     }
     
-    return sortedPatterns.slice(0, 10);
+    return sortedPatterns.slice(0, 50);
   };
   
   // Handle keyword suggestion click - fill search box with keyword
