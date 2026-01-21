@@ -1092,8 +1092,9 @@ function App() {
               
               setTradeableResults(tradeable);
               setUntradeableResults(untradeable);
-              setShowUntradeable(false);
-              searchResultsRef.current = tradeable;
+              // If no tradeable items but there are untradeable items, show untradeable by default
+              setShowUntradeable(tradeable.length === 0 && untradeable.length > 0);
+              searchResultsRef.current = tradeable.length > 0 ? tradeable : untradeable;
               setError(null);
               if (results.length === 0) {
                 addToast('未找到相關物品', 'warning');
@@ -1257,7 +1258,8 @@ function App() {
       
       setTradeableResults(tradeable);
       setUntradeableResults(untradeable);
-      setShowUntradeable(false); // Default to showing tradeable items
+      // If no tradeable items but there are untradeable items, show untradeable by default
+      setShowUntradeable(tradeable.length === 0 && untradeable.length > 0);
       setError(null);
       
       if (results.length === 0) {

@@ -213,67 +213,76 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
   const result = useMemo(() => {
     if (!tree || !tree.children || tree.children.length === 0) return null;
     
-    const rootPrice = itemPrices[tree.itemId]?.price ?? null;
-    if (rootPrice === null) return null;
-    
-    // Check if any direct child has no price - if so, we can't make a valid comparison
-    let hasChildWithNoPrice = false;
+    // Wait for all children to be queried
     let allChildrenQueried = true;
-    
     for (const child of tree.children) {
       if (!queriedItemIds.has(child.itemId)) {
         // Still loading
         allChildrenQueried = false;
         break;
       }
-      const childPrice = itemPrices[child.itemId]?.price;
-      if (childPrice === undefined || childPrice === null) {
-        // Child has been queried but has no price - can't craft this item
-        hasChildWithNoPrice = true;
-      }
     }
     
     if (!allChildrenQueried) return null;
     
-    // If any direct child has no price, we can't calculate crafting cost
-    if (hasChildWithNoPrice) {
-      return { hasChildWithNoPrice: true };
+    // Use getCheapestCost to check if we can craft the root item
+    const rootResult = getCheapestCost(tree, itemPrices, queriedItemIds);
+    
+    // If we can't calculate a cost, the path is incomplete
+    if (rootResult.cost === null) {
+      return { canCraft: false };
     }
     
-    // Calculate cheapest route cost for all children
-    let cheapestRouteCost = 0;
+    const rootPrice = itemPrices[tree.itemId]?.price ?? null;
+    const cheapestRouteCost = rootResult.cost;
     
-    for (const child of tree.children) {
-      const childResult = getCheapestCost(child, itemPrices, queriedItemIds);
-      if (childResult.cost !== null) {
-        cheapestRouteCost += childResult.cost * child.amount;
+    // If root has no price, but we can craft it, show crafting cost
+    if (rootPrice === null) {
+      if (rootResult.method === 'craft') {
+        return {
+          rootPrice: null,
+          cheapestRouteCost,
+          canCraft: true,
+          isCraftOnly: true,
+        };
       }
+      return { canCraft: false };
     }
     
+    // Root has price - compare with crafting cost
     return {
       rootPrice,
       cheapestRouteCost,
       savings: rootPrice - cheapestRouteCost,
-      hasChildWithNoPrice: false,
+      canCraft: true,
+      isCraftOnly: false,
     };
   }, [tree, itemPrices, queriedItemIds]);
   
-  if (!result) return null;
+  if (!result || !result.canCraft) return null;
   
-  // If any direct child has no price, show message that we can't compare
-  if (result.hasChildWithNoPrice) {
+  // If root has no price but can be crafted, show crafting cost only
+  if (result.isCraftOnly) {
     return (
-      <div className="px-3 py-2 rounded-lg bg-gray-700/50 border border-gray-500/30 text-sm text-gray-400">
-        <div className="flex items-center gap-1.5">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>材料缺少價格，無法比較</span>
+      <div className="px-4 py-2.5 rounded-lg text-sm font-medium bg-green-900/50 border border-green-500/40 text-green-300">
+        <div className="flex flex-col items-center gap-1">
+          {/* Explanation */}
+          <div className="text-xs opacity-70 text-center">
+            以最優路線計算（每項材料取買/製的較低價）
+          </div>
+          {/* Price display */}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="font-bold">自製最佳: {result.cheapestRouteCost.toLocaleString()}</span>
+          </div>
         </div>
       </div>
     );
   }
   
+  // Root has price - show comparison
   const { rootPrice, cheapestRouteCost, savings } = result;
   const isCraftCheaper = savings > 0;
   const absSavings = Math.abs(savings);
@@ -602,6 +611,11 @@ export default function CraftingTree({
   const [isLoadingNames, setIsLoadingNames] = useState(true);
   const [isLoadingPrices, setIsLoadingPrices] = useState(true);
   const [error, setError] = useState(null);
+  const scrollContainerRef = useRef(null);
+  const [hasHorizontalScroll, setHasHorizontalScroll] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragStartScrollLeft, setDragStartScrollLeft] = useState(0);
 
   // Check if it's a DC query (not a specific server)
   const isDcQuery = useMemo(() => {
@@ -740,42 +754,133 @@ export default function CraftingTree({
     }
   }, [onItemSelect]);
 
+  // Check if horizontal scroll is needed
+  useEffect(() => {
+    const checkScroll = () => {
+      if (scrollContainerRef.current) {
+        const container = scrollContainerRef.current;
+        const hasScroll = container.scrollWidth > container.clientWidth;
+        setHasHorizontalScroll(hasScroll);
+      }
+    };
+
+    checkScroll();
+    // Check on resize and content changes
+    const resizeObserver = new ResizeObserver(checkScroll);
+    if (scrollContainerRef.current) {
+      resizeObserver.observe(scrollContainerRef.current);
+    }
+
+    // Also check periodically in case content loads asynchronously
+    const intervalId = setInterval(checkScroll, 500);
+
+    return () => {
+      resizeObserver.disconnect();
+      clearInterval(intervalId);
+    };
+  }, [tree, itemNames, itemPrices]);
+
+  // Handle drag to scroll
+  const handleMouseDown = useCallback((e) => {
+    if (!scrollContainerRef.current || !hasHorizontalScroll) return;
+    
+    // Only start drag if clicking on empty space (not on interactive elements)
+    const target = e.target;
+    // Check if clicking on interactive elements or their children
+    if (
+      target.closest('button, a, [data-item-id], img, svg, path') ||
+      target.tagName === 'BUTTON' ||
+      target.tagName === 'A' ||
+      target.tagName === 'IMG' ||
+      target.tagName === 'SVG' ||
+      target.tagName === 'PATH' ||
+      target.closest('.cursor-pointer')
+    ) {
+      return;
+    }
+
+    setIsDragging(true);
+    setDragStartX(e.clientX);
+    setDragStartScrollLeft(scrollContainerRef.current.scrollLeft);
+    e.preventDefault();
+    e.stopPropagation();
+  }, [hasHorizontalScroll]);
+
+  const handleDragMove = useCallback((e) => {
+    if (!isDragging || !scrollContainerRef.current) return;
+    
+    const deltaX = e.clientX - dragStartX;
+    scrollContainerRef.current.scrollLeft = dragStartScrollLeft - deltaX;
+    e.preventDefault();
+    e.stopPropagation();
+  }, [isDragging, dragStartX, dragStartScrollLeft]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Add global mouse event listeners for dragging
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleDragMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
+      
+      return () => {
+        document.removeEventListener('mousemove', handleDragMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isDragging, handleDragMove, handleMouseUp]);
+
   // Calculate optimal path for highlighting
   const { optimalPathMap, isCraftingCheaper } = useMemo(() => {
     if (!tree || isLoadingPrices || Object.keys(itemPrices).length === 0) {
       return { optimalPathMap: null, isCraftingCheaper: false };
     }
     
-    const rootPrice = itemPrices[tree.itemId]?.price ?? null;
-    if (rootPrice === null || !tree.children || tree.children.length === 0) {
+    // If no children, can't craft
+    if (!tree.children || tree.children.length === 0) {
       return { optimalPathMap: null, isCraftingCheaper: false };
     }
     
-    // Check if any direct child has no price - if so, can't calculate crafting cost
+    // Wait for all children to be queried
     for (const child of tree.children) {
       if (!queriedItemIds.has(child.itemId)) {
         // Still loading
         return { optimalPathMap: null, isCraftingCheaper: false };
       }
-      const childPrice = itemPrices[child.itemId]?.price;
-      if (childPrice === undefined || childPrice === null) {
-        // Child has no price - can't craft this item, no highlighting
-        return { optimalPathMap: null, isCraftingCheaper: false };
-      }
     }
     
-    // Calculate cheapest route cost for the root item
-    let cheapestRouteCost = 0;
-    for (const child of tree.children) {
-      const childResult = getCheapestCost(child, itemPrices, queriedItemIds);
-      if (childResult.cost !== null) {
-        cheapestRouteCost += childResult.cost * child.amount;
-      }
+    // Calculate cheapest route cost for the root item using getCheapestCost
+    // This will recursively check if we can craft the item through the tree
+    const rootResult = getCheapestCost(tree, itemPrices, queriedItemIds);
+    
+    // If we can't calculate a cost (null), it means the path is incomplete
+    if (rootResult.cost === null) {
+      return { optimalPathMap: null, isCraftingCheaper: false };
     }
     
-    // Only highlight if crafting is cheaper than buying
+    const rootPrice = itemPrices[tree.itemId]?.price ?? null;
+    
+    // If root has no price, but we can craft it (cost is not null), show the crafting path
+    if (rootPrice === null) {
+      // Only show path if the optimal method is 'craft' (meaning we can craft it)
+      if (rootResult.method === 'craft') {
+        const pathMap = buildOptimalPathMap(tree, itemPrices, queriedItemIds);
+        return { optimalPathMap: pathMap, isCraftingCheaper: true };
+      }
+      return { optimalPathMap: null, isCraftingCheaper: false };
+    }
+    
+    // If root has price, compare with crafting cost
+    const cheapestRouteCost = rootResult.cost;
     const craftingIsCheaper = cheapestRouteCost < rootPrice;
     
+    // Only highlight if crafting is cheaper than buying
     if (!craftingIsCheaper) {
       return { optimalPathMap: null, isCraftingCheaper: false };
     }
@@ -856,7 +961,17 @@ export default function CraftingTree({
       )}
 
       {/* Tree display - vertical with horizontal scroll */}
-      <div className="overflow-x-auto pb-2">
+      <div 
+        ref={scrollContainerRef}
+        className={`overflow-x-auto pb-2 relative ${hasHorizontalScroll && !isDragging ? 'cursor-grab' : ''} ${isDragging ? 'cursor-grabbing' : ''}`}
+        onMouseDown={handleMouseDown}
+        onMouseLeave={() => {
+          // Reset dragging state when mouse leaves
+          if (isDragging) {
+            setIsDragging(false);
+          }
+        }}
+      >
         <div className="flex justify-center min-w-min py-2">
           <TreeNodeVertical
             node={tree}
