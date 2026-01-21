@@ -9,10 +9,11 @@ import TopBar from './TopBar';
 import { getMarketableItems } from '../services/universalis';
 import { getItemById } from '../services/itemDatabase';
 import axios from 'axios';
-import ilvlsData from '../../teamcraft_git/libs/data/src/lib/json/ilvls.json';
-import equipmentData from '../../teamcraft_git/libs/data/src/lib/json/equipment.json';
+// Only import equipSlotCategoriesData - needed for initial render (8KB)
 import equipSlotCategoriesData from '../../teamcraft_git/libs/data/src/lib/json/equip-slot-categories.json';
-import twJobAbbrData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json';
+// Lazy load large data files:
+// - ilvlsData (748KB) - loaded when user inputs ilvl
+// - equipmentData (6.2MB) - loaded when searching
 
 // Equipment slot category translations to Traditional Chinese
 const SLOT_TRANSLATIONS = {
@@ -66,12 +67,29 @@ export default function MSQPriceChecker({
   const [itemTradability, setItemTradability] = useState({});
   const [isLoadingVelocities, setIsLoadingVelocities] = useState(false);
   const [marketableItems, setMarketableItems] = useState(null);
+  
+  // Cache for dynamically loaded data
+  const ilvlsDataRef = useRef(null);
+  const equipmentDataRef = useRef(null);
 
-  // Load marketable items on mount
-  useEffect(() => {
-    getMarketableItems().then(items => {
-      setMarketableItems(items);
-    });
+  // Helper function to load equipmentData dynamically
+  const loadEquipmentData = useCallback(async () => {
+    if (equipmentDataRef.current) {
+      return equipmentDataRef.current;
+    }
+    const equipmentModule = await import('../../teamcraft_git/libs/data/src/lib/json/equipment.json');
+    equipmentDataRef.current = equipmentModule.default;
+    return equipmentDataRef.current;
+  }, []);
+
+  // Helper function to load ilvlsData dynamically
+  const loadIlvlsData = useCallback(async () => {
+    if (ilvlsDataRef.current) {
+      return ilvlsDataRef.current;
+    }
+    const ilvlsModule = await import('../../teamcraft_git/libs/data/src/lib/json/ilvls.json');
+    ilvlsDataRef.current = ilvlsModule.default;
+    return ilvlsDataRef.current;
   }, []);
 
   // Restore state from URL parameters on mount or when returning from item page
@@ -97,16 +115,18 @@ export default function MSQPriceChecker({
         isInitializingFromURLRef.current = true;
         setIlvlInput(ilvlParam);
         
-        // Set validation state
-        const itemsWithIlvl = Object.entries(ilvlsData).filter(
-          ([_, ilvl]) => ilvl === numValue
-        );
-        if (itemsWithIlvl.length > 0) {
-          setIlvlInputValidation({
-            valid: true,
-            message: `找到 ${itemsWithIlvl.length} 個物品`
-          });
-        }
+        // Load ilvlsData dynamically to validate URL parameter
+        loadIlvlsData().then(ilvlsData => {
+          const itemsWithIlvl = Object.entries(ilvlsData).filter(
+            ([_, ilvl]) => ilvl === numValue
+          );
+          if (itemsWithIlvl.length > 0) {
+            setIlvlInputValidation({
+              valid: true,
+              message: `找到 ${itemsWithIlvl.length} 個物品`
+            });
+          }
+        });
         
         // Restore category if present
         if (categoryParam) {
@@ -120,7 +140,7 @@ export default function MSQPriceChecker({
     } else {
       lastProcessedURLRef.current = currentURLKey;
     }
-  }, [location.pathname, location.search, searchParams]);
+  }, [location.pathname, location.search, searchParams, loadIlvlsData]);
 
   // Auto-search when state is restored from URL
   const [shouldAutoSearch, setShouldAutoSearch] = useState(false);
@@ -147,12 +167,6 @@ export default function MSQPriceChecker({
       }, 100);
     }
   }, [shouldAutoSearch, ilvlInput, ilvlInputValidation, isServerDataLoaded]);
-
-  // Get unique item level values for the dropdown
-  const uniqueILevels = useMemo(() => {
-    const levels = new Set(Object.values(ilvlsData).map(val => val));
-    return Array.from(levels).sort((a, b) => a - b);
-  }, []);
 
   // Get equipment categories from equip-slot-categories
   const equipmentCategories = useMemo(() => {
@@ -193,18 +207,8 @@ export default function MSQPriceChecker({
     });
   }, []);
 
-  // Get job abbreviation to name mapping
-  const jobAbbreviations = useMemo(() => {
-    const jobAbbr = {};
-    Object.entries(twJobAbbrData).forEach(([id, data]) => {
-      // For equipment filter, we just need the mapping
-      // Equipment uses 3-letter abbr like "GLA", "PLD", etc.
-    });
-    return jobAbbr;
-  }, []);
-
   // Helper function to check if an item's equip slot matches the selected category
-  const itemMatchesEquipCategory = useCallback((itemId, selectedCategory) => {
+  const itemMatchesEquipCategory = useCallback((itemId, selectedCategory, equipmentData) => {
     if (!selectedCategory) return true;
     
     const equipInfo = equipmentData[itemId.toString()];
@@ -230,7 +234,7 @@ export default function MSQPriceChecker({
   }, []);
 
   // Helper function to check if an item matches any of the provided categories
-  const itemMatchesAnyCategory = useCallback((itemId) => {
+  const itemMatchesAnyCategory = useCallback((itemId, equipmentData) => {
     const equipInfo = equipmentData[itemId.toString()];
     if (!equipInfo || equipInfo.equipSlotCategory === undefined) return false;
     
@@ -265,7 +269,7 @@ export default function MSQPriceChecker({
     }
 
     // Debounce validation after 1 second
-    ilvlValidationTimeoutRef.current = setTimeout(() => {
+    ilvlValidationTimeoutRef.current = setTimeout(async () => {
       const numValue = parseInt(value, 10);
 
       if (value === '') {
@@ -281,6 +285,9 @@ export default function MSQPriceChecker({
         return;
       }
 
+      // Load ilvlsData dynamically when user inputs
+      const ilvlsData = await loadIlvlsData();
+      
       // Check if this ilvl exists in the data
       const itemsWithIlvl = Object.entries(ilvlsData).filter(
         ([_, ilvl]) => ilvl === numValue
@@ -298,7 +305,7 @@ export default function MSQPriceChecker({
         });
       }
     }, 1000);
-  }, []);
+  }, [loadIlvlsData]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -346,6 +353,12 @@ export default function MSQPriceChecker({
     setItemTradability({});
 
     try {
+      // Load required data dynamically
+      const [ilvlsData, equipmentData] = await Promise.all([
+        loadIlvlsData(),
+        loadEquipmentData()
+      ]);
+      
       // Get all item IDs with matching ilvl
       let itemIds = Object.entries(ilvlsData)
         .filter(([_, ilvl]) => ilvl === numValue)
@@ -362,12 +375,12 @@ export default function MSQPriceChecker({
       // If "全部分類" is selected (null), filter to only items that match any of our provided categories
       if (selectedEquipCategory) {
         itemIds = itemIds.filter(itemId => 
-          itemMatchesEquipCategory(itemId, selectedEquipCategory)
+          itemMatchesEquipCategory(itemId, selectedEquipCategory, equipmentData)
         );
       } else {
         // When "全部分類" is selected, only show items that match at least one of our provided categories
         itemIds = itemIds.filter(itemId => 
-          itemMatchesAnyCategory(itemId)
+          itemMatchesAnyCategory(itemId, equipmentData)
         );
       }
 
@@ -376,8 +389,9 @@ export default function MSQPriceChecker({
         return;
       }
 
-      // Filter out non-tradeable items using marketable API
+      // Filter out non-tradeable items using marketable API (load on demand)
       const marketableSet = await getMarketableItems();
+      setMarketableItems(marketableSet); // Set for ItemTable component
       const tradeableItemIds = itemIds.filter(id => marketableSet.has(id));
 
       if (tradeableItemIds.length === 0) {
@@ -395,6 +409,7 @@ export default function MSQPriceChecker({
       }
 
       // Sort by ilvl品級 and 需求等級
+      // equipmentData is already loaded above
       const itemsWithInfo = items.map(item => {
         const equipInfo = equipmentData[item.id.toString()];
         return {
@@ -541,7 +556,7 @@ export default function MSQPriceChecker({
       addToast('搜索失敗，請稍後再試', 'error');
       setIsLoadingVelocities(false);
     }
-  }, [ilvlInput, selectedEquipCategory, selectedWorld, selectedServerOption, addToast, itemMatchesEquipCategory, itemMatchesAnyCategory, searchParams, setSearchParams]);
+  }, [ilvlInput, selectedEquipCategory, selectedWorld, selectedServerOption, addToast, itemMatchesEquipCategory, itemMatchesAnyCategory, searchParams, setSearchParams, loadIlvlsData, loadEquipmentData]);
 
   // Store handleSearchLocal in ref for auto-search
   useEffect(() => {
