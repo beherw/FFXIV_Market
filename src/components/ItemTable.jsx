@@ -273,7 +273,8 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                   // Middle mouse button (button === 1)
                   if (e.button === 1) {
                     e.preventDefault();
-                    const url = `${window.location.origin}/item/${item.id}`;
+                    // Use relative path to ensure proper routing in SPA
+                    const url = `/item/${item.id}`;
                     window.open(url, '_blank', 'noopener,noreferrer');
                   }
                 }}
