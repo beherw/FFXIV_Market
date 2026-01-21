@@ -193,11 +193,6 @@ function App() {
       imageIntervalRef.current = null;
     }
     
-    // Reset switch count and interval when manually clicking
-    // This ensures the acceleration cycle restarts from the beginning
-    switchCountRef.current = 0;
-    currentIntervalRef.current = 3500;
-    
     // Clear any shatter effects if active
     // This ensures clicking during shatter effect immediately stops it
     setIsShattering(false);
@@ -206,11 +201,11 @@ function App() {
     // Swap image immediately
     setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
     
-    // Set timeout to return to auto mode after 2 seconds of no clicks
+    // Set timeout to return to auto mode after 0.5 seconds of no clicks
     manualModeTimeoutRef.current = setTimeout(() => {
       setIsManualMode(false);
       manualModeTimeoutRef.current = null;
-    }, 2000);
+    }, 500);
   }, []);
 
   // Auto-alternate images when not in manual mode
@@ -245,9 +240,9 @@ function App() {
     // Calculate next interval with acceleration
     // Start at 3500ms, accelerate until reaching 100ms (0.1s)
     // Use exponential decay: interval = 3500 * (100/3500)^(switchCount/maxSwitches)
-    // Accelerate faster to reach 100ms after about 30 switches (15% faster acceleration)
+    // Accelerate to reach 100ms in approximately 20 seconds (~18 switches)
     const getNextInterval = () => {
-      const maxSwitches = 30; // Reduced from 35 to 30 for ~15% faster acceleration
+      const maxSwitches = 18; // Adjusted to reach max speed in ~20 seconds
       const minInterval = 100; // 0.1 second
       const maxInterval = 3500;
       
@@ -281,9 +276,9 @@ function App() {
           // Check if we should trigger shatter effect
           // Trigger when interval reaches 100ms (0.1s) and we've been at 100ms for about 4 seconds
           // At 100ms, 4 seconds = 40 switches
-          // We reach 100ms around switch 30 (due to faster acceleration), so count switches after that
+          // We reach 100ms around switch 18 (accelerates to max speed in ~20 seconds), so count switches after that
           const minIntervalReached = interval <= 100;
-          const switchesAtMinInterval = Math.max(0, switchCountRef.current - 30);
+          const switchesAtMinInterval = Math.max(0, switchCountRef.current - 18);
           
           // Trigger shatter after maintaining 0.1s speed for about 4 seconds (40 switches)
           if (minIntervalReached && switchesAtMinInterval >= 40) {
@@ -2259,7 +2254,7 @@ function App() {
                         alt="Random icon" 
                         onClick={handleImageClick}
                         draggable={false}
-                        className={`w-16 h-16 sm:w-24 sm:h-24 object-contain opacity-50 cursor-pointer hover:opacity-70 transition-opacity image-shatter-main ${isShattering ? 'shattering' : ''}`}
+                        className={`w-16 h-16 sm:w-24 sm:h-24 object-contain cursor-pointer hover:scale-110 transition-transform duration-300 image-shatter-main ${isShattering ? 'shattering' : ''}`}
                       />
                       {shatterFragments.map(fragment => (
                         <div
