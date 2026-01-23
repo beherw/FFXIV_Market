@@ -1,5 +1,5 @@
 # Author: 
-貝爾 Beher
+貝爾 Beher 
 
 # FFXIV Market Price Comparison
 
