@@ -126,7 +126,7 @@ export default function TopBar({
         title="返回主頁"
       >
         <img
-          src={getAssetPath('logo.png')}
+          src={`${getAssetPath('logo.png')}?v=2`}
           alt="返回主頁"
           className={logoClass}
         />
@@ -148,7 +148,7 @@ export default function TopBar({
                   title="返回主頁"
                 >
                   <img
-                    src={getAssetPath('logo.png')}
+                    src={`${getAssetPath('logo.png')}?v=2`}
                     alt="返回主頁"
                     className={logoClass}
                   />
@@ -311,7 +311,7 @@ export default function TopBar({
               title="返回主頁"
             >
               <img
-                src={getAssetPath('logo.png')}
+                src={`${getAssetPath('logo.png')}?v=2`}
                 alt="返回主頁"
                 className={logoClass}
               />

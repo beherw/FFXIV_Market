@@ -7,10 +7,10 @@
   display: none;
   align-items: center;
   justify-content: center;
-  top: 1rem;
+  top: 0.75rem;
   left: 1rem;
-  width: 3rem;
-  height: 3rem;
+  width: 3.5rem;
+  height: 3.5rem;
   background: transparent !important;
   background-color: transparent !important;
   border: none;
@@ -186,8 +186,8 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
   background: transparent !important;
   background-color: transparent !important;
   border: none;
