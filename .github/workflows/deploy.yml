@@ -7,7 +7,9 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   build-and-deploy:
@@ -32,12 +34,9 @@ jobs:
         env:
           GITHUB_PAGES: 'true'
 
-      - name: Deploy to /docs folder in main branch
-        run: |
-          git config --local user.email "behergaming@gmail.com"
-          git config --local user.name "beher-action-user"
-          rm -rf docs
-          cp -r dist docs
-          git add docs
-          git diff --staged --quiet || git commit -m "Deploy to GitHub Pages [skip ci]"
-          git push
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          cname: false
