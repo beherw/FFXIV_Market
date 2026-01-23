@@ -84,6 +84,7 @@ function App() {
   const [searchRecentPurchases, setSearchRecentPurchases] = useState({});
   const [searchTradability, setSearchTradability] = useState({});
   const [isLoadingVelocities, setIsLoadingVelocities] = useState(false);
+  const [isServerSelectorDisabled, setIsServerSelectorDisabled] = useState(false);
   
   // Use centralized history hook for history page
   const { historyItems, isLoading: isHistoryLoading, clearHistory } = useHistory();
@@ -562,6 +563,7 @@ function App() {
     if (velocityFetchAbortControllerRef.current) {
       velocityFetchAbortControllerRef.current.abort();
       velocityFetchInProgressRef.current = false;
+      setIsServerSelectorDisabled(false);
     }
     
     // Reset state if no search results or no server selected
@@ -573,6 +575,7 @@ function App() {
       setSearchRecentPurchases({});
       setSearchTradability({});
       setIsLoadingVelocities(false);
+      setIsServerSelectorDisabled(false);
       velocityFetchInProgressRef.current = false;
       lastFetchedItemIdsRef.current = '';
       return;
@@ -588,6 +591,7 @@ function App() {
       setSearchRecentPurchases({});
       setSearchTradability({});
       setIsLoadingVelocities(false);
+      setIsServerSelectorDisabled(false);
       velocityFetchInProgressRef.current = false;
       lastFetchedItemIdsRef.current = '';
       return;
@@ -611,6 +615,7 @@ function App() {
 
     const fetchData = async () => {
       setIsLoadingVelocities(true);
+      setIsServerSelectorDisabled(true); // Disable server selector until all batches complete
       try {
         // Determine if we're querying DC or world
         const isDCQuery = selectedServerOption === selectedWorld.section;
@@ -839,11 +844,13 @@ function App() {
         // Mark fetch as complete
         if (!abortSignal.aborted && currentRequestId === velocityFetchRequestIdRef.current) {
           velocityFetchInProgressRef.current = false;
+          setIsServerSelectorDisabled(false); // Enable server selector after all batches complete
           // Remember that we've fetched these items (don't refetch unless they change)
           lastFetchedItemIdsRef.current = cacheKey;
         } else {
           // Request was superseded, reset the in-progress flag
           velocityFetchInProgressRef.current = false;
+          setIsServerSelectorDisabled(false);
           // Don't update lastFetchedItemIdsRef - let the new request handle it
         }
       } catch (error) {
@@ -855,6 +862,7 @@ function App() {
         // On error, reset so it can retry
         if (currentRequestId === velocityFetchRequestIdRef.current) {
           velocityFetchInProgressRef.current = false;
+          setIsServerSelectorDisabled(false);
           lastFetchedItemIdsRef.current = '';
         }
       } finally {
@@ -862,6 +870,7 @@ function App() {
         // Only reset if request was cancelled or superseded
         if (currentRequestId !== velocityFetchRequestIdRef.current) {
           setIsLoadingVelocities(false);
+          setIsServerSelectorDisabled(false);
         }
       }
     };
@@ -890,6 +899,9 @@ function App() {
     setMarketHistory([]);
     setError(null);
     setRateLimitMessage(null);
+    
+    // Clear search text to prevent auto-search from triggering when entering item page
+    setSearchText('');
     
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
@@ -1885,7 +1897,7 @@ function App() {
                     selectedServerOption={selectedServerOption}
                     onServerOptionChange={handleServerOptionChange}
                     serverOptions={serverOptions}
-                    disabled={isLoadingVelocities}
+                    disabled={isServerSelectorDisabled}
                   />
                 </div>
               )}

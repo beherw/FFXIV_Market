@@ -18,7 +18,7 @@ export default function ServerSelector({
   const allWorldsForDC = selectedWorld?.dcObj?.worlds || [];
 
   return (
-    <div className="flex items-center gap-1.5 mid:gap-2 detail:gap-3 w-full detail:w-auto relative z-10">
+    <div className="flex items-center gap-1.5 mid:gap-2 detail:gap-3 w-full detail:w-auto relative z-10 group">
       {/* Server Options: Data Center (全服搜尋) + All Worlds */}
       {selectedWorld && allWorldsForDC.length > 0 && (
         <div className="flex gap-1 mid:gap-1.5 detail:gap-2 flex-wrap w-full detail:w-auto relative pl-1">
@@ -61,6 +61,16 @@ export default function ServerSelector({
               </button>
             );
           })}
+        </div>
+      )}
+      
+      {/* Tooltip for disabled state */}
+      {disabled && (
+        <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 border border-slate-700">
+          請耐心等待物品加載完成
+          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-0">
+            <div className="border-4 border-transparent border-b-slate-900"></div>
+          </div>
         </div>
       )}
     </div>

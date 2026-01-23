@@ -112,9 +112,16 @@ function ItemCard({
           <div className="text-xs text-gray-500 animate-pulse">載入中...</div>
         ) : priceInfo ? (
           <div className="flex flex-col items-center gap-0.5">
-            <span className={`text-xs font-semibold ${priceInfo.isHQ ? 'text-yellow-400' : 'text-green-400'}`}>
-              {priceInfo.isHQ ? '⭐ ' : ''}{priceInfo.price.toLocaleString()}
-            </span>
+            <div className="flex items-center gap-1">
+              {priceInfo.isHQ && (
+                <span className="px-1 py-0.5 text-[10px] font-bold text-ffxiv-gold border border-ffxiv-gold/50 rounded bg-ffxiv-gold/10 cursor-default">
+                  HQ
+                </span>
+              )}
+              <span className={`text-xs font-semibold ${priceInfo.isHQ ? 'text-yellow-400' : 'text-green-400'}`}>
+                {priceInfo.price.toLocaleString()}
+              </span>
+            </div>
             {priceInfo.worldName && (
               <span className="text-[10px] text-gray-500 truncate max-w-[80px]" title={priceInfo.worldName}>
                 {priceInfo.worldName}
@@ -122,7 +129,7 @@ function ItemCard({
             )}
           </div>
         ) : isPriceQueried ? (
-          <span className="text-xs text-gray-500">無價格</span>
+          <span className="text-xs text-gray-500">無販售</span>
         ) : (
           <div className="text-xs text-gray-500 animate-pulse">查詢中...</div>
         )}
@@ -134,25 +141,52 @@ function ItemCard({
 /**
  * Recursively calculate the cheapest cost to obtain an item
  * For each node: min(market price, sum of children's cheapest costs × amounts)
+ * Returns cost as: number (price), 'N/A' (missing materials), or null (not queried)
  */
 function getCheapestCost(node, itemPrices, queriedItemIds) {
   const priceInfo = itemPrices[node.itemId];
   const marketPrice = priceInfo?.price ?? null;
   const hasChildren = node.children && node.children.length > 0;
+  const isQueried = queriedItemIds.has(node.itemId);
   
   // Leaf node - only option is market price
   if (!hasChildren) {
+    // If queried but no price, return 'N/A'
+    if (isQueried && marketPrice === null) {
+      return { cost: 'N/A', method: 'buy', breakdown: null };
+    }
+    return { cost: marketPrice, method: 'buy', breakdown: null };
+  }
+  
+  // Check if all children have been queried
+  let allChildrenQueried = true;
+  for (const child of node.children) {
+    if (!queriedItemIds.has(child.itemId)) {
+      allChildrenQueried = false;
+      break;
+    }
+  }
+  
+  // If not all children are queried, can't calculate crafting cost
+  if (!allChildrenQueried) {
+    // If market price is available, use it; otherwise return null (still loading)
+    if (isQueried && marketPrice === null) {
+      return { cost: 'N/A', method: 'buy', breakdown: null };
+    }
     return { cost: marketPrice, method: 'buy', breakdown: null };
   }
   
   // Calculate crafting cost (sum of children's cheapest costs × amounts)
   let craftingCost = 0;
-  let allChildrenHaveCost = true;
+  let hasNAChild = false;
   const childBreakdown = [];
   
   for (const child of node.children) {
     const childResult = getCheapestCost(child, itemPrices, queriedItemIds);
-    if (childResult.cost !== null) {
+    if (childResult.cost === 'N/A') {
+      hasNAChild = true;
+      break;
+    } else if (childResult.cost !== null && typeof childResult.cost === 'number') {
       const childTotal = childResult.cost * child.amount;
       craftingCost += childTotal;
       childBreakdown.push({
@@ -163,19 +197,33 @@ function getCheapestCost(node, itemPrices, queriedItemIds) {
         method: childResult.method,
       });
     } else {
-      allChildrenHaveCost = false;
+      // Child not queried yet (shouldn't happen if allChildrenQueried is true, but handle it)
+      hasNAChild = true;
       break;
     }
   }
   
-  // If we can't calculate crafting cost, use market price
-  if (!allChildrenHaveCost) {
-    return { cost: marketPrice, method: 'buy', breakdown: null };
+  // If any child has N/A, crafting cost is N/A
+  if (hasNAChild) {
+    // If market price is available, use it; otherwise return N/A
+    if (marketPrice !== null) {
+      return { cost: marketPrice, method: 'buy', breakdown: null };
+    } else if (isQueried) {
+      return { cost: 'N/A', method: 'buy', breakdown: null };
+    } else {
+      return { cost: null, method: 'buy', breakdown: null };
+    }
   }
   
   // Return the cheaper option
   if (marketPrice === null) {
-    return { cost: craftingCost, method: 'craft', breakdown: childBreakdown };
+    if (isQueried) {
+      // Market price is N/A, use crafting cost
+      return { cost: craftingCost, method: 'craft', breakdown: childBreakdown };
+    } else {
+      // Not queried yet, return null
+      return { cost: null, method: 'buy', breakdown: null };
+    }
   }
   
   if (craftingCost < marketPrice) {
@@ -225,19 +273,47 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
     
     if (!allChildrenQueried) return null;
     
+    // Check if root item has been queried
+    const rootQueried = queriedItemIds.has(tree.itemId);
+    if (!rootQueried) {
+      return null; // Still loading
+    }
+    
     // Use getCheapestCost to check if we can craft the root item
     const rootResult = getCheapestCost(tree, itemPrices, queriedItemIds);
     
-    // If we can't calculate a cost, the path is incomplete
+    // If we can't calculate a cost (still loading), don't show badge yet
     if (rootResult.cost === null) {
-      return { canCraft: false };
+      return null;
     }
     
     const rootPrice = itemPrices[tree.itemId]?.price ?? null;
     const cheapestRouteCost = rootResult.cost;
+    const rootIsNA = rootPrice === null;
+    const materialsIsNA = cheapestRouteCost === 'N/A';
+    const materialsHasPrice = typeof cheapestRouteCost === 'number';
     
-    // If root has no price, but we can craft it, show crafting cost
-    if (rootPrice === null) {
+    // 材料 N/A vs 成品 N/A，資訊不足，不做比對
+    if (materialsIsNA && rootIsNA) {
+      return {
+        canCraft: false,
+        isInsufficientInfo: true,
+      };
+    }
+    
+    // 材料 N/A vs 成品 有數值，用成品
+    if (materialsIsNA && rootPrice !== null) {
+      return {
+        rootPrice,
+        cheapestRouteCost: 'N/A',
+        canCraft: true,
+        isMaterialsNA: true,
+        isCraftOnly: false,
+      };
+    }
+    
+    // 材料有價格 vs 成品 N/A，用材料
+    if (materialsHasPrice && rootIsNA) {
       if (rootResult.method === 'craft') {
         return {
           rootPrice: null,
@@ -249,33 +325,82 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
       return { canCraft: false };
     }
     
-    // Root has price - compare with crafting cost
-    return {
-      rootPrice,
-      cheapestRouteCost,
-      savings: rootPrice - cheapestRouteCost,
-      canCraft: true,
-      isCraftOnly: false,
-    };
+    // Both have prices - normal comparison
+    if (materialsHasPrice && rootPrice !== null) {
+      return {
+        rootPrice,
+        cheapestRouteCost,
+        savings: rootPrice - cheapestRouteCost,
+        canCraft: true,
+        isCraftOnly: false,
+      };
+    }
+    
+    return { canCraft: false };
   }, [tree, itemPrices, queriedItemIds]);
   
-  if (!result || !result.canCraft) return null;
+  if (!result) return null;
+  
+  // 材料 N/A vs 成品 N/A，顯示缺乏關鍵素材且無成品購買
+  if (result.isInsufficientInfo) {
+    return (
+      <div className="px-4 py-2.5 rounded-lg text-sm font-medium bg-orange-900/50 border border-orange-500/40 text-orange-300 w-max min-w-max">
+        <div className="flex flex-col items-center gap-1 whitespace-nowrap">
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span className="font-bold flex-shrink-0">該服缺乏關鍵素材且無成品購買</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!result.canCraft) return null;
+  
+  // 材料 N/A vs 成品 有數值，用成品
+  if (result.isMaterialsNA) {
+    return (
+      <div className="px-4 py-2.5 rounded-lg text-sm font-medium bg-blue-900/50 border border-blue-500/40 text-blue-300 w-max min-w-max">
+        <div className="flex flex-col items-center gap-1 whitespace-nowrap">
+          {/* Explanation */}
+          <div className="text-xs opacity-70 text-center whitespace-nowrap">
+            以最優路線計算（每項材料取買/製的較低價）
+          </div>
+          {/* Price breakdown */}
+          <div className="flex items-center gap-2 text-sm whitespace-nowrap">
+            <span className="flex-shrink-0">最優製作: N/A</span>
+            <span className="opacity-60 flex-shrink-0">vs</span>
+            <span className="flex-shrink-0">直購成品: {result.rootPrice.toLocaleString()}</span>
+          </div>
+          {/* Recommendation */}
+          <div className="flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span className="font-bold flex-shrink-0">建議直購</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   // If root has no price but can be crafted, show crafting cost only
   if (result.isCraftOnly) {
     return (
-      <div className="px-4 py-2.5 rounded-lg text-sm font-medium bg-green-900/50 border border-green-500/40 text-green-300">
-        <div className="flex flex-col items-center gap-1">
+      <div className="px-4 py-2.5 rounded-lg text-sm font-medium bg-green-900/50 border border-green-500/40 text-green-300 w-max min-w-max">
+        <div className="flex flex-col items-center gap-1 whitespace-nowrap">
           {/* Explanation */}
-          <div className="text-xs opacity-70 text-center">
+          <div className="text-xs opacity-70 text-center whitespace-nowrap">
             以最優路線計算（每項材料取買/製的較低價）
           </div>
           {/* Price display */}
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="font-bold">自製最佳: {result.cheapestRouteCost.toLocaleString()}</span>
+            <span className="font-bold flex-shrink-0">自製最佳: {result.cheapestRouteCost.toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -289,7 +414,7 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
   
   if (absSavings === 0) {
     return (
-      <div className="px-3 py-2 rounded-lg bg-gray-700/50 border border-gray-500/30 text-sm text-gray-400">
+      <div className="px-3 py-2 rounded-lg bg-gray-700/50 border border-gray-500/30 text-sm text-gray-400 w-max min-w-max whitespace-nowrap">
         價格相同
       </div>
     );
@@ -298,39 +423,39 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
   return (
     <div 
       className={`
-        px-4 py-2.5 rounded-lg text-sm font-medium
+        px-4 py-2.5 rounded-lg text-sm font-medium w-max min-w-max
         ${isCraftCheaper 
           ? 'bg-green-900/50 border border-green-500/40 text-green-300' 
           : 'bg-red-900/50 border border-red-500/40 text-red-300'
         }
       `}
     >
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col items-center gap-1 whitespace-nowrap">
         {/* Explanation */}
-        <div className="text-xs opacity-70 text-center">
+        <div className="text-xs opacity-70 text-center whitespace-nowrap">
           以最優路線計算（每項材料取買/製的較低價）
         </div>
         {/* Price breakdown */}
-        <div className="flex items-center gap-2 text-sm">
-          <span>最優製作: {cheapestRouteCost.toLocaleString()}</span>
-          <span className="opacity-60">vs</span>
-          <span>直購成品: {rootPrice.toLocaleString()}</span>
+        <div className="flex items-center gap-2 text-sm whitespace-nowrap">
+          <span className="flex-shrink-0">最優製作: {cheapestRouteCost.toLocaleString()}</span>
+          <span className="opacity-60 flex-shrink-0">vs</span>
+          <span className="flex-shrink-0">直購成品: {rootPrice.toLocaleString()}</span>
         </div>
         {/* Recommendation */}
-        <div className="flex items-center gap-1.5 mt-0.5">
+        <div className="flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
           {isCraftCheaper ? (
             <>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="font-bold">建議自製，省 {absSavings.toLocaleString()}</span>
+              <span className="font-bold flex-shrink-0">建議自製，省 {absSavings.toLocaleString()}</span>
             </>
           ) : (
             <>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              <span className="font-bold">建議直購，省 {absSavings.toLocaleString()}</span>
+              <span className="font-bold flex-shrink-0">建議直購，省 {absSavings.toLocaleString()}</span>
             </>
           )}
         </div>
@@ -344,9 +469,74 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
  * Compares: parent item TOTAL market price (unit × amount) vs sum of children material costs
  * - If materials cost < parent price: recommend crafting (buy materials, craft yourself)
  * - If materials cost > parent price: recommend buying the finished item directly
+ * Handles N/A cases:
+ * - 材料 N/A vs 成品 有數值，用成品
+ * - 材料 N/A vs 成品 N/A，資訊不足，不做比對
+ * - 材料有價格 vs 成品 N/A，用材料
  */
 function PriceComparisonBadge({ parentPrice, childrenTotalPrice, isReady, amount = 1 }) {
-  if (!isReady || parentPrice === null || childrenTotalPrice === null) {
+  if (!isReady) {
+    return null;
+  }
+
+  const parentHasPrice = parentPrice !== null && parentPrice !== undefined;
+  const childrenHasPrice = childrenTotalPrice !== null && childrenTotalPrice !== 'N/A' && typeof childrenTotalPrice === 'number';
+  const childrenIsNA = childrenTotalPrice === 'N/A';
+  const parentIsNA = parentPrice === null || parentPrice === undefined;
+
+  // 材料 N/A vs 成品 N/A，資訊不足，不做比對
+  if (childrenIsNA && parentIsNA) {
+    return (
+      <div className="px-2 py-1 rounded-lg bg-gray-700/50 border border-gray-500/30 text-xs text-gray-400">
+        資訊不足
+      </div>
+    );
+  }
+
+  // 材料 N/A vs 成品 有數值，用成品
+  if (childrenIsNA && parentHasPrice) {
+    return (
+      <div className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-900/50 border border-blue-500/40 text-blue-300 w-max min-w-max">
+        <div className="flex flex-col items-center gap-0.5 whitespace-nowrap">
+          <div className="flex items-center gap-2 text-xs opacity-80 whitespace-nowrap">
+            <span className="flex-shrink-0">材料: N/A</span>
+            <span className="flex-shrink-0">vs</span>
+            <span className="flex-shrink-0">{amount > 1 ? `${amount}個` : ''}成品: {parentPrice.toLocaleString()}</span>
+          </div>
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span className="font-bold flex-shrink-0">建議直購</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 材料有價格 vs 成品 N/A，用材料
+  if (childrenHasPrice && parentIsNA) {
+    return (
+      <div className="px-3 py-1.5 rounded-lg text-xs font-medium bg-green-900/50 border border-green-500/40 text-green-300 w-max min-w-max">
+        <div className="flex flex-col items-center gap-0.5 whitespace-nowrap">
+          <div className="flex items-center gap-2 text-xs opacity-80 whitespace-nowrap">
+            <span className="flex-shrink-0">材料: {childrenTotalPrice.toLocaleString()}</span>
+            <span className="flex-shrink-0">vs</span>
+            <span className="flex-shrink-0">{amount > 1 ? `${amount}個` : ''}成品: N/A</span>
+          </div>
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="font-bold flex-shrink-0">建議自製</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Both have prices - normal comparison
+  if (!childrenHasPrice || !parentHasPrice) {
     return null;
   }
 
@@ -367,35 +557,35 @@ function PriceComparisonBadge({ parentPrice, childrenTotalPrice, isReady, amount
   return (
     <div 
       className={`
-        px-3 py-1.5 rounded-lg text-xs font-medium
+        px-3 py-1.5 rounded-lg text-xs font-medium w-max min-w-max
         ${isCraftCheaper 
           ? 'bg-green-900/50 border border-green-500/40 text-green-300' 
           : 'bg-red-900/50 border border-red-500/40 text-red-300'
         }
       `}
     >
-      <div className="flex flex-col items-center gap-0.5">
+      <div className="flex flex-col items-center gap-0.5 whitespace-nowrap">
         {/* Price breakdown */}
-        <div className="flex items-center gap-2 text-xs opacity-80">
-          <span>材料: {childrenTotalPrice.toLocaleString()}</span>
-          <span>vs</span>
-          <span>{amount > 1 ? `${amount}個` : ''}成品: {parentPrice.toLocaleString()}</span>
+        <div className="flex items-center gap-2 text-xs opacity-80 whitespace-nowrap">
+          <span className="flex-shrink-0">材料: {childrenTotalPrice.toLocaleString()}</span>
+          <span className="flex-shrink-0">vs</span>
+          <span className="flex-shrink-0">{amount > 1 ? `${amount}個` : ''}成品: {parentPrice.toLocaleString()}</span>
         </div>
         {/* Recommendation */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
           {isCraftCheaper ? (
             <>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="font-bold">自製省 {absSavings.toLocaleString()}</span>
+              <span className="font-bold flex-shrink-0">自製省 {absSavings.toLocaleString()}</span>
             </>
           ) : (
             <>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              <span className="font-bold">直購省 {absSavings.toLocaleString()}</span>
+              <span className="font-bold flex-shrink-0">直購省 {absSavings.toLocaleString()}</span>
             </>
           )}
         </div>
@@ -431,34 +621,62 @@ function TreeNodeVertical({
   const shouldHighlightChildren = isOnOptimalPath && optimalMethod === 'craft';
 
   // Calculate children total price (considering amounts)
+  // Returns: number (total price), 'N/A' (some materials missing), or null (still loading)
   const childrenTotalPrice = useMemo(() => {
     if (!hasChildren) return null;
     
+    // Check if all children have been queried
+    let allChildrenQueried = true;
+    for (const child of node.children) {
+      if (!queriedItemIds.has(child.itemId)) {
+        allChildrenQueried = false;
+        break;
+      }
+    }
+    
+    // If not all children are queried yet, return null (still loading)
+    if (!allChildrenQueried) return null;
+    
+    // All children are queried, now check prices
     let total = 0;
-    let allPricesAvailable = true;
+    let hasMissingPrice = false;
     
     for (const child of node.children) {
       const childPrice = itemPrices[child.itemId];
       if (childPrice && childPrice.price !== undefined) {
         total += childPrice.price * child.amount;
-      } else if (queriedItemIds.has(child.itemId)) {
-        // Price was queried but no result - treat as 0 or skip
-        // For now, we'll still calculate but this item has no market price
       } else {
-        allPricesAvailable = false;
+        // Price was queried but no result - mark as missing
+        hasMissingPrice = true;
       }
     }
     
-    return allPricesAvailable ? total : null;
+    // If any material is missing, return 'N/A'
+    if (hasMissingPrice) return 'N/A';
+    
+    return total;
   }, [hasChildren, node.children, itemPrices, queriedItemIds]);
 
   // Check if comparison is ready (parent and all children prices loaded)
+  // Also check if we should show N/A message
   const isComparisonReady = useMemo(() => {
     if (!hasChildren) return false;
-    if (!priceInfo || priceInfo.price === undefined) return false;
+    // Check if all children have been queried
+    let allChildrenQueried = true;
+    for (const child of node.children) {
+      if (!queriedItemIds.has(child.itemId)) {
+        allChildrenQueried = false;
+        break;
+      }
+    }
+    if (!allChildrenQueried) return false;
+    // If childrenTotalPrice is 'N/A', we still want to show comparison
+    // If it's null, it means still loading
     if (childrenTotalPrice === null) return false;
-    return true;
-  }, [hasChildren, priceInfo, childrenTotalPrice]);
+    // Parent price check: if parent is queried, we can show comparison
+    const parentQueried = queriedItemIds.has(node.itemId);
+    return parentQueried;
+  }, [hasChildren, node.children, priceInfo, childrenTotalPrice, queriedItemIds]);
 
   // Calculate horizontal line position
   const calculateLinePosition = useCallback(() => {
@@ -859,17 +1077,22 @@ export default function CraftingTree({
     // This will recursively check if we can craft the item through the tree
     const rootResult = getCheapestCost(tree, itemPrices, queriedItemIds);
     
-    // If we can't calculate a cost (null), it means the path is incomplete
+    // If we can't calculate a cost (null), it means the path is incomplete (still loading)
     if (rootResult.cost === null) {
+      return { optimalPathMap: null, isCraftingCheaper: false };
+    }
+    
+    // If cost is 'N/A', don't show optimal path
+    if (rootResult.cost === 'N/A') {
       return { optimalPathMap: null, isCraftingCheaper: false };
     }
     
     const rootPrice = itemPrices[tree.itemId]?.price ?? null;
     
-    // If root has no price, but we can craft it (cost is not null), show the crafting path
+    // If root has no price, but we can craft it (cost is a number), show the crafting path
     if (rootPrice === null) {
       // Only show path if the optimal method is 'craft' (meaning we can craft it)
-      if (rootResult.method === 'craft') {
+      if (rootResult.method === 'craft' && typeof rootResult.cost === 'number') {
         const pathMap = buildOptimalPathMap(tree, itemPrices, queriedItemIds);
         return { optimalPathMap: pathMap, isCraftingCheaper: true };
       }
@@ -877,6 +1100,11 @@ export default function CraftingTree({
     }
     
     // If root has price, compare with crafting cost
+    // Only compare if both are numbers
+    if (typeof rootResult.cost !== 'number') {
+      return { optimalPathMap: null, isCraftingCheaper: false };
+    }
+    
     const cheapestRouteCost = rootResult.cost;
     const craftingIsCheaper = cheapestRouteCost < rootPrice;
     
@@ -1014,7 +1242,8 @@ export default function CraftingTree({
           <span>= NQ{isDcQuery ? '最低價' : '平均價'}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-yellow-400 font-semibold">⭐ 價格</span>
+          <span className="px-1 py-0.5 text-[10px] font-bold text-ffxiv-gold border border-ffxiv-gold/50 rounded bg-ffxiv-gold/10 cursor-default">HQ</span>
+          <span className="text-yellow-400 font-semibold">價格</span>
           <span>= HQ{isDcQuery ? '最低價' : '平均價'}</span>
         </div>
         <div className="flex items-center gap-1.5">
