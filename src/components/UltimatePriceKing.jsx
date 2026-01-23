@@ -9,7 +9,7 @@ import HistoryButton from './HistoryButton';
 import TopBar from './TopBar';
 import { loadRecipeDatabase } from '../services/recipeDatabase';
 import { getMarketableItems } from '../services/universalis';
-import { getItemById } from '../services/itemDatabase';
+import { getItemById, getSimplifiedChineseName } from '../services/itemDatabase';
 import axios from 'axios';
 import twJobAbbrData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json';
 
@@ -346,11 +346,51 @@ export default function CraftingJobPriceChecker({
               );
               
               // Get recent purchase - compare NQ and HQ, pick lower, prefer world over dc
-              const recentPurchase = getValue(
+              // When world is selected, recentPurchase has both price and region fields
+              const recentPurchasePrice = getValue(
                 item.nq?.recentPurchase,
                 item.hq?.recentPurchase,
                 'price'
               );
+              
+              // Extract region field when querying a specific world (not DC)
+              let recentPurchase = null;
+              if (recentPurchasePrice !== null && recentPurchasePrice !== undefined) {
+                if (!isDCQuery) {
+                  // When world is selected, extract region from the recentPurchase object
+                  // Determine which one (NQ or HQ) has the better price, then get its region
+                  const nqWorldPrice = item.nq?.recentPurchase?.world?.price;
+                  const hqWorldPrice = item.hq?.recentPurchase?.world?.price;
+                  const nqDcPrice = item.nq?.recentPurchase?.dc?.price;
+                  const hqDcPrice = item.hq?.recentPurchase?.dc?.price;
+                  
+                  // Prefer world values if they exist, otherwise use dc
+                  const nqPrice = nqWorldPrice !== undefined ? nqWorldPrice : nqDcPrice;
+                  const hqPrice = hqWorldPrice !== undefined ? hqWorldPrice : hqDcPrice;
+                  
+                  // Determine which one was selected (the cheaper one)
+                  let selectedData = null;
+                  if (nqPrice !== undefined && hqPrice !== undefined) {
+                    selectedData = hqPrice <= nqPrice 
+                      ? (item.hq?.recentPurchase?.world || item.hq?.recentPurchase?.dc)
+                      : (item.nq?.recentPurchase?.world || item.nq?.recentPurchase?.dc);
+                  } else if (hqPrice !== undefined) {
+                    selectedData = item.hq?.recentPurchase?.world || item.hq?.recentPurchase?.dc;
+                  } else if (nqPrice !== undefined) {
+                    selectedData = item.nq?.recentPurchase?.world || item.nq?.recentPurchase?.dc;
+                  }
+                  
+                  // Extract region if available
+                  const region = selectedData?.region;
+                  recentPurchase = { price: recentPurchasePrice };
+                  if (region !== undefined) {
+                    recentPurchase.region = region;
+                  }
+                } else {
+                  // When DC is selected, just store the price
+                  recentPurchase = recentPurchasePrice;
+                }
+              }
               
               if (velocity !== null && velocity !== undefined) {
                 allVelocities[itemId] = velocity;
@@ -605,6 +645,8 @@ export default function CraftingJobPriceChecker({
               itemTradability={itemTradability}
               isLoadingVelocities={isLoadingVelocities}
               averagePriceHeader="平均價格"
+              getSimplifiedChineseName={getSimplifiedChineseName}
+              addToast={addToast}
             />
           </div>
         )}

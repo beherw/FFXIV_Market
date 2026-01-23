@@ -7,7 +7,7 @@ import SearchBar from './SearchBar';
 import ServerSelector from './ServerSelector';
 import TopBar from './TopBar';
 import { getMarketableItems } from '../services/universalis';
-import { getItemById } from '../services/itemDatabase';
+import { getItemById, getSimplifiedChineseName } from '../services/itemDatabase';
 import axios from 'axios';
 // Only import equipSlotCategoriesData - needed for initial render (8KB)
 import equipSlotCategoriesData from '../../teamcraft_git/libs/data/src/lib/json/equip-slot-categories.json';
@@ -755,6 +755,8 @@ export default function MSQPriceChecker({
                 itemTradability={itemTradability}
                 isLoadingVelocities={isLoadingVelocities}
                 averagePriceHeader="平均價格"
+                getSimplifiedChineseName={getSimplifiedChineseName}
+                addToast={addToast}
               />
             </div>
           )}

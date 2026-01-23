@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react';
 import ItemImage from './ItemImage';
 
-export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities }) {
+export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast }) {
   const [sortColumn, setSortColumn] = useState(null);
   const [sortDirection, setSortDirection] = useState('asc'); // 'asc' or 'desc'
 
@@ -53,9 +53,15 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
         case 'recentPurchase':
           const aRecentPurchase = itemRecentPurchases ? itemRecentPurchases[a.id] : null;
           const bRecentPurchase = itemRecentPurchases ? itemRecentPurchases[b.id] : null;
-          // Store raw values for special handling
-          aValue = aRecentPurchase !== undefined && aRecentPurchase !== null ? aRecentPurchase : null;
-          bValue = bRecentPurchase !== undefined && bRecentPurchase !== null ? bRecentPurchase : null;
+          // Extract price from object if it's an object, otherwise use the value directly
+          // When DC is selected: recentPurchase is a number
+          // When world is selected: recentPurchase is an object { price, region }
+          aValue = aRecentPurchase !== undefined && aRecentPurchase !== null 
+            ? (typeof aRecentPurchase === 'object' ? aRecentPurchase.price : aRecentPurchase) 
+            : null;
+          bValue = bRecentPurchase !== undefined && bRecentPurchase !== null 
+            ? (typeof bRecentPurchase === 'object' ? bRecentPurchase.price : bRecentPurchase) 
+            : null;
           break;
         default:
           return 0;
@@ -364,8 +370,15 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <span className="text-green-300 font-medium whitespace-nowrap">
-                        {recentPurchase.toLocaleString()}
+                        {typeof recentPurchase === 'object' 
+                          ? recentPurchase.price.toLocaleString() 
+                          : recentPurchase.toLocaleString()}
                       </span>
+                      {typeof recentPurchase === 'object' && recentPurchase.region && (
+                        <span className="text-xs text-gray-400 ml-1" title={`區域: ${recentPurchase.region}`}>
+                          ({recentPurchase.region})
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <span className="text-gray-500">-</span>
@@ -392,15 +405,37 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                 </td>
                 <td className="px-2 sm:px-4 py-2">
                   <div className="flex gap-1 sm:gap-2 text-xs whitespace-nowrap">
-                    <a
-                      href={`https://ff14.huijiwiki.com/wiki/${item.id > 1000 || item.id < 20 ? '物品:' : ''}${encodeURIComponent(item.nameSimplified || item.name)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-ffxiv-accent hover:text-ffxiv-gold transition-colors whitespace-nowrap"
-                      onClick={(e) => e.stopPropagation()}
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          if (getSimplifiedChineseName) {
+                            const simplifiedName = await getSimplifiedChineseName(item.id);
+                            if (simplifiedName) {
+                              const prefix = item.id > 1000 || item.id < 20 ? '物品:' : '';
+                              const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(simplifiedName)}`;
+                              window.open(url, '_blank', 'noopener,noreferrer');
+                            } else {
+                              const prefix = item.id > 1000 || item.id < 20 ? '物品:' : '';
+                              const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(item.name)}`;
+                              window.open(url, '_blank', 'noopener,noreferrer');
+                            }
+                          } else {
+                            const prefix = item.id > 1000 || item.id < 20 ? '物品:' : '';
+                            const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(item.name)}`;
+                            window.open(url, '_blank', 'noopener,noreferrer');
+                          }
+                        } catch (error) {
+                          console.error('Failed to open Wiki link:', error);
+                          if (addToast) {
+                            addToast('無法打開Wiki連結', 'error');
+                          }
+                        }
+                      }}
+                      className="text-ffxiv-accent hover:text-ffxiv-gold transition-colors whitespace-nowrap bg-transparent border-none p-0 cursor-pointer"
                     >
                       Wiki
-                    </a>
+                    </button>
                     <a
                       href={`https://www.garlandtools.org/db/#item/${item.id}`}
                       target="_blank"

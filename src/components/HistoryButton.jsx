@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useHistory } from '../hooks/useHistory';
 import ItemImage from './ItemImage';
 
-export default function HistoryButton({ onItemSelect, compact = false, setSearchText }) {
+export default function HistoryButton({ onItemSelect, compact = false, setSearchText, isItemInfoPage = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -120,8 +120,14 @@ export default function HistoryButton({ onItemSelect, compact = false, setSearch
             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
           />
         </svg>
-        <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">歷史記錄</span>
-        <span className="text-xs font-semibold text-ffxiv-gold mid:hidden">歷史</span>
+        {isItemInfoPage ? (
+          <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">歷史記錄</span>
+        ) : (
+          <>
+            <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">歷史記錄</span>
+            <span className="text-xs font-semibold text-ffxiv-gold hidden narrow:inline mid:hidden">歷史</span>
+          </>
+        )}
       </button>
 
       {/* Dropdown Menu */}

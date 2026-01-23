@@ -1711,7 +1711,11 @@ function App() {
         selectedItem={selectedItem}
         getSimplifiedChineseName={getSimplifiedChineseName}
         addToast={addToast}
-        showNavigationButtons={!selectedItem}
+        showNavigationButtons={true}
+        onUltimatePriceKingClick={() => {
+          setSearchText('');
+          navigate('/ultimate-price-king');
+        }}
         activePage={isOnUltimatePriceKingPage ? 'ultimate-price-king' : isOnMSQPriceCheckerPage ? 'msq-price-checker' : null}
         onMSQPriceCheckerClick={() => {
           setSearchText('');
@@ -1725,7 +1729,7 @@ function App() {
       {/* Toast Notifications */}
       <div className={`fixed right-2 mid:right-4 left-2 mid:left-auto z-50 space-y-2 max-w-sm mid:max-w-none ${
         selectedItem 
-          ? 'top-[180px] mid:top-24'
+          ? 'top-[100px] mid:top-[120px] detail:top-24'
           : 'top-[60px] mid:top-4'
       }`}>
         {toasts.map(toast => (
@@ -1751,7 +1755,7 @@ function App() {
       {/* Main Content */}
       <div className={`pb-8 ${
         selectedItem 
-          ? 'pt-[108px] mid:pt-24'
+          ? 'pt-[100px] mid:pt-[120px] detail:pt-24'
           : 'pt-16 mid:pt-24'
       }`}>
         <div className="max-w-7xl mx-auto px-2 sm:px-4">
