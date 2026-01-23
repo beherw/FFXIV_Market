@@ -34,8 +34,8 @@ jobs:
 
       - name: Deploy to /docs folder in main branch
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "behergaming@gmail.com"
+          git config --local user.name "beher-action-user"
           rm -rf docs
           cp -r dist docs
           git add docs
