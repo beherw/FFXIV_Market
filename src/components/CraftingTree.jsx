@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import ItemImage from './ItemImage';
 import { getItemById } from '../services/itemDatabase';
+import { getInternalUrl } from '../utils/internalUrl.js';
 import { getAggregatedMarketData } from '../services/universalis';
 
 /**
@@ -961,13 +962,13 @@ export default function CraftingTree({
           onItemSelect(item);
         } else {
           // Open in new tab
-          const url = `${window.location.origin}/item/${itemId}`;
+          const url = `${window.location.origin}${getInternalUrl(`/item/${itemId}`)}`;
           window.open(url, '_blank', 'noopener,noreferrer');
         }
       });
     } else {
       // Open in new tab
-      const url = `${window.location.origin}/item/${itemId}`;
+      const url = `${window.location.origin}${getInternalUrl(`/item/${itemId}`)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   }, [onItemSelect]);

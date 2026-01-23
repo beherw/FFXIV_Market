@@ -10,6 +10,7 @@ import Toast from './components/Toast';
 import { searchItems, getItemById, getSimplifiedChineseName, cancelSimplifiedNameFetch } from './services/itemDatabase';
 import { getMarketData, getMarketableItems, getItemsVelocity } from './services/universalis';
 import { containsChinese } from './utils/chineseConverter';
+import { getAssetPath } from './utils/assetPath.js';
 import ItemImage from './components/ItemImage';
 import HistoryButton from './components/HistoryButton';
 import { addItemToHistory } from './utils/itemHistory';
@@ -57,7 +58,7 @@ function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [toasts, setToasts] = useState([]);
   const [rateLimitMessage, setRateLimitMessage] = useState(null);
-  const [currentImage, setCurrentImage] = useState(() => Math.random() < 0.5 ? '/bear.png' : '/sheep.png');
+  const [currentImage, setCurrentImage] = useState(() => Math.random() < 0.5 ? getAssetPath('bear.png') : getAssetPath('sheep.png'));
   const [isManualMode, setIsManualMode] = useState(false);
   const [isShattering, setIsShattering] = useState(false);
   const [shatterFragments, setShatterFragments] = useState([]);
@@ -200,7 +201,7 @@ function App() {
     setShatterFragments([]);
     
     // Swap image immediately
-    setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
+    setCurrentImage(prev => prev === getAssetPath('bear.png') ? getAssetPath('sheep.png') : getAssetPath('bear.png'));
     
     // Set timeout to return to auto mode after 0.5 seconds of no clicks
     manualModeTimeoutRef.current = setTimeout(() => {
@@ -299,7 +300,7 @@ function App() {
               currentIntervalRef.current = 3500;
               
               // Restore image (switch to other one)
-              setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
+              setCurrentImage(prev => prev === getAssetPath('bear.png') ? getAssetPath('sheep.png') : getAssetPath('bear.png'));
               
               // Restart the cycle after a brief pause
               setTimeout(() => {
@@ -310,7 +311,7 @@ function App() {
             }, 5800); // 0.8s shatter animation + 5s maintain
           } else {
             // Normal switch
-            setCurrentImage(prev => prev === '/bear.png' ? '/sheep.png' : '/bear.png');
+            setCurrentImage(prev => prev === getAssetPath('bear.png') ? getAssetPath('sheep.png') : getAssetPath('bear.png'));
             scheduleNext();
           }
         } else {
