@@ -1,9 +1,7 @@
 /**
  * Get the base path for public assets
- * Automatically detects if running on GitHub Pages or local/Vercel
+ * Uses Vite's BASE_URL which is set during build based on environment
  */
 export function getAssetPath(assetName) {
-  const isGitHubPages = window.location.hostname === 'beherw.github.io';
-  const base = isGitHubPages ? '/FFXIV_Market/' : '/';
-  return `${base}${assetName}`;
+  return `${import.meta.env.BASE_URL}${assetName}`;
 }

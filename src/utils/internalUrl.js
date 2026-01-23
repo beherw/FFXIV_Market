@@ -1,9 +1,7 @@
 /**
  * Get the full URL for internal navigation
- * Automatically adds the /FFXIV_Market/ base path on GitHub Pages
+ * Uses Vite's BASE_URL which is set during build based on environment
  */
 export function getInternalUrl(path) {
-  const isGitHubPages = window.location.hostname === 'beherw.github.io';
-  const base = isGitHubPages ? '/FFXIV_Market' : '';
-  return `${base}${path}`;
+  return `${import.meta.env.BASE_URL}${path}`.replace(/\/+/g, '/');
 }
