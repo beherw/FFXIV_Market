@@ -2312,19 +2312,161 @@ function App() {
                   </div>
                 </div>
                 
-                {/* Tips Section */}
-                <div className="bg-gradient-to-br from-slate-800/40 via-purple-900/15 to-slate-800/40 rounded-lg border border-purple-500/20 p-4 sm:p-6 mt-4 sm:mt-6">
-                  <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold mb-3 sm:mb-4">💡 使用提示</h3>
-                  <ul className="space-y-2 text-xs sm:text-sm text-gray-300">
-                    <li className="flex items-start gap-2">
-                      <span className="text-ffxiv-gold flex-shrink-0">•</span>
-                      <span>支持多關鍵詞搜索，用空格分隔（例如：「陳舊的 地圖」）</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-ffxiv-gold flex-shrink-0">•</span>
-                      <span>查看物品詳情會自動保存到歷史記錄，最多保存10個物品，可在搜索欄旁的歷史記錄按鈕查看</span>
-                    </li>
-                  </ul>
+                {/* Tips and Author Info Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
+                  {/* Tips Section */}
+                  <div className="bg-gradient-to-br from-slate-800/40 via-purple-900/15 to-slate-800/40 rounded-lg border border-purple-500/20 p-4 sm:p-6 card-glow hover:border-purple-400/30 transition-all duration-300 flex flex-col h-full">
+                    <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold mb-3 sm:mb-4 flex items-center gap-2">
+                      <span className="text-xl">💡</span>
+                      <span>使用提示</span>
+                    </h3>
+                    <ul className="space-y-2.5 text-xs sm:text-sm text-gray-300">
+                      <li className="flex items-start gap-2.5">
+                        <span className="text-ffxiv-gold flex-shrink-0 mt-0.5 font-bold">•</span>
+                        <span>支持多關鍵詞搜索，用空格分隔（例如：「陳舊的 地圖」）</span>
+                      </li>
+                      <li className="flex items-start gap-2.5">
+                        <span className="text-ffxiv-gold flex-shrink-0 mt-0.5 font-bold">•</span>
+                        <span>查看物品詳情會自動保存到歷史記錄，最多保存10個物品，可在搜索欄旁的歷史記錄按鈕查看</span>
+                      </li>
+                      <li className="flex items-start gap-2.5">
+                        <span className="text-ffxiv-gold flex-shrink-0 mt-0.5 font-bold">•</span>
+                        <span>目前新版本會需要作者手動更新後端，如有功能異常請聯繫作者DC：wuperbear</span>
+                      </li>
+                    </ul>
+                    <div className="pt-5 flex-grow">
+                      <p className="text-gray-300 leading-relaxed mb-0 text-xs sm:text-sm flex items-center gap-1.5">
+                        抓我玩這遊戲的人
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          className="h-4 w-4 text-purple-400" 
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          stroke="currentColor"
+                          strokeWidth={2.5}
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            d="M12 4v16m0 0l-6-6m6 6l6-6" 
+                          />
+                        </svg>
+                        <span className="text-purple-400/80">沒有她就沒有這個網頁</span>
+                      </p>
+                    </div>
+                    <div className="pt-2 mt-4 border-t border-purple-500/20">
+                      <a 
+                        href="https://www.twitch.tv/mehhamya" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 h-[42px] bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/30 hover:to-pink-600/30 rounded-lg border border-purple-500/30 hover:border-purple-400/50 transition-all duration-200 group shadow-lg hover:shadow-purple-500/20 hover:scale-105"
+                      >
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          className="h-4 w-4 text-purple-400 group-hover:text-purple-300 transition-colors" 
+                          fill="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                        </svg>
+                        <span className="text-purple-300 group-hover:text-purple-200 font-medium">Twitch</span>
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          className="h-3 w-3 text-purple-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" 
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          stroke="currentColor"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M9 5l7 7-7 7" 
+                          />
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Author Info Section */}
+                  <div className="bg-gradient-to-br from-slate-800/40 via-pink-900/15 to-slate-800/40 rounded-lg border border-pink-500/20 p-4 sm:p-6 card-glow hover:border-pink-400/30 transition-all duration-300 flex flex-col h-full">
+                    <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold mb-3 sm:mb-4 flex items-center gap-2">
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="h-5 w-5 text-ffxiv-gold" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" 
+                        />
+                      </svg>
+                      <span>作者簡介</span>
+                    </h3>
+                    <div className="space-y-3 text-xs sm:text-sm text-gray-300 flex-grow">
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-ffxiv-gold flex-shrink-0 mt-0.5 font-semibold">遊戲ID：</span>
+                        <span className="text-gray-200 font-medium">貝肝煎熬</span>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-ffxiv-gold flex-shrink-0 mt-0.5 font-semibold">伺服器：</span>
+                        <span className="text-gray-200">巴哈姆特（轉服開啟後迦樓羅）</span>
+                      </div>
+                      <div>
+                        <p className="text-gray-300 leading-relaxed mb-2">
+                          有幫助到你的話，看到就打個招呼吧~ 
+                          <span className="text-ffxiv-gold">（賣我便宜點！）</span>
+                        </p>
+                        <p className="text-gray-400 text-xs sm:text-sm italic flex items-center gap-1.5 mb-0 mt-5">
+                          或者...
+                          <span className="text-amber-400/80">你也可以</span>
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            className="h-4 w-4 text-amber-400" 
+                            fill="none" 
+                            viewBox="0 0 24 24" 
+                            stroke="currentColor"
+                            strokeWidth={2.5}
+                          >
+                            <path 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              d="M12 4v16m0 0l-6-6m6 6l6-6" 
+                            />
+                          </svg>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="pt-2 mt-4 border-t border-pink-500/20">
+                      <a 
+                        href="https://portaly.cc/beher" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 h-[42px] bg-gradient-to-r from-amber-600/20 to-orange-600/20 hover:from-amber-600/30 hover:to-orange-600/30 rounded-lg border border-amber-500/30 hover:border-amber-400/50 transition-all duration-200 group shadow-lg hover:shadow-amber-500/20 hover:scale-105"
+                      >
+                        <span className="text-amber-400 group-hover:text-amber-300 transition-colors text-lg">☕</span>
+                        <span className="text-amber-300 group-hover:text-amber-200 font-medium">送我咖啡</span>
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          className="h-3 w-3 text-amber-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" 
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          stroke="currentColor"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth={2} 
+                            d="M9 5l7 7-7 7" 
+                          />
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -2350,6 +2492,159 @@ function App() {
                   selectedDcName={selectedWorld?.section}
                 />
               </Suspense>
+
+              {/* Credits Section - Show on home page at the bottom */}
+              <div className="bg-gradient-to-br from-slate-800/60 via-slate-900/40 to-slate-800/60 backdrop-blur-sm rounded-lg border border-slate-600/30 p-4 sm:p-6 mt-4 sm:mt-6">
+                <h3 className="text-base sm:text-lg font-semibold text-slate-300 mb-3 sm:mb-4 flex items-center gap-2">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-5 w-5 text-ffxiv-gold" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
+                    />
+                  </svg>
+                  致謝
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-400 mb-3 sm:mb-4">
+                  本專案得以實現，感謝以下優秀的服務與資料來源：
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <a 
+                    href="https://universalis.app/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-700/30 hover:bg-slate-700/50 rounded-lg border border-slate-600/30 hover:border-slate-500/50 transition-all duration-200 group"
+                  >
+                    <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-lg flex items-center justify-center border border-blue-500/30 group-hover:border-blue-400/50">
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" 
+                        />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs sm:text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">
+                        Universalis API
+                      </div>
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        提供完整的市場看板數據
+                      </div>
+                    </div>
+                  </a>
+
+                  <a 
+                    href="https://xivapi.com/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-700/30 hover:bg-slate-700/50 rounded-lg border border-slate-600/30 hover:border-slate-500/50 transition-all duration-200 group"
+                  >
+                    <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-lg flex items-center justify-center border border-purple-500/30 group-hover:border-purple-400/50">
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                        />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs sm:text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">
+                        XIVAPI
+                      </div>
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        提供物品圖片與遊戲數據
+                      </div>
+                    </div>
+                  </a>
+
+                  <a 
+                    href="https://github.com/ffxiv-teamcraft/ffxiv-teamcraft" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-700/30 hover:bg-slate-700/50 rounded-lg border border-slate-600/30 hover:border-slate-500/50 transition-all duration-200 group"
+                  >
+                    <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-600/20 to-indigo-800/20 rounded-lg flex items-center justify-center border border-indigo-500/30 group-hover:border-indigo-400/50">
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-400" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" 
+                        />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs sm:text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">
+                        FFXIV Teamcraft
+                      </div>
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        提供製作配方數據
+                      </div>
+                    </div>
+                  </a>
+
+                  <a 
+                    href="https://github.com/thewakingsands/ffxiv-datamining-cn" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-700/30 hover:bg-slate-700/50 rounded-lg border border-slate-600/30 hover:border-slate-500/50 transition-all duration-200 group"
+                  >
+                    <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-lg flex items-center justify-center border border-green-500/30 group-hover:border-green-400/50">
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" 
+                        />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs sm:text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">
+                        thewakingsands/ffxiv-datamining-cn
+                      </div>
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        提供簡體中文物品數據
+                      </div>
+                    </div>
+                  </a>
+                </div>
+              </div>
             </div>
           )}
         </div>
