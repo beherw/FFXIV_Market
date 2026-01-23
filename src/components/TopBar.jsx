@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import HistoryButton from './HistoryButton';
-import { getAssetPath } from '../utils/assetPath';
+import { getAssetPath } from '../utils/assetPath.js';
 import '../styles/TopBar.css';
 
 export default function TopBar({
