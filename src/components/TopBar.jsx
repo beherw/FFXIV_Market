@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import HistoryButton from './HistoryButton';
+import { getAssetPath } from '../utils/assetPath';
 import '../styles/TopBar.css';
 
 export default function TopBar({
@@ -125,7 +126,7 @@ export default function TopBar({
         title="返回主頁"
       >
         <img
-          src="/logo.png"
+          src={getAssetPath('logo.png')}
           alt="返回主頁"
           className={logoClass}
         />
@@ -147,7 +148,7 @@ export default function TopBar({
                   title="返回主頁"
                 >
                   <img
-                    src="/logo.png"
+                    src={getAssetPath('logo.png')}
                     alt="返回主頁"
                     className={logoClass}
                   />
@@ -310,7 +311,7 @@ export default function TopBar({
               title="返回主頁"
             >
               <img
-                src="/logo.png"
+                src={getAssetPath('logo.png')}
                 alt="返回主頁"
                 className={logoClass}
               />

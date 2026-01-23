@@ -14,8 +14,11 @@ window.scrollTo(0, 0);
 document.documentElement.scrollTop = 0;
 document.body.scrollTop = 0;
 
+// Get basename for React Router (matches vite.config.js base setting)
+const basename = document.location.pathname.includes('/FFXIV_Market') ? '/FFXIV_Market/' : '/';
+
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <BrowserRouter>
+  <BrowserRouter basename={basename}>
     <App />
   </BrowserRouter>
 )
