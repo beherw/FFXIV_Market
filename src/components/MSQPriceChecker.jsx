@@ -471,8 +471,14 @@ export default function MSQPriceChecker({
                 const nqDc = nqData?.dc?.[field];
                 const hqDc = hqData?.dc?.[field];
 
-                const nqValue = nqWorld !== undefined ? nqWorld : nqDc;
-                const hqValue = hqWorld !== undefined ? hqWorld : hqDc;
+                // When querying a specific server (!isDCQuery), only use world data, don't fallback to DC
+                // When querying DC (isDCQuery), use DC data
+                const nqValue = isDCQuery 
+                  ? (nqDc !== undefined ? nqDc : nqWorld)
+                  : (nqWorld !== undefined ? nqWorld : undefined);
+                const hqValue = isDCQuery
+                  ? (hqDc !== undefined ? hqDc : hqWorld)
+                  : (hqWorld !== undefined ? hqWorld : undefined);
 
                 if (field === 'quantity') {
                   if (nqValue !== undefined || hqValue !== undefined) {
@@ -518,27 +524,20 @@ export default function MSQPriceChecker({
               let minListing = null;
               if (minListingPrice !== null && minListingPrice !== undefined) {
                 if (!isDCQuery) {
-                  // When world is selected, extract region from the minListing object
-                  // Determine which one (NQ or HQ) has the better price, then get its region
+                  // When world is selected, only use world data, don't fallback to DC
                   const nqWorldPrice = item.nq?.minListing?.world?.price;
                   const hqWorldPrice = item.hq?.minListing?.world?.price;
-                  const nqDcPrice = item.nq?.minListing?.dc?.price;
-                  const hqDcPrice = item.hq?.minListing?.dc?.price;
                   
-                  // Prefer world values if they exist, otherwise use dc
-                  const nqPrice = nqWorldPrice !== undefined ? nqWorldPrice : nqDcPrice;
-                  const hqPrice = hqWorldPrice !== undefined ? hqWorldPrice : hqDcPrice;
-                  
-                  // Determine which one was selected (the cheaper one)
+                  // Determine which one (NQ or HQ) has the better price, then get its region
                   let selectedData = null;
-                  if (nqPrice !== undefined && hqPrice !== undefined) {
-                    selectedData = hqPrice <= nqPrice 
-                      ? (item.hq?.minListing?.world || item.hq?.minListing?.dc)
-                      : (item.nq?.minListing?.world || item.nq?.minListing?.dc);
-                  } else if (hqPrice !== undefined) {
-                    selectedData = item.hq?.minListing?.world || item.hq?.minListing?.dc;
-                  } else if (nqPrice !== undefined) {
-                    selectedData = item.nq?.minListing?.world || item.nq?.minListing?.dc;
+                  if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
+                    selectedData = hqWorldPrice <= nqWorldPrice 
+                      ? item.hq?.minListing?.world
+                      : item.nq?.minListing?.world;
+                  } else if (hqWorldPrice !== undefined) {
+                    selectedData = item.hq?.minListing?.world;
+                  } else if (nqWorldPrice !== undefined) {
+                    selectedData = item.nq?.minListing?.world;
                   }
                   
                   // Extract region if available
@@ -556,27 +555,20 @@ export default function MSQPriceChecker({
               let recentPurchase = null;
               if (recentPurchasePrice !== null && recentPurchasePrice !== undefined) {
                 if (!isDCQuery) {
-                  // When world is selected, extract region from the recentPurchase object
-                  // Determine which one (NQ or HQ) has the better price, then get its region
+                  // When world is selected, only use world data, don't fallback to DC
                   const nqWorldPrice = item.nq?.recentPurchase?.world?.price;
                   const hqWorldPrice = item.hq?.recentPurchase?.world?.price;
-                  const nqDcPrice = item.nq?.recentPurchase?.dc?.price;
-                  const hqDcPrice = item.hq?.recentPurchase?.dc?.price;
                   
-                  // Prefer world values if they exist, otherwise use dc
-                  const nqPrice = nqWorldPrice !== undefined ? nqWorldPrice : nqDcPrice;
-                  const hqPrice = hqWorldPrice !== undefined ? hqWorldPrice : hqDcPrice;
-                  
-                  // Determine which one was selected (the cheaper one)
+                  // Determine which one (NQ or HQ) has the better price, then get its region
                   let selectedData = null;
-                  if (nqPrice !== undefined && hqPrice !== undefined) {
-                    selectedData = hqPrice <= nqPrice 
-                      ? (item.hq?.recentPurchase?.world || item.hq?.recentPurchase?.dc)
-                      : (item.nq?.recentPurchase?.world || item.nq?.recentPurchase?.dc);
-                  } else if (hqPrice !== undefined) {
-                    selectedData = item.hq?.recentPurchase?.world || item.hq?.recentPurchase?.dc;
-                  } else if (nqPrice !== undefined) {
-                    selectedData = item.nq?.recentPurchase?.world || item.nq?.recentPurchase?.dc;
+                  if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
+                    selectedData = hqWorldPrice <= nqWorldPrice 
+                      ? item.hq?.recentPurchase?.world
+                      : item.nq?.recentPurchase?.world;
+                  } else if (hqWorldPrice !== undefined) {
+                    selectedData = item.hq?.recentPurchase?.world;
+                  } else if (nqWorldPrice !== undefined) {
+                    selectedData = item.nq?.recentPurchase?.world;
                   }
                   
                   // Extract region if available
