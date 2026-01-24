@@ -823,6 +823,8 @@ export default function CraftingTree({
   selectedWorld,
   worlds = {},
   onItemSelect,
+  excludeCrystals = true,
+  onExcludeCrystalsChange,
 }) {
   const [itemNames, setItemNames] = useState({});
   const [itemPrices, setItemPrices] = useState({});
@@ -906,7 +908,13 @@ export default function CraftingTree({
     const worldsReady = worlds && Object.keys(worlds).length > 0;
     if (!tree || !selectedServerOption || !worldsReady) return;
 
-    const itemIds = Array.from(getAllItemIds(tree));
+    // Get all item IDs and ensure they are unique (no duplicates)
+    const itemIdsSet = getAllItemIds(tree);
+    const itemIds = Array.from(itemIdsSet);
+    
+    // Double-check: ensure no duplicates in the array
+    const uniqueItemIds = [...new Set(itemIds)];
+    
     setIsLoadingPrices(true);
     setQueriedItemIds(new Set());
     setItemPrices({});
@@ -917,8 +925,8 @@ export default function CraftingTree({
       try {
         // Batch items into groups of 100 (API limit)
         const batches = [];
-        for (let i = 0; i < itemIds.length; i += 100) {
-          batches.push(itemIds.slice(i, i + 100));
+        for (let i = 0; i < uniqueItemIds.length; i += 100) {
+          batches.push(uniqueItemIds.slice(i, i + 100));
         }
 
         // Determine the worldDcRegion to pass to API:
@@ -944,7 +952,7 @@ export default function CraftingTree({
       } catch (err) {
         console.error('Failed to fetch prices:', err);
         // Mark all items as queried even on error
-        setQueriedItemIds(new Set(itemIds));
+        setQueriedItemIds(new Set(uniqueItemIds));
       }
       
       setIsLoadingPrices(false);
@@ -1150,6 +1158,71 @@ export default function CraftingTree({
               <span className="text-gray-400">{isDcQuery ? '最低價' : '平均價格'}</span>
             </div>
           )}
+          {/* Crystal toggle switch */}
+          {onExcludeCrystalsChange && (
+            <div 
+              className={`relative flex items-center gap-2 px-2 py-1 rounded-md bg-slate-800/60 border border-slate-600/40 text-xs group overflow-hidden ${
+                !excludeCrystals ? '' : ''
+              }`}
+              onClick={(e) => e.stopPropagation()}
+              style={!excludeCrystals ? {
+                boxShadow: '0 0 8px rgba(147, 51, 234, 0.3)',
+                animation: 'crystalShimmer 3s ease-in-out infinite'
+              } : {}}
+            >
+              {/* Subtle shimmer effect - only when enabled */}
+              {!excludeCrystals && (
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none"></div>
+              )}
+              
+              <span className="text-gray-400 cursor-help relative z-10">
+                顯示水晶
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onExcludeCrystalsChange(!excludeCrystals);
+                }}
+                className={`
+                  relative inline-flex h-5 w-9 items-center rounded-full transition-all duration-200 ease-in-out z-10
+                  ${!excludeCrystals 
+                    ? 'bg-ffxiv-gold/70 shadow-[0_0_6px_rgba(212,175,55,0.4)]' 
+                    : 'bg-purple-600/50'
+                  }
+                  focus:outline-none focus:ring-2 focus:ring-ffxiv-gold focus:ring-offset-2 focus:ring-offset-slate-800
+                `}
+                role="switch"
+                aria-checked={!excludeCrystals}
+                aria-label={excludeCrystals ? '顯示水晶物品' : '隱藏水晶物品'}
+              >
+                <span
+                  className={`
+                    inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ease-in-out
+                    ${!excludeCrystals ? 'translate-x-5' : 'translate-x-1'}
+                    ${!excludeCrystals ? 'shadow-[0_0_4px_rgba(255,255,255,0.5)]' : ''}
+                  `}
+                />
+              </button>
+              {/* Custom tooltip with high z-index */}
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900/95 text-white text-xs rounded shadow-lg border border-purple-500/50 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-[9999]">
+                提供給大量製作的匠人更精確定位價格
+                {/* Tooltip arrow */}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-purple-500/50"></div>
+              </div>
+            </div>
+          )}
+          
+          {/* Add CSS animation for crystal shimmer */}
+          <style>{`
+            @keyframes crystalShimmer {
+              0%, 100% {
+                box-shadow: 0 0 8px rgba(147, 51, 234, 0.3);
+              }
+              50% {
+                box-shadow: 0 0 12px rgba(147, 51, 234, 0.5), 0 0 20px rgba(147, 51, 234, 0.2);
+              }
+            }
+          `}</style>
         </div>
         <div className="flex items-center gap-3">
           {/* Daily Sale Velocity for root item */}

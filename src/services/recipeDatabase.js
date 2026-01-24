@@ -78,8 +78,8 @@ export async function hasRecipe(itemId) {
   return byResult.has(itemId);
 }
 
-// Item IDs to exclude from crafting tree (crystals/shards)
-const EXCLUDED_ITEM_IDS = new Set([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+// Crystal item IDs (shards, crystals, clusters)
+const CRYSTAL_ITEM_IDS = new Set([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
 
 /**
  * Build a complete crafting tree for an item
@@ -87,9 +87,10 @@ const EXCLUDED_ITEM_IDS = new Set([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 1
  * @param {number} amount - The amount needed (default 1)
  * @param {Set} visited - Set of visited item IDs to prevent infinite loops
  * @param {number} depth - Current depth in the tree (for limiting recursion)
+ * @param {boolean} excludeCrystals - Whether to exclude crystal items from the tree (default true)
  * @returns {Promise<Object|null>} - Tree node with item info and children, or null if no recipe
  */
-export async function buildCraftingTree(itemId, amount = 1, visited = new Set(), depth = 0) {
+export async function buildCraftingTree(itemId, amount = 1, visited = new Set(), depth = 0, excludeCrystals = true) {
   // Prevent infinite loops and limit depth
   if (visited.has(itemId) || depth > 10) {
     return {
@@ -125,10 +126,57 @@ export async function buildCraftingTree(itemId, amount = 1, visited = new Set(),
   const yields = recipe.yields || 1;
   const craftsNeeded = Math.ceil(amount / yields);
 
-  // Build children for each ingredient, excluding crystals/shards (IDs 2-7)
-  const filteredIngredients = recipe.ingredients.filter(
-    ingredient => !EXCLUDED_ITEM_IDS.has(ingredient.id)
-  );
+  // Build children for each ingredient, optionally excluding crystals/shards
+  let filteredIngredients = excludeCrystals
+    ? recipe.ingredients.filter(ingredient => !CRYSTAL_ITEM_IDS.has(ingredient.id))
+    : recipe.ingredients;
+
+  // If not excluding crystals, sort ingredients to place crystals in the middle of non-crystals
+  if (!excludeCrystals && recipe.ingredients.length > 0) {
+    const nonCrystals = recipe.ingredients.filter(ingredient => !CRYSTAL_ITEM_IDS.has(ingredient.id));
+    const crystals = recipe.ingredients.filter(ingredient => CRYSTAL_ITEM_IDS.has(ingredient.id));
+    
+    if (nonCrystals.length > 0 && crystals.length > 0) {
+      // Distribute crystals evenly among non-crystals
+      const sortedIngredients = [];
+      const crystalCount = crystals.length;
+      const nonCrystalCount = nonCrystals.length;
+      
+      // Calculate how many crystals to place between each pair of non-crystals
+      // We'll distribute crystals as evenly as possible
+      const slots = nonCrystalCount - 1; // Number of gaps between non-crystals
+      const crystalsPerSlot = slots > 0 ? Math.floor(crystalCount / slots) : 0;
+      const extraCrystals = slots > 0 ? crystalCount % slots : crystalCount;
+      
+      let crystalIndex = 0;
+      
+      // Place non-crystals and distribute crystals between them
+      for (let i = 0; i < nonCrystals.length; i++) {
+        sortedIngredients.push(nonCrystals[i]);
+        
+        // Add crystals after this non-crystal (except for the last one)
+        if (i < nonCrystals.length - 1) {
+          const crystalsToAdd = crystalsPerSlot + (i < extraCrystals ? 1 : 0);
+          for (let j = 0; j < crystalsToAdd && crystalIndex < crystals.length; j++) {
+            sortedIngredients.push(crystals[crystalIndex]);
+            crystalIndex++;
+          }
+        }
+      }
+      
+      // Add any remaining crystals at the end
+      while (crystalIndex < crystals.length) {
+        sortedIngredients.push(crystals[crystalIndex]);
+        crystalIndex++;
+      }
+      
+      filteredIngredients = sortedIngredients;
+    } else if (crystals.length > 0 && nonCrystals.length === 0) {
+      // Only crystals, keep them as is (already on the right)
+      filteredIngredients = crystals;
+    }
+    // If only non-crystals, filteredIngredients is already correct
+  }
 
   const children = await Promise.all(
     filteredIngredients.map(async (ingredient) => {
@@ -137,7 +185,8 @@ export async function buildCraftingTree(itemId, amount = 1, visited = new Set(),
         ingredient.id,
         ingredientAmount,
         newVisited,
-        depth + 1
+        depth + 1,
+        excludeCrystals
       );
     })
   );

@@ -72,6 +72,12 @@ function App() {
   const [isCraftingTreeExpanded, setIsCraftingTreeExpanded] = useState(false);
   const [isLoadingCraftingTree, setIsLoadingCraftingTree] = useState(false);
   
+  // Load excludeCrystals preference from localStorage (default: true, meaning exclude crystals)
+  const [excludeCrystals, setExcludeCrystals] = useState(() => {
+    const saved = localStorage.getItem('craftingTreeExcludeCrystals');
+    return saved !== null ? saved === 'true' : true; // Default to true (exclude crystals)
+  });
+  
   // Related items states
   const [hasRelatedItems, setHasRelatedItems] = useState(false);
   const [isRelatedItemsExpanded, setIsRelatedItemsExpanded] = useState(false);
@@ -1789,8 +1795,8 @@ function App() {
         setHasCraftingRecipe(hasCraft);
         
         if (hasCraft) {
-          // Build the crafting tree
-          const tree = await buildCraftingTree(selectedItem.id);
+          // Build the crafting tree with excludeCrystals parameter
+          const tree = await buildCraftingTree(selectedItem.id, 1, new Set(), 0, excludeCrystals);
           setCraftingTree(tree);
         }
         
@@ -1818,6 +1824,29 @@ function App() {
         setIsLoadingRelatedItems(false);
       });
   }, [selectedItem]);
+
+  // Update crafting tree when excludeCrystals changes (without collapsing)
+  useEffect(() => {
+    if (!selectedItem || !hasCraftingRecipe) return;
+
+    setIsLoadingCraftingTree(true);
+    
+    buildCraftingTree(selectedItem.id, 1, new Set(), 0, excludeCrystals)
+      .then(tree => {
+        setCraftingTree(tree);
+        setIsLoadingCraftingTree(false);
+      })
+      .catch(error => {
+        console.error('Failed to rebuild crafting tree:', error);
+        setIsLoadingCraftingTree(false);
+      });
+  }, [excludeCrystals, selectedItem, hasCraftingRecipe]);
+
+  // Handle excludeCrystals toggle
+  const handleExcludeCrystalsChange = useCallback((newValue) => {
+    setExcludeCrystals(newValue);
+    localStorage.setItem('craftingTreeExcludeCrystals', newValue.toString());
+  }, []);
 
   const serverOptions = selectedWorld
     ? [selectedWorld.section, ...selectedWorld.dcObj.worlds]
@@ -2462,6 +2491,8 @@ function App() {
                     selectedWorld={selectedWorld}
                     worlds={worlds}
                     onItemSelect={handleItemSelect}
+                    excludeCrystals={excludeCrystals}
+                    onExcludeCrystalsChange={handleExcludeCrystalsChange}
                   />
                 </Suspense>
               )}
