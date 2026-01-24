@@ -85,7 +85,18 @@ function App() {
   const [searchRecentPurchases, setSearchRecentPurchases] = useState({});
   const [searchTradability, setSearchTradability] = useState({});
   const [isLoadingVelocities, setIsLoadingVelocities] = useState(false);
-  const [isServerSelectorDisabled, setIsServerSelectorDisabled] = useState(false);
+  const [isServerSelectorDisabled, setIsServerSelectorDisabled] = useState(true); // Start disabled until server data loads
+  const [searchCurrentPage, setSearchCurrentPage] = useState(1);
+  const [searchItemsPerPage, setSearchItemsPerPage] = useState(100);
+  const [showLoadingIndicator, setShowLoadingIndicator] = useState(false);
+  const loadingIndicatorStartTimeRef = useRef(null);
+
+  // Handle search page change
+  const handleSearchPageChange = useCallback((newPage) => {
+    setSearchCurrentPage(newPage);
+    // Scroll to top of results when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
   
   // Use centralized history hook for history page
   const { historyItems, isLoading: isHistoryLoading, clearHistory } = useHistory();
@@ -461,6 +472,10 @@ function App() {
         setWorlds(worldsMap);
         setDatacenters(dcData);
         setIsServerDataLoaded(true);
+        // Enable server selector after server data is loaded (unless velocity fetch is in progress)
+        if (!velocityFetchInProgressRef.current) {
+          setIsServerSelectorDisabled(false);
+        }
 
         serverLoadInProgressRef.current = false;
         serverLoadCompletedRef.current = true;
@@ -560,15 +575,21 @@ function App() {
 
   // Fetch velocity, average price, and tradability data for search results
   useEffect(() => {
+    // Get displayed results first to check if we'll need to fetch
+    const displayedResults = showUntradeable ? untradeableResults : tradeableResults;
+    const willNeedFetch = displayedResults && displayedResults.length > 0 && selectedServerOption && selectedWorld;
+    
     // Cancel any in-progress fetch
     if (velocityFetchAbortControllerRef.current) {
       velocityFetchAbortControllerRef.current.abort();
       velocityFetchInProgressRef.current = false;
-      setIsServerSelectorDisabled(false);
+      // Only enable if server data is loaded AND we won't need to fetch again
+      if (isServerDataLoaded && !willNeedFetch) {
+        setIsServerSelectorDisabled(false);
+      }
     }
     
     // Reset state if no search results or no server selected
-    const displayedResults = showUntradeable ? untradeableResults : tradeableResults;
     if (!displayedResults || displayedResults.length === 0 || !selectedServerOption || !selectedWorld) {
       setSearchVelocities({});
       setSearchAveragePrices({});
@@ -576,7 +597,10 @@ function App() {
       setSearchRecentPurchases({});
       setSearchTradability({});
       setIsLoadingVelocities(false);
-      setIsServerSelectorDisabled(false);
+      // Only enable server selector if server data is loaded AND no fetch is in progress
+      if (isServerDataLoaded && !velocityFetchInProgressRef.current) {
+        setIsServerSelectorDisabled(false);
+      }
       velocityFetchInProgressRef.current = false;
       lastFetchedItemIdsRef.current = '';
       return;
@@ -592,7 +616,10 @@ function App() {
       setSearchRecentPurchases({});
       setSearchTradability({});
       setIsLoadingVelocities(false);
-      setIsServerSelectorDisabled(false);
+      // Only enable server selector if server data is loaded AND no fetch is in progress
+      if (isServerDataLoaded && !velocityFetchInProgressRef.current) {
+        setIsServerSelectorDisabled(false);
+      }
       velocityFetchInProgressRef.current = false;
       lastFetchedItemIdsRef.current = '';
       return;
@@ -603,16 +630,41 @@ function App() {
     const serverKey = `${selectedServerOption}`;
     const cacheKey = `${itemIdsKey}|${serverKey}`;
     
+    // Clear state if server changed (to avoid showing stale DC prices when switching to server)
+    if (lastFetchedItemIdsRef.current && lastFetchedItemIdsRef.current !== cacheKey) {
+      const lastServerKey = lastFetchedItemIdsRef.current.split('|')[1];
+      if (lastServerKey !== serverKey) {
+        setSearchVelocities({});
+        setSearchAveragePrices({});
+        setSearchMinListings({});
+        setSearchRecentPurchases({});
+        setSearchTradability({});
+      }
+    }
+    
     // Skip if already fetching or if items and server haven't changed
     if (velocityFetchInProgressRef.current || lastFetchedItemIdsRef.current === cacheKey) {
+      // If already fetching, ensure server selector stays disabled
+      if (velocityFetchInProgressRef.current && isServerDataLoaded) {
+        setIsServerSelectorDisabled(true);
+      }
       return;
+    }
+
+    // Set fetch in progress flag FIRST to prevent early returns from enabling selector
+    // This must happen BEFORE any state updates that might trigger re-renders
+    velocityFetchInProgressRef.current = true;
+    
+    // Disable server selector immediately when we have results that need fetching
+    // This must happen BEFORE the async fetchData function starts
+    if (isServerDataLoaded) {
+      setIsServerSelectorDisabled(true);
     }
 
     // Create new abort controller and request ID
     const currentRequestId = ++velocityFetchRequestIdRef.current;
     velocityFetchAbortControllerRef.current = new AbortController();
     const abortSignal = velocityFetchAbortControllerRef.current.signal;
-    velocityFetchInProgressRef.current = true;
 
     const fetchData = async () => {
       setIsLoadingVelocities(true);
@@ -673,27 +725,27 @@ function App() {
               data.results.forEach(item => {
                 const itemId = item.itemId;
                 
-                // Helper function to get value preferring world over dc
+                // Helper function to get value - when querying a specific server (!isDCQuery), only use world data, don't fallback to DC
                 const getValue = (nqData, hqData, field) => {
-                  // For world queries, prefer world value, fallback to dc
-                  // For DC queries, use dc value
                   const nqWorld = nqData?.world?.[field];
                   const hqWorld = hqData?.world?.[field];
                   const nqDc = nqData?.dc?.[field];
                   const hqDc = hqData?.dc?.[field];
-                  
-                  // Prefer world values if they exist, otherwise use dc
-                  const nqValue = nqWorld !== undefined ? nqWorld : nqDc;
-                  const hqValue = hqWorld !== undefined ? hqWorld : hqDc;
-                  
-                  // Compare NQ and HQ, return the appropriate value based on field type
+
+                  // When querying a specific server (!isDCQuery), only use world data, don't fallback to DC
+                  // When querying DC (isDCQuery), use DC data
+                  const nqValue = isDCQuery 
+                    ? (nqDc !== undefined ? nqDc : nqWorld)
+                    : (nqWorld !== undefined ? nqWorld : undefined);
+                  const hqValue = isDCQuery
+                    ? (hqDc !== undefined ? hqDc : hqWorld)
+                    : (hqWorld !== undefined ? hqWorld : undefined);
+
                   if (field === 'quantity') {
-                    // For velocity, add NQ and HQ together (use whichever is available)
                     if (nqValue !== undefined || hqValue !== undefined) {
                       return (nqValue || 0) + (hqValue || 0);
                     }
                   } else {
-                    // For prices, pick lower (cheaper)
                     if (nqValue !== undefined && hqValue !== undefined) {
                       return Math.min(nqValue, hqValue);
                     } else if (hqValue !== undefined) {
@@ -705,33 +757,123 @@ function App() {
                   return null;
                 };
                 
-                // Get velocity - compare NQ and HQ, pick higher, prefer world over dc
                 const velocity = getValue(
                   item.nq?.dailySaleVelocity,
                   item.hq?.dailySaleVelocity,
                   'quantity'
                 );
-                
-                // Get average price - compare NQ and HQ, pick lower (cheaper), prefer world over dc
-                const averagePrice = getValue(
-                  item.nq?.averageSalePrice,
-                  item.hq?.averageSalePrice,
-                  'price'
-                );
-                
-                // Get min listing - compare NQ and HQ, pick lower, prefer world over dc
-                const minListing = getValue(
+
+                // For average price, always fallback to DC data if world data doesn't exist (even when server is selected)
+                // This is because "全服平均價格" should show DC average when available
+                let averagePrice = null;
+                if (!isDCQuery) {
+                  // When server is selected, try world first, then fallback to DC
+                  const nqWorld = item.nq?.averageSalePrice?.world?.price;
+                  const hqWorld = item.hq?.averageSalePrice?.world?.price;
+                  const nqDc = item.nq?.averageSalePrice?.dc?.price;
+                  const hqDc = item.hq?.averageSalePrice?.dc?.price;
+                  
+                  const nqValue = nqWorld !== undefined ? nqWorld : nqDc;
+                  const hqValue = hqWorld !== undefined ? hqWorld : hqDc;
+                  
+                  if (nqValue !== undefined && hqValue !== undefined) {
+                    averagePrice = Math.min(nqValue, hqValue);
+                  } else if (hqValue !== undefined) {
+                    averagePrice = hqValue;
+                  } else if (nqValue !== undefined) {
+                    averagePrice = nqValue;
+                  }
+                } else {
+                  // When DC is selected, use DC data
+                  averagePrice = getValue(
+                    item.nq?.averageSalePrice,
+                    item.hq?.averageSalePrice,
+                    'price'
+                  );
+                }
+
+                const minListingPrice = getValue(
                   item.nq?.minListing,
                   item.hq?.minListing,
                   'price'
                 );
-                
-                // Get recent purchase - compare NQ and HQ, pick lower, prefer world over dc
-                const recentPurchase = getValue(
+
+                const recentPurchasePrice = getValue(
                   item.nq?.recentPurchase,
                   item.hq?.recentPurchase,
                   'price'
                 );
+
+                // Extract region field when querying a specific world (not DC)
+                let minListing = null;
+                if (minListingPrice !== null && minListingPrice !== undefined) {
+                  if (!isDCQuery) {
+                    // When world is selected, only use world data, don't fallback to DC
+                    const nqWorldPrice = item.nq?.minListing?.world?.price;
+                    const hqWorldPrice = item.hq?.minListing?.world?.price;
+                    
+                    // Determine which one (NQ or HQ) has the better price, then get its region
+                    let selectedData = null;
+                    if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
+                      selectedData = hqWorldPrice <= nqWorldPrice 
+                        ? item.hq?.minListing?.world
+                        : item.nq?.minListing?.world;
+                    } else if (hqWorldPrice !== undefined) {
+                      selectedData = item.hq?.minListing?.world;
+                    } else if (nqWorldPrice !== undefined) {
+                      selectedData = item.nq?.minListing?.world;
+                    }
+                    
+                    // Only store minListing if world data actually exists
+                    if (selectedData !== null) {
+                      // Extract region if available
+                      const region = selectedData?.region;
+                      minListing = { price: minListingPrice };
+                      if (region !== undefined) {
+                        minListing.region = region;
+                      }
+                    }
+                    // If selectedData is null, minListing remains null (don't store DC prices)
+                  } else {
+                    // When DC is selected, just store the price
+                    minListing = minListingPrice;
+                  }
+                }
+
+                let recentPurchase = null;
+                if (recentPurchasePrice !== null && recentPurchasePrice !== undefined) {
+                  if (!isDCQuery) {
+                    // When world is selected, only use world data, don't fallback to DC
+                    const nqWorldPrice = item.nq?.recentPurchase?.world?.price;
+                    const hqWorldPrice = item.hq?.recentPurchase?.world?.price;
+                    
+                    // Determine which one (NQ or HQ) has the better price, then get its region
+                    let selectedData = null;
+                    if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
+                      selectedData = hqWorldPrice <= nqWorldPrice 
+                        ? item.hq?.recentPurchase?.world
+                        : item.nq?.recentPurchase?.world;
+                    } else if (hqWorldPrice !== undefined) {
+                      selectedData = item.hq?.recentPurchase?.world;
+                    } else if (nqWorldPrice !== undefined) {
+                      selectedData = item.nq?.recentPurchase?.world;
+                    }
+                    
+                    // Only store recentPurchase if world data actually exists
+                    if (selectedData !== null) {
+                      // Extract region if available
+                      const region = selectedData?.region;
+                      recentPurchase = { price: recentPurchasePrice };
+                      if (region !== undefined) {
+                        recentPurchase.region = region;
+                      }
+                    }
+                    // If selectedData is null, recentPurchase remains null (don't store DC prices)
+                  } else {
+                    // When DC is selected, just store the price
+                    recentPurchase = recentPurchasePrice;
+                  }
+                }
                 
                 if (velocity !== null && velocity !== undefined) {
                   batchVelocities[itemId] = velocity;
@@ -845,14 +987,17 @@ function App() {
         // Mark fetch as complete
         if (!abortSignal.aborted && currentRequestId === velocityFetchRequestIdRef.current) {
           velocityFetchInProgressRef.current = false;
-          setIsServerSelectorDisabled(false); // Enable server selector after all batches complete
+          // Enable server selector after all batches complete (only if server data is loaded)
+          if (isServerDataLoaded) {
+            setIsServerSelectorDisabled(false);
+          }
           // Remember that we've fetched these items (don't refetch unless they change)
           lastFetchedItemIdsRef.current = cacheKey;
         } else {
           // Request was superseded, reset the in-progress flag
           velocityFetchInProgressRef.current = false;
-          setIsServerSelectorDisabled(false);
-          // Don't update lastFetchedItemIdsRef - let the new request handle it
+          // Only enable if server data is loaded AND no other fetch is starting
+          // Don't enable here - let the new request handle it
         }
       } catch (error) {
         // Ignore abort errors
@@ -863,7 +1008,10 @@ function App() {
         // On error, reset so it can retry
         if (currentRequestId === velocityFetchRequestIdRef.current) {
           velocityFetchInProgressRef.current = false;
-          setIsServerSelectorDisabled(false);
+          // Only enable if server data is loaded
+          if (isServerDataLoaded) {
+            setIsServerSelectorDisabled(false);
+          }
           lastFetchedItemIdsRef.current = '';
         }
       } finally {
@@ -871,11 +1019,11 @@ function App() {
         // Only reset if request was cancelled or superseded
         if (currentRequestId !== velocityFetchRequestIdRef.current) {
           setIsLoadingVelocities(false);
-          setIsServerSelectorDisabled(false);
+          // Don't enable server selector here - let the new request handle it
         }
       }
     };
-
+    
     fetchData();
     
     // Cleanup function
@@ -884,7 +1032,47 @@ function App() {
         velocityFetchAbortControllerRef.current.abort();
       }
     };
-  }, [tradeableResults, untradeableResults, selectedServerOption, selectedWorld]);
+  }, [tradeableResults, untradeableResults, selectedServerOption, selectedWorld, isServerDataLoaded]);
+
+  // Manage loading indicator display with minimum 1s display time
+  // Use same logic as server selector disabled state
+  useEffect(() => {
+    const currentResults = showUntradeable ? untradeableResults : tradeableResults;
+    const shouldShow = isServerSelectorDisabled && 
+                       (currentResults.length >= 50 || tradeableResults.length >= 50 || untradeableResults.length >= 50);
+    
+    if (shouldShow) {
+      // Start showing indicator
+      if (!loadingIndicatorStartTimeRef.current) {
+        loadingIndicatorStartTimeRef.current = Date.now();
+        setShowLoadingIndicator(true);
+      } else {
+        setShowLoadingIndicator(true);
+      }
+    } else {
+      // Hide indicator, but ensure minimum 1s display time
+      if (loadingIndicatorStartTimeRef.current) {
+        const elapsed = Date.now() - loadingIndicatorStartTimeRef.current;
+        const remaining = Math.max(0, 1000 - elapsed);
+        
+        if (remaining > 0) {
+          // Wait for remaining time before hiding
+          const timeout = setTimeout(() => {
+            setShowLoadingIndicator(false);
+            loadingIndicatorStartTimeRef.current = null;
+          }, remaining);
+          
+          return () => clearTimeout(timeout);
+        } else {
+          // Already shown for at least 1s, hide immediately
+          setShowLoadingIndicator(false);
+          loadingIndicatorStartTimeRef.current = null;
+        }
+      } else {
+        setShowLoadingIndicator(false);
+      }
+    }
+  }, [isServerSelectorDisabled, showUntradeable, tradeableResults.length, untradeableResults.length]);
 
   // Reset scroll position on mount and route changes
   useEffect(() => {
@@ -1089,6 +1277,7 @@ function App() {
             }
 
             setIsSearching(true);
+            setIsServerSelectorDisabled(true); // Lock server selection during initial load
             setError(null);
 
             try {
@@ -1111,6 +1300,10 @@ function App() {
               setError(null);
               if (results.length === 0) {
                 addToast('未找到相關物品', 'warning');
+                // No results means velocity fetch won't run, so re-enable server selector here
+                if (lastProcessedURLRef.current === currentURLKey) {
+                  setIsServerSelectorDisabled(false);
+                }
               } else {
                 if (previousSearchText !== searchQuery) {
                   // Don't show toast if only one tradeable item (will be shown by handleItemSelect)
@@ -1123,6 +1316,7 @@ function App() {
                   // Use handleItemSelect to ensure consistent behavior and avoid duplicate toasts
                   handleItemSelect(item);
                 }
+                // If there are results, velocity fetch will handle re-enabling server selector
               }
             } catch (err) {
               if (lastProcessedURLRef.current !== currentURLKey) {
@@ -1135,6 +1329,10 @@ function App() {
               setShowUntradeable(false);
               searchResultsRef.current = [];
               addToast('搜索失敗', 'error');
+              // On error, re-enable server selector since velocity fetch won't run
+              if (lastProcessedURLRef.current === currentURLKey) {
+                setIsServerSelectorDisabled(false);
+              }
             } finally {
               if (lastProcessedURLRef.current === currentURLKey) {
                 setIsSearching(false);
@@ -1273,6 +1471,7 @@ function App() {
       setUntradeableResults(untradeable);
       // If no tradeable items but there are untradeable items, show untradeable by default
       setShowUntradeable(tradeable.length === 0 && untradeable.length > 0);
+      setSearchCurrentPage(1); // Reset to first page on new search
       setError(null);
       
       if (results.length === 0) {
@@ -1303,6 +1502,8 @@ function App() {
   // Handle server option change
   const handleServerOptionChange = useCallback((option) => {
     setSelectedServerOption(option);
+    // Disable server selector when server is changed - velocity fetch will re-enable it when done
+    setIsServerSelectorDisabled(true);
   }, []);
 
   // Load market data when item or server changes
@@ -1852,71 +2053,196 @@ function App() {
           )}
 
           {/* Search Results (not on history page) */}
-          {!isOnHistoryPage && (tradeableResults.length > 0 || untradeableResults.length > 0) && !selectedItem && (
-            <div className="mb-6">
-              {/* Search Results Header */}
-              <div className="flex items-center gap-3 mb-4 flex-wrap">
-                <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold">
-                  搜索結果 ({showUntradeable ? untradeableResults.length : tradeableResults.length} 個物品)
-                </h2>
-                {selectedWorld && selectedServerOption && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm">
-                    <div className="w-1.5 h-1.5 rounded-full bg-ffxiv-gold animate-pulse"></div>
-                    <span className="text-xs sm:text-sm font-semibold text-ffxiv-gold">
-                      {selectedServerOption === selectedWorld.section 
-                        ? `${selectedWorld.section} (全服)`
-                        : worlds[selectedServerOption] || `伺服器 ${selectedServerOption}`
-                      }
-                    </span>
+          {!isOnHistoryPage && (tradeableResults.length > 0 || untradeableResults.length > 0) && !selectedItem && (() => {
+            const currentResults = showUntradeable ? untradeableResults : tradeableResults;
+            const totalPages = Math.ceil(currentResults.length / searchItemsPerPage);
+            const startIndex = (searchCurrentPage - 1) * searchItemsPerPage;
+            const endIndex = startIndex + searchItemsPerPage;
+
+            return (
+              <div className="mb-6">
+                {/* Search Results Header */}
+                <div className="flex items-center gap-3 mb-4 flex-wrap">
+                  <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold">
+                    搜索結果 ({currentResults.length} 個物品)
+                  </h2>
+                  {selectedWorld && selectedServerOption && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm">
+                      <div className="w-1.5 h-1.5 rounded-full bg-ffxiv-gold animate-pulse"></div>
+                      <span className="text-xs sm:text-sm font-semibold text-ffxiv-gold">
+                        {selectedServerOption === selectedWorld.section 
+                          ? `${selectedWorld.section} (全服)`
+                          : worlds[selectedServerOption] || `伺服器 ${selectedServerOption}`
+                        }
+                      </span>
+                    </div>
+                  )}
+                  {untradeableResults.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setShowUntradeable(!showUntradeable);
+                        setSearchCurrentPage(1); // Reset to first page when switching between tradeable/untradeable
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                        showUntradeable
+                          ? 'bg-orange-600/40 text-orange-300 border border-orange-500/50 hover:bg-orange-600/60'
+                          : 'bg-slate-800/50 text-gray-300 border border-purple-500/30 hover:bg-purple-800/40 hover:border-purple-400/50'
+                      }`}
+                    >
+                      {showUntradeable ? `隱藏 (${untradeableResults.length} 個不可交易)` : `顯示 (${untradeableResults.length} 個不可交易)`}
+                    </button>
+                  )}
+                  {/* Loading Indicator - show only for >=50 items, with minimum 1s display time */}
+                  {showLoadingIndicator && currentResults.length >= 50 && (
+                    <div className="flex items-center gap-2 px-2 py-1 bg-slate-800/50 border border-purple-500/30 rounded-lg">
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-ffxiv-gold"></div>
+                      <span className="text-xs text-gray-300">載入中</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Warning for large result sets - show immediately when item count is determined, persist after loading */}
+                {currentResults.length > 100 && (
+                  <div className={`mb-4 p-4 rounded-lg border-2 ${
+                      currentResults.length > 200
+                        ? 'bg-red-900/40 border-red-500/50'
+                        : 'bg-yellow-900/40 border-yellow-500/50'
+                    }`}>
+                      <div className="flex items-start gap-3">
+                        <div className="text-2xl flex-shrink-0">⚠️</div>
+                        <div className="flex-1">
+                          <h3 className={`font-semibold mb-1 ${
+                            currentResults.length > 200
+                              ? 'text-red-400'
+                              : 'text-yellow-400'
+                          }`}>
+                            {currentResults.length > 200 ? '結果數量過多' : '結果數量較多'}
+                          </h3>
+                          <p className="text-sm text-gray-300">
+                            找到 <span className={`font-bold ${
+                              currentResults.length > 200
+                                ? 'text-red-400'
+                                : 'text-yellow-400'
+                            }`}>{currentResults.length}</span> 個物品。
+                            數據載入需要一些時間，排序可能會較慢。
+                            建議使用更嚴格的關鍵詞進行搜索，或請耐心等待。
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                )}
+
+                {/* Server Selector for Search Results */}
+                {selectedWorld && (
+                  <div className="mb-4 flex items-center gap-3 flex-wrap">
+                    <label className="text-sm font-semibold text-ffxiv-gold whitespace-nowrap">
+                      伺服器選擇:
+                    </label>
+                    <ServerSelector
+                      datacenters={datacenters}
+                      worlds={worlds}
+                      selectedWorld={selectedWorld}
+                      onWorldChange={setSelectedWorld}
+                      selectedServerOption={selectedServerOption}
+                      onServerOptionChange={handleServerOptionChange}
+                      serverOptions={serverOptions}
+                      disabled={isServerSelectorDisabled}
+                    />
                   </div>
                 )}
-                {untradeableResults.length > 0 && (
-                  <button
-                    onClick={() => setShowUntradeable(!showUntradeable)}
-                    className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
-                      showUntradeable
-                        ? 'bg-orange-600/40 text-orange-300 border border-orange-500/50 hover:bg-orange-600/60'
-                        : 'bg-slate-800/50 text-gray-300 border border-purple-500/30 hover:bg-purple-800/40 hover:border-purple-400/50'
-                    }`}
-                  >
-                    {showUntradeable ? `隱藏 (${untradeableResults.length} 個不可交易)` : `顯示 (${untradeableResults.length} 個不可交易)`}
-                  </button>
-                )}
-              </div>
 
-              {/* Server Selector for Search Results */}
-              {selectedWorld && (
-                <div className="mb-4 flex items-center gap-3 flex-wrap">
-                  <label className="text-sm font-semibold text-ffxiv-gold whitespace-nowrap">
-                    伺服器選擇:
-                  </label>
-                  <ServerSelector
-                    datacenters={datacenters}
-                    worlds={worlds}
-                    selectedWorld={selectedWorld}
-                    onWorldChange={setSelectedWorld}
-                    selectedServerOption={selectedServerOption}
-                    onServerOptionChange={handleServerOptionChange}
-                    serverOptions={serverOptions}
-                    disabled={isServerSelectorDisabled}
-                  />
-                </div>
-              )}
-              <ItemTable
-                items={showUntradeable ? untradeableResults : tradeableResults}
-                onSelect={handleItemSelect}
-                selectedItem={selectedItem}
-                marketableItems={marketableItems}
-                itemVelocities={searchVelocities}
-                itemAveragePrices={searchAveragePrices}
-                itemMinListings={searchMinListings}
-                itemRecentPurchases={searchRecentPurchases}
-                itemTradability={searchTradability}
-                isLoadingVelocities={isLoadingVelocities}
-                averagePriceHeader={selectedServerOption === selectedWorld?.section ? '全服平均價格' : '平均價格'}
-              />
-            </div>
-          )}
+                {/* Pagination Controls */}
+                {currentResults.length > searchItemsPerPage && (
+                  <div className="mb-4 flex items-center justify-between flex-wrap gap-3 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-3">
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm text-gray-300">每頁顯示:</label>
+                      <select
+                        value={searchItemsPerPage}
+                        onChange={(e) => {
+                          const newItemsPerPage = parseInt(e.target.value, 10);
+                          setSearchItemsPerPage(newItemsPerPage);
+                          setSearchCurrentPage(1); // Reset to first page
+                        }}
+                        className="px-3 py-1.5 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white text-sm focus:outline-none focus:border-ffxiv-gold"
+                      >
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                        <option value={200}>200</option>
+                      </select>
+                      <span className="text-sm text-gray-400">
+                        顯示 {startIndex + 1}-{Math.min(endIndex, currentResults.length)} / {currentResults.length}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleSearchPageChange(1)}
+                        disabled={searchCurrentPage === 1}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                          searchCurrentPage === 1
+                            ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed opacity-50'
+                            : 'bg-slate-800/50 text-white hover:bg-purple-800/40 border border-purple-500/30'
+                        }`}
+                      >
+                        首頁
+                      </button>
+                      <button
+                        onClick={() => handleSearchPageChange(searchCurrentPage - 1)}
+                        disabled={searchCurrentPage === 1}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                          searchCurrentPage === 1
+                            ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed opacity-50'
+                            : 'bg-slate-800/50 text-white hover:bg-purple-800/40 border border-purple-500/30'
+                        }`}
+                      >
+                        上一頁
+                      </button>
+                      <span className="px-3 py-1.5 text-sm text-gray-300">
+                        第 {searchCurrentPage} / {totalPages} 頁
+                      </span>
+                      <button
+                        onClick={() => handleSearchPageChange(searchCurrentPage + 1)}
+                        disabled={searchCurrentPage === totalPages}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                          searchCurrentPage === totalPages
+                            ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed opacity-50'
+                            : 'bg-slate-800/50 text-white hover:bg-purple-800/40 border border-purple-500/30'
+                        }`}
+                      >
+                        下一頁
+                      </button>
+                      <button
+                        onClick={() => handleSearchPageChange(totalPages)}
+                        disabled={searchCurrentPage === totalPages}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                          searchCurrentPage === totalPages
+                            ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed opacity-50'
+                            : 'bg-slate-800/50 text-white hover:bg-purple-800/40 border border-purple-500/30'
+                        }`}
+                      >
+                        末頁
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <ItemTable
+                  items={currentResults}
+                  onSelect={handleItemSelect}
+                  selectedItem={selectedItem}
+                  marketableItems={marketableItems}
+                  itemVelocities={searchVelocities}
+                  itemAveragePrices={searchAveragePrices}
+                  itemMinListings={searchMinListings}
+                  itemRecentPurchases={searchRecentPurchases}
+                  itemTradability={searchTradability}
+                  isLoadingVelocities={isLoadingVelocities}
+                  averagePriceHeader={selectedServerOption === selectedWorld?.section ? '全服平均價格' : '平均價格'}
+                  currentPage={searchCurrentPage}
+                  itemsPerPage={searchItemsPerPage}
+                />
+              </div>
+            );
+          })()}
 
           {/* Selected Item & Market Data */}
           {selectedItem && (

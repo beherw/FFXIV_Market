@@ -1,5 +1,6 @@
 // Crafting Job Price Checker (製造職找價) - Find profitable items to craft
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import Toast from './Toast';
 import ItemTable from './ItemTable';
@@ -48,6 +49,10 @@ export default function CraftingJobPriceChecker({
   const [itemTradability, setItemTradability] = useState({});
   const [isLoadingVelocities, setIsLoadingVelocities] = useState(false);
   const [marketableItems, setMarketableItems] = useState(null);
+  const [tooManyItemsWarning, setTooManyItemsWarning] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(100);
+  const MAX_ITEMS_LIMIT = 500; // Maximum number of items to process
 
   // Load marketable items on mount
   useEffect(() => {
@@ -109,49 +114,48 @@ export default function CraftingJobPriceChecker({
         clearTimeout(ilvlValidationTimeoutRef.current);
       }
 
-      // Debounce validation after 1.3 seconds
-      ilvlValidationTimeoutRef.current = setTimeout(() => {
-        const numValue = parseInt(value, 10);
-        
-        // If empty or invalid, reset to current value
-        if (isNaN(numValue) || numValue < 1 || numValue > 999) {
+      // Immediate validation for empty or invalid input
+      if (value === '') {
+        return; // Allow empty input while typing
+      }
+
+      const numValue = parseInt(value, 10);
+      
+      // Immediate validation and adjustment for valid numbers
+      if (!isNaN(numValue) && numValue >= 1 && numValue <= 999) {
+        let newMin = field === 'min' ? numValue : ilvlMin;
+        let newMax = field === 'max' ? numValue : ilvlMax;
+
+        // Ensure maximum is always higher than minimum
+        if (field === 'min') {
+          // If minimum is adjusted and maximum is still lower or equal, adjust maximum immediately
+          if (newMin >= newMax) {
+            newMax = Math.min(newMin + 10, 999);
+            setIlvlMaxInput(newMax.toString());
+          }
+        } else {
+          // Only adjust minimum if maximum is changed and becomes lower than minimum
+          if (newMax < newMin) {
+            newMin = Math.max(newMax - 10, 1);
+            setIlvlMinInput(newMin.toString());
+          }
+        }
+
+        // Debounce state update with shorter delay (300ms) for better responsiveness
+        ilvlValidationTimeoutRef.current = setTimeout(() => {
+          setIlvlMin(newMin);
+          setIlvlMax(newMax);
+        }, 300);
+      } else {
+        // For invalid values, reset after a short delay
+        ilvlValidationTimeoutRef.current = setTimeout(() => {
           if (field === 'min') {
             setIlvlMinInput(ilvlMin.toString());
           } else {
             setIlvlMaxInput(ilvlMax.toString());
           }
-          return;
-        }
-
-        let newMin = ilvlMin;
-        let newMax = ilvlMax;
-
-        if (field === 'min') {
-          newMin = numValue;
-        } else {
-          newMax = numValue;
-        }
-
-        // Clamp values to valid range
-        if (newMin < 1) {
-          newMin = 1;
-          setIlvlMinInput('1');
-        }
-        if (newMax > 999) {
-          newMax = 999;
-          setIlvlMaxInput('999');
-        }
-        if (newMin > newMax) {
-          const temp = newMin;
-          newMin = newMax;
-          newMax = temp;
-          setIlvlMinInput(newMin.toString());
-          setIlvlMaxInput(newMax.toString());
-        }
-
-        setIlvlMin(newMin);
-        setIlvlMax(newMax);
-      }, 1300);
+        }, 500);
+      }
     }
   }, [ilvlMin, ilvlMax]);
 
@@ -186,6 +190,248 @@ export default function CraftingJobPriceChecker({
     });
   }, [addToast]);
 
+  // Helper function to fetch market data for items with progressive batching
+  const fetchMarketData = useCallback(async (tradeableItemIds, limitItems = false) => {
+    if (!selectedWorld || !selectedServerOption) {
+      addToast('請選擇伺服器', 'warning');
+      return null;
+    }
+
+    // Limit items if requested
+    const itemsToProcess = limitItems 
+      ? tradeableItemIds.slice(0, MAX_ITEMS_LIMIT)
+      : tradeableItemIds;
+
+    if (limitItems && tradeableItemIds.length > MAX_ITEMS_LIMIT) {
+      addToast(`已限制為前 ${itemsToProcess.length} 個物品，正在獲取市場數據...`, 'warning');
+    }
+
+    setIsLoadingVelocities(true);
+    
+    const isDCQuery = selectedServerOption === selectedWorld.section;
+    const queryTarget = isDCQuery 
+      ? selectedWorld.section
+      : selectedServerOption;
+    
+    // Progressive batch processing: 20, then 50, then 100 per batch
+    const processBatch = async (batchNumber, startIndex) => {
+      // Determine batch size: first batch = 20, second batch = 50, rest = 100
+      let batchSize;
+      if (batchNumber === 0) {
+        batchSize = 20; // First batch: 20 items for fast initial display
+      } else if (batchNumber === 1) {
+        batchSize = 50; // Second batch: 50 items
+      } else {
+        batchSize = 100; // Remaining batches: 100 items each
+      }
+      
+      const batch = itemsToProcess.slice(startIndex, startIndex + batchSize);
+      if (batch.length === 0) {
+        return;
+      }
+      
+      const itemIdsString = batch.join(',');
+      
+      try {
+        const response = await axios.get(
+          `https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`
+        );
+        
+        const data = response.data;
+        
+        // Process batch results
+        const batchVelocities = {};
+        const batchAveragePrices = {};
+        const batchMinListings = {};
+        const batchRecentPurchases = {};
+        const batchTradability = {};
+        
+        if (data && data.results) {
+          data.results.forEach(item => {
+            const itemId = item.itemId;
+            
+            const getValue = (nqData, hqData, field) => {
+              const nqWorld = nqData?.world?.[field];
+              const hqWorld = hqData?.world?.[field];
+              const nqDc = nqData?.dc?.[field];
+              const hqDc = hqData?.dc?.[field];
+              
+              const nqValue = nqWorld !== undefined ? nqWorld : nqDc;
+              const hqValue = hqWorld !== undefined ? hqWorld : hqDc;
+              
+              if (field === 'quantity') {
+                if (nqValue !== undefined || hqValue !== undefined) {
+                  return (nqValue || 0) + (hqValue || 0);
+                }
+              } else {
+                if (nqValue !== undefined && hqValue !== undefined) {
+                  return Math.min(nqValue, hqValue);
+                } else if (hqValue !== undefined) {
+                  return hqValue;
+                } else if (nqValue !== undefined) {
+                  return nqValue;
+                }
+              }
+              return null;
+            };
+            
+            const velocity = getValue(
+              item.nq?.dailySaleVelocity,
+              item.hq?.dailySaleVelocity,
+              'quantity'
+            );
+            
+            const averagePrice = getValue(
+              item.nq?.averageSalePrice,
+              item.hq?.averageSalePrice,
+              'price'
+            );
+            
+            const minListing = getValue(
+              item.nq?.minListing,
+              item.hq?.minListing,
+              'price'
+            );
+            
+            const recentPurchasePrice = getValue(
+              item.nq?.recentPurchase,
+              item.hq?.recentPurchase,
+              'price'
+            );
+            
+            let recentPurchase = null;
+            if (recentPurchasePrice !== null && recentPurchasePrice !== undefined) {
+              if (!isDCQuery) {
+                const nqWorldPrice = item.nq?.recentPurchase?.world?.price;
+                const hqWorldPrice = item.hq?.recentPurchase?.world?.price;
+                const nqDcPrice = item.nq?.recentPurchase?.dc?.price;
+                const hqDcPrice = item.hq?.recentPurchase?.dc?.price;
+                
+                const nqPrice = nqWorldPrice !== undefined ? nqWorldPrice : nqDcPrice;
+                const hqPrice = hqWorldPrice !== undefined ? hqWorldPrice : hqDcPrice;
+                
+                let selectedData = null;
+                if (nqPrice !== undefined && hqPrice !== undefined) {
+                  selectedData = hqPrice <= nqPrice 
+                    ? (item.hq?.recentPurchase?.world || item.hq?.recentPurchase?.dc)
+                    : (item.nq?.recentPurchase?.world || item.nq?.recentPurchase?.dc);
+                } else if (hqPrice !== undefined) {
+                  selectedData = item.hq?.recentPurchase?.world || item.hq?.recentPurchase?.dc;
+                } else if (nqPrice !== undefined) {
+                  selectedData = item.nq?.recentPurchase?.world || item.nq?.recentPurchase?.dc;
+                }
+                
+                const region = selectedData?.region;
+                recentPurchase = { price: recentPurchasePrice };
+                if (region !== undefined) {
+                  recentPurchase.region = region;
+                }
+              } else {
+                recentPurchase = recentPurchasePrice;
+              }
+            }
+            
+            if (velocity !== null && velocity !== undefined) {
+              batchVelocities[itemId] = velocity;
+            }
+            if (averagePrice !== null && averagePrice !== undefined) {
+              batchAveragePrices[itemId] = Math.round(averagePrice);
+            }
+            if (minListing !== null && minListing !== undefined) {
+              batchMinListings[itemId] = minListing;
+            }
+            if (recentPurchase !== null && recentPurchase !== undefined) {
+              batchRecentPurchases[itemId] = recentPurchase;
+            }
+            batchTradability[itemId] = true;
+          });
+        }
+        
+        // Items not in results are non-tradable
+        batch.forEach(itemId => {
+          if (!batchTradability.hasOwnProperty(itemId)) {
+            batchTradability[itemId] = false;
+          }
+        });
+        
+        // Update state immediately after each batch (progressive rendering)
+        // First 20 items appear quickly, then 50 more, then the rest in batches of 100
+        // Use flushSync to force immediate synchronous rendering, breaking React's batching
+        flushSync(() => {
+          // Merge new batch data with existing state
+          setItemVelocities(prev => ({ ...prev, ...batchVelocities }));
+          setItemAveragePrices(prev => ({ ...prev, ...batchAveragePrices }));
+          setItemMinListings(prev => ({ ...prev, ...batchMinListings }));
+          setItemRecentPurchases(prev => ({ ...prev, ...batchRecentPurchases }));
+          setItemTradability(prev => ({ ...prev, ...batchTradability }));
+        });
+        
+        // Set loading to false after first batch completes to show immediate feedback
+        // Subsequent batches will continue loading in background
+        if (batchNumber === 0) {
+          setIsLoadingVelocities(false);
+        }
+      } catch (error) {
+        console.error('Error fetching market data:', error);
+        // Mark batch items as non-tradable on error
+        const batchTradability = {};
+        batch.forEach(itemId => {
+          batchTradability[itemId] = false;
+        });
+        // Update state even on error to mark items as non-tradable
+        flushSync(() => {
+          setItemTradability(prev => ({ ...prev, ...batchTradability }));
+        });
+      }
+    };
+    
+    // Process batches recursively, scheduling each in separate event loop tick
+    // This ensures React processes each batch's state update before the next one
+    const processBatchesRecursively = async (batchNumber, startIndex) => {
+      if (startIndex >= itemsToProcess.length) {
+        return; // All batches processed
+      }
+      
+      // Determine batch size
+      let batchSize;
+      if (batchNumber === 0) {
+        batchSize = 20;
+      } else if (batchNumber === 1) {
+        batchSize = 50;
+      } else {
+        batchSize = 100;
+      }
+      
+      // Process this batch
+      await processBatch(batchNumber, startIndex);
+      
+      const nextIndex = startIndex + batchSize;
+      
+      // Schedule next batch in next event loop tick to break React batching
+      if (nextIndex < itemsToProcess.length) {
+        // Use setTimeout to ensure next batch runs in separate event loop tick
+        // No delay for first batch (render immediately), small delay for others to allow browser to paint
+        await new Promise(resolve => {
+          setTimeout(() => {
+            processBatchesRecursively(batchNumber + 1, nextIndex).then(resolve);
+          }, batchNumber === 0 ? 0 : 100); // No delay for first batch, 100ms for others
+        });
+      }
+    };
+    
+    // Start processing batches
+    await processBatchesRecursively(0, 0);
+    
+    // Return final state (though it's already updated progressively)
+    return {
+      velocities: {},
+      averagePrices: {},
+      minListings: {},
+      recentPurchases: {},
+      tradability: {}
+    };
+  }, [selectedWorld, selectedServerOption, addToast]);
+
   // Perform search
   const handleSearch = useCallback(async () => {
     if (isRecipeSearching) return;
@@ -202,6 +448,7 @@ export default function CraftingJobPriceChecker({
     setItemMinListings({});
     setItemRecentPurchases({});
     setItemTradability({});
+    setCurrentPage(1); // Reset to first page on new search
 
     try {
       // Load recipe database
@@ -241,6 +488,17 @@ export default function CraftingJobPriceChecker({
         return;
       }
 
+      // Check if too many items
+      if (tradeableItemIds.length > MAX_ITEMS_LIMIT) {
+        setTooManyItemsWarning({
+          total: tradeableItemIds.length,
+          limit: MAX_ITEMS_LIMIT
+        });
+        setIsRecipeSearching(false);
+        return;
+      }
+
+      setTooManyItemsWarning(null);
       addToast(`找到 ${tradeableItemIds.length} 個可交易物品，正在獲取市場數據...`, 'info');
 
       // Fetch item details for display
@@ -255,184 +513,15 @@ export default function CraftingJobPriceChecker({
 
       setSearchResults(items);
 
-      // Fetch market data in batches (100 items per request)
-      setIsLoadingVelocities(true);
+      // Fetch market data (updates state progressively)
+      const marketData = await fetchMarketData(tradeableItemIds, false);
       
-      // Determine if we're querying DC or world
-      if (!selectedWorld || !selectedServerOption) {
-        addToast('請選擇伺服器', 'warning');
-        setIsLoadingVelocities(false);
+      if (!marketData) {
         setIsRecipeSearching(false);
         return;
       }
-      
-      const isDCQuery = selectedServerOption === selectedWorld.section;
-      // When world is selected, use world ID; when DC is selected, use DC name
-      const queryTarget = isDCQuery 
-        ? selectedWorld.section  // DC name
-        : selectedServerOption;   // World ID (number)
-      
-      const batchSize = 100;
-      const allVelocities = {};
-      const allAveragePrices = {};
-      const allMinListings = {};
-      const allRecentPurchases = {};
-      const allTradability = {};
 
-      for (let i = 0; i < tradeableItemIds.length; i += batchSize) {
-        const batch = tradeableItemIds.slice(i, i + batchSize);
-        const itemIdsString = batch.join(',');
-        
-        try {
-          const response = await axios.get(
-            `https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`
-          );
-          
-          const data = response.data;
-          if (data && data.results) {
-            data.results.forEach(item => {
-              const itemId = item.itemId;
-              
-              // Helper function to get value preferring world over dc
-              const getValue = (nqData, hqData, field) => {
-                // For world queries, prefer world value, fallback to dc
-                // For DC queries, use dc value
-                const nqWorld = nqData?.world?.[field];
-                const hqWorld = hqData?.world?.[field];
-                const nqDc = nqData?.dc?.[field];
-                const hqDc = hqData?.dc?.[field];
-                
-                // Prefer world values if they exist, otherwise use dc
-                const nqValue = nqWorld !== undefined ? nqWorld : nqDc;
-                const hqValue = hqWorld !== undefined ? hqWorld : hqDc;
-                
-                // Compare NQ and HQ, return the appropriate value based on field type
-                if (field === 'quantity') {
-                  // For velocity, add NQ and HQ together (use whichever is available)
-                  if (nqValue !== undefined || hqValue !== undefined) {
-                    return (nqValue || 0) + (hqValue || 0);
-                  }
-                } else {
-                  // For prices, pick lower (cheaper)
-                  if (nqValue !== undefined && hqValue !== undefined) {
-                    return Math.min(nqValue, hqValue);
-                  } else if (hqValue !== undefined) {
-                    return hqValue;
-                  } else if (nqValue !== undefined) {
-                    return nqValue;
-                  }
-                }
-                return null;
-              };
-              
-              // Get velocity - compare NQ and HQ, pick higher, prefer world over dc
-              const velocity = getValue(
-                item.nq?.dailySaleVelocity,
-                item.hq?.dailySaleVelocity,
-                'quantity'
-              );
-              
-              // Get average price - compare NQ and HQ, pick lower (cheaper), prefer world over dc
-              const averagePrice = getValue(
-                item.nq?.averageSalePrice,
-                item.hq?.averageSalePrice,
-                'price'
-              );
-              
-              // Get min listing - compare NQ and HQ, pick lower, prefer world over dc
-              const minListing = getValue(
-                item.nq?.minListing,
-                item.hq?.minListing,
-                'price'
-              );
-              
-              // Get recent purchase - compare NQ and HQ, pick lower, prefer world over dc
-              // When world is selected, recentPurchase has both price and region fields
-              const recentPurchasePrice = getValue(
-                item.nq?.recentPurchase,
-                item.hq?.recentPurchase,
-                'price'
-              );
-              
-              // Extract region field when querying a specific world (not DC)
-              let recentPurchase = null;
-              if (recentPurchasePrice !== null && recentPurchasePrice !== undefined) {
-                if (!isDCQuery) {
-                  // When world is selected, extract region from the recentPurchase object
-                  // Determine which one (NQ or HQ) has the better price, then get its region
-                  const nqWorldPrice = item.nq?.recentPurchase?.world?.price;
-                  const hqWorldPrice = item.hq?.recentPurchase?.world?.price;
-                  const nqDcPrice = item.nq?.recentPurchase?.dc?.price;
-                  const hqDcPrice = item.hq?.recentPurchase?.dc?.price;
-                  
-                  // Prefer world values if they exist, otherwise use dc
-                  const nqPrice = nqWorldPrice !== undefined ? nqWorldPrice : nqDcPrice;
-                  const hqPrice = hqWorldPrice !== undefined ? hqWorldPrice : hqDcPrice;
-                  
-                  // Determine which one was selected (the cheaper one)
-                  let selectedData = null;
-                  if (nqPrice !== undefined && hqPrice !== undefined) {
-                    selectedData = hqPrice <= nqPrice 
-                      ? (item.hq?.recentPurchase?.world || item.hq?.recentPurchase?.dc)
-                      : (item.nq?.recentPurchase?.world || item.nq?.recentPurchase?.dc);
-                  } else if (hqPrice !== undefined) {
-                    selectedData = item.hq?.recentPurchase?.world || item.hq?.recentPurchase?.dc;
-                  } else if (nqPrice !== undefined) {
-                    selectedData = item.nq?.recentPurchase?.world || item.nq?.recentPurchase?.dc;
-                  }
-                  
-                  // Extract region if available
-                  const region = selectedData?.region;
-                  recentPurchase = { price: recentPurchasePrice };
-                  if (region !== undefined) {
-                    recentPurchase.region = region;
-                  }
-                } else {
-                  // When DC is selected, just store the price
-                  recentPurchase = recentPurchasePrice;
-                }
-              }
-              
-              if (velocity !== null && velocity !== undefined) {
-                allVelocities[itemId] = velocity;
-              }
-              if (averagePrice !== null && averagePrice !== undefined) {
-                allAveragePrices[itemId] = Math.round(averagePrice);
-              }
-              if (minListing !== null && minListing !== undefined) {
-                allMinListings[itemId] = minListing;
-              }
-              if (recentPurchase !== null && recentPurchase !== undefined) {
-                allRecentPurchases[itemId] = recentPurchase;
-              }
-              allTradability[itemId] = true;
-            });
-          }
-          
-          // Items not in results are non-tradable
-          batch.forEach(itemId => {
-            if (!allTradability.hasOwnProperty(itemId)) {
-              allTradability[itemId] = false;
-            }
-          });
-        } catch (error) {
-          console.error('Error fetching market data:', error);
-          // Mark batch items as non-tradable on error
-          batch.forEach(itemId => {
-            if (!allTradability.hasOwnProperty(itemId)) {
-              allTradability[itemId] = false;
-            }
-          });
-        }
-      }
-
-      setItemVelocities(allVelocities);
-      setItemAveragePrices(allAveragePrices);
-      setItemMinListings(allMinListings);
-      setItemRecentPurchases(allRecentPurchases);
-      setItemTradability(allTradability);
-      setIsLoadingVelocities(false);
-
+      // State is already updated progressively by fetchMarketData
       addToast(`搜索完成！找到 ${items.length} 個可交易物品`, 'success');
     } catch (error) {
       console.error('Search error:', error);
@@ -441,7 +530,7 @@ export default function CraftingJobPriceChecker({
     } finally {
       setIsRecipeSearching(false);
     }
-  }, [ilvlMin, ilvlMax, selectedJobs, isRecipeSearching, isRangeValid, getMaxRange, addToast, selectedWorld, selectedServerOption]);
+  }, [ilvlMin, ilvlMax, selectedJobs, isRecipeSearching, isRangeValid, getMaxRange, addToast, fetchMarketData]);
 
   // Job icons mapping
   const jobIcons = {
@@ -465,6 +554,18 @@ export default function CraftingJobPriceChecker({
     .filter(job => job.id >= 8 && job.id <= 15);
 
   const maxRange = getMaxRange(selectedJobs.length);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(searchResults.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+
+  // Handle page change
+  const handlePageChange = useCallback((newPage) => {
+    setCurrentPage(newPage);
+    // Scroll to top of results when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
@@ -599,12 +700,104 @@ export default function CraftingJobPriceChecker({
             </div>
           )}
 
+          {/* Too Many Items Warning */}
+          {tooManyItemsWarning && (
+            <div className="mb-4 p-4 bg-yellow-900/40 border-2 border-yellow-500/50 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="text-2xl">⚠️</div>
+                <div className="flex-1">
+                  <h3 className="text-yellow-400 font-semibold mb-2">
+                    找到的物品過多
+                  </h3>
+                  <p className="text-sm text-gray-300 mb-3">
+                    找到 <span className="text-yellow-400 font-bold">{tooManyItemsWarning.total}</span> 個可交易物品，
+                    超過建議上限 <span className="text-yellow-400 font-bold">{tooManyItemsWarning.limit}</span> 個。
+                    處理過多物品可能會導致搜索時間過長或性能問題。
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={async () => {
+                        setTooManyItemsWarning(null);
+                        setIsRecipeSearching(true);
+                        setSearchResults([]);
+                        setItemVelocities({});
+                        setItemAveragePrices({});
+                        setItemMinListings({});
+                        setItemRecentPurchases({});
+                        setItemTradability({});
+
+                        try {
+                          const { recipes } = await loadRecipeDatabase();
+                          let filteredRecipes = recipes;
+                          
+                          if (selectedJobs.length > 0) {
+                            filteredRecipes = filteredRecipes.filter(recipe => 
+                              selectedJobs.includes(recipe.job)
+                            );
+                          }
+                          
+                          filteredRecipes = filteredRecipes.filter(recipe => 
+                            recipe.lvl >= ilvlMin && recipe.lvl <= ilvlMax
+                          );
+
+                          const itemIds = [...new Set(filteredRecipes.map(recipe => recipe.result))];
+                          const marketableSet = await getMarketableItems();
+                          let tradeableItemIds = itemIds.filter(id => marketableSet.has(id));
+                          
+                          // Limit to MAX_ITEMS_LIMIT
+                          tradeableItemIds = tradeableItemIds.slice(0, MAX_ITEMS_LIMIT);
+                          
+                          // Fetch item details for display
+                          const itemPromises = tradeableItemIds.map(id => getItemById(id));
+                          const items = (await Promise.all(itemPromises)).filter(item => item !== null);
+                          setSearchResults(items);
+                          
+                          // Fetch market data with limit flag (updates state progressively)
+                          const marketData = await fetchMarketData(tradeableItemIds, true);
+                          
+                          if (!marketData) {
+                            setIsRecipeSearching(false);
+                            return;
+                          }
+
+                          // State is already updated progressively by fetchMarketData
+                          addToast(`搜索完成！找到 ${items.length} 個可交易物品（已限制）`, 'success');
+                        } catch (error) {
+                          console.error('Search error:', error);
+                          addToast('搜索失敗，請稍後再試', 'error');
+                          setIsLoadingVelocities(false);
+                        } finally {
+                          setIsRecipeSearching(false);
+                        }
+                      }}
+                      className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg font-semibold text-sm transition-colors"
+                    >
+                      繼續搜索（限制為前 {MAX_ITEMS_LIMIT} 個）
+                    </button>
+                    <button
+                      onClick={() => {
+                        setTooManyItemsWarning(null);
+                        addToast('已取消搜索', 'info');
+                      }}
+                      className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold text-sm transition-colors"
+                    >
+                      取消
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-3">
+                    💡 提示：嘗試縮小等級範圍或選擇更少的職業來減少結果數量
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Search Button */}
           <button
             onClick={handleSearch}
-            disabled={isRecipeSearching || !isRangeValid || selectedJobs.length === 0}
+            disabled={isRecipeSearching || !isRangeValid || selectedJobs.length === 0 || tooManyItemsWarning !== null}
             className={`w-full py-3 rounded-lg font-semibold transition-all ${
-              isRecipeSearching || !isRangeValid || selectedJobs.length === 0
+              isRecipeSearching || !isRangeValid || selectedJobs.length === 0 || tooManyItemsWarning !== null
                 ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed opacity-50'
                 : 'bg-gradient-to-r from-ffxiv-gold to-yellow-500 text-slate-900 hover:shadow-[0_0_20px_rgba(212,175,55,0.5)]'
             }`}
@@ -632,6 +825,81 @@ export default function CraftingJobPriceChecker({
                 </div>
               )}
             </div>
+
+            {/* Pagination Controls */}
+            {searchResults.length > itemsPerPage && (
+              <div className="mb-4 flex items-center justify-between flex-wrap gap-3 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-3">
+                <div className="flex items-center gap-3">
+                  <label className="text-sm text-gray-300">每頁顯示:</label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      const newItemsPerPage = parseInt(e.target.value, 10);
+                      setItemsPerPage(newItemsPerPage);
+                      setCurrentPage(1); // Reset to first page
+                    }}
+                    className="px-3 py-1.5 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white text-sm focus:outline-none focus:border-ffxiv-gold"
+                  >
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={200}>200</option>
+                  </select>
+                  <span className="text-sm text-gray-400">
+                    顯示 {startIndex + 1}-{Math.min(endIndex, searchResults.length)} / {searchResults.length}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      currentPage === 1
+                        ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed opacity-50'
+                        : 'bg-slate-800/50 text-white hover:bg-purple-800/40 border border-purple-500/30'
+                    }`}
+                  >
+                    首頁
+                  </button>
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      currentPage === 1
+                        ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed opacity-50'
+                        : 'bg-slate-800/50 text-white hover:bg-purple-800/40 border border-purple-500/30'
+                    }`}
+                  >
+                    上一頁
+                  </button>
+                  <span className="px-3 py-1.5 text-sm text-gray-300">
+                    第 {currentPage} / {totalPages} 頁
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      currentPage === totalPages
+                        ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed opacity-50'
+                        : 'bg-slate-800/50 text-white hover:bg-purple-800/40 border border-purple-500/30'
+                    }`}
+                  >
+                    下一頁
+                  </button>
+                  <button
+                    onClick={() => handlePageChange(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      currentPage === totalPages
+                        ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed opacity-50'
+                        : 'bg-slate-800/50 text-white hover:bg-purple-800/40 border border-purple-500/30'
+                    }`}
+                  >
+                    末頁
+                  </button>
+                </div>
+              </div>
+            )}
+
             <ItemTable
               items={searchResults}
               onSelect={(item) => {
@@ -648,6 +916,8 @@ export default function CraftingJobPriceChecker({
               averagePriceHeader="平均價格"
               getSimplifiedChineseName={getSimplifiedChineseName}
               addToast={addToast}
+              currentPage={currentPage}
+              itemsPerPage={itemsPerPage}
             />
           </div>
         )}

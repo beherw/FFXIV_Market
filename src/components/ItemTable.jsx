@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react';
 import ItemImage from './ItemImage';
 
-export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast }) {
+export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null }) {
   const [sortColumn, setSortColumn] = useState(null);
   const [sortDirection, setSortDirection] = useState('asc'); // 'asc' or 'desc'
 
@@ -118,6 +118,16 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
       return a.id - b.id;
     });
   }, [items, sortColumn, sortDirection, itemTradability, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases]);
+
+  // Paginate sorted items if pagination is enabled
+  const paginatedItems = useMemo(() => {
+    if (!itemsPerPage || itemsPerPage <= 0) {
+      return sortedItems;
+    }
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return sortedItems.slice(startIndex, endIndex);
+  }, [sortedItems, currentPage, itemsPerPage]);
 
   // Calculate conditions for header highlighting
   const shouldHighlightTradable = useMemo(() => {
@@ -266,7 +276,9 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
           </tr>
         </thead>
         <tbody>
-          {sortedItems.map((item, index) => {
+          {paginatedItems.map((item, index) => {
+            // Calculate original index for priority loading (first 5 items of all items)
+            const originalIndex = (currentPage - 1) * (itemsPerPage || items.length) + index;
             // Use API-based tradability if available, otherwise fallback to marketableItems
             const isTradableFromAPI = itemTradability ? itemTradability[item.id] : undefined;
             const isMarketable = marketableItems ? marketableItems.has(item.id) : true;
@@ -301,8 +313,8 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                     itemId={item.id}
                     alt={item.name}
                     className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded border border-purple-500/30 bg-slate-900/50"
-                    priority={index < 5}
-                    loadDelay={index >= 5 ? (index - 5) * 200 : 0}
+                    priority={originalIndex < 5}
+                    loadDelay={originalIndex >= 5 ? (originalIndex - 5) * 200 : 0}
                   />
                 </td>
                 <td className="px-2 sm:px-4 py-2 text-right text-gray-400 font-mono text-xs">{item.id}</td>
