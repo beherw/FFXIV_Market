@@ -502,17 +502,94 @@ export default function MSQPriceChecker({
                 'price'
               );
 
-              const minListing = getValue(
+              const minListingPrice = getValue(
                 item.nq?.minListing,
                 item.hq?.minListing,
                 'price'
               );
 
-              const recentPurchase = getValue(
+              const recentPurchasePrice = getValue(
                 item.nq?.recentPurchase,
                 item.hq?.recentPurchase,
                 'price'
               );
+
+              // Extract region field when querying a specific world (not DC)
+              let minListing = null;
+              if (minListingPrice !== null && minListingPrice !== undefined) {
+                if (!isDCQuery) {
+                  // When world is selected, extract region from the minListing object
+                  // Determine which one (NQ or HQ) has the better price, then get its region
+                  const nqWorldPrice = item.nq?.minListing?.world?.price;
+                  const hqWorldPrice = item.hq?.minListing?.world?.price;
+                  const nqDcPrice = item.nq?.minListing?.dc?.price;
+                  const hqDcPrice = item.hq?.minListing?.dc?.price;
+                  
+                  // Prefer world values if they exist, otherwise use dc
+                  const nqPrice = nqWorldPrice !== undefined ? nqWorldPrice : nqDcPrice;
+                  const hqPrice = hqWorldPrice !== undefined ? hqWorldPrice : hqDcPrice;
+                  
+                  // Determine which one was selected (the cheaper one)
+                  let selectedData = null;
+                  if (nqPrice !== undefined && hqPrice !== undefined) {
+                    selectedData = hqPrice <= nqPrice 
+                      ? (item.hq?.minListing?.world || item.hq?.minListing?.dc)
+                      : (item.nq?.minListing?.world || item.nq?.minListing?.dc);
+                  } else if (hqPrice !== undefined) {
+                    selectedData = item.hq?.minListing?.world || item.hq?.minListing?.dc;
+                  } else if (nqPrice !== undefined) {
+                    selectedData = item.nq?.minListing?.world || item.nq?.minListing?.dc;
+                  }
+                  
+                  // Extract region if available
+                  const region = selectedData?.region;
+                  minListing = { price: minListingPrice };
+                  if (region !== undefined) {
+                    minListing.region = region;
+                  }
+                } else {
+                  // When DC is selected, just store the price
+                  minListing = minListingPrice;
+                }
+              }
+
+              let recentPurchase = null;
+              if (recentPurchasePrice !== null && recentPurchasePrice !== undefined) {
+                if (!isDCQuery) {
+                  // When world is selected, extract region from the recentPurchase object
+                  // Determine which one (NQ or HQ) has the better price, then get its region
+                  const nqWorldPrice = item.nq?.recentPurchase?.world?.price;
+                  const hqWorldPrice = item.hq?.recentPurchase?.world?.price;
+                  const nqDcPrice = item.nq?.recentPurchase?.dc?.price;
+                  const hqDcPrice = item.hq?.recentPurchase?.dc?.price;
+                  
+                  // Prefer world values if they exist, otherwise use dc
+                  const nqPrice = nqWorldPrice !== undefined ? nqWorldPrice : nqDcPrice;
+                  const hqPrice = hqWorldPrice !== undefined ? hqWorldPrice : hqDcPrice;
+                  
+                  // Determine which one was selected (the cheaper one)
+                  let selectedData = null;
+                  if (nqPrice !== undefined && hqPrice !== undefined) {
+                    selectedData = hqPrice <= nqPrice 
+                      ? (item.hq?.recentPurchase?.world || item.hq?.recentPurchase?.dc)
+                      : (item.nq?.recentPurchase?.world || item.nq?.recentPurchase?.dc);
+                  } else if (hqPrice !== undefined) {
+                    selectedData = item.hq?.recentPurchase?.world || item.hq?.recentPurchase?.dc;
+                  } else if (nqPrice !== undefined) {
+                    selectedData = item.nq?.recentPurchase?.world || item.nq?.recentPurchase?.dc;
+                  }
+                  
+                  // Extract region if available
+                  const region = selectedData?.region;
+                  recentPurchase = { price: recentPurchasePrice };
+                  if (region !== undefined) {
+                    recentPurchase.region = region;
+                  }
+                } else {
+                  // When DC is selected, just store the price
+                  recentPurchase = recentPurchasePrice;
+                }
+              }
 
               if (velocity !== null && velocity !== undefined) {
                 allVelocities[itemId] = velocity;

@@ -46,9 +46,15 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
         case 'minListing':
           const aMinListing = itemMinListings ? itemMinListings[a.id] : null;
           const bMinListing = itemMinListings ? itemMinListings[b.id] : null;
-          // Store raw values for special handling
-          aValue = aMinListing !== undefined && aMinListing !== null ? aMinListing : null;
-          bValue = bMinListing !== undefined && bMinListing !== null ? bMinListing : null;
+          // Extract price from object if it's an object, otherwise use the value directly
+          // When DC is selected: minListing is a number
+          // When world is selected: minListing is an object { price, region }
+          aValue = aMinListing !== undefined && aMinListing !== null 
+            ? (typeof aMinListing === 'object' ? aMinListing.price : aMinListing) 
+            : null;
+          bValue = bMinListing !== undefined && bMinListing !== null 
+            ? (typeof bMinListing === 'object' ? bMinListing.price : bMinListing) 
+            : null;
           break;
         case 'recentPurchase':
           const aRecentPurchase = itemRecentPurchases ? itemRecentPurchases[a.id] : null;
@@ -352,8 +358,15 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                       </svg>
                       <span className="text-blue-300 font-medium whitespace-nowrap">
-                        {minListing.toLocaleString()}
+                        {typeof minListing === 'object' 
+                          ? minListing.price.toLocaleString() 
+                          : minListing.toLocaleString()}
                       </span>
+                      {typeof minListing === 'object' && minListing.region && (
+                        <span className="text-xs text-gray-400 ml-1" title={`區域: ${minListing.region}`}>
+                          ({minListing.region})
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <span className="text-gray-500">-</span>
