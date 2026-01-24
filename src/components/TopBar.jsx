@@ -178,6 +178,9 @@ export default function TopBar({
                       <HistoryButton onItemSelect={onItemSelect} setSearchText={setSearchText} isItemInfoPage={isItemInfoPage} />
                     </div>
 
+                    {/* Visual Separator */}
+                    <div className={`topbar-nav-separator ${isItemInfoPage ? 'item-info-page' : ''}`}></div>
+
                     {/* Ultimate Price King Button */}
                     <div className={`topbar-nav-button-container ${isItemInfoPage ? 'item-info-page' : ''}`}>
                       <button
@@ -240,6 +243,9 @@ export default function TopBar({
                     <div className="topbar-nav-button-container">
                       <HistoryButton onItemSelect={onItemSelect} setSearchText={setSearchText} isItemInfoPage={true} />
                     </div>
+
+                    {/* Visual Separator */}
+                    <div className="topbar-nav-separator"></div>
 
                     {/* Ultimate Price King Button */}
                     <div className="topbar-nav-button-container">
@@ -340,6 +346,9 @@ export default function TopBar({
                 <div className="topbar-nav-button-container">
                   <HistoryButton onItemSelect={onItemSelect} setSearchText={setSearchText} isItemInfoPage={false} />
                 </div>
+
+                {/* Visual Separator */}
+                <div className="topbar-nav-separator"></div>
 
                 {/* Ultimate Price King Button */}
                 <div className="topbar-nav-button-container">
