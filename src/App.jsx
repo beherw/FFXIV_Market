@@ -2727,20 +2727,6 @@ function App() {
                           <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
                         </svg>
                         <span className="text-purple-300 group-hover:text-purple-200 font-medium">Twitch</span>
-                        <svg 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          className="h-3 w-3 text-purple-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" 
-                          fill="none" 
-                          viewBox="0 0 24 24" 
-                          stroke="currentColor"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M9 5l7 7-7 7" 
-                          />
-                        </svg>
                       </a>
                     </div>
                   </div>
@@ -2798,7 +2784,7 @@ function App() {
                         </p>
                       </div>
                     </div>
-                    <div className="pt-2 mt-4 border-t border-pink-500/20">
+                    <div className="pt-2 mt-4 border-t border-pink-500/20 flex gap-3">
                       <a 
                         href="https://portaly.cc/beher" 
                         target="_blank" 
@@ -2807,20 +2793,19 @@ function App() {
                       >
                         <span className="text-amber-400 group-hover:text-amber-300 transition-colors text-lg">☕</span>
                         <span className="text-amber-300 group-hover:text-amber-200 font-medium">送我咖啡</span>
-                        <svg 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          className="h-3 w-3 text-amber-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" 
-                          fill="none" 
-                          viewBox="0 0 24 24" 
-                          stroke="currentColor"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M9 5l7 7-7 7" 
-                          />
-                        </svg>
+                      </a>
+                      <a 
+                        href="https://forum.gamer.com.tw/C.php?bsn=17608&snA=28740" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 h-[42px] bg-gradient-to-r from-[#11AAC1]/20 to-[#11AAC1]/30 hover:from-[#11AAC1]/30 hover:to-[#11AAC1]/40 rounded-lg border border-[#11AAC1]/30 hover:border-[#11AAC1]/50 transition-all duration-200 group shadow-lg hover:shadow-[#11AAC1]/20 hover:scale-105 text-[#11AAC1]"
+                      >
+                        <img 
+                          src={getAssetPath('baha_icon.png')} 
+                          alt="巴哈姆特" 
+                          className="h-5 w-5 transition-colors"
+                        />
+                        <span className="font-medium">與巴友分享</span>
                       </a>
                     </div>
                   </div>
