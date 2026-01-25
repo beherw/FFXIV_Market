@@ -1312,13 +1312,18 @@ function App() {
                 }
               } else {
                 if (previousSearchText !== searchQuery) {
-                  // Don't show toast if only one tradeable item (will be shown by handleItemSelect)
-                  if (tradeable.length !== 1) {
+                  // Don't show toast if only one item (will be shown by handleItemSelect)
+                  if (tradeable.length !== 1 && untradeable.length !== 1) {
                     addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
                   }
                 }
+                // Auto-redirect if there's exactly one result (tradeable or untradeable)
                 if (tradeable.length === 1) {
                   const item = tradeable[0];
+                  // Use handleItemSelect to ensure consistent behavior and avoid duplicate toasts
+                  handleItemSelect(item);
+                } else if (untradeable.length === 1 && tradeable.length === 0) {
+                  const item = untradeable[0];
                   // Use handleItemSelect to ensure consistent behavior and avoid duplicate toasts
                   handleItemSelect(item);
                 }
@@ -1486,12 +1491,15 @@ function App() {
         // Record search keyword to history
         addSearchToHistory(searchTerm.trim());
         
-        // Don't show toast if only one tradeable item (will be shown by handleItemSelect)
-        if (tradeable.length !== 1) {
+        // Don't show toast if only one item (will be shown by handleItemSelect)
+        if (tradeable.length !== 1 && untradeable.length !== 1) {
           addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
         }
+        // Auto-redirect if there's exactly one result (tradeable or untradeable)
         if (tradeable.length === 1) {
           handleItemSelect(tradeable[0]);
+        } else if (untradeable.length === 1 && tradeable.length === 0) {
+          handleItemSelect(untradeable[0]);
         }
       }
     } catch (err) {

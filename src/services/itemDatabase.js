@@ -300,6 +300,17 @@ export async function searchItems(searchText) {
   if (process.env.NODE_ENV === 'development') {
     console.log('Search terms:', { original: searchText, traditional: traditionalSearchText, words });
     console.log('Total items in database:', items.length);
+    // Debug: Check if item 10636 exists
+    const item10636 = items.find(item => item['key: #'] === '10636');
+    if (item10636) {
+      console.log('Item 10636 found:', {
+        id: item10636['key: #'],
+        name: item10636['9: Name'],
+        isUntradable: item10636['22: IsUntradable']
+      });
+    } else {
+      console.log('Item 10636 NOT found in items array');
+    }
   }
 
   // Create shop items lookup
@@ -372,6 +383,20 @@ export async function searchItems(searchText) {
       const matches = words.every(word => {
         return cleanName.includes(word);
       });
+      
+      // Debug: log matches for item 10636
+      if (process.env.NODE_ENV === 'development' && itemId === '10636') {
+        console.log('Item 10636 search check:', {
+          itemId,
+          rawName,
+          cleanName,
+          traditionalSearchText,
+          words,
+          matches,
+          isUntradable,
+          untradableValue
+        });
+      }
       
       if (matches) {
         matchCount++;
