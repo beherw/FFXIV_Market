@@ -132,6 +132,8 @@ function App() {
   const lastFetchedItemIdsRef = useRef('');
   const imageIntervalRef = useRef(null);
   const manualModeTimeoutRef = useRef(null);
+  const searchInProgressRef = useRef(false);
+  const lastSearchedTermRef = useRef('');
 
   // Add toast function
   const addToast = useCallback((message, type = 'info') => {
@@ -1268,17 +1270,21 @@ function App() {
         
         const needsSearch = (tradeableResults.length === 0 && untradeableResults.length === 0) || previousSearchText !== searchQuery;
         
-        if (needsSearch) {
+        if (needsSearch && !searchInProgressRef.current) {
+          searchInProgressRef.current = true;
           const performSearch = async () => {
             if (lastProcessedURLRef.current !== currentURLKey) {
+              searchInProgressRef.current = false;
               return;
             }
 
             if (isLoadingDB || !isServerDataLoaded) {
+              searchInProgressRef.current = false;
               return;
             }
 
             if (!containsChinese(searchQuery.trim())) {
+              searchInProgressRef.current = false;
               return;
             }
 
@@ -1287,10 +1293,17 @@ function App() {
             setError(null);
 
             try {
-              const results = await searchItems(searchQuery.trim());
+              const searchResult = await searchItems(searchQuery.trim());
+              const { results, converted, originalText, convertedText } = searchResult;
               
               if (lastProcessedURLRef.current !== currentURLKey) {
+                searchInProgressRef.current = false;
                 return;
+              }
+              
+              // Show toast if conversion happened
+              if (converted && convertedText) {
+                addToast(`「${originalText}」無搜尋結果，正在嘗試轉譯成「${convertedText}」`, 'info');
               }
               
               // Separate tradeable and untradeable items
@@ -1311,26 +1324,25 @@ function App() {
                   setIsServerSelectorDisabled(false);
                 }
               } else {
-                if (previousSearchText !== searchQuery) {
-                  // Don't show toast if only one item (will be shown by handleItemSelect)
-                  if (tradeable.length !== 1 && untradeable.length !== 1) {
-                    addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
-                  }
-                }
                 // Auto-redirect if there's exactly one result (tradeable or untradeable)
-                if (tradeable.length === 1) {
-                  const item = tradeable[0];
-                  // Use handleItemSelect to ensure consistent behavior and avoid duplicate toasts
-                  handleItemSelect(item);
-                } else if (untradeable.length === 1 && tradeable.length === 0) {
-                  const item = untradeable[0];
-                  // Use handleItemSelect to ensure consistent behavior and avoid duplicate toasts
-                  handleItemSelect(item);
+                if (results.length === 1) {
+                  // Single result - redirect to it regardless of tradeable status
+                  // Use replace: true to replace the /search?q=... entry in history
+                  const item = results[0];
+                  setSelectedItem(item);
+                  selectedItemRef.current = item;
+                  addItemToHistory(item.id);
+                  navigate(`/item/${item.id}`, { replace: true });
+                  addToast(`已選擇: ${item.name}`, 'info');
+                } else if (previousSearchText !== searchQuery) {
+                  // Multiple results - show toast
+                  addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
                 }
-                // If there are results, velocity fetch will handle re-enabling server selector
               }
+              // If there are results, velocity fetch will handle re-enabling server selector
             } catch (err) {
               if (lastProcessedURLRef.current !== currentURLKey) {
+                searchInProgressRef.current = false;
                 return;
               }
               console.error('Search error:', err);
@@ -1348,6 +1360,7 @@ function App() {
               if (lastProcessedURLRef.current === currentURLKey) {
                 setIsSearching(false);
               }
+              searchInProgressRef.current = false;
             }
           };
           
@@ -1374,7 +1387,7 @@ function App() {
 
     lastProcessedURLRef.current = currentURLKey;
     isInitializingFromURLRef.current = false;
-  }, [location.pathname, location.search, isServerDataLoaded, params.id, searchParams, searchText, navigate, addToast, isLoadingDB, datacenters, worlds, handleItemSelect, containsChinese, tradeableResults.length, untradeableResults.length]);
+  }, [location.pathname, location.search, isServerDataLoaded, params.id, searchParams, searchText, navigate, addToast, isLoadingDB, datacenters, worlds, handleItemSelect, containsChinese]);
 
   // Handle return to home page
   const handleReturnHome = useCallback(() => {
@@ -1408,6 +1421,12 @@ function App() {
 
   // Handle search
   const handleSearch = useCallback(async (searchTerm, skipNavigation = false) => {
+    const trimmedTerm = searchTerm ? searchTerm.trim() : '';
+    // Prevent duplicate searches - check if same term is already being searched or was just searched
+    if (searchInProgressRef.current || (trimmedTerm && trimmedTerm === lastSearchedTermRef.current)) {
+      return;
+    }
+    
     let currentItemId = params.id;
     if (!currentItemId && location.pathname.startsWith('/item/')) {
       const match = location.pathname.match(/^\/item\/(\d+)$/);
@@ -1415,7 +1434,8 @@ function App() {
         currentItemId = match[1];
       }
     }
-    if (!searchTerm || searchTerm.trim() === '') {
+    if (!trimmedTerm) {
+      lastSearchedTermRef.current = '';
       setTradeableResults([]);
       setUntradeableResults([]);
       setShowUntradeable(false);
@@ -1439,7 +1459,7 @@ function App() {
       return;
     }
 
-    if (!containsChinese(searchTerm.trim())) {
+    if (!containsChinese(trimmedTerm)) {
       addToast('請輸入中文進行搜索', 'warning');
       setTradeableResults([]);
       setUntradeableResults([]);
@@ -1453,6 +1473,10 @@ function App() {
       return;
     }
 
+    searchInProgressRef.current = true;
+    if (trimmedTerm) {
+      lastSearchedTermRef.current = trimmedTerm;
+    }
     setIsSearching(true);
     setError(null);
     
@@ -1466,12 +1490,18 @@ function App() {
 
     // Navigate to search results page, except when explicitly skipping navigation
     // Allow navigation from all pages including history, ultimate-price-king and msq-price-checker pages
-    if (!skipNavigation) {
-      navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`, { replace: false });
+    if (!skipNavigation && trimmedTerm) {
+      navigate(`/search?q=${encodeURIComponent(trimmedTerm)}`, { replace: false });
     }
 
     try {
-      const results = await searchItems(searchTerm.trim());
+      const searchResult = await searchItems(trimmedTerm);
+      const { results, converted, originalText, convertedText } = searchResult;
+      
+      // Show toast if conversion happened
+      if (converted && convertedText) {
+        addToast(`「${originalText}」無搜尋結果，正在嘗試轉譯成「${convertedText}」`, 'info');
+      }
       
       // Separate tradeable and untradeable items
       const marketableSet = await getMarketableItems();
@@ -1489,17 +1519,23 @@ function App() {
         addToast('未找到相關物品', 'warning');
       } else {
         // Record search keyword to history
-        addSearchToHistory(searchTerm.trim());
-        
-        // Don't show toast if only one item (will be shown by handleItemSelect)
-        if (tradeable.length !== 1 && untradeable.length !== 1) {
-          addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
+        if (trimmedTerm) {
+          addSearchToHistory(trimmedTerm);
         }
+        
         // Auto-redirect if there's exactly one result (tradeable or untradeable)
-        if (tradeable.length === 1) {
-          handleItemSelect(tradeable[0]);
-        } else if (untradeable.length === 1 && tradeable.length === 0) {
-          handleItemSelect(untradeable[0]);
+        if (results.length === 1) {
+          // Single result - redirect to it regardless of tradeable status
+          // Use replace: true to replace the /search?q=... entry in history
+          const item = results[0];
+          setSelectedItem(item);
+          selectedItemRef.current = item;
+          addItemToHistory(item.id);
+          navigate(`/item/${item.id}`, { replace: true });
+          addToast(`已選擇: ${item.name}`, 'info');
+        } else {
+          // Multiple results - show toast
+          addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
         }
       }
     } catch (err) {
@@ -1510,6 +1546,13 @@ function App() {
       setShowUntradeable(false);
     } finally {
       setIsSearching(false);
+      searchInProgressRef.current = false;
+      // Clear last searched term after a short delay to allow for legitimate re-searches
+      setTimeout(() => {
+        if (lastSearchedTermRef.current === trimmedTerm) {
+          lastSearchedTermRef.current = '';
+        }
+      }, 1000);
     }
   }, [addToast, isLoadingDB, selectedServerOption, containsChinese, handleItemSelect, params.id, location.pathname, navigate]);
 

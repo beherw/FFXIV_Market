@@ -263,64 +263,23 @@ export async function loadItemDatabase() {
 }
 
 /**
- * Search items - replicates ObservableHQ's SQL query
- * Query: select items."key: #" as id, "9: Name" as name, "11: Level{Item}" as itemLevel, 
- *        "25: Price{Mid}" as shopPrice, "8: Description" as description, 
- *        IF(shop_items."0: Item" is null, false, true) as inShop, 
- *        IF("27: CanBeHq" = 'False', false, true) as canBeHQ 
- *        from items left join shop_items on items."key: #" = shop_items."0: Item" 
- *        where name != '' and "22: IsUntradable" = 'False' and name like ? [for each word]
+ * Internal helper function to perform the actual search with a given search text
+ * @param {Array} items - Items array from database
+ * @param {Array} shopItems - Shop items array
+ * @param {Set} shopItemIds - Set of shop item IDs
+ * @param {string} searchText - Search text to use
+ * @returns {Array} Search results
  */
-export async function searchItems(searchText) {
-  if (!searchText || searchText.trim() === '') {
-    return [];
-  }
-
-  const { items, shopItems } = await loadItemDatabase();
-
-  // Items are already in Traditional Chinese, so we can search directly
-  // Convert user input from Simplified to Traditional if needed
-  // This allows users to input Simplified Chinese but search Traditional Chinese items
+function performSearch(items, shopItems, shopItemIds, searchText) {
   const trimmedSearchText = searchText.trim();
-  // Check if input is already Traditional Chinese - if so, use as-is
-  // Otherwise, convert from Simplified to Traditional
-  const traditionalSearchText = isTraditionalChinese(trimmedSearchText) 
-    ? trimmedSearchText 
-    : convertSimplifiedToTraditional(trimmedSearchText);
   
   // Observable's behavior: if search text has spaces, split into words (AND condition)
   // If no spaces, search the entire string as-is
   // This matches Observable's SQL: "name like ? [for each word]"
-  const hasSpaces = traditionalSearchText.includes(' ');
+  const hasSpaces = trimmedSearchText.includes(' ');
   const words = hasSpaces 
-    ? traditionalSearchText.split(/\s+/).filter(w => w)
-    : [traditionalSearchText]; // Single word, search entire string
-  
-  // Debug: log search terms (only in development)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Search terms:', { original: searchText, traditional: traditionalSearchText, words });
-    console.log('Total items in database:', items.length);
-    // Debug: Check if item 10636 exists
-    const item10636 = items.find(item => item['key: #'] === '10636');
-    if (item10636) {
-      console.log('Item 10636 found:', {
-        id: item10636['key: #'],
-        name: item10636['9: Name'],
-        isUntradable: item10636['22: IsUntradable']
-      });
-    } else {
-      console.log('Item 10636 NOT found in items array');
-    }
-  }
-
-  // Create shop items lookup
-  const shopItemIds = new Set();
-  shopItems.forEach(item => {
-    const itemId = item['0: Item'];
-    if (itemId) {
-      shopItemIds.add(itemId);
-    }
-  });
+    ? trimmedSearchText.split(/\s+/).filter(w => w)
+    : [trimmedSearchText]; // Single word, search entire string
 
   // Filter items
   let matchCount = 0;
@@ -378,7 +337,7 @@ export async function searchItems(searchText) {
       
       // Observable's SQL query: name like ? [for each word]
       // It only searches in name field, not description
-      // Match all words (AND condition) - search in cleaned name (Traditional Chinese)
+      // Match all words (AND condition) - search in cleaned name
       // Observable's SQL: name like '%word%' for each word
       const matches = words.every(word => {
         return cleanName.includes(word);
@@ -390,7 +349,7 @@ export async function searchItems(searchText) {
           itemId,
           rawName,
           cleanName,
-          traditionalSearchText,
+          searchText,
           words,
           matches,
           isUntradable,
@@ -405,7 +364,7 @@ export async function searchItems(searchText) {
       }
       
       // Debug: log matches for "地圖" search
-      if (process.env.NODE_ENV === 'development' && traditionalSearchText.includes('地圖')) {
+      if (process.env.NODE_ENV === 'development' && trimmedSearchText.includes('地圖')) {
         if (cleanName.includes('地圖') || cleanName.includes('鞣革')) {
           console.log('Potential match:', { 
             cleanName, 
@@ -478,7 +437,6 @@ export async function searchItems(searchText) {
   if (process.env.NODE_ENV === 'development') {
     console.log('Search results:', { 
       searchText, 
-      traditionalSearchText, 
       words, 
       matchCount, 
       resultCount: results.length,
@@ -491,6 +449,95 @@ export async function searchItems(searchText) {
   }
 
   return results;
+}
+
+/**
+ * Search items - replicates ObservableHQ's SQL query
+ * Query: select items."key: #" as id, "9: Name" as name, "11: Level{Item}" as itemLevel, 
+ *        "25: Price{Mid}" as shopPrice, "8: Description" as description, 
+ *        IF(shop_items."0: Item" is null, false, true) as inShop, 
+ *        IF("27: CanBeHq" = 'False', false, true) as canBeHQ 
+ *        from items left join shop_items on items."key: #" = shop_items."0: Item" 
+ *        where name != '' and "22: IsUntradable" = 'False' and name like ? [for each word]
+ * 
+ * First searches with the original query. If no results are found, converts Traditional/Simplified
+ * Chinese and searches again.
+ */
+export async function searchItems(searchText) {
+  if (!searchText || searchText.trim() === '') {
+    return {
+      results: [],
+      converted: false,
+      originalText: '',
+      convertedText: null
+    };
+  }
+
+  const { items, shopItems } = await loadItemDatabase();
+
+  // Create shop items lookup
+  const shopItemIds = new Set();
+  shopItems.forEach(item => {
+    const itemId = item['0: Item'];
+    if (itemId) {
+      shopItemIds.add(itemId);
+    }
+  });
+
+  // Debug: log search terms (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Search terms (original):', { original: searchText });
+    console.log('Total items in database:', items.length);
+    // Debug: Check if item 10636 exists
+    const item10636 = items.find(item => item['key: #'] === '10636');
+    if (item10636) {
+      console.log('Item 10636 found:', {
+        id: item10636['key: #'],
+        name: item10636['9: Name'],
+        isUntradable: item10636['22: IsUntradable']
+      });
+    } else {
+      console.log('Item 10636 NOT found in items array');
+    }
+  }
+
+  // First, try searching with the original text (as-is)
+  const trimmedSearchText = searchText.trim();
+  let results = performSearch(items, shopItems, shopItemIds, trimmedSearchText);
+  let converted = false;
+  let originalText = trimmedSearchText;
+  let convertedText = null;
+
+  // If no results found, try converting Traditional/Simplified Chinese and search again
+  if (results.length === 0) {
+    // Check if input is already Traditional Chinese - if so, convert to Simplified
+    // Otherwise, convert from Simplified to Traditional
+    const traditionalSearchText = isTraditionalChinese(trimmedSearchText) 
+      ? convertTraditionalToSimplified(trimmedSearchText)
+      : convertSimplifiedToTraditional(trimmedSearchText);
+    
+    // Only retry if the converted text is different from the original
+    if (traditionalSearchText !== trimmedSearchText) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('No results with original text, trying converted:', { 
+          original: trimmedSearchText, 
+          converted: traditionalSearchText 
+        });
+      }
+      
+      converted = true;
+      convertedText = traditionalSearchText;
+      results = performSearch(items, shopItems, shopItemIds, traditionalSearchText);
+    }
+  }
+
+  // Return results with conversion info
+  return {
+    results,
+    converted,
+    originalText,
+    convertedText
+  };
 }
 
 /**

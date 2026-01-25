@@ -383,10 +383,18 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
                     </div>
                     <div className="py-1">
                       {searchHistory.slice(0, 3).map((keyword, index) => (
-                        <button
+                        <div
                           key={`${keyword}-${index}`}
                           onClick={() => handleSearchKeywordClick(keyword)}
-                          className="w-full px-3 py-2 flex items-center gap-3 hover:bg-purple-800/40 transition-colors text-left group"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleSearchKeywordClick(keyword);
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          className="w-full px-3 py-2 flex items-center gap-3 hover:bg-purple-800/40 transition-colors text-left group cursor-pointer"
                         >
                           <div className="flex-shrink-0">
                             {/* Search keyword icon */}
@@ -428,7 +436,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
                               />
                             </svg>
                           </button>
-                        </button>
+                        </div>
                       ))}
                     </div>
                   </>
@@ -449,10 +457,18 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
                     )}
                     <div className="py-1">
                       {historyItems.slice(0, 5).map((item) => (
-                        <button
+                        <div
                           key={item.id}
                           onClick={() => handleHistoryItemClick(item)}
-                          className="w-full px-3 py-2 flex items-center gap-3 hover:bg-purple-800/40 transition-colors text-left group"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleHistoryItemClick(item);
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          className="w-full px-3 py-2 flex items-center gap-3 hover:bg-purple-800/40 transition-colors text-left group cursor-pointer"
                         >
                           <div className="flex-shrink-0 flex items-center gap-2">
                             {/* History icon */}
@@ -500,7 +516,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
                               />
                             </svg>
                           </button>
-                        </button>
+                        </div>
                       ))}
                     </div>
                   </>
