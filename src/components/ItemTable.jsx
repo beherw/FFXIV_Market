@@ -1,10 +1,35 @@
 // Item table component - replicates ObservableHQ's item selection table
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import ItemImage from './ItemImage';
 
+// Lazy load ilvls data
+let ilvlsDataRef = null;
+const loadIlvlsData = async () => {
+  if (ilvlsDataRef) {
+    return ilvlsDataRef;
+  }
+  const ilvlsModule = await import('../../teamcraft_git/libs/data/src/lib/json/ilvls.json');
+  ilvlsDataRef = ilvlsModule.default;
+  return ilvlsDataRef;
+};
+
 export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null }) {
-  const [sortColumn, setSortColumn] = useState(null);
-  const [sortDirection, setSortDirection] = useState('asc'); // 'asc' or 'desc'
+  const [sortColumn, setSortColumn] = useState('id');
+  const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc' - default to desc for highest ilvl first
+  const [ilvlsData, setIlvlsData] = useState(null);
+  
+  // Load ilvls data
+  useEffect(() => {
+    loadIlvlsData().then(data => {
+      setIlvlsData(data);
+    });
+  }, []);
+  
+  // Helper function to get ilvl for an item
+  const getIlvl = (itemId) => {
+    if (!ilvlsData || !itemId) return null;
+    return ilvlsData[itemId.toString()] || null;
+  };
 
   // Sort items based on current sort column and direction
   const sortedItems = useMemo(() => {
@@ -15,8 +40,22 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
 
       switch (sortColumn) {
         case 'id':
-          aValue = a.id;
-          bValue = b.id;
+          // Sort by ilvl if available, otherwise by id
+          const aIlvl = ilvlsData ? (ilvlsData[a.id?.toString()] || null) : null;
+          const bIlvl = ilvlsData ? (ilvlsData[b.id?.toString()] || null) : null;
+          if (aIlvl !== null && bIlvl !== null) {
+            aValue = aIlvl;
+            bValue = bIlvl;
+          } else if (aIlvl !== null) {
+            aValue = aIlvl;
+            bValue = b.id; // Use id as fallback
+          } else if (bIlvl !== null) {
+            aValue = a.id; // Use id as fallback
+            bValue = bIlvl;
+          } else {
+            aValue = a.id;
+            bValue = b.id;
+          }
           break;
         case 'name':
           aValue = a.name || '';
@@ -117,7 +156,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
       // If values are equal, use ID as secondary sort
       return a.id - b.id;
     });
-  }, [items, sortColumn, sortDirection, itemTradability, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases]);
+  }, [items, sortColumn, sortDirection, itemTradability, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, ilvlsData]);
 
   // Paginate sorted items if pagination is enabled
   const paginatedItems = useMemo(() => {
@@ -190,7 +229,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
               onClick={() => handleSort('id')}
             >
               <div className="flex items-center gap-1">
-                ID
+                ilvl
                 <SortIcon column="id" />
               </div>
             </th>
@@ -317,7 +356,13 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                     loadDelay={originalIndex >= 5 ? (originalIndex - 5) * 200 : 0}
                   />
                 </td>
-                <td className="px-2 sm:px-4 py-2 text-right text-gray-400 font-mono text-xs">{item.id}</td>
+                <td className="px-2 sm:px-4 py-2 text-right font-mono text-xs">
+                  {getIlvl(item.id) !== null ? (
+                    <span className="text-green-400 font-semibold">{getIlvl(item.id)}</span>
+                  ) : (
+                    <span className="text-gray-400">{item.id}</span>
+                  )}
+                </td>
                 <td className="px-2 sm:px-4 py-2 text-white font-medium text-xs sm:text-sm break-words" style={{ minWidth: '160px', maxWidth: '280px' }}>
                   <span className="block" style={{ wordBreak: 'break-word', lineHeight: '1.4' }} title={item.name}>
                     {item.name}

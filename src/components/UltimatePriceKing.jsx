@@ -532,26 +532,33 @@ export default function CraftingJobPriceChecker({
     }
   }, [ilvlMin, ilvlMax, selectedJobs, isRecipeSearching, isRangeValid, getMaxRange, addToast, fetchMarketData]);
 
-  // Job icons mapping
-  const jobIcons = {
-    8: '🔨',   // 木工師 (Carpenter)
-    9: '⚒️',   // 鍛造師 (Blacksmith)
-    10: '🛡️',  // 甲冑師 (Armorer)
-    11: '💎',  // 金工師 (Goldsmith)
-    12: '🧵',  // 皮革師 (Leatherworker)
-    13: '🧶',  // 裁縫師 (Weaver)
-    14: '⚗️',  // 鍊金術師 (Alchemist)
-    15: '🍳',  // 烹調師 (Culinarian)
+  // Job icons mapping with XIVAPI URLs
+  const jobIconUrls = {
+    8: 'carpenter',      // 木工師 (Carpenter)
+    9: 'blacksmith',     // 鍛造師 (Blacksmith)
+    10: 'armorer',       // 甲冑師 (Armorer)
+    11: 'goldsmith',     // 金工師 (Goldsmith)
+    12: 'leatherworker', // 皮革師 (Leatherworker)
+    13: 'weaver',        // 裁縫師 (Weaver)
+    14: 'alchemist',     // 鍊金術師 (Alchemist)
+    15: 'culinarian',    // 烹調師 (Culinarian)
   };
 
   // Get crafting jobs (IDs 8-15) from tw-job-abbr.json
   const allJobs = Object.entries(twJobAbbrData)
-    .map(([id, data]) => ({
-      id: parseInt(id, 10),
-      name: data.tw,
-      icon: jobIcons[parseInt(id, 10)] || '⚙️'
-    }))
-    .filter(job => job.id >= 8 && job.id <= 15);
+    .filter(([id]) => {
+      const jobId = parseInt(id, 10);
+      return jobId >= 8 && jobId <= 15;
+    })
+    .map(([id, data]) => {
+      const jobId = parseInt(id, 10);
+      const iconName = jobIconUrls[jobId];
+      return {
+        id: jobId,
+        name: data.tw,
+        iconUrl: iconName ? `https://xivapi.com/cj/companion/${iconName}.png` : null
+      };
+    });
 
   const maxRange = getMaxRange(selectedJobs.length);
 
@@ -662,13 +669,29 @@ export default function CraftingJobPriceChecker({
                   <button
                     key={job.id}
                     onClick={() => handleJobToggle(job.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 ${
+                    className={`px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 ${
                       isSelected
                         ? 'bg-ffxiv-gold text-slate-900 border-2 border-ffxiv-gold'
                         : 'bg-slate-800/50 text-gray-300 border border-purple-500/30 hover:bg-purple-800/40 hover:border-purple-400/50'
                     }`}
                   >
-                    <span className="text-base">{job.icon}</span>
+                    {job.iconUrl ? (
+                      <img 
+                        src={job.iconUrl} 
+                        alt={job.name}
+                        className="w-6 h-6 object-contain"
+                        onError={(e) => {
+                          // Fallback to emoji if image fails to load
+                          e.target.style.display = 'none';
+                          if (!e.target.nextSibling) {
+                            const emoji = document.createTextNode('⚙️');
+                            e.target.parentNode.insertBefore(emoji, e.target.nextSibling);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span className="text-lg">⚙️</span>
+                    )}
                     <span>{job.name}</span>
                   </button>
                 );

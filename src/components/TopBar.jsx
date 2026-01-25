@@ -23,11 +23,12 @@ export default function TopBar({
   
   // Optional: custom navigation buttons
   showNavigationButtons = true,
-  activePage = null, // 'ultimate-price-king', 'msq-price-checker', 'history', or null
+  activePage = null, // 'ultimate-price-king', 'msq-price-checker', 'advanced-search', 'history', or null
   
   // Optional: custom handlers
   onMSQPriceCheckerClick,
   onUltimatePriceKingClick,
+  onAdvancedSearchClick,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,9 +37,21 @@ export default function TopBar({
   const currentActivePage = activePage || (() => {
     if (location.pathname === '/ultimate-price-king') return 'ultimate-price-king';
     if (location.pathname === '/msq-price-checker') return 'msq-price-checker';
+    if (location.pathname === '/advanced-search') return 'advanced-search';
     if (location.pathname === '/history') return 'history';
     return null;
   })();
+  
+  const handleAdvancedSearchClick = () => {
+    if (onAdvancedSearchClick) {
+      onAdvancedSearchClick();
+    } else {
+      if (setSearchText) {
+        setSearchText('');
+      }
+      navigate('/advanced-search');
+    }
+  };
   
   const handleMSQPriceCheckerClick = () => {
     if (onMSQPriceCheckerClick) {
@@ -173,6 +186,31 @@ export default function TopBar({
                 {/* All three navigation buttons on first row */}
                 {showNavigationButtons && (
                   <>
+                    {/* Advanced Search Button */}
+                    <div className={`topbar-nav-button-container ${isItemInfoPage ? 'item-info-page' : ''}`}>
+                      <button
+                        onClick={handleAdvancedSearchClick}
+                        className={`topbar-nav-button ${isItemInfoPage ? 'item-info-page' : ''} ${currentActivePage === 'advanced-search' ? 'active' : ''}`}
+                        title="進階搜尋"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className={`topbar-nav-icon ${isItemInfoPage ? 'item-info-page' : ''}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+                          />
+                        </svg>
+                        <span className="topbar-nav-text item-info-page">進階搜尋</span>
+                      </button>
+                    </div>
+
                     {/* History Button */}
                     <div className={`topbar-nav-button-container ${isItemInfoPage ? 'item-info-page' : ''}`}>
                       <HistoryButton onItemSelect={onItemSelect} setSearchText={setSearchText} isItemInfoPage={isItemInfoPage} />
@@ -239,6 +277,31 @@ export default function TopBar({
                 <div className="topbar-second-row">
                   {/* Left side: Navigation buttons */}
                   <div className="topbar-second-row-left">
+                    {/* Advanced Search Button */}
+                    <div className="topbar-nav-button-container">
+                      <button
+                        onClick={handleAdvancedSearchClick}
+                        className={`topbar-nav-button topbar-second-row-nav-button ${currentActivePage === 'advanced-search' ? 'active' : ''}`}
+                        title="進階搜尋"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="topbar-nav-icon topbar-second-row-nav-icon"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+                          />
+                        </svg>
+                        <span className="topbar-nav-text topbar-second-row-nav-text">進階搜尋</span>
+                      </button>
+                    </div>
+
                     {/* History Button - Show on second row when not wide enough */}
                     <div className="topbar-nav-button-container">
                       <HistoryButton onItemSelect={onItemSelect} setSearchText={setSearchText} isItemInfoPage={true} />
@@ -342,6 +405,32 @@ export default function TopBar({
             {/* All three navigation buttons */}
             {showNavigationButtons && (
               <>
+                {/* Advanced Search Button */}
+                <div className="topbar-nav-button-container">
+                  <button
+                    onClick={handleAdvancedSearchClick}
+                    className={`topbar-nav-button ${currentActivePage === 'advanced-search' ? 'active' : ''}`}
+                    title="進階搜尋"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="topbar-nav-icon"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+                      />
+                    </svg>
+                    <span className="topbar-nav-text">進階搜尋</span>
+                    <span className="topbar-nav-text narrow-only">進階</span>
+                  </button>
+                </div>
+
                 {/* History Button */}
                 <div className="topbar-nav-button-container">
                   <HistoryButton onItemSelect={onItemSelect} setSearchText={setSearchText} isItemInfoPage={false} />

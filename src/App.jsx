@@ -23,6 +23,7 @@ import NotFound from './components/NotFound';
 // Lazy load route-based components
 const CraftingJobPriceChecker = lazy(() => import('./components/UltimatePriceKing'));
 const MSQPriceChecker = lazy(() => import('./components/MSQPriceChecker'));
+const AdvancedSearch = lazy(() => import('./components/AdvancedSearch'));
 const CraftingTree = lazy(() => import('./components/CraftingTree'));
 const RelatedItems = lazy(() => import('./components/RelatedItems'));
 const HistorySection = lazy(() => import('./components/HistorySection'));
@@ -1446,8 +1447,8 @@ function App() {
         setMarketHistory([]);
         setError(null);
         setRateLimitMessage(null);
-        // Don't navigate if we're on ultimate-price-king, msq-price-checker or history page
-        if (!skipNavigation && !currentItemId && location.pathname !== '/ultimate-price-king' && location.pathname !== '/msq-price-checker' && location.pathname !== '/history') {
+        // Don't navigate if we're on ultimate-price-king, msq-price-checker, advanced-search or history page
+        if (!skipNavigation && !currentItemId && location.pathname !== '/ultimate-price-king' && location.pathname !== '/msq-price-checker' && location.pathname !== '/advanced-search' && location.pathname !== '/history') {
           navigate('/');
         }
       }
@@ -1907,15 +1908,17 @@ function App() {
   const isOnHistoryPage = location.pathname === '/history';
   const isOnUltimatePriceKingPage = location.pathname === '/ultimate-price-king';
   const isOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
+  const isOnAdvancedSearchPage = location.pathname === '/advanced-search';
 
   // Check if current route is valid
   const isValidRoute = () => {
     const pathname = location.pathname;
-    // Valid routes: /, /history, /ultimate-price-king, /msq-price-checker, /item/:id, /search
+    // Valid routes: /, /history, /ultimate-price-king, /msq-price-checker, /advanced-search, /item/:id, /search
     if (pathname === '/' || 
         pathname === '/history' || 
         pathname === '/ultimate-price-king' || 
         pathname === '/msq-price-checker' ||
+        pathname === '/advanced-search' ||
         pathname === '/search') {
       return true;
     }
@@ -1930,6 +1933,36 @@ function App() {
   // Render 404 page if route is invalid
   if (!isValidRoute()) {
     return <NotFound />;
+  }
+
+  // Render Advanced Search if on that route
+  if (isOnAdvancedSearchPage) {
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold"></div>
+        </div>
+      }>
+        <AdvancedSearch
+          addToast={addToast}
+          removeToast={removeToast}
+          toasts={toasts}
+          datacenters={datacenters}
+          worlds={worlds}
+          selectedWorld={selectedWorld}
+          onWorldChange={setSelectedWorld}
+          selectedServerOption={selectedServerOption}
+          onServerOptionChange={handleServerOptionChange}
+          serverOptions={selectedWorld && selectedWorld.dcObj ? [selectedWorld.section, ...selectedWorld.dcObj.worlds] : []}
+          isServerDataLoaded={isServerDataLoaded}
+          onItemSelect={handleItemSelect}
+          onSearch={handleSearch}
+          searchText={searchText}
+          setSearchText={setSearchText}
+          isSearching={isSearching}
+        />
+      </Suspense>
+    );
   }
 
   // Render MSQ price checker if on that route
@@ -2010,10 +2043,14 @@ function App() {
           setSearchText('');
           navigate('/ultimate-price-king');
         }}
-        activePage={isOnUltimatePriceKingPage ? 'ultimate-price-king' : isOnMSQPriceCheckerPage ? 'msq-price-checker' : null}
+        activePage={isOnUltimatePriceKingPage ? 'ultimate-price-king' : isOnMSQPriceCheckerPage ? 'msq-price-checker' : isOnAdvancedSearchPage ? 'advanced-search' : null}
         onMSQPriceCheckerClick={() => {
           setSearchText('');
           navigate('/msq-price-checker');
+        }}
+        onAdvancedSearchClick={() => {
+          setSearchText('');
+          navigate('/advanced-search');
         }}
         searchResults={showUntradeable ? untradeableResults : tradeableResults}
         marketableItems={marketableItems}
@@ -2057,23 +2094,45 @@ function App() {
           {isOnHistoryPage && !selectedItem && (
             <div>
               <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-2xl sm:text-3xl font-bold text-ffxiv-gold flex items-center gap-3">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className="h-6 w-6 sm:h-8 sm:w-8" 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    stroke="currentColor"
+                <div className="flex items-center gap-3">
+                  <button
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-300 hover:text-ffxiv-gold transition-colors rounded-md hover:bg-purple-800/30 border border-purple-500/30 hover:border-ffxiv-gold/50"
+                    title="進階搜尋"
                   >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
-                    />
-                  </svg>
-                  歷史記錄
-                </h2>
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-4 w-4 sm:h-5 sm:w-5" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" 
+                      />
+                    </svg>
+                    <span className="hidden sm:inline">進階搜尋</span>
+                  </button>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-ffxiv-gold flex items-center gap-3">
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-6 w-6 sm:h-8 sm:w-8" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+                      />
+                    </svg>
+                    歷史記錄
+                  </h2>
+                </div>
                 <button
                   onClick={() => {
                     if (window.confirm('確定要清空所有歷史記錄嗎？')) {
