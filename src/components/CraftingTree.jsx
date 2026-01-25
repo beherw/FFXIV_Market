@@ -235,19 +235,100 @@ function getCheapestCost(node, itemPrices, queriedItemIds) {
 }
 
 /**
- * Build a map of optimal methods for each node in the tree
- * Used to highlight the optimal crafting path
+ * Calculate the crafting cost for a node (sum of children's cheapest costs × amounts)
+ * This always returns the crafting cost, regardless of whether buying is cheaper
+ * Returns: number (crafting cost), 'N/A' (missing materials), or null (not queried)
  */
-function buildOptimalPathMap(node, itemPrices, queriedItemIds, pathMap = new Map()) {
-  const result = getCheapestCost(node, itemPrices, queriedItemIds);
-  pathMap.set(node.itemId, result.method);
+function calculateCraftingCost(node, itemPrices, queriedItemIds) {
+  if (!node.children || node.children.length === 0) {
+    return null; // No recipe, can't craft
+  }
   
-  // If this node's optimal method is 'craft', recurse into children
-  // If 'buy', don't recurse - children are not part of the optimal path
-  if (result.method === 'craft' && node.children) {
-    for (const child of node.children) {
-      buildOptimalPathMap(child, itemPrices, queriedItemIds, pathMap);
+  // Check if all children have been queried
+  let allChildrenQueried = true;
+  for (const child of node.children) {
+    if (!queriedItemIds.has(child.itemId)) {
+      allChildrenQueried = false;
+      break;
     }
+  }
+  
+  if (!allChildrenQueried) {
+    return null; // Still loading
+  }
+  
+  // Calculate crafting cost (sum of children's cheapest costs × amounts)
+  let craftingCost = 0;
+  
+  for (const child of node.children) {
+    const childResult = getCheapestCost(child, itemPrices, queriedItemIds);
+    if (childResult.cost === 'N/A') {
+      return 'N/A'; // Missing material
+    } else if (childResult.cost !== null && typeof childResult.cost === 'number') {
+      const childTotal = childResult.cost * child.amount;
+      craftingCost += childTotal;
+    } else {
+      return null; // Still loading
+    }
+  }
+  
+  return craftingCost;
+}
+
+/**
+ * Build a map of crafting methods for each node in the tree
+ * Used to highlight the crafting path when crafting is cheaper
+ * This function marks nodes as 'craft' if they should be crafted (have children and crafting is viable)
+ * and 'buy' if they should be bought (leaf nodes or can't be crafted)
+ */
+function buildCraftingPathMap(node, itemPrices, queriedItemIds, pathMap = new Map()) {
+  // Check if this node can be crafted (has children)
+  const hasChildren = node.children && node.children.length > 0;
+  
+  if (!hasChildren) {
+    // Leaf node - must buy
+    pathMap.set(node.itemId, 'buy');
+    return pathMap;
+  }
+  
+  // Check if all children have been queried
+  let allChildrenQueried = true;
+  for (const child of node.children) {
+    if (!queriedItemIds.has(child.itemId)) {
+      allChildrenQueried = false;
+      break;
+    }
+  }
+  
+  if (!allChildrenQueried) {
+    // Still loading, can't determine path
+    return pathMap;
+  }
+  
+  // Calculate crafting cost for this node using calculateCraftingCost
+  // This always returns the crafting cost, not the market price
+  const craftingCost = calculateCraftingCost(node, itemPrices, queriedItemIds);
+  
+  // Check if we can calculate crafting cost
+  if (craftingCost === null || craftingCost === 'N/A') {
+    // Can't craft - mark as buy
+    pathMap.set(node.itemId, 'buy');
+    return pathMap;
+  }
+  
+  // Get market price
+  const marketPrice = itemPrices[node.itemId]?.price ?? null;
+  
+  // If we can craft and (no market price OR crafting is cheaper), mark as craft
+  if (typeof craftingCost === 'number' && (marketPrice === null || craftingCost < marketPrice)) {
+    pathMap.set(node.itemId, 'craft');
+    // Recurse into children to mark them as well
+    for (const child of node.children) {
+      buildCraftingPathMap(child, itemPrices, queriedItemIds, pathMap);
+    }
+  } else {
+    // Can't craft or buying is cheaper - mark as buy
+    pathMap.set(node.itemId, 'buy');
   }
   
   return pathMap;
@@ -280,16 +361,16 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
       return null; // Still loading
     }
     
-    // Use getCheapestCost to check if we can craft the root item
-    const rootResult = getCheapestCost(tree, itemPrices, queriedItemIds);
+    // Calculate crafting cost separately (always returns crafting cost, not market price)
+    const craftingCost = calculateCraftingCost(tree, itemPrices, queriedItemIds);
     
-    // If we can't calculate a cost (still loading), don't show badge yet
-    if (rootResult.cost === null) {
+    // If we can't calculate crafting cost (still loading), don't show badge yet
+    if (craftingCost === null) {
       return null;
     }
     
     const rootPrice = itemPrices[tree.itemId]?.price ?? null;
-    const cheapestRouteCost = rootResult.cost;
+    const cheapestRouteCost = craftingCost; // Use crafting cost, not getCheapestCost result
     const rootIsNA = rootPrice === null;
     const materialsIsNA = cheapestRouteCost === 'N/A';
     const materialsHasPrice = typeof cheapestRouteCost === 'number';
@@ -315,23 +396,22 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
     
     // 材料有價格 vs 成品 N/A，用材料
     if (materialsHasPrice && rootIsNA) {
-      if (rootResult.method === 'craft') {
-        return {
-          rootPrice: null,
-          cheapestRouteCost,
-          canCraft: true,
-          isCraftOnly: true,
-        };
-      }
-      return { canCraft: false };
+      // If we can calculate crafting cost, show it
+      return {
+        rootPrice: null,
+        cheapestRouteCost,
+        canCraft: true,
+        isCraftOnly: true,
+      };
     }
     
     // Both have prices - normal comparison
     if (materialsHasPrice && rootPrice !== null) {
+      const savings = rootPrice - cheapestRouteCost;
       return {
         rootPrice,
         cheapestRouteCost,
-        savings: rootPrice - cheapestRouteCost,
+        savings,
         canCraft: true,
         isCraftOnly: false,
       };
@@ -413,10 +493,30 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
   const isCraftCheaper = savings > 0;
   const absSavings = Math.abs(savings);
   
-  if (absSavings === 0) {
+  // Use a small tolerance (1 gil) to account for floating point precision issues
+  // If the difference is less than 1, consider prices equal
+  if (absSavings < 1) {
     return (
-      <div className="px-3 py-2 rounded-lg bg-gray-700/50 border border-gray-500/30 text-sm text-gray-400 w-max min-w-max whitespace-nowrap">
-        價格相同
+      <div className="px-4 py-2.5 rounded-lg bg-gray-700/50 border border-gray-500/30 text-sm text-gray-400 w-max min-w-max">
+        <div className="flex flex-col items-center gap-1 whitespace-nowrap">
+          {/* Explanation */}
+          <div className="text-xs opacity-70 text-center whitespace-nowrap">
+            以最優路線計算（每項材料取買/製的較低價）
+          </div>
+          {/* Price breakdown */}
+          <div className="flex items-center gap-2 text-sm whitespace-nowrap">
+            <span className="flex-shrink-0">最優製作: {cheapestRouteCost.toLocaleString()}</span>
+            <span className="opacity-60 flex-shrink-0">vs</span>
+            <span className="flex-shrink-0">直購成品: {rootPrice.toLocaleString()}</span>
+          </div>
+          {/* Status */}
+          <div className="flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="font-bold flex-shrink-0">價格相同</span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -547,10 +647,26 @@ function PriceComparisonBadge({ parentPrice, childrenTotalPrice, isReady, amount
   const isCraftCheaper = savings > 0; // materials cost less than finished item
   const absSavings = Math.abs(savings);
 
-  if (absSavings === 0) {
+  // Use a small tolerance (1 gil) to account for floating point precision issues
+  // If the difference is less than 1, consider prices equal
+  if (absSavings < 1) {
     return (
-      <div className="px-2 py-1 rounded-lg bg-gray-700/50 border border-gray-500/30 text-xs text-gray-400">
-        價格相同
+      <div className="px-3 py-1.5 rounded-lg bg-gray-700/50 border border-gray-500/30 text-xs text-gray-400 w-max min-w-max">
+        <div className="flex flex-col items-center gap-0.5 whitespace-nowrap">
+          {/* Price breakdown */}
+          <div className="flex items-center gap-2 text-xs opacity-80 whitespace-nowrap">
+            <span className="flex-shrink-0">材料: {childrenTotalPrice.toLocaleString()}</span>
+            <span className="flex-shrink-0">vs</span>
+            <span className="flex-shrink-0">{amount > 1 ? `${amount}個` : ''}成品: {parentPrice.toLocaleString()}</span>
+          </div>
+          {/* Status */}
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="font-bold flex-shrink-0">價格相同</span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -1082,17 +1198,16 @@ export default function CraftingTree({
       }
     }
     
-    // Calculate cheapest route cost for the root item using getCheapestCost
-    // This will recursively check if we can craft the item through the tree
-    const rootResult = getCheapestCost(tree, itemPrices, queriedItemIds);
+    // Calculate crafting cost separately (always returns crafting cost, not market price)
+    const craftingCost = calculateCraftingCost(tree, itemPrices, queriedItemIds);
     
-    // If we can't calculate a cost (null), it means the path is incomplete (still loading)
-    if (rootResult.cost === null) {
+    // If we can't calculate crafting cost (null), it means the path is incomplete (still loading)
+    if (craftingCost === null) {
       return { optimalPathMap: null, isCraftingCheaper: false };
     }
     
     // If cost is 'N/A', don't show optimal path
-    if (rootResult.cost === 'N/A') {
+    if (craftingCost === 'N/A') {
       return { optimalPathMap: null, isCraftingCheaper: false };
     }
     
@@ -1100,9 +1215,9 @@ export default function CraftingTree({
     
     // If root has no price, but we can craft it (cost is a number), show the crafting path
     if (rootPrice === null) {
-      // Only show path if the optimal method is 'craft' (meaning we can craft it)
-      if (rootResult.method === 'craft' && typeof rootResult.cost === 'number') {
-        const pathMap = buildOptimalPathMap(tree, itemPrices, queriedItemIds);
+      // If we can calculate crafting cost, show the crafting path
+      if (typeof craftingCost === 'number') {
+        const pathMap = buildCraftingPathMap(tree, itemPrices, queriedItemIds);
         return { optimalPathMap: pathMap, isCraftingCheaper: true };
       }
       return { optimalPathMap: null, isCraftingCheaper: false };
@@ -1110,20 +1225,20 @@ export default function CraftingTree({
     
     // If root has price, compare with crafting cost
     // Only compare if both are numbers
-    if (typeof rootResult.cost !== 'number') {
+    if (typeof craftingCost !== 'number') {
       return { optimalPathMap: null, isCraftingCheaper: false };
     }
     
-    const cheapestRouteCost = rootResult.cost;
-    const craftingIsCheaper = cheapestRouteCost < rootPrice;
+    const craftingIsCheaper = craftingCost < rootPrice;
     
     // Only highlight if crafting is cheaper than buying
     if (!craftingIsCheaper) {
       return { optimalPathMap: null, isCraftingCheaper: false };
     }
     
-    // Build the optimal path map for highlighting
-    const pathMap = buildOptimalPathMap(tree, itemPrices, queriedItemIds);
+    // Build the crafting path map for highlighting
+    // Use buildCraftingPathMap instead of buildOptimalPathMap to correctly mark all crafting nodes
+    const pathMap = buildCraftingPathMap(tree, itemPrices, queriedItemIds);
     
     return { optimalPathMap: pathMap, isCraftingCheaper: true };
   }, [tree, itemPrices, queriedItemIds, isLoadingPrices]);
