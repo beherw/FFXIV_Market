@@ -6,6 +6,12 @@
 teamcraft_git/libs/data/src/lib/json/tw/tw-items.json|tw_items|object_nested|Traditional Chinese item names - { "itemId": { "tw": "name" } }
 teamcraft_git/libs/data/src/lib/json/zh/zh-items.json|cn_items|object_nested|Simplified Chinese item names - { "itemId": { "zh": "name" } }
 teamcraft_git/libs/data/src/lib/json/ko/ko-items.json|ko_items|object_nested|Korean item names - { "itemId": { "ko": "name" } }
+# Note: items.json contains multiple languages (en, ja, de, fr) in one file.
+# Structure: { "itemId": { "en": "name", "ja": "name", "de": "name", "fr": "name" } }
+# For en_items, ja_items, de_items, and fr_items tables, we need to extract only the specific language field.
+# The converter needs modification to support field extraction, or process items.json separately.
+# TODO: Update converter to support field extraction (e.g., object_nested_extract_en, object_nested_extract_ja, etc.)
+#       or create separate JSON files with only the needed language fields
 teamcraft_git/libs/data/src/lib/json/tw/tw-item-descriptions.json|tw_item_descriptions|object_nested|Traditional Chinese item descriptions - { "itemId": { "tw": "description" } }
 teamcraft_git/libs/data/src/lib/json/market-items.json|market_items|array|List of marketable item IDs - [itemId1, itemId2, ...]
 teamcraft_git/libs/data/src/lib/json/equipment.json|equipment|object_complex|Equipment data - { "itemId": { "equipSlotCategory": 1, "jobs": [...], ... } }

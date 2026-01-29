@@ -6,6 +6,10 @@
 -- User input >> search TW (Traditional Chinese) strict then fuzzy
 -- User input >> search CN (Simplified Chinese) strict then fuzzy
 -- User input >> search KO (Korean) strict then fuzzy
+-- User input >> search EN (English) strict then fuzzy
+-- User input >> search JA (Japanese) strict then fuzzy
+-- User input >> search DE (German) strict then fuzzy
+-- User input >> search FR (French) strict then fuzzy
 -- User input >> search other languages (if available)...
 
 -- ============================================================================
@@ -35,6 +39,38 @@ CREATE TABLE IF NOT EXISTS ko_items (
 );
 CREATE INDEX IF NOT EXISTS idx_ko_items_id ON ko_items(id);
 CREATE INDEX IF NOT EXISTS idx_ko_items_ko ON ko_items(ko);  -- For text search
+
+-- English item names (EN) - from items.json
+CREATE TABLE IF NOT EXISTS en_items (
+  id INTEGER PRIMARY KEY,
+  en TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_en_items_id ON en_items(id);
+CREATE INDEX IF NOT EXISTS idx_en_items_en ON en_items(en);  -- For text search
+
+-- Japanese item names (JA) - from items.json
+CREATE TABLE IF NOT EXISTS ja_items (
+  id INTEGER PRIMARY KEY,
+  ja TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ja_items_id ON ja_items(id);
+CREATE INDEX IF NOT EXISTS idx_ja_items_ja ON ja_items(ja);  -- For text search
+
+-- German item names (DE) - from items.json
+CREATE TABLE IF NOT EXISTS de_items (
+  id INTEGER PRIMARY KEY,
+  de TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_de_items_id ON de_items(id);
+CREATE INDEX IF NOT EXISTS idx_de_items_de ON de_items(de);  -- For text search
+
+-- French item names (FR) - from items.json
+CREATE TABLE IF NOT EXISTS fr_items (
+  id INTEGER PRIMARY KEY,
+  fr TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fr_items_id ON fr_items(id);
+CREATE INDEX IF NOT EXISTS idx_fr_items_fr ON fr_items(fr);  -- For text search
 
 -- Traditional Chinese item descriptions (for display)
 CREATE TABLE IF NOT EXISTS tw_item_descriptions (
@@ -198,10 +234,14 @@ CREATE INDEX IF NOT EXISTS idx_tw_job_abbr_id ON tw_job_abbr(id);
 -- 3. Consider adding Row Level Security (RLS) policies if needed
 -- 4. You may want to add foreign key constraints between related tables
 -- 5. For large tables, consider partitioning or additional indexes based on query patterns
--- 6. Text search indexes (idx_tw_items_tw, idx_cn_items_zh, idx_ko_items_ko) support LIKE queries for search
+-- 6. Text search indexes (idx_tw_items_tw, idx_cn_items_zh, idx_ko_items_ko, idx_en_items_en, idx_ja_items_ja, idx_de_items_de, idx_fr_items_fr) support LIKE queries for search
 -- 7. For fuzzy search, consider using PostgreSQL's pg_trgm extension for trigram matching:
 --    CREATE EXTENSION IF NOT EXISTS pg_trgm;
 --    CREATE INDEX idx_tw_items_tw_trgm ON tw_items USING gin(tw gin_trgm_ops);
 --    CREATE INDEX idx_cn_items_zh_trgm ON cn_items USING gin(zh gin_trgm_ops);
 --    CREATE INDEX idx_ko_items_ko_trgm ON ko_items USING gin(ko gin_trgm_ops);
--- 8. Search order: TW (strict then fuzzy) -> CN (strict then fuzzy) -> KO (strict then fuzzy) -> other languages
+--    CREATE INDEX idx_en_items_en_trgm ON en_items USING gin(en gin_trgm_ops);
+--    CREATE INDEX idx_ja_items_ja_trgm ON ja_items USING gin(ja gin_trgm_ops);
+--    CREATE INDEX idx_de_items_de_trgm ON de_items USING gin(de gin_trgm_ops);
+--    CREATE INDEX idx_fr_items_fr_trgm ON fr_items USING gin(fr gin_trgm_ops);
+-- 8. Search order: TW (strict then fuzzy) -> CN (strict then fuzzy) -> KO (strict then fuzzy) -> EN (strict then fuzzy) -> JA (strict then fuzzy) -> DE (strict then fuzzy) -> FR (strict then fuzzy) -> other languages
