@@ -607,17 +607,10 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
     twItemDescriptionsCache = await getTwItemDescriptions();
   }
 
-  // Load shop items (needed for all searches)
-  const { shopItems } = await loadItemDatabase();
-  
-  // Create shop items lookup
+  // Shop items are always empty in Supabase (not available), so create empty Set directly
+  // This avoids loading all 42,679 items just to get an empty array
+  const shopItems = [];
   const shopItemIds = new Set();
-  shopItems.forEach(item => {
-    const itemId = item['0: Item'];
-    if (itemId) {
-      shopItemIds.add(itemId);
-    }
-  });
 
   const trimmedSearchText = searchText.trim();
   let results = [];
