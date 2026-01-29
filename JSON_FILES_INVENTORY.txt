@@ -1,0 +1,340 @@
+================================================================================
+JSON FILES USAGE INVENTORY - FFXIV Market Project
+================================================================================
+Generated: 2026-01-30
+Purpose: Document all JSON files currently used in the project for migration to Supabase API
+
+================================================================================
+SUMMARY
+================================================================================
+Total JSON files identified: 13 unique JSON files
+Total estimated size: ~25-30 MB (approximate)
+Largest file: tw-recipes.json (~11 MB)
+Second largest: equipment.json (~6.2 MB)
+
+================================================================================
+JSON FILES BY CATEGORY
+================================================================================
+
+1. ITEM DATA FILES (Largest files - Critical for core functionality)
+--------------------------------------------------------------------------------
+
+File: tw-items.json
+Location: teamcraft_git/libs/data/src/lib/json/tw/tw-items.json
+Size: ~2.1 MB
+Used in:
+  - src/services/itemDatabase.js (imported directly)
+  - src/components/AdvancedSearch.jsx (imported directly)
+Purpose: Traditional Chinese item names database
+  - Contains all item IDs mapped to Traditional Chinese names
+  - Structure: { "itemId": { "tw": "item_name" }, ... }
+  - Used for item search and display
+  - Critical: YES (core functionality)
+
+File: tw-item-descriptions.json
+Location: teamcraft_git/libs/data/src/lib/json/tw/tw-item-descriptions.json
+Size: ~2.1 MB
+Used in:
+  - src/services/itemDatabase.js (imported directly)
+Purpose: Traditional Chinese item descriptions
+  - Contains item descriptions in Traditional Chinese
+  - Structure: { "itemId": { "tw": "description" }, ... }
+  - Used for displaying item descriptions
+  - Critical: YES (core functionality)
+
+File: market-items.json
+Location: teamcraft_git/libs/data/src/lib/json/market-items.json
+Size: ~142 KB
+Used in:
+  - src/services/universalis.js (imported directly)
+Purpose: List of marketable item IDs
+  - Array of item IDs that can be sold on the market board
+  - Used to filter which items can be checked for market data
+  - Critical: YES (core functionality)
+
+File: equipment.json
+Location: teamcraft_git/libs/data/src/lib/json/equipment.json
+Size: ~6.2 MB (very large)
+Used in:
+  - src/components/MSQPriceChecker.jsx (dynamically imported)
+  - src/components/AdvancedSearch.jsx (dynamically imported)
+Purpose: Equipment data for all items
+  - Contains equipment stats, slot types, level requirements, etc.
+  - Used for filtering equipment by slot, level, etc.
+  - Critical: YES (for MSQ and Advanced Search features)
+  - Note: Currently lazy-loaded due to large size
+
+File: ilvls.json
+Location: teamcraft_git/libs/data/src/lib/json/ilvls.json
+Size: ~744 KB
+Used in:
+  - src/App.jsx (dynamically imported)
+  - src/components/ItemTable.jsx (dynamically imported)
+  - src/components/UltimatePriceKing.jsx (dynamically imported)
+  - src/components/MSQPriceChecker.jsx (dynamically imported)
+  - src/components/AdvancedSearch.jsx (dynamically imported)
+Purpose: Item level (iLevel) data
+  - Maps item IDs to their item levels
+  - Used for filtering and sorting items by level
+  - Critical: YES (used in multiple components)
+
+File: rarities.json
+Location: teamcraft_git/libs/data/src/lib/json/rarities.json
+Size: ~696 KB
+Used in:
+  - src/components/ItemTable.jsx (dynamically imported)
+  - src/components/AdvancedSearch.jsx (dynamically imported)
+Purpose: Item rarity data
+  - Maps item IDs to their rarity values
+  - Used for filtering items by rarity
+  - Critical: YES (for Advanced Search and display)
+
+File: item-patch.json
+Location: teamcraft_git/libs/data/src/lib/json/item-patch.json
+Size: ~696 KB
+Used in:
+  - src/App.jsx (dynamically imported)
+  - src/components/ItemTable.jsx (dynamically imported)
+Purpose: Item patch/version information
+  - Maps item IDs to the patch/version they were introduced
+  - Used for displaying patch information and filtering
+  - Critical: YES (for version display)
+
+File: patch-names.json
+Location: teamcraft_git/libs/data/src/lib/json/patch-names.json
+Size: ~29 KB
+Used in:
+  - src/App.jsx (dynamically imported)
+  - src/components/ItemTable.jsx (dynamically imported)
+Purpose: Patch name translations
+  - Maps patch IDs to their display names
+  - Used with item-patch.json to show patch names
+  - Critical: YES (for version display)
+
+2. RECIPE DATA FILES
+--------------------------------------------------------------------------------
+
+File: tw-recipes.json
+Location: teamcraft_git/libs/data/src/lib/json/tw/tw-recipes.json
+Size: ~11 MB (VERY LARGE - largest file in project)
+Used in:
+  - src/services/recipeDatabase.js (imported directly)
+Purpose: Crafting recipes database
+  - Contains all crafting recipes with ingredients and results
+  - Structure: Array of recipe objects with ingredients, result, job, level, etc.
+  - Used for building crafting trees and finding related items
+  - Critical: YES (for crafting tree feature)
+  - Note: This is the LARGEST JSON file in the project
+
+3. CATEGORY/UI DATA FILES
+--------------------------------------------------------------------------------
+
+File: tw-item-ui-categories.json
+Location: teamcraft_git/libs/data/src/lib/json/tw/tw-item-ui-categories.json
+Size: ~4.6 KB
+Used in:
+  - src/components/AdvancedSearch.jsx (imported directly)
+Purpose: Traditional Chinese UI category names
+  - Maps category IDs to Traditional Chinese category names
+  - Used for filtering items by category
+  - Critical: YES (for Advanced Search)
+
+File: ui-categories.json
+Location: teamcraft_git/libs/data/src/lib/json/ui-categories.json
+Size: ~731 KB
+Used in:
+  - src/components/AdvancedSearch.jsx (dynamically imported)
+Purpose: UI category data
+  - Contains category information and relationships
+  - Used for category filtering in Advanced Search
+  - Critical: YES (for Advanced Search)
+
+File: equip-slot-categories.json
+Location: teamcraft_git/libs/data/src/lib/json/equip-slot-categories.json
+Size: ~5.8 KB
+Used in:
+  - src/components/MSQPriceChecker.jsx (imported directly)
+Purpose: Equipment slot category definitions
+  - Defines equipment slot types (MainHand, OffHand, Head, Body, etc.)
+  - Used for filtering equipment by slot type
+  - Critical: YES (for MSQ Price Checker)
+
+4. JOB DATA FILES
+--------------------------------------------------------------------------------
+
+File: tw-job-abbr.json
+Location: teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json
+Size: ~1.5 KB
+Used in:
+  - src/components/UltimatePriceKing.jsx (imported directly)
+  - src/components/AdvancedSearch.jsx (imported directly)
+Purpose: Traditional Chinese job abbreviations
+  - Maps job IDs to Traditional Chinese abbreviations
+  - Used for displaying job names in filters
+  - Critical: YES (for job-based filtering)
+
+================================================================================
+USAGE PATTERNS
+================================================================================
+
+1. DIRECT IMPORTS (Loaded at module initialization):
+   - tw-items.json
+   - tw-item-descriptions.json
+   - tw-recipes.json
+   - market-items.json
+   - tw-item-ui-categories.json
+   - equip-slot-categories.json
+   - tw-job-abbr.json
+
+2. DYNAMIC IMPORTS (Lazy-loaded on demand):
+   - equipment.json (6.2 MB - largest file)
+   - ilvls.json (744 KB)
+   - rarities.json (696 KB)
+   - item-patch.json (696 KB)
+   - patch-names.json (29 KB)
+   - ui-categories.json (731 KB)
+
+================================================================================
+FILE SIZE BREAKDOWN
+================================================================================
+
+Very Large Files (>5 MB):
+  - tw-recipes.json: ~11 MB (LARGEST FILE)
+  - equipment.json: ~6.2 MB
+
+Large Files (1 MB - 5 MB):
+  - tw-items.json: ~2.1 MB
+  - tw-item-descriptions.json: ~2.1 MB
+
+Medium Files (100 KB - 1 MB):
+  - ilvls.json: ~748 KB
+  - ui-categories.json: ~732 KB
+  - rarities.json: ~688 KB
+  - item-patch.json: ~696 KB
+  - market-items.json: ~144 KB
+
+Small Files (<100 KB):
+  - patch-names.json: ~32 KB
+  - equip-slot-categories.json: ~8 KB
+  - tw-item-ui-categories.json: ~8 KB
+  - tw-job-abbr.json: ~4 KB
+
+================================================================================
+MIGRATION PRIORITY
+================================================================================
+
+HIGH PRIORITY (Core functionality, very large files):
+1. tw-recipes.json (11 MB) - Crafting trees (LARGEST FILE - top priority)
+2. equipment.json (6.2 MB) - Equipment filtering (second largest)
+3. tw-items.json (2.1 MB) - Item search core
+4. tw-item-descriptions.json (2.1 MB) - Item display core
+5. ilvls.json (748 KB) - Used in multiple components
+6. market-items.json (144 KB) - Market filtering
+
+MEDIUM PRIORITY (Feature-specific, medium files):
+7. ui-categories.json (732 KB) - Advanced Search
+8. rarities.json (688 KB) - Advanced Search
+9. item-patch.json (696 KB) - Version display
+
+LOW PRIORITY (Small files, less critical):
+10. patch-names.json (29 KB)
+11. equip-slot-categories.json (5.8 KB)
+12. tw-item-ui-categories.json (4.6 KB)
+13. tw-job-abbr.json (1.5 KB)
+
+================================================================================
+COMPONENT DEPENDENCIES
+================================================================================
+
+src/services/itemDatabase.js:
+  - tw-items.json (direct import)
+  - tw-item-descriptions.json (direct import)
+
+src/services/recipeDatabase.js:
+  - tw-recipes.json (direct import)
+
+src/services/universalis.js:
+  - market-items.json (direct import)
+
+src/App.jsx:
+  - ilvls.json (dynamic import)
+  - item-patch.json (dynamic import)
+  - patch-names.json (dynamic import)
+
+src/components/ItemTable.jsx:
+  - ilvls.json (dynamic import)
+  - rarities.json (dynamic import)
+  - item-patch.json (dynamic import)
+  - patch-names.json (dynamic import)
+
+src/components/UltimatePriceKing.jsx:
+  - tw-job-abbr.json (direct import)
+  - ilvls.json (dynamic import)
+
+src/components/MSQPriceChecker.jsx:
+  - equip-slot-categories.json (direct import)
+  - equipment.json (dynamic import)
+  - ilvls.json (dynamic import)
+
+src/components/AdvancedSearch.jsx:
+  - tw-job-abbr.json (direct import)
+  - tw-item-ui-categories.json (direct import)
+  - tw-items.json (direct import)
+  - ilvls.json (dynamic import)
+  - rarities.json (dynamic import)
+  - equipment.json (dynamic import)
+  - ui-categories.json (dynamic import)
+
+================================================================================
+SUPABASE MIGRATION RECOMMENDATIONS
+================================================================================
+
+1. DATABASE STRUCTURE:
+   - Create tables for each JSON file type
+   - Use appropriate indexes for item IDs, category IDs, etc.
+   - Consider partitioning large tables (equipment, items)
+
+2. API ENDPOINTS NEEDED:
+   - GET /api/items/:itemId - Get single item data
+   - GET /api/items/search?q=:query - Search items
+   - GET /api/items/batch - Batch get items by IDs
+   - GET /api/equipment/:itemId - Get equipment data
+   - GET /api/recipes/:itemId - Get recipes for item
+   - GET /api/market-items - Get list of marketable item IDs
+   - GET /api/ilvls/:itemId - Get item level
+   - GET /api/categories - Get category data
+   - GET /api/patch-info/:itemId - Get patch information
+
+3. CACHING STRATEGY:
+   - Cache frequently accessed data (market-items, job-abbr, etc.)
+   - Use Supabase caching or CDN for static data
+   - Consider client-side caching for small files
+
+4. PERFORMANCE CONSIDERATIONS:
+   - Large files (equipment.json, items.json) should be paginated or filtered server-side
+   - Use batch endpoints for multiple item lookups
+   - Consider GraphQL for flexible queries
+
+5. MIGRATION STEPS:
+   a. Set up Supabase project and tables
+   b. Import JSON data into Supabase tables
+   c. Create API endpoints (Supabase Edge Functions or REST API)
+   d. Update service files to use API instead of JSON imports
+   e. Test each component after migration
+   f. Remove JSON imports and files
+
+================================================================================
+NOTES
+================================================================================
+
+- Some files are currently lazy-loaded (dynamic imports) to improve initial load time
+- Consider keeping this pattern with API calls (lazy fetch on demand)
+- The largest file (tw-recipes.json at 11 MB) is the TOP PRIORITY for API migration
+- Second largest file (equipment.json at 6.2 MB) is also a prime candidate
+- Traditional Chinese (tw) files are critical for the application's language support
+- All item-related data should be kept in sync (items, descriptions, equipment, ilvls, etc.)
+- Total JSON data size is ~25-30 MB, which significantly impacts bundle size and load times
+
+================================================================================
+END OF REPORT
+================================================================================

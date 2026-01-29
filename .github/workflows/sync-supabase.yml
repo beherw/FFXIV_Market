@@ -1,0 +1,52 @@
+name: Sync CSV to Supabase
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'json_converter/**'
+      - 'teamcraft_git/libs/data/src/lib/json/**'
+  workflow_dispatch:
+
+jobs:
+  sync-supabase:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Convert JSON to CSV
+        run: |
+          cd json_converter
+          node json_to_csv.js
+
+      - name: Install Supabase client
+        run: npm install @supabase/supabase-js
+
+      - name: Sync CSV to Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          cd json_converter
+          node sync_to_supabase.js
+        continue-on-error: false
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Supabase sync completed"
+          echo "Check the logs above for details"

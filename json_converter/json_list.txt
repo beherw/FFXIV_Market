@@ -1,0 +1,24 @@
+# JSON Files List for Supabase Migration
+# Format: relative_path|table_name|structure_type|description
+# structure_type: array, object_simple, object_nested, array_of_objects
+
+# Item Data Files
+teamcraft_git/libs/data/src/lib/json/tw/tw-items.json|tw_items|object_nested|Traditional Chinese item names - { "itemId": { "tw": "name" } }
+teamcraft_git/libs/data/src/lib/json/tw/tw-item-descriptions.json|tw_item_descriptions|object_nested|Traditional Chinese item descriptions - { "itemId": { "tw": "description" } }
+teamcraft_git/libs/data/src/lib/json/market-items.json|market_items|array|List of marketable item IDs - [itemId1, itemId2, ...]
+teamcraft_git/libs/data/src/lib/json/equipment.json|equipment|object_complex|Equipment data - { "itemId": { "equipSlotCategory": 1, "jobs": [...], ... } }
+teamcraft_git/libs/data/src/lib/json/ilvls.json|ilvls|object_simple|Item levels - { "itemId": ilvl }
+teamcraft_git/libs/data/src/lib/json/rarities.json|rarities|object_simple|Item rarities - { "itemId": rarity }
+teamcraft_git/libs/data/src/lib/json/item-patch.json|item_patch|object_simple|Item patch versions - { "itemId": patchId }
+teamcraft_git/libs/data/src/lib/json/patch-names.json|patch_names|object_nested|Patch name translations - { "patchId": { "name": "..." } }
+
+# Recipe Data Files
+teamcraft_git/libs/data/src/lib/json/tw/tw-recipes.json|tw_recipes|array_of_objects|Crafting recipes - [{ "id": 1, "job": 9, "ingredients": [...], ... }]
+
+# Category/UI Data Files
+teamcraft_git/libs/data/src/lib/json/tw/tw-item-ui-categories.json|tw_item_ui_categories|object_nested|Traditional Chinese UI category names - { "categoryId": { "tw": "name" } }
+teamcraft_git/libs/data/src/lib/json/ui-categories.json|ui_categories|object_complex|UI category data - { "categoryId": { ... } }
+teamcraft_git/libs/data/src/lib/json/equip-slot-categories.json|equip_slot_categories|object_complex|Equipment slot category definitions - { "slotId": { ... } }
+
+# Job Data Files
+teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json|tw_job_abbr|object_nested|Traditional Chinese job abbreviations - { "jobId": { "tw": "abbr" } }

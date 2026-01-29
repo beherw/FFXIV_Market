@@ -1,0 +1,9 @@
+# Ignore CSV output directory (CSV files are generated automatically)
+csv_output/
+
+# Ignore node modules if any
+node_modules/
+
+# Ignore environment files
+.env
+.env.local
