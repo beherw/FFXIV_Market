@@ -118,6 +118,36 @@ function convertObjectNestedToCSV(data, tableName) {
 }
 
 /**
+ * Convert nested object with field extraction (e.g., extract "en" from { "id": { "en": "value", "ja": "value" } })
+ * This is used for items.json which contains multiple languages in one file
+ */
+function convertObjectNestedExtractFieldToCSV(data, tableName, fieldToExtract) {
+  const rows = [];
+  const headers = ['id', fieldToExtract];
+  
+  rows.push(headers.join(','));
+  
+  Object.entries(data).forEach(([id, nestedObj]) => {
+    const row = [escapeCSV(id)];
+    
+    if (nestedObj && typeof nestedObj === 'object') {
+      const value = nestedObj[fieldToExtract];
+      if (value !== undefined && value !== null) {
+        row.push(escapeCSV(value));
+      } else {
+        row.push(''); // Empty if field doesn't exist
+      }
+    } else {
+      row.push('');
+    }
+    
+    rows.push(row.join(','));
+  });
+  
+  return rows.join('\n');
+}
+
+/**
  * Convert complex object (e.g., equipment.json) to CSV
  */
 function convertObjectComplexToCSV(data, tableName) {
@@ -220,26 +250,34 @@ function processJSONFile(jsonPath, tableName, structureType) {
     
     let csvContent = '';
     
-    // Convert based on structure type
-    switch (structureType) {
-      case 'array':
-        csvContent = convertArrayToCSV(data, tableName);
-        break;
-      case 'object_simple':
-        csvContent = convertObjectSimpleToCSV(data, tableName);
-        break;
-      case 'object_nested':
-        csvContent = convertObjectNestedToCSV(data, tableName);
-        break;
-      case 'object_complex':
-        csvContent = convertObjectComplexToCSV(data, tableName);
-        break;
-      case 'array_of_objects':
-        csvContent = convertArrayOfObjectsToCSV(data, tableName);
-        break;
-      default:
-        console.error(`  ERROR: Unknown structure type: ${structureType}`);
-        return false;
+    // Check if structure type includes field extraction (e.g., "object_nested_extract_en")
+    const extractMatch = structureType.match(/^object_nested_extract_([a-z]+)$/);
+    if (extractMatch) {
+      const fieldToExtract = extractMatch[1];
+      console.log(`  Extracting field: ${fieldToExtract}`);
+      csvContent = convertObjectNestedExtractFieldToCSV(data, tableName, fieldToExtract);
+    } else {
+      // Convert based on structure type
+      switch (structureType) {
+        case 'array':
+          csvContent = convertArrayToCSV(data, tableName);
+          break;
+        case 'object_simple':
+          csvContent = convertObjectSimpleToCSV(data, tableName);
+          break;
+        case 'object_nested':
+          csvContent = convertObjectNestedToCSV(data, tableName);
+          break;
+        case 'object_complex':
+          csvContent = convertObjectComplexToCSV(data, tableName);
+          break;
+        case 'array_of_objects':
+          csvContent = convertArrayOfObjectsToCSV(data, tableName);
+          break;
+        default:
+          console.error(`  ERROR: Unknown structure type: ${structureType}`);
+          return false;
+      }
     }
     
     // Write CSV file
@@ -350,6 +388,7 @@ export {
   convertArrayToCSV,
   convertObjectSimpleToCSV,
   convertObjectNestedToCSV,
+  convertObjectNestedExtractFieldToCSV,
   convertObjectComplexToCSV,
   convertArrayOfObjectsToCSV
 };
