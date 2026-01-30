@@ -1697,8 +1697,42 @@ export default function CraftingTree({
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-400/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none"></div>
               )}
               
+              {/* Crystal icon with effects */}
+              <div className="relative z-10 translate-y-0.5">
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className={`h-4 w-4 transition-all duration-200 crystal-icon-svg ${
+                    !excludeCrystals 
+                      ? 'text-purple-400 crystal-icon-active' 
+                      : 'text-indigo-500 crystal-icon-inactive'
+                  }`}
+                  fill="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  {/* Faceted crystal gem */}
+                  <path d="M12 1l-5.5 7.5L12 16l5.5-7.5L12 1z" fill="currentColor"/>
+                  <path d="M12 1l-5.5 7.5L12 9l5.5-7.5L12 1z" fill="white" className="crystal-highlight"/>
+                  <path d="M6.5 8.5l5.5 7.5v-7.5H6.5zm11 0l-5.5 7.5v-7.5h5.5z" fill="currentColor" opacity="0.4"/>
+                </svg>
+                {/* Sparkle effect overlay - always visible */}
+                <div className="absolute inset-0 pointer-events-none">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className={`h-4 w-4 crystal-sparkle ${
+                      !excludeCrystals ? 'crystal-sparkle-active' : 'crystal-sparkle-inactive'
+                    }`}
+                    fill="none" 
+                    viewBox="0 0 24 24"
+                    stroke={!excludeCrystals ? "rgba(255,255,255,0.8)" : "rgba(99,102,241,0.6)"}
+                    strokeWidth="1"
+                  >
+                    <path d="M12 2l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" strokeLinecap="round"/>
+                  </svg>
+                </div>
+              </div>
+              
               <span className="text-gray-400 cursor-help relative z-10">
-                顯示水晶
+                水晶開關
               </span>
               <button
                 onClick={(e) => {
@@ -1715,7 +1749,7 @@ export default function CraftingTree({
                 `}
                 role="switch"
                 aria-checked={!excludeCrystals}
-                aria-label={excludeCrystals ? '顯示水晶物品' : '隱藏水晶物品'}
+                aria-label="水晶開關"
               >
                 <span
                   className={`
@@ -1734,7 +1768,7 @@ export default function CraftingTree({
             </div>
           )}
           
-          {/* Add CSS animation for crystal shimmer */}
+          {/* Add CSS animations for crystal effects */}
           <style>{`
             @keyframes crystalShimmer {
               0%, 100% {
@@ -1743,6 +1777,105 @@ export default function CraftingTree({
               50% {
                 box-shadow: 0 0 12px rgba(147, 51, 234, 0.5), 0 0 20px rgba(147, 51, 234, 0.2);
               }
+            }
+            @keyframes crystalPulse {
+              0%, 100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 4px rgba(147,51,234,0.9)) drop-shadow(0 0 8px rgba(147,51,234,0.5));
+              }
+              50% {
+                transform: scale(1.08);
+                filter: drop-shadow(0 0 6px rgba(147,51,234,1)) drop-shadow(0 0 12px rgba(147,51,234,0.7)) drop-shadow(0 0 16px rgba(147,51,234,0.4));
+              }
+            }
+            @keyframes crystalPulseInactive {
+              0%, 100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 3px rgba(99,102,241,0.6)) drop-shadow(0 0 6px rgba(99,102,241,0.4));
+              }
+              50% {
+                transform: scale(1.05);
+                filter: drop-shadow(0 0 4px rgba(99,102,241,0.8)) drop-shadow(0 0 8px rgba(99,102,241,0.5));
+              }
+            }
+            @keyframes crystalShimmerGlow {
+              0%, 100% {
+                filter: drop-shadow(0 0 4px rgba(147,51,234,0.9)) drop-shadow(0 0 8px rgba(147,51,234,0.5));
+              }
+              50% {
+                filter: drop-shadow(0 0 6px rgba(147,51,234,1)) drop-shadow(0 0 12px rgba(147,51,234,0.7)) drop-shadow(0 0 16px rgba(147,51,234,0.4));
+              }
+            }
+            @keyframes crystalShimmerGlowInactive {
+              0%, 100% {
+                filter: drop-shadow(0 0 3px rgba(99,102,241,0.6)) drop-shadow(0 0 6px rgba(99,102,241,0.4));
+              }
+              50% {
+                filter: drop-shadow(0 0 4px rgba(99,102,241,0.8)) drop-shadow(0 0 8px rgba(99,102,241,0.5));
+              }
+            }
+            @keyframes highlightShimmer {
+              0% {
+                fill-opacity: 0.2;
+              }
+              50% {
+                fill-opacity: 0.6;
+              }
+              100% {
+                fill-opacity: 0.2;
+              }
+            }
+            @keyframes highlightShimmerInactive {
+              0% {
+                fill-opacity: 0.1;
+              }
+              50% {
+                fill-opacity: 0.3;
+              }
+              100% {
+                fill-opacity: 0.1;
+              }
+            }
+            @keyframes sparkle {
+              0%, 100% {
+                opacity: 0.8;
+                transform: scale(0.8) rotate(0deg);
+              }
+              50% {
+                opacity: 1;
+                transform: scale(1.2) rotate(180deg);
+              }
+            }
+            @keyframes sparkleInactive {
+              0%, 100% {
+                opacity: 0.3;
+                transform: scale(0.8) rotate(0deg);
+              }
+              50% {
+                opacity: 0.5;
+                transform: scale(1.1) rotate(180deg);
+              }
+            }
+            .crystal-icon-active {
+              animation: crystalPulse 2s ease-in-out infinite, crystalShimmerGlow 3s ease-in-out infinite;
+            }
+            .crystal-icon-inactive {
+              animation: crystalPulseInactive 2.5s ease-in-out infinite, crystalShimmerGlowInactive 3.5s ease-in-out infinite;
+            }
+            .crystal-highlight {
+              fill-opacity: 0.3;
+            }
+            .crystal-icon-active .crystal-highlight {
+              animation: highlightShimmer 2s ease-in-out infinite;
+            }
+            .crystal-icon-inactive .crystal-highlight {
+              animation: highlightShimmerInactive 2.5s ease-in-out infinite;
+            }
+            .crystal-sparkle-active {
+              animation: sparkle 1.5s ease-in-out infinite;
+            }
+            .crystal-sparkle-inactive {
+              animation: sparkleInactive 2s ease-in-out infinite;
             }
           `}</style>
         </div>
