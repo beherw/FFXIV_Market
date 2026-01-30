@@ -4,6 +4,7 @@ import ItemImage from './ItemImage';
 import { getItemById } from '../services/itemDatabase';
 import { getInternalUrl } from '../utils/internalUrl.js';
 import { getAggregatedMarketData } from '../services/universalis';
+import { getTwItemsByIds } from '../services/supabaseData';
 
 /**
  * Format number with rounding to integer and locale string
@@ -1386,23 +1387,32 @@ export default function CraftingTree({
     return ids;
   }, []);
 
-  // Load item names
+  // Load item names using batch query (much faster than individual queries)
   useEffect(() => {
     if (!tree) return;
 
     const itemIds = Array.from(getAllItemIds(tree));
+    if (itemIds.length === 0) {
+      setIsLoadingNames(false);
+      return;
+    }
+
     setIsLoadingNames(true);
 
-    Promise.all(
-      itemIds.map(async (id) => {
-        const item = await getItemById(id);
-        return { id, name: item?.name || `物品 ${id}` };
-      })
-    )
-      .then((results) => {
+    // Use batch query instead of individual queries for much better performance
+    getTwItemsByIds(itemIds)
+      .then((itemsData) => {
         const names = {};
-        results.forEach(({ id, name }) => {
-          names[id] = name;
+        itemIds.forEach((id) => {
+          // Extract name from batch query result
+          const itemData = itemsData[id];
+          if (itemData && itemData.tw) {
+            // Clean name (remove quotes)
+            names[id] = itemData.tw.replace(/^["']|["']$/g, '').trim();
+          } else {
+            // Fallback if item not found
+            names[id] = `物品 ${id}`;
+          }
         });
         setItemNames(names);
         setIsLoadingNames(false);
@@ -1445,7 +1455,9 @@ export default function CraftingTree({
         // - DC selected: selectedServerOption equals DC name (string like "陸行鳥")
         // - Specific server selected: selectedServerOption is world ID (number like 4031)
         // Pass selectedServerOption directly - the Universalis API accepts both
-        for (const batch of batches) {
+        // Process batches sequentially but with minimal delay to avoid rate limiting
+        for (let i = 0; i < batches.length; i++) {
+          const batch = batches[i];
           const batchResults = await getAggregatedMarketData(
             selectedServerOption,
             batch,
@@ -1456,9 +1468,10 @@ export default function CraftingTree({
           setItemPrices(prev => ({ ...prev, ...batchResults }));
           setQueriedItemIds(prev => new Set([...prev, ...batch]));
 
-          // Small delay between batches if there are multiple
-          if (batches.length > 1) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+          // Reduced delay between batches (from 100ms to 50ms) for faster loading
+          // Only add delay if not the last batch
+          if (i < batches.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 50));
           }
         }
       } catch (err) {

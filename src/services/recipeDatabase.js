@@ -105,15 +105,83 @@ export async function hasRecipe(itemId) {
 const CRYSTAL_ITEM_IDS = new Set([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
 
 /**
- * Build a complete crafting tree for an item
+ * Build a complete crafting tree for an item (OPTIMIZED - batch queries all recipes first)
  * @param {number} itemId - The item ID to build tree for
  * @param {number} amount - The amount needed (default 1)
  * @param {Set} visited - Set of visited item IDs to prevent infinite loops
  * @param {number} depth - Current depth in the tree (for limiting recursion)
  * @param {boolean} excludeCrystals - Whether to exclude crystal items from the tree (default true)
+ * @param {Map} recipesByResult - Pre-loaded map of itemId -> recipes (optional, for internal use)
  * @returns {Promise<Object|null>} - Tree node with item info and children, or null if no recipe
  */
-export async function buildCraftingTree(itemId, amount = 1, visited = new Set(), depth = 0, excludeCrystals = true) {
+export async function buildCraftingTree(itemId, amount = 1, visited = new Set(), depth = 0, excludeCrystals = true, recipesByResult = null) {
+  // If recipesByResult is not provided, this is the root call - collect all item IDs first
+  if (recipesByResult === null) {
+    // Phase 1: Collect all item IDs that will be needed by traversing recipes level by level
+    // We need to query recipes level by level to discover ingredient IDs, but we'll only
+    // use these queries to collect IDs, then do one final batch query
+    const itemIdsToQuery = new Set([itemId]);
+    const recipesByResultTemp = new Map();
+    let currentLevelItemIds = [itemId];
+    let maxDepth = 10; // Safety limit
+    let currentDepth = 0;
+    
+    // Traverse recipe tree level by level, collecting all item IDs
+    // We query level by level to discover what items we need, but this is still
+    // much better than querying one item at a time
+    while (currentLevelItemIds.length > 0 && currentDepth < maxDepth) {
+      currentDepth++;
+      
+      // Batch query recipes for all items at current level
+      const recipes = await getTwRecipesByResultIds(currentLevelItemIds);
+      
+      // Store recipes in temp map
+      recipes.forEach(recipe => {
+        if (recipe.result) {
+          if (!recipesByResultTemp.has(recipe.result)) {
+            recipesByResultTemp.set(recipe.result, []);
+          }
+          recipesByResultTemp.get(recipe.result).push(recipe);
+        }
+      });
+      
+      // Find next level of items to query (ingredients from current level)
+      const nextLevelItemIds = new Set();
+      currentLevelItemIds.forEach(id => {
+        const itemRecipes = recipesByResultTemp.get(id);
+        if (itemRecipes && itemRecipes.length > 0) {
+          const recipe = itemRecipes[0];
+          let ingredients = excludeCrystals
+            ? recipe.ingredients.filter(ing => !CRYSTAL_ITEM_IDS.has(ing.id))
+            : recipe.ingredients;
+          
+          ingredients.forEach(ing => {
+            // Only add if we haven't seen it yet
+            if (!itemIdsToQuery.has(ing.id)) {
+              nextLevelItemIds.add(ing.id);
+              itemIdsToQuery.add(ing.id);
+            }
+          });
+        }
+      });
+      
+      currentLevelItemIds = Array.from(nextLevelItemIds);
+    }
+    
+    // Phase 2: Use the recipes we already queried (no need for another query)
+    // The recipesByResultTemp already has all the recipes we need
+    recipesByResult = recipesByResultTemp;
+    
+    // Populate cache for future use
+    Array.from(itemIdsToQuery).forEach(id => {
+      const recipes = recipesByResult.get(id) || [];
+      if (recipes.length > 0) {
+        recipesByResultCache.set(id, recipes);
+      }
+    });
+  }
+
+  // Phase 3: Build tree structure using pre-loaded recipes
   // Prevent infinite loops and limit depth
   if (visited.has(itemId) || depth > 10) {
     return {
@@ -125,7 +193,7 @@ export async function buildCraftingTree(itemId, amount = 1, visited = new Set(),
     };
   }
 
-  const recipes = await findRecipesByResult(itemId);
+  const recipes = recipesByResult.get(itemId) || [];
   
   if (recipes.length === 0) {
     // This is a base material (no recipe)
@@ -201,18 +269,21 @@ export async function buildCraftingTree(itemId, amount = 1, visited = new Set(),
     // If only non-crystals, filteredIngredients is already correct
   }
 
-  const children = await Promise.all(
-    filteredIngredients.map(async (ingredient) => {
-      const ingredientAmount = ingredient.amount * craftsNeeded;
-      return await buildCraftingTree(
-        ingredient.id,
-        ingredientAmount,
-        newVisited,
-        depth + 1,
-        excludeCrystals
-      );
-    })
-  );
+  // Build children synchronously (recipes are already loaded)
+  const children = filteredIngredients.map((ingredient) => {
+    const ingredientAmount = ingredient.amount * craftsNeeded;
+    return buildCraftingTree(
+      ingredient.id,
+      ingredientAmount,
+      newVisited,
+      depth + 1,
+      excludeCrystals,
+      recipesByResult // Pass the pre-loaded recipes map
+    );
+  });
+
+  // Wait for all children to be built (they're now synchronous since recipes are pre-loaded)
+  const resolvedChildren = await Promise.all(children);
 
   return {
     itemId,
@@ -222,7 +293,7 @@ export async function buildCraftingTree(itemId, amount = 1, visited = new Set(),
     level: recipe.lvl,
     yields,
     craftsNeeded,
-    children,
+    children: resolvedChildren,
     isBaseMaterial: false,
   };
 }
