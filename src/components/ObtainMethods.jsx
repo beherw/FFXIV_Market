@@ -1,12 +1,13 @@
 // Component to display item acquisition methods (取得方式)
 // Now uses Supabase for efficient data loading - only queries needed data
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getItemSources, DataType } from '../services/extractsService';
 import { getItemById } from '../services/itemDatabase';
 import { extractIdsFromSources } from '../utils/extractIdsFromSources';
 import { getHuijiWikiUrlForItem } from '../utils/wikiUtils';
+import { getPlaceName as getPlaceNameUtil, getPlaceNameWithFallback } from '../utils/placeUtils';
 // Supabase batch query functions
 import {
   getTwNpcsByIds,
@@ -52,6 +53,102 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const [hoveredAchievement, setHoveredAchievement] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [filteredMethodType, setFilteredMethodType] = useState(null); // null = show all
+  // Track current itemId to prevent showing stale data during redirects
+  // Initialize ref with current itemId to prevent showing stale data on first render
+  const currentItemIdRef = useRef(itemId);
+  // Track previous itemId to detect changes during render (before useEffect runs)
+  const prevItemIdRef = useRef(itemId);
+  // Track itemId for useLayoutEffect - this ref is NOT updated during render
+  const layoutEffectPrevItemIdRef = useRef(itemId);
+  // Use ref to store latest loadedData so renderSource can access it immediately
+  // This avoids the issue where renderSource uses stale loadedData state due to async state updates
+  const loadedDataRef = useRef({
+    twNpcs: {},
+    npcs: {},
+    npcsDatabasePages: {},
+    twShops: {},
+    shops: {},
+    shopsByNpc: {},
+    twInstances: {},
+    instances: {},
+    zhInstances: {},
+    twQuests: {},
+    quests: {},
+    zhQuests: {},
+    questsDatabasePages: {},
+    twFates: {},
+    fates: {},
+    zhFates: {},
+    fatesDatabasePages: {},
+    twAchievements: {},
+    twAchievementDescriptions: {},
+    achievements: {},
+    twPlaces: {},
+    places: {},
+    twItems: {},
+    fateSources: [],
+    lootSources: []
+  });
+  
+  // Sync refs with itemId prop on every render to catch prop changes before useEffect runs
+  // This ensures we show loading state immediately when itemId changes, even before useEffect executes
+  // DO NOT call setState here - it will cause infinite loops. Just update refs.
+  const itemIdChanged = prevItemIdRef.current !== itemId;
+  if (itemIdChanged) {
+    // ItemId changed - update both refs immediately to prevent showing stale data
+    prevItemIdRef.current = itemId;
+    currentItemIdRef.current = itemId; // Update immediately, not just in useEffect
+  }
+  
+  // Use useLayoutEffect to synchronously reset state when itemId changes
+  // This runs before browser paint, ensuring we never show stale data
+  useLayoutEffect(() => {
+    // Check if itemId actually changed by comparing with layoutEffectPrevItemIdRef
+    // This ref is NOT updated during render, so we can detect changes here
+    if (layoutEffectPrevItemIdRef.current !== itemId && itemId) {
+      // ItemId changed - reset state synchronously before browser paint
+      // This prevents showing stale data during redirects or browser back navigation
+      setLoading(true);
+      setDataLoaded(false);
+      setSources([]);
+      // CRITICAL: Also reset loadedData to prevent stale data from being used in renderSource
+      // This is especially important for TRADE_SOURCES which relies on loadedData.twItems for currency names
+      // Without resetting loadedData, getCurrencyName() may return null because it looks up currency names
+      // from loadedData.twItems, which might still contain old data from previous item
+      const emptyLoadedData = {
+        twNpcs: {},
+        npcs: {},
+        npcsDatabasePages: {},
+        twShops: {},
+        shops: {},
+        shopsByNpc: {},
+        twInstances: {},
+        instances: {},
+        zhInstances: {},
+        twQuests: {},
+        quests: {},
+        zhQuests: {},
+        questsDatabasePages: {},
+        twFates: {},
+        fates: {},
+        zhFates: {},
+        fatesDatabasePages: {},
+        twAchievements: {},
+        twAchievementDescriptions: {},
+        achievements: {},
+        twPlaces: {},
+        places: {},
+        twItems: {},
+        fateSources: [],
+        lootSources: []
+      };
+      setLoadedData(emptyLoadedData);
+      // Also update ref to ensure renderSource can access the reset data immediately
+      loadedDataRef.current = emptyLoadedData;
+      // Update ref after resetting state
+      layoutEffectPrevItemIdRef.current = itemId;
+    }
+  }, [itemId]);
   
   // Data loaded from Supabase - organized by type for efficient access
   const [loadedData, setLoadedData] = useState({
@@ -124,53 +221,69 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   // Load sources and all required data from Supabase
   useEffect(() => {
     if (!itemId) {
-      setSources([]);
-      setLoading(false);
-      setDataLoaded(false);
+      // Don't clear sources or change loading state when itemId is undefined
+      // This prevents showing "no obtainable methods" when itemId is temporarily undefined during redirects
+      // The component will show loading state due to the !itemId check in the render logic
       return;
     }
 
+    console.log(`[ObtainMethods] Loading obtainable methods for item ${itemId}`);
+    
+    // Update ref immediately to prevent showing stale data during redirects
+    currentItemIdRef.current = itemId;
+    
+    // Clear sources and reset state immediately when itemId changes
+    // Use functional updates to ensure atomic state changes and prevent race conditions
+    // Set loading state FIRST to prevent showing empty state during redirects
+    // Always reset state when itemId changes, even if it's the same value (handles browser back navigation)
     setLoading(true);
-    setFilteredMethodType(null); // Reset filter when item changes
     setDataLoaded(false);
+    setSources([]);
+    setFilteredMethodType(null); // Reset filter when item changes
     
     // Create abort controller for cancellation
     const abortController = new AbortController();
     
+    // Store current itemId to check if it changed during async operations
+    const currentItemId = itemId;
+    
     // Step 1: Get sources from Supabase
-    getItemSources(itemId, abortController.signal)
+    getItemSources(currentItemId, abortController.signal)
       .then(async sourcesData => {
-        // Check if request was cancelled
+        // Check if request was cancelled or itemId changed
         if (abortController.signal.aborted) {
+          console.log(`[ObtainMethods] ⏹️ Request cancelled for item ${currentItemId}`);
+          return;
+        }
+        
+        // Check again if request was cancelled (after async getFateSourcesByItemId)
+        if (abortController.signal.aborted) {
+          console.log(`[ObtainMethods] ⏹️ Request cancelled for item ${currentItemId} after getFateSourcesByItemId`);
           return;
         }
         
         // Step 2: Extract all required IDs from sources
-        console.log(`[ObtainMethods] 🔍 Raw sources data for item ${itemId}:`, sourcesData);
-        console.log(`[ObtainMethods] 📋 Detailed sources structure for item ${itemId}:`, JSON.stringify(sourcesData, null, 2));
-        console.log(`[ObtainMethods] 📊 Sources count: ${sourcesData?.length || 0}, types:`, sourcesData?.map(s => s?.type) || []);
         
         // Validate sourcesData before processing
         if (!sourcesData || !Array.isArray(sourcesData)) {
-          console.warn(`[ObtainMethods] ⚠️ Invalid sources data for item ${itemId}:`, sourcesData);
-          setSources([]);
-          setLoading(false);
-          setDataLoaded(true);
+          console.warn(`[ObtainMethods] ⚠️ Invalid sources data for item ${currentItemId}:`, sourcesData);
+          if (!abortController.signal.aborted) {
+            setSources([]);
+            setLoading(false);
+            setDataLoaded(true);
+          }
           return;
         }
         
         // Log if sourcesData is empty
         if (sourcesData.length === 0) {
-          console.warn(`[ObtainMethods] ⚠️ Empty sources data for item ${itemId} - no sources found in extracts table`);
+          console.warn(`[ObtainMethods] ⚠️ No sources found for item ${currentItemId}`);
         }
         
         const requiredIds = extractIdsFromSources(sourcesData);
-        console.log(`[ObtainMethods] 🔍 Required IDs after extraction:`, requiredIds);
-        console.log(`[ObtainMethods] 🔍 Required IDs itemIds specifically:`, requiredIds.itemIds, `length:`, requiredIds.itemIds?.length);
         
         // Step 2.5: Get FATE IDs from fate_sources table and add to requiredIds
-        const fateSourcesFromTable = await getFateSourcesByItemId(itemId, abortController.signal);
-        console.log(`[ObtainMethods] 🔍 FATE IDs from fate_sources table for item ${itemId}:`, fateSourcesFromTable);
+        const fateSourcesFromTable = await getFateSourcesByItemId(currentItemId, abortController.signal);
         if (Array.isArray(fateSourcesFromTable) && fateSourcesFromTable.length > 0) {
           fateSourcesFromTable.forEach(fateId => {
             if (!requiredIds.fateIds.includes(fateId)) {
@@ -181,18 +294,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           // We'll add zoneIds after we get the FATE data, but we need to ensure we query fatesDatabasePages
         }
         
-        console.log(`[ObtainMethods] 📊 Extracted IDs for item ${itemId}:`, {
-          npcIds: requiredIds.npcIds.length,
-          shopIds: requiredIds.shopIds.length,
-          instanceIds: requiredIds.instanceIds.length,
-          questIds: requiredIds.questIds.length,
-          achievementIds: requiredIds.achievementIds.length,
-          itemIds: requiredIds.itemIds.length,
-          itemIdsList: requiredIds.itemIds, // Show actual item IDs
-          zoneIds: requiredIds.zoneIds.length,
-          fateIds: requiredIds.fateIds.length,
-          fateIdsList: requiredIds.fateIds
-        });
+        // Check again if request was cancelled
+        if (abortController.signal.aborted) {
+          return;
+        }
         
         // Step 3: Batch query Supabase for all required data (parallel)
         const queries = [];
@@ -268,11 +373,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         
         // Item queries (for currency names, etc.)
         if (requiredIds.itemIds.length > 0) {
-          console.log(`[ObtainMethods] 🔍 Adding item query for ${requiredIds.itemIds.length} items:`, requiredIds.itemIds);
           queries.push(
             getTwItemsByIds(requiredIds.itemIds, abortController.signal)
               .then(data => {
-                console.log(`[ObtainMethods] 🔍 getTwItemsByIds result:`, data, `keys:`, Object.keys(data || {}));
                 return { type: 'twItems', data };
               })
               .catch(err => {
@@ -280,28 +383,63 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 return { type: 'twItems', data: {} };
               })
           );
-        } else {
-          console.log(`[ObtainMethods] ⚠️ No itemIds to query, itemIds.length:`, requiredIds.itemIds.length);
         }
         
         // Special sources queries (these return arrays of IDs, not full data objects)
         queries.push(
-          Promise.resolve({ type: 'fateSources', data: fateSourcesFromTable }).then(result => {
-            console.log(`[ObtainMethods] 📦 fateSources query result:`, result);
-            return result;
-          }),
-          getLootSourcesByItemId(itemId, abortController.signal).then(data => ({ type: 'lootSources', data }))
+          Promise.resolve({ type: 'fateSources', data: fateSourcesFromTable }),
+          getLootSourcesByItemId(currentItemId, abortController.signal).then(data => ({ type: 'lootSources', data }))
         );
         
         // Execute all queries in parallel
-        console.log(`[ObtainMethods] 🚀 Executing ${queries.length} parallel queries for item ${itemId}...`);
         return Promise.all(queries).then(async results => {
+          // Check if request was cancelled or itemId changed
+          if (abortController.signal.aborted) {
+            console.log(`[ObtainMethods] ⏹️ Request cancelled for item ${currentItemId} after queries`);
+            return;
+          }
+          
+          // Double-check that we're still processing the same itemId
+          // This prevents race conditions when rapidly switching items
+          if (currentItemId !== itemId) {
+            return;
+          }
+          
+          // Check if request was cancelled before processing results
           if (abortController.signal.aborted) {
             return;
           }
           
-          // Combine results into loadedData object
-          const newLoadedData = { ...loadedData };
+          // Combine results into loadedData object - start fresh for each item
+          // Don't use previous loadedData to avoid stale data when switching items
+          const newLoadedData = {
+            twNpcs: {},
+            npcs: {},
+            npcsDatabasePages: {},
+            twShops: {},
+            shops: {},
+            shopsByNpc: {},
+            twInstances: {},
+            instances: {},
+            zhInstances: {},
+            twQuests: {},
+            quests: {},
+            zhQuests: {},
+            questsDatabasePages: {},
+            twFates: {},
+            fates: {},
+            zhFates: {},
+            fatesDatabasePages: {},
+            twAchievements: {},
+            twAchievementDescriptions: {},
+            achievements: {},
+            twPlaces: {},
+            places: {},
+            twItems: {},
+            fateSources: [],
+            lootSources: []
+          };
+          
           results.forEach((result) => {
             // Add error handling for malformed results
             if (!result || typeof result !== 'object') {
@@ -315,19 +453,37 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             }
             // Safely assign data, handling null/undefined
             newLoadedData[type] = data || (Array.isArray(data) ? [] : {});
-            const count = typeof data === 'object' && !Array.isArray(data) ? Object.keys(data).length : (Array.isArray(data) ? data.length : 0);
-            console.log(`[ObtainMethods] ✅ Loaded ${type}: ${count} items`);
           });
           
+          // CRITICAL: Set loadedData FIRST before processing sources
+          // This ensures that when renderSource executes, loadedData state is already updated
+          // React 18+ batches state updates, but we need loadedData to be available when sources render
+          // IMPORTANT: Update ref FIRST, then set state, so renderSource can access latest data immediately
+          // Create a deep copy to avoid reference issues
+          loadedDataRef.current = { ...newLoadedData };
+          // Also update each nested object to ensure complete copy
+          Object.keys(newLoadedData).forEach(key => {
+            if (typeof newLoadedData[key] === 'object' && newLoadedData[key] !== null && !Array.isArray(newLoadedData[key])) {
+              loadedDataRef.current[key] = { ...newLoadedData[key] };
+            } else if (Array.isArray(newLoadedData[key])) {
+              loadedDataRef.current[key] = [...newLoadedData[key]];
+            } else {
+              loadedDataRef.current[key] = newLoadedData[key];
+            }
+          });
           setLoadedData(newLoadedData);
           
           // Process sources with additional data from Supabase
+          // Note: This processing uses newLoadedData (local variable), not loadedData state
+          // But renderSource will use loadedDataRef.current to access latest data immediately
           // Validate sourcesData before processing
           if (!sourcesData || !Array.isArray(sourcesData)) {
-            console.warn(`[ObtainMethods] ⚠️ Invalid sourcesData in processing step for item ${itemId}:`, sourcesData);
-            setSources([]);
-            setLoading(false);
-            setDataLoaded(true);
+            console.warn(`[ObtainMethods] ⚠️ Invalid sourcesData in processing step for item ${currentItemId}:`, sourcesData);
+            if (!abortController.signal.aborted && currentItemId === itemId) {
+              setSources([]);
+              setLoading(false);
+              setDataLoaded(true);
+            }
             return;
           }
           
@@ -422,9 +578,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             return true;
           });
           
+          // Check again before processing sources
+          if (abortController.signal.aborted || currentItemId !== itemId) {
+            return;
+          }
+          
           // Merge FATE sources from fate_sources table
           const fateSourcesForItem = newLoadedData.fateSources || [];
-          console.log(`[ObtainMethods] 🔍 FATE sources from fate_sources table for item ${itemId}:`, fateSourcesForItem);
           
           if (fateSourcesForItem.length > 0) {
             const hasFates = processedSources.some(source => source.type === DataType.FATES);
@@ -447,14 +607,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             
             // Find missing FATE IDs that need to be added
             const missingFateIds = fateSourcesForItem.filter(fateId => !existingFateIds.has(fateId) && !existingFateIdsFromSources.has(fateId));
-            console.log(`[ObtainMethods] 🔍 Missing FATE IDs to add:`, missingFateIds);
             
             if (missingFateIds.length > 0) {
               const newFateSources = missingFateIds.map(fateId => {
                 // Try to get FATE data from fates table first (may have position info)
                 const fateData = newLoadedData.fates[fateId] || newLoadedData.fates[String(fateId)];
                 const fateDb = newLoadedData.fatesDatabasePages[fateId] || newLoadedData.fatesDatabasePages[String(fateId)];
-                console.log(`[ObtainMethods] 🔍 FATE ${fateId} data:`, { fateData, fateDb });
                 
                 // Build FATE source object - prefer position from fateData, fallback to fateDb
                 let zoneId = null;
@@ -498,9 +656,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   coords: coords
                 };
               }).filter(Boolean);
-              
-              console.log(`[ObtainMethods] 🔍 New FATE sources to add:`, newFateSources);
-              console.log(`[ObtainMethods] 🔍 FATE zoneIds to query:`, Array.from(fateZoneIds));
               
               if (newFateSources.length > 0) {
                 if (hasFates) {
@@ -630,28 +785,37 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             });
             
             if (zoneIdsToQuery.length > 0) {
-              console.log(`[ObtainMethods] 🔍 Querying place data for ${zoneIdsToQuery.length} zoneIds from all sources:`, zoneIdsToQuery);
               try {
                 const [twPlaces, places] = await Promise.all([
                   getTwPlacesByIds(zoneIdsToQuery, abortController.signal),
                   getPlacesByIds(zoneIdsToQuery, abortController.signal)
                 ]);
-                // Update loadedData with place data
-                setLoadedData(prev => ({
-                  ...prev,
-                  twPlaces: { ...prev.twPlaces, ...twPlaces },
-                  places: { ...prev.places, ...places }
-                }));
-                // Also update newLoadedData for immediate use
-                newLoadedData.twPlaces = { ...newLoadedData.twPlaces, ...twPlaces };
-                newLoadedData.places = { ...newLoadedData.places, ...places };
-                console.log(`[ObtainMethods] ✅ Loaded place data for ${zoneIdsToQuery.length} zones`);
-                console.log(`[ObtainMethods] 📦 Sample twPlaces data:`, Object.entries(twPlaces).slice(0, 3));
+                
+                // Check if request was cancelled or itemId changed before updating state
+                if (!abortController.signal.aborted && currentItemId === itemId) {
+                  // Update loadedData with place data
+                  setLoadedData(prev => {
+                    const updated = {
+                      ...prev,
+                      twPlaces: { ...prev.twPlaces, ...twPlaces },
+                      places: { ...prev.places, ...places }
+                    };
+                    // CRITICAL: Also update ref to keep it in sync with state
+                    loadedDataRef.current = updated;
+                    return updated;
+                  });
+                  // Also update newLoadedData for immediate use
+                  newLoadedData.twPlaces = { ...newLoadedData.twPlaces, ...twPlaces };
+                  newLoadedData.places = { ...newLoadedData.places, ...places };
+                  // Also update ref with newLoadedData to ensure consistency
+                  loadedDataRef.current.twPlaces = { ...loadedDataRef.current.twPlaces, ...twPlaces };
+                  loadedDataRef.current.places = { ...loadedDataRef.current.places, ...places };
+                }
               } catch (err) {
-                console.error(`[ObtainMethods] Error loading place data:`, err);
+                if (!abortController.signal.aborted && currentItemId === itemId) {
+                  console.error(`[ObtainMethods] Error loading place data:`, err);
+                }
               }
-            } else {
-              console.log(`[ObtainMethods] ℹ️ All zoneIds already have place data loaded`);
             }
           }
           
@@ -664,7 +828,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             const quest = questsData[questIdStr];
             if (!quest || !quest.rewards) return;
             
-            const hasItemReward = Array.isArray(quest.rewards) && quest.rewards.some(reward => reward.id === parseInt(itemId, 10));
+            const hasItemReward = Array.isArray(quest.rewards) && quest.rewards.some(reward => reward.id === parseInt(currentItemId, 10));
             if (hasItemReward) {
               questIdsFromQuests.push(parseInt(questIdStr, 10));
             }
@@ -746,18 +910,14 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           const hasVendors = processedSources.some(source => source.type === DataType.VENDORS);
           const shopsByNpc = newLoadedData.shopsByNpc || {};
           const twShops = newLoadedData.twShops || {};
-          const currentItemIdNum = parseInt(itemId, 10);
+          const currentItemIdNum = parseInt(currentItemId, 10);
           
           if (!hasTradeSources && !hasVendors && Object.keys(shopsByNpc).length > 0) {
-            console.log(`[ObtainMethods] 🔍 No TRADE_SOURCES/VENDORS found but shopsByNpc data exists. Checking shops for item ${itemId}...`);
-            console.log(`[ObtainMethods] 🔍 shopsByNpc keys:`, Object.keys(shopsByNpc));
-            console.log(`[ObtainMethods] 🔍 twShops keys:`, Object.keys(twShops));
-            
             // Note: We can't fully reconstruct TRADE_SOURCES from shopsByNpc alone
             // because shopsByNpc doesn't contain the trade information (what items are sold, currencies needed)
             // This is a limitation - we'd need to query the shops table with full trade data
             // For now, just log that we have shop data but can't use it without trade info
-            console.warn(`[ObtainMethods] ⚠️ Shop data exists but cannot create sources without trade information. Item ${itemId} may need to be added to extracts table.`);
+            console.warn(`[ObtainMethods] ⚠️ Shop data exists but cannot create sources without trade information. Item ${currentItemId} may need to be added to extracts table.`);
           }
           
           // Extract FATE reward item IDs from fatesDatabasePages and load twItems
@@ -802,18 +962,23 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           });
           
           if (missingRewardItemIds.length > 0) {
-            console.log(`[ObtainMethods] 🔍 Loading ${missingRewardItemIds.length} FATE reward items:`, missingRewardItemIds);
             getTwItemsByIds(missingRewardItemIds, abortController.signal)
               .then(rewardItemsData => {
-                if (abortController.signal.aborted) return;
-                console.log(`[ObtainMethods] ✅ Loaded ${Object.keys(rewardItemsData).length} FATE reward items`);
-                setLoadedData(prev => ({
-                  ...prev,
-                  twItems: { ...prev.twItems, ...rewardItemsData }
-                }));
+                // Check if request was cancelled or itemId changed
+                if (!abortController.signal.aborted && currentItemId === itemId) {
+                  setLoadedData(prev => {
+                    const updated = {
+                      ...prev,
+                      twItems: { ...prev.twItems, ...rewardItemsData }
+                    };
+                    // CRITICAL: Also update ref to keep it in sync with state
+                    loadedDataRef.current = updated;
+                    return updated;
+                  });
+                }
               })
               .catch(err => {
-                if (!abortController.signal.aborted) {
+                if (!abortController.signal.aborted && currentItemId === itemId) {
                   console.error(`[ObtainMethods] Error loading FATE reward items:`, err);
                 }
               });
@@ -821,33 +986,46 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           
           // Final check: log if processedSources is empty
           if (processedSources.length === 0) {
-            console.warn(`[ObtainMethods] ⚠️ No valid sources found for item ${itemId} after processing. Sources were filtered out or empty.`);
-            console.log(`[ObtainMethods] 🔍 Loaded data summary:`, {
-              twShops: Object.keys(newLoadedData.twShops || {}).length,
-              shopsByNpc: Object.keys(newLoadedData.shopsByNpc || {}).length,
-              twNpcs: Object.keys(newLoadedData.twNpcs || {}).length,
-              npcs: Object.keys(newLoadedData.npcs || {}).length,
-              fateSources: (newLoadedData.fateSources || []).length,
-              lootSources: (newLoadedData.lootSources || []).length
-            });
-          } else {
-            console.log(`[ObtainMethods] ✅ Final processedSources count: ${processedSources.length}, types:`, processedSources.map(s => s?.type));
+            console.warn(`[ObtainMethods] ⚠️ No valid sources found for item ${currentItemId} after processing`);
           }
           
-          setSources(processedSources);
-          setDataLoaded(true);
-          setLoading(false);
+          // Final check: ensure request wasn't cancelled
+          if (abortController.signal.aborted) {
+            return;
+          }
+          
+          // Check if itemId changed - but be more lenient: if itemId is undefined/null, 
+          // it might be because component is unmounting, so still update state
+          // Only skip if itemId is different AND not null/undefined (meaning user switched to different item)
+          if (currentItemId !== itemId && itemId !== null && itemId !== undefined) {
+            return;
+          }
+          
+          // Only update state if itemId hasn't changed (prevent stale data)
+          if (currentItemId === itemId) {
+            // CRITICAL: React batches state updates, but renderSource uses loadedData from closure
+            // We need to ensure loadedData is updated before sources are set
+            // Since setLoadedData was already called above (line 461), React will batch these updates
+            // But to ensure renderSource has access to the latest data, we use React's automatic batching
+            // which ensures state updates are applied in the order they were called
+            setSources(processedSources);
+            setDataLoaded(true);
+            setLoading(false);
+            // Update ref to match current itemId after successful load
+            currentItemIdRef.current = currentItemId;
+            console.log(`[ObtainMethods] ✅ Loaded ${processedSources.length} obtainable method(s) for item ${currentItemId}`);
+          }
         });
       })
       .catch(err => {
-        // Don't update state if request was cancelled
-        if (abortController.signal.aborted) {
+        // Don't update state if request was cancelled or itemId changed
+        if (abortController.signal.aborted || currentItemId !== itemId) {
           return;
         }
         
-        
-        console.error('Failed to load sources:', err);
+        console.error(`[ObtainMethods] ❌ Failed to load sources for item ${currentItemId}:`, err);
         setSources([]);
+        setDataLoaded(true);
         setLoading(false);
         
         // Show user-friendly error message for timeout/large file issues
@@ -863,7 +1041,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   }, [itemId]);
 
   // Show loading state if data is still loading or sources are being fetched
-  if (!dataLoaded || loading) {
+  // Also show loading if itemId is undefined/null to prevent showing empty state during redirects
+  // Also show loading if itemId changed but sources haven't been updated yet (prevent stale data)
+  // itemIdChanged is already computed above when syncing refs
+  if (!dataLoaded || loading || !itemId || itemIdChanged) {
     return (
       <div className="text-center py-8">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-ffxiv-gold"></div>
@@ -873,8 +1054,20 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   }
 
   if (sources.length === 0) {
+    // If itemId changed but state hasn't been reset yet, show loading instead of empty state
+    // This prevents showing empty state during redirects when useLayoutEffect hasn't run yet
+    if (itemIdChanged || layoutEffectPrevItemIdRef.current !== itemId) {
+      return (
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-ffxiv-gold"></div>
+          <p className="mt-4 text-gray-400">載入取得方式...</p>
+        </div>
+      );
+    }
     // Check if item is a treasure map (名稱包含"地圖")
-    const itemData = loadedData.twItems[itemId] || loadedData.twItems[String(itemId)];
+    // Use ref to access latest loadedData immediately, avoiding stale state issues
+    const currentLoadedData = loadedDataRef.current;
+    const itemData = currentLoadedData.twItems[itemId] || currentLoadedData.twItems[String(itemId)];
     const itemName = itemData?.tw || '';
     const isTreasureMap = itemName && itemName.includes('地圖');
     
@@ -929,7 +1122,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   };
 
   const getNpcName = (npcId) => {
-    const npc = loadedData.twNpcs[npcId] || loadedData.twNpcs[String(npcId)];
+    // Use ref to access latest loadedData immediately, avoiding stale state issues
+    const currentLoadedData = loadedDataRef.current;
+    const npc = currentLoadedData.twNpcs[npcId] || currentLoadedData.twNpcs[String(npcId)];
     return npc?.tw || `NPC ${npcId}`;
   };
 
@@ -940,33 +1135,37 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return titleData.tw;
     }
     // Fallback to npcs-database-pages from Supabase
-    const npcDb = loadedData.npcsDatabasePages[npcId] || loadedData.npcsDatabasePages[String(npcId)];
+    // Use ref to access latest loadedData immediately, avoiding stale state issues
+    const currentLoadedData = loadedDataRef.current;
+    const npcDb = currentLoadedData.npcsDatabasePages[npcId] || currentLoadedData.npcsDatabasePages[String(npcId)];
     if (npcDb?.title?.zh) {
       return npcDb.title.zh;
     }
     return null;
   };
 
+  // Use centralized place name utility
   const getPlaceName = (zoneId) => {
-    if (!zoneId) return '';
-    // Try Traditional Chinese first
-    const twPlace = loadedData.twPlaces[zoneId] || loadedData.twPlaces[String(zoneId)];
-    if (twPlace?.tw) {
-      return twPlace.tw;
-    }
-    // Fallback to English places from Supabase
-    const place = loadedData.places[zoneId] || loadedData.places[String(zoneId)];
-    if (place?.en) {
-      return place.en;
-    }
-    // If still not found, log for debugging
-    console.warn(`[ObtainMethods] ⚠️ Place name not found for zoneId ${zoneId}. Available twPlaces keys:`, Object.keys(loadedData.twPlaces).slice(0, 10));
-    return `Zone ${zoneId}`;
+    const currentLoadedData = loadedDataRef.current;
+    return getPlaceNameUtil(zoneId, {
+      twPlaces: currentLoadedData.twPlaces,
+      places: currentLoadedData.places
+    });
+  };
+  
+  // Get place name with Chinese fallback
+  const getPlaceNameCN = (zoneId) => {
+    const currentLoadedData = loadedDataRef.current;
+    return getPlaceNameWithFallback(zoneId, {
+      twPlaces: currentLoadedData.twPlaces,
+      places: currentLoadedData.places
+    }, '區域');
   };
 
   const getShopName = (shopId) => {
     // Try Traditional Chinese shop names from Supabase
-    const twShop = loadedData.twShops[shopId] || loadedData.twShops[String(shopId)];
+    const currentLoadedData = loadedDataRef.current;
+    const twShop = currentLoadedData.twShops[shopId] || currentLoadedData.twShops[String(shopId)];
     if (twShop?.tw) {
       return twShop.tw;
     }
@@ -991,7 +1190,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Get currency name from Supabase loaded data
     if (!currencyItemId) return '貨幣';
     
-    const currencyItem = loadedData.twItems[currencyItemId] || loadedData.twItems[String(currencyItemId)];
+    // Use ref to access latest loadedData immediately, avoiding stale state issues
+    const currentLoadedData = loadedDataRef.current;
+    const currencyItem = currentLoadedData.twItems[currencyItemId] || currentLoadedData.twItems[String(currencyItemId)];
     if (currencyItem?.tw) {
       return currencyItem.tw;
     }
@@ -1003,9 +1204,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const getAchievementInfo = (achievementId) => {
     if (!achievementId) return null;
     const achievementIdStr = achievementId.toString();
-    const achievement = loadedData.twAchievements[achievementIdStr] || loadedData.twAchievements[achievementId];
-    const description = loadedData.twAchievementDescriptions[achievementIdStr] || loadedData.twAchievementDescriptions[achievementId];
-    const achievementData = loadedData.achievements[achievementIdStr] || loadedData.achievements[achievementId];
+    const currentLoadedData = loadedDataRef.current;
+    const achievement = currentLoadedData.twAchievements[achievementIdStr] || currentLoadedData.twAchievements[achievementId];
+    const description = currentLoadedData.twAchievementDescriptions[achievementIdStr] || currentLoadedData.twAchievementDescriptions[achievementId];
+    const achievementData = currentLoadedData.achievements[achievementIdStr] || currentLoadedData.achievements[achievementId];
     
     if (achievement?.tw) {
       return {
@@ -1160,7 +1362,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const getMasterbookName = (masterbookId) => {
     if (!masterbookId) return null;
     const itemId = typeof masterbookId === 'string' ? parseInt(masterbookId, 10) : masterbookId;
-    const itemData = loadedData.twItems[itemId] || loadedData.twItems[String(itemId)];
+    const currentLoadedData = loadedDataRef.current;
+    const itemData = currentLoadedData.twItems[itemId] || currentLoadedData.twItems[String(itemId)];
     return itemData?.tw || null;
   };
 
@@ -1263,7 +1466,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                   if (onItemClick) {
                                     getItemById(masterbookId).then(item => {
                                       if (item) {
-                                        onItemClick(item);
+                                        onItemClick(item, { fromObtainable: true });
                                       } else {
                                         navigate(`/item/${masterbookId}`);
                                       }
@@ -1319,7 +1522,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         }
         
         // Get currency item data for linking
-        const currencyItemData = currencyItemId ? (loadedData.twItems[currencyItemId] || loadedData.twItems[String(currencyItemId)]) : null;
+        // Use ref to access latest loadedData immediately, avoiding stale state issues
+        const currentLoadedData = loadedDataRef.current;
+        const currencyItemData = currencyItemId ? (currentLoadedData.twItems[currencyItemId] || currentLoadedData.twItems[String(currencyItemId)]) : null;
         const hasCurrencyItem = currencyItemData && currencyItemData.tw;
         
         // Get shop name - try Traditional Chinese from shopName object or tw-shops.json
@@ -1384,13 +1589,15 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const npcZoneId = typeof npc === 'object' ? npc.zoneId : null;
               const npcCoords = typeof npc === 'object' ? npc.coords : null;
               const npcMapId = typeof npc === 'object' ? npc.mapId : null;
-              const zoneName = npcZoneId ? getPlaceName(npcZoneId) : '';
+              const zoneName = npcZoneId ? getPlaceNameCN(npcZoneId) : '';
               const hasLocation = npcCoords && npcCoords.x !== undefined && npcCoords.y !== undefined;
               
               // Get quest requirement for this shop/NPC combination
               const requiredQuestId = getShopQuestRequirement(entry.shopId, npcId, entry.tradeSource);
-              const questData = loadedData.twQuests[requiredQuestId] || loadedData.twQuests[String(requiredQuestId)];
-              const questEnData = loadedData.quests[requiredQuestId] || loadedData.quests[String(requiredQuestId)];
+              // Use ref to access latest loadedData immediately, avoiding stale state issues
+              const currentLoadedData = loadedDataRef.current;
+              const questData = currentLoadedData.twQuests[requiredQuestId] || currentLoadedData.twQuests[String(requiredQuestId)];
+              const questEnData = currentLoadedData.quests[requiredQuestId] || currentLoadedData.quests[String(requiredQuestId)];
               const questName = questData?.tw || questEnData?.name?.en || questEnData?.en || null;
               
               return (
@@ -1402,10 +1609,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                           e.preventDefault();
                           e.stopPropagation();
                           if (onItemClick) {
-                            // Get item data and call onItemClick
+                            // Get item data and call onItemClick with flag indicating it's from obtainable
                             getItemById(entry.currencyItemId).then(item => {
                               if (item) {
-                                onItemClick(item);
+                                onItemClick(item, { fromObtainable: true });
                               } else {
                                 navigate(`/item/${entry.currencyItemId}`);
                               }
@@ -1572,7 +1779,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 coords = { x: 0, y: 0 };
               }
               
-              const zoneName = zoneId ? getPlaceName(zoneId) : '';
+              const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
               // Check if we have location info (even if 0,0 for housing NPCs)
               const hasLocationInfo = zoneName && coords && coords.x !== undefined && coords.y !== undefined;
               // Check if location is valid for map display (must have mapId and not be 0,0)
@@ -1710,7 +1917,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     if (onItemClick) {
                       getItemById(treasureId).then(item => {
                         if (item) {
-                          onItemClick(item);
+                          onItemClick(item, { fromObtainable: true });
                         } else {
                           navigate(`/item/${treasureId}`);
                         }
@@ -1840,7 +2047,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     if (onItemClick) {
                       getItemById(desynthItemId).then(item => {
                         if (item) {
-                          onItemClick(item);
+                          onItemClick(item, { fromObtainable: true });
                         } else {
                           navigate(`/item/${desynthItemId}`);
                         }
@@ -1984,7 +2191,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 }
               }
               
-              const zoneName = zoneId ? getPlaceName(zoneId) : '';
+              const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
               const hasLocation = zoneName && coords && coords.x !== undefined && coords.y !== undefined;
               const hasValidMapLocation = hasLocation && mapId && (coords.x !== 0 || coords.y !== 0);
               
@@ -2129,12 +2336,15 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 : 'https://xivapi.com/i/060000/060502.png';
               
               // Get zone name
-              const zoneName = fateZoneId ? getPlaceName(fateZoneId) : '';
+              const zoneName = fateZoneId ? getPlaceNameCN(fateZoneId) : '';
               const hasLocation = fateCoords && fateCoords.x !== undefined && fateCoords.y !== undefined && fateMapId;
               
-              // Debug: Log if zone name is missing
-              if (fateZoneId && !zoneName) {
-                console.warn(`[ObtainMethods] ⚠️ FATE ${fateId} zoneId ${fateZoneId} missing place name. Available twPlaces:`, Object.keys(loadedData.twPlaces).slice(0, 5));
+              // Debug: Log if zone name is missing (check raw data, not formatted name)
+              if (fateZoneId) {
+                const rawZoneName = getPlaceName(fateZoneId);
+                if (!rawZoneName || rawZoneName === `Zone ${fateZoneId}`) {
+                  console.warn(`[ObtainMethods] ⚠️ FATE ${fateId} zoneId ${fateZoneId} missing place name. Available twPlaces:`, Object.keys(loadedData.twPlaces).slice(0, 5));
+                }
               }
               
               // Get FATE database page data for reward items
@@ -2152,14 +2362,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               // If FATE's items array is empty but this FATE is in sources for current item,
               // add current item to reward items (fallback when database doesn't have items array populated)
               if (rewardItems.length === 0 && isFateInSourcesForItem) {
-                console.log(`[ObtainMethods] ⚠️ FATE ${fateId} has empty items array, but is in sources for item ${currentItemIdNum}. Adding current item to rewards.`);
                 rewardItems = [currentItemIdNum];
               }
               
               const isCurrentItemInRewards = rewardItems.includes(currentItemIdNum);
-              
-              // Debug: Log reward items for troubleshooting
-              console.log(`[ObtainMethods] 🔍 FATE ${fateId} - fateDb:`, fateDb, 'rewardItemsRaw:', rewardItemsRaw, 'rewardItems:', rewardItems, 'isCurrentItemInRewards:', isCurrentItemInRewards, 'isFateInSourcesForItem:', isFateInSourcesForItem);
               
               // Silver rating: show all items from FATE's items array
               // Silver rating gives 1x of each reward item
@@ -2248,7 +2454,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                             if (onItemClick) {
                                               getItemById(rewardItemId).then(item => {
                                                 if (item) {
-                                                  onItemClick(item);
+                                                  onItemClick(item, { fromObtainable: true });
                                                 } else {
                                                   navigate(`/item/${rewardItemId}`);
                                                 }
@@ -2296,7 +2502,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                             if (onItemClick) {
                                               getItemById(rewardItemId).then(item => {
                                                 if (item) {
-                                                  onItemClick(item);
+                                                  onItemClick(item, { fromObtainable: true });
                                                 } else {
                                                   navigate(`/item/${rewardItemId}`);
                                                 }
@@ -2340,7 +2546,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                             if (onItemClick) {
                                               getItemById(rewardItemId).then(item => {
                                                 if (item) {
-                                                  onItemClick(item);
+                                                  onItemClick(item, { fromObtainable: true });
                                                 } else {
                                                   navigate(`/item/${rewardItemId}`);
                                                 }
@@ -2453,18 +2659,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             <span className="text-ffxiv-gold font-medium">採集獲得</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            <div className="w-full text-sm text-gray-300 mb-2">
-              <span className="text-ffxiv-gold">{nodeTypeName}</span>
-              {gatheringLevel > 0 && (
-                <span className="ml-2">Lv.{gatheringLevel}</span>
-              )}
-              {starsTooltip && (
-                <span className="ml-2 text-yellow-400">{starsTooltip}</span>
-              )}
-            </div>
             {data.nodes.map((node, nodeIndex) => {
               const zoneId = node.zoneId;
-              const zoneName = zoneId ? getPlaceName(zoneId) : '';
+              const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
               const mapId = node.map;
               const coords = node.x !== undefined && node.y !== undefined ? { x: node.x, y: node.y } : null;
               const hasLocation = coords && mapId;
@@ -2478,7 +2675,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     <img src={nodeIcon} alt={nodeTypeName} className="w-7 h-7 object-contain" />
                     <div className="flex-1">
                       <div className="text-sm font-medium text-white">
-                        {zoneName || `區域 ${zoneId}`}
+                        {zoneName}
                       </div>
                       {!isIslandNode && nodeLevel > 0 && (
                         <div className="text-xs text-gray-400 mt-0.5">
@@ -2566,7 +2763,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     if (onItemClick) {
                       getItemById(reductionItemId).then(item => {
                         if (item) {
-                          onItemClick(item);
+                          onItemClick(item, { fromObtainable: true });
                         } else {
                           navigate(`/item/${reductionItemId}`);
                         }
@@ -2630,7 +2827,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     if (onItemClick) {
                       getItemById(ventureItemId).then(item => {
                         if (item) {
-                          onItemClick(item);
+                          onItemClick(item, { fromObtainable: true });
                         } else {
                           navigate(`/item/${ventureItemId}`);
                         }
@@ -2694,7 +2891,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     if (onItemClick) {
                       getItemById(seedId).then(item => {
                         if (item) {
-                          onItemClick(item);
+                          onItemClick(item, { fromObtainable: true });
                         } else {
                           navigate(`/item/${seedId}`);
                         }
@@ -2779,7 +2976,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     if (onItemClick) {
                       getItemById(cropId).then(item => {
                         if (item) {
-                          onItemClick(item);
+                          onItemClick(item, { fromObtainable: true });
                         } else {
                           navigate(`/item/${cropId}`);
                         }
@@ -2867,7 +3064,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     if (onItemClick) {
                       getItemById(reqId).then(item => {
                         if (item) {
-                          onItemClick(item);
+                          onItemClick(item, { fromObtainable: true });
                         } else {
                           navigate(`/item/${reqId}`);
                         }
@@ -2912,9 +3109,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         }
       }).filter(entry => entry.id && !isNaN(entry.id));
 
-      console.log(`[ObtainMethods] 🔍 Masterbook entries:`, masterbookEntries);
-      console.log(`[ObtainMethods] 🔍 Loaded twItems data:`, loadedData.twItems);
-
       // Filter valid masterbooks - only show entries that have data in database or name from source
       // Don't show entries that are just IDs without any data
       const validMasterbooks = masterbookEntries.filter(entry => {
@@ -2925,8 +3119,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         // Don't show if it's just an ID without any data
         return hasItemData || hasNameFromSource;
       });
-      
-      console.log(`[ObtainMethods] 🔍 Valid masterbooks (with data):`, validMasterbooks);
       
       // Check if all masterbooks are missing from database
       const allMissing = masterbookEntries.length > 0 && validMasterbooks.length === 0;
@@ -2958,7 +3150,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       if (onItemClick) {
                         getItemById(bookId).then(item => {
                           if (item) {
-                            onItemClick(item);
+                            onItemClick(item, { fromObtainable: true });
                           } else {
                             navigate(`/item/${bookId}`);
                           }
@@ -3064,7 +3256,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               if (!alarm || typeof alarm !== 'object') return null;
               
               const zoneId = alarm.zoneId;
-              const zoneName = zoneId ? getPlaceName(zoneId) : '';
+              const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
               const mapId = alarm.mapId;
               const coords = alarm.coords;
               const nodeType = alarm.type !== undefined ? Math.abs(alarm.type) : 0;
@@ -3081,7 +3273,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     <img src={nodeIcon} alt={nodeTypeName} className="w-7 h-7 object-contain" />
                     <div className="flex-1">
                       <div className="text-sm font-medium text-white">
-                        {zoneName || `區域 ${zoneId}`}
+                        {zoneName}
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">
                         {nodeTypeName}
@@ -3382,7 +3574,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         if (onItemClick) {
                           getItemById(achievementTooltipInfo.itemReward).then(item => {
                             if (item) {
-                              onItemClick(item);
+                              onItemClick(item, { fromObtainable: true });
                             } else {
                               navigate(`/item/${achievementTooltipInfo.itemReward}`);
                             }

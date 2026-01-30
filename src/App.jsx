@@ -51,6 +51,13 @@ function App() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedWorld, setSelectedWorld] = useState(null);
   const [selectedServerOption, setSelectedServerOption] = useState(null);
+  
+  // Track selectedItem changes for debugging
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7246/ingest/00fcbdc5-09ba-467f-8449-d6775c089f46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:selectedItem-effect',message:'selectedItem changed',data:{itemId:selectedItem?.id,itemName:selectedItem?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+  }, [selectedItem]);
   const [marketInfo, setMarketInfo] = useState(null);
   const [marketListings, setMarketListings] = useState([]);
   const [marketHistory, setMarketHistory] = useState([]);
@@ -97,6 +104,8 @@ function App() {
   
   // Obtain methods states
   const [isObtainMethodsExpanded, setIsObtainMethodsExpanded] = useState(false);
+  // Track if we should auto-expand obtainable when item changes (e.g., when clicking from obtainable)
+  const shouldAutoExpandObtainableRef = useRef(false);
   
   // Button order tracking - tracks which button was clicked last (higher number = more recent)
   const [buttonOrder, setButtonOrder] = useState({
@@ -1894,7 +1903,10 @@ function App() {
   }, [location.pathname, location.search]);
 
   // Handle item selection
-  const handleItemSelect = useCallback((item) => {
+  const handleItemSelect = useCallback((item, options = {}) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7246/ingest/00fcbdc5-09ba-467f-8449-d6775c089f46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:1899',message:'handleItemSelect called',data:{itemId:item.id,fromObtainable:options.fromObtainable},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     setMarketInfo(null);
     setMarketListings([]);
     setMarketHistory([]);
@@ -1903,6 +1915,12 @@ function App() {
     
     // Clear search text to prevent auto-search from triggering when entering item page
     setSearchText('');
+    
+    // If clicking from obtainable, mark that we should auto-expand obtainable for the new item
+    // Set this BEFORE updating selectedItem to ensure it's ready when useEffect runs
+    if (options.fromObtainable) {
+      shouldAutoExpandObtainableRef.current = true;
+    }
     
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
@@ -1918,11 +1936,18 @@ function App() {
     
     setIsLoadingMarket(true);
     
+    // Update selectedItem first, then auto-expand will happen in useEffect
+    // #region agent log
+    fetch('http://127.0.0.1:7246/ingest/00fcbdc5-09ba-467f-8449-d6775c089f46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:1930',message:'Setting selectedItem before navigate',data:{itemId:item.id,previousItemId:selectedItemRef.current?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     setSelectedItem(item);
     selectedItemRef.current = item;
     
     addItemToHistory(item.id);
     
+    // #region agent log
+    fetch('http://127.0.0.1:7246/ingest/00fcbdc5-09ba-467f-8449-d6775c089f46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:1935',message:'Calling navigate',data:{itemId:item.id,url:`/item/${item.id}`},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     navigate(`/item/${item.id}`, { replace: false });
     
     addToast(`已選擇: ${item.name}`, 'info');
@@ -2831,7 +2856,22 @@ function App() {
       setIsRelatedItemsExpanded(false);
       setIsObtainMethodsExpanded(false);
       setButtonOrder({ obtainMethods: 0, craftingTree: 0, relatedItems: 0 });
+      shouldAutoExpandObtainableRef.current = false;
       return;
+    }
+    
+    // Auto-expand obtainable if we clicked from obtainable
+    // Use setTimeout to ensure this happens after React has updated the DOM
+    // This prevents race conditions where component mounts before selectedItem is fully set
+    if (shouldAutoExpandObtainableRef.current) {
+      // Use a small delay to ensure selectedItem is fully updated in the component tree
+      const timeoutId = setTimeout(() => {
+        setIsObtainMethodsExpanded(true);
+        setButtonOrder(prev => ({ ...prev, obtainMethods: Math.max(...Object.values(prev)) + 1 }));
+        shouldAutoExpandObtainableRef.current = false; // Reset flag after using it
+      }, 0);
+      
+      return () => clearTimeout(timeoutId);
     }
 
     // Check if item has a recipe
@@ -3674,7 +3714,7 @@ function App() {
                 }
                 
                 // Obtain Methods
-                if (isObtainMethodsExpanded && selectedItem) {
+                if (isObtainMethodsExpanded && selectedItem && selectedItem.id) {
                   sections.push({
                     key: 'obtainMethods',
                     order: buttonOrder.obtainMethods,

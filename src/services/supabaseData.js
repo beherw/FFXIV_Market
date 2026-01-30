@@ -338,7 +338,13 @@ export async function getTwItemById(itemId) {
     if (error) {
       // Log error but don't throw - return null for missing items
       if (error.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
-        console.error(`Error fetching item ${itemId} from Supabase:`, error);
+        // Check for network/CORS errors
+        if (error.message && error.message.includes('Failed to fetch')) {
+          console.warn(`[Supabase] ⚠️ Network error fetching item ${itemId}:`, error.message);
+          console.warn(`[Supabase] 💡 This might be a CORS issue or Supabase server is temporarily unavailable (502 Bad Gateway)`);
+        } else {
+          console.error(`[Supabase] ❌ Error fetching item ${itemId} from Supabase:`, error);
+        }
       }
       return null;
     }
@@ -349,7 +355,16 @@ export async function getTwItemById(itemId) {
     
     return { id: data.id, tw: data.tw };
   } catch (error) {
-    console.error(`Error fetching item ${itemId} from Supabase:`, error);
+    // Handle network errors (CORS, 502, etc.)
+    if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+      console.warn(`[Supabase] ⚠️ Network error fetching item ${itemId}:`, error.message);
+      console.warn(`[Supabase] 💡 Possible causes:`);
+      console.warn(`[Supabase]   1. CORS configuration issue in Supabase dashboard`);
+      console.warn(`[Supabase]   2. Supabase server temporarily unavailable (502 Bad Gateway)`);
+      console.warn(`[Supabase]   3. Network connectivity issue`);
+    } else {
+      console.error(`[Supabase] ❌ Error fetching item ${itemId} from Supabase:`, error);
+    }
     return null;
   }
 }
@@ -2935,24 +2950,28 @@ async function batchQueryByIds(tableName, ids, idColumn = 'id', signal = null, c
   }
 
   const sortedIds = uniqueIds.sort((a, b) => a - b);
-  const cacheKeyStr = cacheKey || `${tableName}_${sortedIds.join(',')}`;
+  // CRITICAL FIX: cacheKeyStr must always be based on sortedIds, not cacheKey
+  // cacheKey is used to index the cache object (e.g., 'tw_npcs'), while cacheKeyStr
+  // must be unique per set of IDs to prevent cache collisions
+  const cacheKeyStr = `${tableName}_${sortedIds.join(',')}`;
+  const cacheIndex = cacheKey || tableName;
 
   // Check cache
-  if (targetedQueryCache[cacheKey] && targetedQueryCache[cacheKey][cacheKeyStr]) {
-    return targetedQueryCache[cacheKey][cacheKeyStr];
+  if (targetedQueryCache[cacheIndex] && targetedQueryCache[cacheIndex][cacheKeyStr]) {
+    return targetedQueryCache[cacheIndex][cacheKeyStr];
   }
 
   // Check pending promises
-  if (targetedQueryPromises[cacheKey] && targetedQueryPromises[cacheKey][cacheKeyStr]) {
-    return targetedQueryPromises[cacheKey][cacheKeyStr];
+  if (targetedQueryPromises[cacheIndex] && targetedQueryPromises[cacheIndex][cacheKeyStr]) {
+    return targetedQueryPromises[cacheIndex][cacheKeyStr];
   }
 
   // Initialize cache if needed
-  if (!targetedQueryCache[cacheKey]) {
-    targetedQueryCache[cacheKey] = {};
+  if (!targetedQueryCache[cacheIndex]) {
+    targetedQueryCache[cacheIndex] = {};
   }
-  if (!targetedQueryPromises[cacheKey]) {
-    targetedQueryPromises[cacheKey] = {};
+  if (!targetedQueryPromises[cacheIndex]) {
+    targetedQueryPromises[cacheIndex] = {};
   }
 
   const loadStartTime = performance.now();
@@ -2996,7 +3015,7 @@ async function batchQueryByIds(tableName, ids, idColumn = 'id', signal = null, c
       const loadDuration = performance.now() - loadStartTime;
       console.log(`[Supabase] ✅ Loaded ${tableName} for ${Object.keys(result).length} IDs in ${loadDuration.toFixed(2)}ms`);
 
-      targetedQueryCache[cacheKey][cacheKeyStr] = result;
+      targetedQueryCache[cacheIndex][cacheKeyStr] = result;
       return result;
     } catch (error) {
       if (error.name === 'AbortError' || (signal && signal.aborted)) {
@@ -3005,11 +3024,11 @@ async function batchQueryByIds(tableName, ids, idColumn = 'id', signal = null, c
       console.error(`Error loading ${tableName} by IDs:`, error);
       return {};
     } finally {
-      delete targetedQueryPromises[cacheKey][cacheKeyStr];
+      delete targetedQueryPromises[cacheIndex][cacheKeyStr];
     }
   })();
 
-  targetedQueryPromises[cacheKey][cacheKeyStr] = promise;
+  targetedQueryPromises[cacheIndex][cacheKeyStr] = promise;
   return promise;
 }
 
