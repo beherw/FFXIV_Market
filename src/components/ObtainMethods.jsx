@@ -148,6 +148,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         // Step 2: Extract all required IDs from sources
         console.log(`[ObtainMethods] 🔍 Raw sources data for item ${itemId}:`, sourcesData);
         console.log(`[ObtainMethods] 📋 Detailed sources structure for item ${itemId}:`, JSON.stringify(sourcesData, null, 2));
+        console.log(`[ObtainMethods] 📊 Sources count: ${sourcesData?.length || 0}, types:`, sourcesData?.map(s => s?.type) || []);
         
         // Validate sourcesData before processing
         if (!sourcesData || !Array.isArray(sourcesData)) {
@@ -156,6 +157,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           setLoading(false);
           setDataLoaded(true);
           return;
+        }
+        
+        // Log if sourcesData is empty
+        if (sourcesData.length === 0) {
+          console.warn(`[ObtainMethods] ⚠️ Empty sources data for item ${itemId} - no sources found in extracts table`);
         }
         
         const requiredIds = extractIdsFromSources(sourcesData);
@@ -734,10 +740,29 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             }
           }
           
+          // Check if we have shop data loaded but no TRADE_SOURCES or VENDORS source
+          // This can happen if the extracts table doesn't have the shop data but shops_by_npc does
+          const hasTradeSources = processedSources.some(source => source.type === DataType.TRADE_SOURCES);
+          const hasVendors = processedSources.some(source => source.type === DataType.VENDORS);
+          const shopsByNpc = newLoadedData.shopsByNpc || {};
+          const twShops = newLoadedData.twShops || {};
+          const currentItemIdNum = parseInt(itemId, 10);
+          
+          if (!hasTradeSources && !hasVendors && Object.keys(shopsByNpc).length > 0) {
+            console.log(`[ObtainMethods] 🔍 No TRADE_SOURCES/VENDORS found but shopsByNpc data exists. Checking shops for item ${itemId}...`);
+            console.log(`[ObtainMethods] 🔍 shopsByNpc keys:`, Object.keys(shopsByNpc));
+            console.log(`[ObtainMethods] 🔍 twShops keys:`, Object.keys(twShops));
+            
+            // Note: We can't fully reconstruct TRADE_SOURCES from shopsByNpc alone
+            // because shopsByNpc doesn't contain the trade information (what items are sold, currencies needed)
+            // This is a limitation - we'd need to query the shops table with full trade data
+            // For now, just log that we have shop data but can't use it without trade info
+            console.warn(`[ObtainMethods] ⚠️ Shop data exists but cannot create sources without trade information. Item ${itemId} may need to be added to extracts table.`);
+          }
+          
           // Extract FATE reward item IDs from fatesDatabasePages and load twItems
           const fateRewardItemIds = new Set();
           const fatesDatabasePages = newLoadedData.fatesDatabasePages || {};
-          const currentItemIdNum = parseInt(itemId, 10);
           
           Object.keys(fatesDatabasePages).forEach(fateIdStr => {
             const fateDb = fatesDatabasePages[fateIdStr];
@@ -792,6 +817,21 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   console.error(`[ObtainMethods] Error loading FATE reward items:`, err);
                 }
               });
+          }
+          
+          // Final check: log if processedSources is empty
+          if (processedSources.length === 0) {
+            console.warn(`[ObtainMethods] ⚠️ No valid sources found for item ${itemId} after processing. Sources were filtered out or empty.`);
+            console.log(`[ObtainMethods] 🔍 Loaded data summary:`, {
+              twShops: Object.keys(newLoadedData.twShops || {}).length,
+              shopsByNpc: Object.keys(newLoadedData.shopsByNpc || {}).length,
+              twNpcs: Object.keys(newLoadedData.twNpcs || {}).length,
+              npcs: Object.keys(newLoadedData.npcs || {}).length,
+              fateSources: (newLoadedData.fateSources || []).length,
+              lootSources: (newLoadedData.lootSources || []).length
+            });
+          } else {
+            console.log(`[ObtainMethods] ✅ Final processedSources count: ${processedSources.length}, types:`, processedSources.map(s => s?.type));
           }
           
           setSources(processedSources);
