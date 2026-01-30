@@ -6,6 +6,7 @@ import SearchBar from './SearchBar';
 import TopBar from './TopBar';
 import TaxRatesModal from './TaxRatesModal';
 import SearchResultsTable from './SearchResultsTable';
+import RunningLoader from './RunningLoader';
 import { getMarketableItemsByIds } from '../services/universalis';
 import { getItemById, getSimplifiedChineseName } from '../services/itemDatabase';
 import axios from 'axios';
@@ -58,9 +59,12 @@ export default function MSQPriceChecker({
   const location = useLocation();
   const [ilvlInput, setIlvlInput] = useState('');
   const [ilvlInputValidation, setIlvlInputValidation] = useState(null);
+  const [ilvlInfoMessage, setIlvlInfoMessage] = useState(null);
   const ilvlValidationTimeoutRef = useRef(null);
+  const runningLoaderRef = useRef(null);
   const isInitializingFromURLRef = useRef(false);
   const lastProcessedURLRef = useRef('');
+  const previousServerOptionRef = useRef(null);
   
   const [selectedEquipCategory, setSelectedEquipCategory] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
@@ -271,6 +275,7 @@ export default function MSQPriceChecker({
           valid: false,
           message: '請輸入1-999之間的數字'
         });
+        setIlvlInfoMessage(null); // Clear info message when validation fails
         return;
       }
 
@@ -281,6 +286,7 @@ export default function MSQPriceChecker({
         valid: true,
         message: `物品等級: ${numValue}`
       });
+      setIlvlInfoMessage(null); // Clear info message when user changes input
     }, 1000);
   }, []);
 
@@ -292,6 +298,249 @@ export default function MSQPriceChecker({
       }
     };
   }, []);
+
+  // Extract price fetching logic into a separate function that can be reused
+  const fetchPricesForItems = useCallback(async (itemIdsToQuery, finalItemIds) => {
+    if (!selectedWorld || !selectedServerOption) {
+      addToast('請選擇伺服器', 'warning');
+      setIsLoadingVelocities(false);
+      return;
+    }
+
+    setIsLoadingVelocities(true);
+
+    const isDCQuery = selectedServerOption === selectedWorld.section;
+    const queryTarget = isDCQuery
+      ? selectedWorld.section
+      : selectedServerOption;
+
+    const batchSize = 100;
+    const allVelocities = {};
+    const allAveragePrices = {};
+    const allMinListings = {};
+    const allRecentPurchases = {};
+    const allTradability = {};
+
+    // Fetch market data in batches (100 items per request)
+    // Only query API for tradeable items to avoid 400 errors
+    for (let i = 0; i < itemIdsToQuery.length; i += batchSize) {
+      const batch = itemIdsToQuery.slice(i, i + batchSize);
+      const itemIdsString = batch.join(',');
+
+      try {
+        const response = await axios.get(
+          `https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`
+        );
+
+        const data = response.data;
+        if (data && data.results) {
+          data.results.forEach(item => {
+            const itemId = item.itemId;
+
+            const getValue = (nqData, hqData, field) => {
+              const nqWorld = nqData?.world?.[field];
+              const hqWorld = hqData?.world?.[field];
+              const nqDc = nqData?.dc?.[field];
+              const hqDc = hqData?.dc?.[field];
+
+              // When querying a specific server (!isDCQuery), only use world data, don't fallback to DC
+              // When querying DC (isDCQuery), use DC data
+              const nqValue = isDCQuery 
+                ? (nqDc !== undefined ? nqDc : nqWorld)
+                : (nqWorld !== undefined ? nqWorld : undefined);
+              const hqValue = isDCQuery
+                ? (hqDc !== undefined ? hqDc : hqWorld)
+                : (hqWorld !== undefined ? hqWorld : undefined);
+
+              if (field === 'quantity') {
+                if (nqValue !== undefined || hqValue !== undefined) {
+                  return (nqValue || 0) + (hqValue || 0);
+                }
+              } else {
+                if (nqValue !== undefined && hqValue !== undefined) {
+                  return Math.min(nqValue, hqValue);
+                } else if (hqValue !== undefined) {
+                  return hqValue;
+                } else if (nqValue !== undefined) {
+                  return nqValue;
+                }
+              }
+              return null;
+            };
+
+            const velocity = getValue(
+              item.nq?.dailySaleVelocity,
+              item.hq?.dailySaleVelocity,
+              'quantity'
+            );
+
+            const averagePrice = getValue(
+              item.nq?.averageSalePrice,
+              item.hq?.averageSalePrice,
+              'price'
+            );
+
+            const minListingPrice = getValue(
+              item.nq?.minListing,
+              item.hq?.minListing,
+              'price'
+            );
+
+            const recentPurchasePrice = getValue(
+              item.nq?.recentPurchase,
+              item.hq?.recentPurchase,
+              'price'
+            );
+
+            // Extract region field when querying a specific world (not DC)
+            let minListing = null;
+            if (minListingPrice !== null && minListingPrice !== undefined) {
+              if (!isDCQuery) {
+                // When world is selected, only use world data, don't fallback to DC
+                const nqWorldPrice = item.nq?.minListing?.world?.price;
+                const hqWorldPrice = item.hq?.minListing?.world?.price;
+                
+                // Determine which one (NQ or HQ) has the better price, then get its region
+                let selectedData = null;
+                if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
+                  selectedData = hqWorldPrice <= nqWorldPrice 
+                    ? item.hq?.minListing?.world
+                    : item.nq?.minListing?.world;
+                } else if (hqWorldPrice !== undefined) {
+                  selectedData = item.hq?.minListing?.world;
+                } else if (nqWorldPrice !== undefined) {
+                  selectedData = item.nq?.minListing?.world;
+                }
+                
+                // Extract region if available
+                const region = selectedData?.region;
+                minListing = { price: minListingPrice };
+                if (region !== undefined) {
+                  minListing.region = region;
+                }
+              } else {
+                // When DC is selected, just store the price
+                minListing = minListingPrice;
+              }
+            }
+
+            let recentPurchase = null;
+            if (recentPurchasePrice !== null && recentPurchasePrice !== undefined) {
+              if (!isDCQuery) {
+                // When world is selected, only use world data, don't fallback to DC
+                const nqWorldPrice = item.nq?.recentPurchase?.world?.price;
+                const hqWorldPrice = item.hq?.recentPurchase?.world?.price;
+                
+                // Determine which one (NQ or HQ) has the better price, then get its region
+                let selectedData = null;
+                if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
+                  selectedData = hqWorldPrice <= nqWorldPrice 
+                    ? item.hq?.recentPurchase?.world
+                    : item.nq?.recentPurchase?.world;
+                } else if (hqWorldPrice !== undefined) {
+                  selectedData = item.hq?.recentPurchase?.world;
+                } else if (nqWorldPrice !== undefined) {
+                  selectedData = item.nq?.recentPurchase?.world;
+                }
+                
+                // Extract region if available
+                const region = selectedData?.region;
+                recentPurchase = { price: recentPurchasePrice };
+                if (region !== undefined) {
+                  recentPurchase.region = region;
+                }
+              } else {
+                // When DC is selected, just store the price
+                recentPurchase = recentPurchasePrice;
+              }
+            }
+
+            if (velocity !== null && velocity !== undefined) {
+              allVelocities[itemId] = velocity;
+            }
+            if (averagePrice !== null && averagePrice !== undefined) {
+              allAveragePrices[itemId] = Math.round(averagePrice);
+            }
+            if (minListing !== null && minListing !== undefined) {
+              allMinListings[itemId] = minListing;
+            }
+            if (recentPurchase !== null && recentPurchase !== undefined) {
+              allRecentPurchases[itemId] = recentPurchase;
+            }
+            allTradability[itemId] = true;
+          });
+        }
+
+        batch.forEach(itemId => {
+          if (!allTradability.hasOwnProperty(itemId)) {
+            allTradability[itemId] = false;
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching market data:', error);
+        batch.forEach(itemId => {
+          if (!allTradability.hasOwnProperty(itemId)) {
+            allTradability[itemId] = false;
+          }
+        });
+      }
+    }
+
+    // Mark all untradeable items (not in itemIdsToQuery) as non-tradable
+    finalItemIds.forEach(itemId => {
+      if (!itemIdsToQuery.includes(itemId)) {
+        allTradability[itemId] = false;
+      }
+    });
+
+    setItemVelocities(allVelocities);
+    setItemAveragePrices(allAveragePrices);
+    setItemMinListings(allMinListings);
+    setItemRecentPurchases(allRecentPurchases);
+    setItemTradability(allTradability);
+    setIsLoadingVelocities(false);
+  }, [selectedWorld, selectedServerOption, addToast]);
+
+  // Auto-refetch prices when server changes (if there are already search results)
+  useEffect(() => {
+    // Skip if searching (search will handle price fetching)
+    if (isSearchingLocal) {
+      return;
+    }
+
+    // Only refetch if we have search results and server is selected
+    if (searchResults.length === 0 || !selectedWorld || !selectedServerOption) {
+      return;
+    }
+
+    // Check if server actually changed (not just initial load or search results update)
+    const currentServerKey = `${selectedServerOption}`;
+    const previousServerKey = previousServerOptionRef.current ? `${previousServerOptionRef.current}` : null;
+    const serverChanged = previousServerKey !== null && previousServerKey !== currentServerKey;
+    
+    // Update ref for next comparison
+    previousServerOptionRef.current = selectedServerOption;
+
+    // Only refetch if server actually changed
+    if (!serverChanged) {
+      return;
+    }
+
+    // Get tradeable item IDs from search results
+    const tradeableItemIds = searchResults
+      .map(item => item.id)
+      .filter(id => marketableItems && marketableItems.has(id));
+
+    // Only refetch if there are tradeable items
+    if (tradeableItemIds.length === 0) {
+      return;
+    }
+
+    console.log(`[MSQPriceChecker] Server changed from ${previousServerKey} to ${currentServerKey}, auto-refetching prices for ${tradeableItemIds.length} items`);
+    
+    // Fetch prices for existing search results
+    fetchPricesForItems(tradeableItemIds, searchResults.map(item => item.id));
+  }, [selectedServerOption, selectedWorld, searchResults.length, marketableItems, fetchPricesForItems, isSearchingLocal]);
 
   // Perform search
   const handleSearchLocal = useCallback(async () => {
@@ -305,6 +554,11 @@ export default function MSQPriceChecker({
 
     // Set loading state immediately
     setIsSearchingLocal(true);
+    
+    // Scroll to RunningLoader immediately when search starts
+    setTimeout(() => {
+      runningLoaderRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
 
     // Update URL parameters to persist state using navigate for better history control
     // Only update if params are different to avoid unnecessary history manipulation
@@ -344,12 +598,15 @@ export default function MSQPriceChecker({
       console.log(`[MSQPriceChecker] Found ${itemIds.length} items with ilvl ${numValue}`);
 
       if (itemIds.length === 0) {
-        addToast('未找到該物品等級的物品', 'warning');
+        setIlvlInfoMessage('未找到該物品等級的物品');
         setSearchResults([]);
         setIsLoadingVelocities(false);
         setIsSearchingLocal(false);
         return;
       }
+      
+      // Clear info message when search succeeds
+      setIlvlInfoMessage(null);
 
       // Load equipment data only for items with matching ilvl
       const equipmentData = await loadEquipmentDataByIds(itemIds);
@@ -428,205 +685,8 @@ export default function MSQPriceChecker({
       console.log(`[MSQPriceChecker] Setting search results: ${itemsWithInfo.length} items`);
       setSearchResults(itemsWithInfo);
 
-      // Fetch market data in batches (100 items per request)
-      setIsLoadingVelocities(true);
-
-      if (!selectedWorld || !selectedServerOption) {
-        addToast('請選擇伺服器', 'warning');
-        setIsLoadingVelocities(false);
-        return;
-      }
-
-      const isDCQuery = selectedServerOption === selectedWorld.section;
-      const queryTarget = isDCQuery
-        ? selectedWorld.section
-        : selectedServerOption;
-
-      const batchSize = 100;
-      const allVelocities = {};
-      const allAveragePrices = {};
-      const allMinListings = {};
-      const allRecentPurchases = {};
-      const allTradability = {};
-
-      // Fetch market data in batches (100 items per request)
-      // Only query API for tradeable items to avoid 400 errors
-      for (let i = 0; i < itemsToQueryAPI.length; i += batchSize) {
-        const batch = itemsToQueryAPI.slice(i, i + batchSize);
-        const itemIdsString = batch.join(',');
-
-        try {
-          const response = await axios.get(
-            `https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`
-          );
-
-          const data = response.data;
-          if (data && data.results) {
-            data.results.forEach(item => {
-              const itemId = item.itemId;
-
-              const getValue = (nqData, hqData, field) => {
-                const nqWorld = nqData?.world?.[field];
-                const hqWorld = hqData?.world?.[field];
-                const nqDc = nqData?.dc?.[field];
-                const hqDc = hqData?.dc?.[field];
-
-                // When querying a specific server (!isDCQuery), only use world data, don't fallback to DC
-                // When querying DC (isDCQuery), use DC data
-                const nqValue = isDCQuery 
-                  ? (nqDc !== undefined ? nqDc : nqWorld)
-                  : (nqWorld !== undefined ? nqWorld : undefined);
-                const hqValue = isDCQuery
-                  ? (hqDc !== undefined ? hqDc : hqWorld)
-                  : (hqWorld !== undefined ? hqWorld : undefined);
-
-                if (field === 'quantity') {
-                  if (nqValue !== undefined || hqValue !== undefined) {
-                    return (nqValue || 0) + (hqValue || 0);
-                  }
-                } else {
-                  if (nqValue !== undefined && hqValue !== undefined) {
-                    return Math.min(nqValue, hqValue);
-                  } else if (hqValue !== undefined) {
-                    return hqValue;
-                  } else if (nqValue !== undefined) {
-                    return nqValue;
-                  }
-                }
-                return null;
-              };
-
-              const velocity = getValue(
-                item.nq?.dailySaleVelocity,
-                item.hq?.dailySaleVelocity,
-                'quantity'
-              );
-
-              const averagePrice = getValue(
-                item.nq?.averageSalePrice,
-                item.hq?.averageSalePrice,
-                'price'
-              );
-
-              const minListingPrice = getValue(
-                item.nq?.minListing,
-                item.hq?.minListing,
-                'price'
-              );
-
-              const recentPurchasePrice = getValue(
-                item.nq?.recentPurchase,
-                item.hq?.recentPurchase,
-                'price'
-              );
-
-              // Extract region field when querying a specific world (not DC)
-              let minListing = null;
-              if (minListingPrice !== null && minListingPrice !== undefined) {
-                if (!isDCQuery) {
-                  // When world is selected, only use world data, don't fallback to DC
-                  const nqWorldPrice = item.nq?.minListing?.world?.price;
-                  const hqWorldPrice = item.hq?.minListing?.world?.price;
-                  
-                  // Determine which one (NQ or HQ) has the better price, then get its region
-                  let selectedData = null;
-                  if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
-                    selectedData = hqWorldPrice <= nqWorldPrice 
-                      ? item.hq?.minListing?.world
-                      : item.nq?.minListing?.world;
-                  } else if (hqWorldPrice !== undefined) {
-                    selectedData = item.hq?.minListing?.world;
-                  } else if (nqWorldPrice !== undefined) {
-                    selectedData = item.nq?.minListing?.world;
-                  }
-                  
-                  // Extract region if available
-                  const region = selectedData?.region;
-                  minListing = { price: minListingPrice };
-                  if (region !== undefined) {
-                    minListing.region = region;
-                  }
-                } else {
-                  // When DC is selected, just store the price
-                  minListing = minListingPrice;
-                }
-              }
-
-              let recentPurchase = null;
-              if (recentPurchasePrice !== null && recentPurchasePrice !== undefined) {
-                if (!isDCQuery) {
-                  // When world is selected, only use world data, don't fallback to DC
-                  const nqWorldPrice = item.nq?.recentPurchase?.world?.price;
-                  const hqWorldPrice = item.hq?.recentPurchase?.world?.price;
-                  
-                  // Determine which one (NQ or HQ) has the better price, then get its region
-                  let selectedData = null;
-                  if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
-                    selectedData = hqWorldPrice <= nqWorldPrice 
-                      ? item.hq?.recentPurchase?.world
-                      : item.nq?.recentPurchase?.world;
-                  } else if (hqWorldPrice !== undefined) {
-                    selectedData = item.hq?.recentPurchase?.world;
-                  } else if (nqWorldPrice !== undefined) {
-                    selectedData = item.nq?.recentPurchase?.world;
-                  }
-                  
-                  // Extract region if available
-                  const region = selectedData?.region;
-                  recentPurchase = { price: recentPurchasePrice };
-                  if (region !== undefined) {
-                    recentPurchase.region = region;
-                  }
-                } else {
-                  // When DC is selected, just store the price
-                  recentPurchase = recentPurchasePrice;
-                }
-              }
-
-              if (velocity !== null && velocity !== undefined) {
-                allVelocities[itemId] = velocity;
-              }
-              if (averagePrice !== null && averagePrice !== undefined) {
-                allAveragePrices[itemId] = Math.round(averagePrice);
-              }
-              if (minListing !== null && minListing !== undefined) {
-                allMinListings[itemId] = minListing;
-              }
-              if (recentPurchase !== null && recentPurchase !== undefined) {
-                allRecentPurchases[itemId] = recentPurchase;
-              }
-              allTradability[itemId] = true;
-            });
-          }
-
-          batch.forEach(itemId => {
-            if (!allTradability.hasOwnProperty(itemId)) {
-              allTradability[itemId] = false;
-            }
-          });
-        } catch (error) {
-          console.error('Error fetching market data:', error);
-          batch.forEach(itemId => {
-            if (!allTradability.hasOwnProperty(itemId)) {
-              allTradability[itemId] = false;
-            }
-          });
-        }
-      }
-
-      // Mark all untradeable items (not in itemsToQueryAPI) as non-tradable
-      finalItemIds.forEach(itemId => {
-        if (!itemsToQueryAPI.includes(itemId)) {
-          allTradability[itemId] = false;
-        }
-      });
-
-      setItemVelocities(allVelocities);
-      setItemAveragePrices(allAveragePrices);
-      setItemMinListings(allMinListings);
-      setItemRecentPurchases(allRecentPurchases);
-      setItemTradability(allTradability);
-      setIsLoadingVelocities(false);
+      // Fetch prices using the extracted function
+      await fetchPricesForItems(itemsToQueryAPI, finalItemIds);
       setIsSearchingLocal(false);
     } catch (error) {
       console.error('Search error:', error);
@@ -634,7 +694,7 @@ export default function MSQPriceChecker({
       setIsLoadingVelocities(false);
       setIsSearchingLocal(false);
     }
-  }, [ilvlInput, selectedEquipCategory, selectedWorld, selectedServerOption, addToast, itemMatchesEquipCategory, itemMatchesAnyCategory, searchParams, setSearchParams, loadEquipmentDataByIds]);
+  }, [ilvlInput, selectedEquipCategory, selectedWorld, selectedServerOption, addToast, itemMatchesEquipCategory, itemMatchesAnyCategory, searchParams, setSearchParams, loadEquipmentDataByIds, fetchPricesForItems]);
 
   const maxRange = 50;
 
@@ -655,9 +715,9 @@ export default function MSQPriceChecker({
           setSearchText('');
           navigate('/msq-price-checker');
         }}
-        onUltimatePriceKingClick={() => {
+        onCraftingInspirationClick={() => {
           setSearchText('');
-          navigate('/ultimate-price-king');
+          navigate('/crafting-inspiration');
         }}
         onAdvancedSearchClick={() => {
           setSearchText('');
@@ -711,6 +771,11 @@ export default function MSQPriceChecker({
                   {ilvlInputValidation && (
                     <div className={`mt-2 text-xs ${ilvlInputValidation.valid ? 'text-green-400' : 'text-yellow-400'}`}>
                       {ilvlInputValidation.message}
+                    </div>
+                  )}
+                  {ilvlInfoMessage && (
+                    <div className="mt-2 text-xs text-blue-400 bg-blue-900/20 border border-blue-500/30 rounded px-3 py-2">
+                      {ilvlInfoMessage}
                     </div>
                   )}
                 </div>
@@ -772,17 +837,10 @@ export default function MSQPriceChecker({
             </button>
           </div>
 
-          {/* Loading Overlay */}
-          {isSearchingLocal && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 flex items-center justify-center">
-              <div className="bg-gradient-to-br from-slate-800 via-purple-900/30 to-slate-800 rounded-lg border border-purple-500/30 p-8 flex flex-col items-center gap-4 shadow-2xl">
-                <svg className="animate-spin h-12 w-12 text-ffxiv-gold" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p className="text-ffxiv-gold font-semibold text-lg">搜索中...</p>
-                <p className="text-gray-400 text-sm">正在查詢物品數據</p>
-              </div>
+          {/* Running Loader - Show when searching but no results yet */}
+          {isSearchingLocal && searchResults.length === 0 && (
+            <div ref={runningLoaderRef} className="mt-8 flex justify-center items-center min-h-[300px]">
+              <RunningLoader />
             </div>
           )}
 
@@ -847,6 +905,7 @@ export default function MSQPriceChecker({
         isLoading={isLoadingTaxRates}
         selectedWorld={selectedWorld}
         selectedServerOption={selectedServerOption}
+        onServerOptionChange={onServerOptionChange}
       />
     </div>
   );

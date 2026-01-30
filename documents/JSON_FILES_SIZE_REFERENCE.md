@@ -35,7 +35,7 @@
 | 文件路径 | 大小 | 行数 | 加载方式 | 使用位置 |
 |---------|------|------|---------|---------|
 | `ui-categories.json` | 732KB | 50K | 动态导入 | AdvancedSearch.jsx |
-| `ilvls.json` | 748KB | 50K | 动态导入 | App.jsx, ItemTable.jsx, AdvancedSearch.jsx, MSQPriceChecker.jsx, UltimatePriceKing.jsx |
+| `ilvls.json` | 748KB | 50K | 动态导入 | App.jsx, ItemTable.jsx, AdvancedSearch.jsx, MSQPriceChecker.jsx, CraftingInspiration.jsx |
 | `rarities.json` | 688KB | 50K | 动态导入 | ItemTable.jsx, AdvancedSearch.jsx |
 | `item-patch.json` | 696KB | 48K | 动态导入 | App.jsx, ItemTable.jsx |
 | `maps.json` | 460KB | 20K | 静态导入 | MapModal.jsx |
@@ -62,7 +62,7 @@
 | `fate-sources.json` | 16KB | 1.6K | 静态导入 | ObtainMethods.jsx |
 | `tw-item-ui-categories.json` | 8KB | 338 | 静态导入 | AdvancedSearch.jsx |
 | `equip-slot-categories.json` | 8KB | 385 | 静态导入 | MSQPriceChecker.jsx |
-| `tw-job-abbr.json` | 4KB | 128 | 静态导入 | ObtainMethods.jsx, AdvancedSearch.jsx, UltimatePriceKing.jsx |
+| `tw-job-abbr.json` | 4KB | 128 | 静态导入 | ObtainMethods.jsx, AdvancedSearch.jsx, CraftingInspiration.jsx |
 
 ## 优化建议
 

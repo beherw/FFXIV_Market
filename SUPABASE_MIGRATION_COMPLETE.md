@@ -34,7 +34,7 @@ All local JSON file dependencies have been successfully migrated to Supabase!
 - ✅ `src/components/AdvancedSearch.jsx` - Uses Supabase for all JSON data
 - ✅ `src/components/ItemTable.jsx` - Uses Supabase for ilvls, rarities, item_patch, patch_names
 - ✅ `src/components/MSQPriceChecker.jsx` - Uses Supabase for equip_slot_categories, equipment, ilvls
-- ✅ `src/components/UltimatePriceKing.jsx` - Uses Supabase for tw_job_abbr, ilvls
+- ✅ `src/components/CraftingInspiration.jsx` - Uses Supabase for tw_job_abbr, ilvls
 
 ## Key Features
 
@@ -67,7 +67,7 @@ All local JSON file dependencies have been successfully migrated to Supabase!
 - [ ] Test AdvancedSearch functionality
 - [ ] Test ItemTable display
 - [ ] Test MSQPriceChecker
-- [ ] Test UltimatePriceKing
+- [ ] Test CraftingInspiration
 - [ ] Test recipe database
 - [ ] Test item database search
 - [ ] Verify all data loads correctly

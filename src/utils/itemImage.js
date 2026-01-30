@@ -312,8 +312,8 @@ async function fetchIconPathFromAPI(itemId, abortSignal = null) {
         throw error;
       }
       
-      // For other HTTP errors, cache null and return null
-      iconCache.set(itemId, null);
+      // For other HTTP errors, DON'T cache - allow retry later
+      // This allows icons that failed to load in table to retry in item info page
       return null;
     }
     
@@ -339,9 +339,9 @@ async function fetchIconPathFromAPI(itemId, abortSignal = null) {
       throw new Error('Request cancelled');
     }
     
-    // For other errors (network, timeout, etc.), cache null and return null
+    // For other errors (network, timeout, etc.), DON'T cache - allow retry later
+    // This allows icons that failed to load in table to retry in item info page
     // Don't log errors as they are expected for some items
-    iconCache.set(itemId, null);
     return null;
   }
 }
@@ -350,9 +350,10 @@ async function fetchIconPathFromAPI(itemId, abortSignal = null) {
  * Get item image URL from XIVAPI with caching and rate limiting
  * @param {number} itemId - Item ID
  * @param {AbortSignal} abortSignal - Optional abort signal to cancel the request
+ * @param {boolean} forceReload - If true, bypass cache and force reload (for retrying failed loads)
  * @returns {Promise<string|null>} - Item image URL or null
  */
-export async function getItemImageUrl(itemId, abortSignal = null) {
+export async function getItemImageUrl(itemId, abortSignal = null, forceReload = false) {
   if (!itemId || itemId <= 0) {
     return null;
   }
@@ -363,7 +364,8 @@ export async function getItemImageUrl(itemId, abortSignal = null) {
   }
 
   // Check cache first (including null values for items that don't exist)
-  if (iconCache.has(itemId)) {
+  // Skip cache check if forceReload is true (for retrying failed loads)
+  if (!forceReload && iconCache.has(itemId)) {
     return iconCache.get(itemId);
   }
 

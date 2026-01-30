@@ -64,7 +64,9 @@ function convertArrayToCSV(data, tableName) {
  */
 function convertObjectSimpleToCSV(data, tableName) {
   const rows = [];
-  rows.push('id,value'); // Header
+  // Special handling for ui_categories table - it needs 'id,category' instead of 'id,value'
+  const valueColumnName = tableName === 'ui_categories' ? 'category' : 'value';
+  rows.push(`id,${valueColumnName}`); // Header
   
   Object.entries(data).forEach(([key, value]) => {
     rows.push(`${escapeCSV(key)},${escapeCSV(value)}`);

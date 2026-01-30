@@ -27,7 +27,7 @@ import TopBar from './components/TopBar';
 import NotFound from './components/NotFound';
 
 // Lazy load route-based components
-const CraftingJobPriceChecker = lazy(() => import('./components/UltimatePriceKing'));
+const CraftingJobPriceChecker = lazy(() => import('./components/CraftingInspiration'));
 const MSQPriceChecker = lazy(() => import('./components/MSQPriceChecker'));
 const AdvancedSearch = lazy(() => import('./components/AdvancedSearch'));
 const CraftingTree = lazy(() => import('./components/CraftingTree'));
@@ -53,6 +53,7 @@ function App() {
   const [marketListings, setMarketListings] = useState([]);
   const [marketHistory, setMarketHistory] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchingItemsCount, setSearchingItemsCount] = useState(0); // Track items count during search
   const [isLoadingMarket, setIsLoadingMarket] = useState(false);
   const [error, setError] = useState(null);
   const [listSize, setListSize] = useState(20);
@@ -98,6 +99,7 @@ function App() {
   const [searchRecentPurchases, setSearchRecentPurchases] = useState({});
   const [searchTradability, setSearchTradability] = useState({});
   const [isLoadingVelocities, setIsLoadingVelocities] = useState(false);
+  const [velocityLoadingProgress, setVelocityLoadingProgress] = useState({ loaded: 0, total: 0 }); // Track loading progress: loaded = items requested, total = items to load
   const [isServerSelectorDisabled, setIsServerSelectorDisabled] = useState(true); // Start disabled until server data loads
   const [searchCurrentPage, setSearchCurrentPage] = useState(1);
   const [searchItemsPerPage, setSearchItemsPerPage] = useState(20);
@@ -108,6 +110,7 @@ function App() {
   const [taxRates, setTaxRates] = useState({}); // { worldId: { LimsaLominsa: 5, Gridania: 5, ... } }
   const [isLoadingTaxRates, setIsLoadingTaxRates] = useState(false);
   const [isTaxRatesModalOpen, setIsTaxRatesModalOpen] = useState(false);
+  const loadedTaxRatesDcRef = useRef(null); // Track which datacenter's tax rates are currently loaded
 
   // Handle search page change
   const handleSearchPageChange = useCallback((newPage) => {
@@ -386,11 +389,11 @@ function App() {
   // Auto-alternate images when not in manual mode
   useEffect(() => {
     const isOnHistoryPage = location.pathname === '/history';
-    const isOnUltimatePriceKingPage = location.pathname === '/ultimate-price-king';
+    const isOnCraftingInspirationPage = location.pathname === '/crafting-inspiration';
     const isOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
     
     // Only run on home page (empty state)
-    if (selectedItem || (tradeableResults.length > 0 || untradeableResults.length > 0) || isSearching || isOnHistoryPage || isOnUltimatePriceKingPage || isOnMSQPriceCheckerPage) {
+    if (selectedItem || (tradeableResults.length > 0 || untradeableResults.length > 0) || isSearching || isOnHistoryPage || isOnCraftingInspirationPage || isOnMSQPriceCheckerPage) {
       if (imageIntervalRef.current) {
         clearTimeout(imageIntervalRef.current);
         imageIntervalRef.current = null;
@@ -442,10 +445,10 @@ function App() {
       
       imageIntervalRef.current = setTimeout(() => {
         const currentIsOnHistoryPage = location.pathname === '/history';
-        const currentIsOnUltimatePriceKingPage = location.pathname === '/ultimate-price-king';
+        const currentIsOnCraftingInspirationPage = location.pathname === '/crafting-inspiration';
         const currentIsOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
         
-        if (!isManualMode && !selectedItem && tradeableResults.length === 0 && untradeableResults.length === 0 && !isSearching && !currentIsOnHistoryPage && !currentIsOnUltimatePriceKingPage && !currentIsOnMSQPriceCheckerPage && !isShattering) {
+        if (!isManualMode && !selectedItem && tradeableResults.length === 0 && untradeableResults.length === 0 && !isSearching && !currentIsOnHistoryPage && !currentIsOnCraftingInspirationPage && !currentIsOnMSQPriceCheckerPage && !isShattering) {
           switchCountRef.current++;
           
           // Check if we should trigger shatter effect
@@ -771,16 +774,28 @@ function App() {
     }
   }, [tradeableResults.length, untradeableResults.length, historyItems.length, marketableItems, selectedServerOption, selectedWorld]);
 
-  // Fetch tax rates when modal opens
+  // Fetch tax rates when modal opens or datacenter changes
   useEffect(() => {
     if (!isTaxRatesModalOpen) {
       // Don't fetch if modal is not open
+      // Clear loaded DC ref when modal closes
+      loadedTaxRatesDcRef.current = null;
       return;
     }
 
     if (!selectedWorld || !selectedWorld.dcObj || !worlds) {
       setTaxRates({});
       setIsLoadingTaxRates(false);
+      loadedTaxRatesDcRef.current = null;
+      return;
+    }
+
+    const currentDcName = selectedWorld.section;
+    
+    // Only fetch if we haven't loaded this datacenter's tax rates yet
+    // This prevents re-fetching when switching servers within the same datacenter
+    if (loadedTaxRatesDcRef.current === currentDcName) {
+      // Tax rates already loaded for this datacenter, no need to reload
       return;
     }
 
@@ -789,6 +804,7 @@ function App() {
     if (worldIds.length === 0) {
       setTaxRates({});
       setIsLoadingTaxRates(false);
+      loadedTaxRatesDcRef.current = null;
       return;
     }
 
@@ -812,11 +828,14 @@ function App() {
       });
       setTaxRates(taxRatesMap);
       setIsLoadingTaxRates(false);
+      // Mark this datacenter's tax rates as loaded
+      loadedTaxRatesDcRef.current = currentDcName;
     }).catch(error => {
       console.error('Error fetching tax rates:', error);
       setIsLoadingTaxRates(false);
+      loadedTaxRatesDcRef.current = null;
     });
-  }, [selectedWorld, worlds, isTaxRatesModalOpen]);
+  }, [selectedWorld?.section, worlds, isTaxRatesModalOpen]); // Only depend on datacenter name, not the whole selectedWorld object
 
   // Sync selectedItem to ref
   useEffect(() => {
@@ -874,6 +893,7 @@ function App() {
       setSearchRecentPurchases({});
       setSearchTradability({});
       setIsLoadingVelocities(false);
+      setVelocityLoadingProgress({ loaded: 0, total: 0 });
       // Only enable server selector if server data is loaded AND no fetch is in progress
       if (isServerDataLoaded && !velocityFetchInProgressRef.current) {
         setIsServerSelectorDisabled(false);
@@ -921,6 +941,7 @@ function App() {
         setSearchRecentPurchases({});
         setSearchTradability({});
         setIsLoadingVelocities(false);
+        setVelocityLoadingProgress({ loaded: 0, total: 0 });
         // Only enable server selector if server data is loaded AND no fetch is in progress
         if (isServerDataLoaded && !velocityFetchInProgressRef.current) {
           setIsServerSelectorDisabled(false);
@@ -974,6 +995,8 @@ function App() {
       const fetchData = async () => {
         setIsLoadingVelocities(true);
         setIsServerSelectorDisabled(true); // Disable server selector until all batches complete
+        // Initialize loading progress: total = all items to load
+        setVelocityLoadingProgress({ loaded: 0, total: sortedItemIds.length });
         try {
           // Determine if we're querying DC or world
           const isDCQuery = selectedServerOption === selectedWorld.section;
@@ -1003,6 +1026,14 @@ function App() {
             const batch = sortedItemIds.slice(startIndex, startIndex + batchSize);
           if (batch.length === 0) {
             return;
+          }
+          
+          // Update loading progress: mark this batch as requested (before sending request)
+          if (!abortSignal.aborted && currentRequestId === velocityFetchRequestIdRef.current) {
+            setVelocityLoadingProgress(prev => ({
+              loaded: Math.min(prev.loaded + batch.length, prev.total),
+              total: prev.total
+            }));
           }
           
           const itemIdsString = batch.join(',');
@@ -1292,6 +1323,8 @@ function App() {
         // Mark fetch as complete
         if (!abortSignal.aborted && currentRequestId === velocityFetchRequestIdRef.current) {
           velocityFetchInProgressRef.current = false;
+          // Update loading progress to show all items are loaded
+          setVelocityLoadingProgress(prev => ({ loaded: prev.total, total: prev.total }));
           // Enable server selector after all batches complete (only if server data is loaded)
           if (isServerDataLoaded) {
             setIsServerSelectorDisabled(false);
@@ -1339,6 +1372,7 @@ function App() {
       }
     };
   }, [tradeableResults, untradeableResults, selectedServerOption, selectedWorld, isServerDataLoaded]);
+
 
   // Cancel icon requests when leaving search page
   useEffect(() => {
@@ -1790,11 +1824,17 @@ function App() {
   }, [historyItems, selectedServerOption, selectedWorld, isServerDataLoaded, location.pathname, selectedItem]);
 
   // Manage loading indicator display with minimum 1s display time
-  // Use same logic as server selector disabled state
+  // Show indicator when loading velocities (isLoadingVelocities) OR when server selector is disabled due to loading
+  // This ensures indicator stays visible until ALL batches complete, not just the first batch
   useEffect(() => {
     const currentResults = showUntradeable ? untradeableResults : tradeableResults;
-    const shouldShow = isServerSelectorDisabled && 
-                       (currentResults.length >= 50 || tradeableResults.length >= 50 || untradeableResults.length >= 50);
+    const hasEnoughItems = currentResults.length >= 50 || tradeableResults.length >= 50 || untradeableResults.length >= 50;
+    
+    // Show indicator if:
+    // 1. Currently loading velocities (isLoadingVelocities), OR
+    // 2. Server selector is disabled AND we have enough items (means loading is in progress)
+    // This ensures indicator shows during the entire loading process, not just until first batch
+    const shouldShow = hasEnoughItems && (isLoadingVelocities || (isServerSelectorDisabled && velocityFetchInProgressRef.current));
     
     if (shouldShow) {
       // Start showing indicator
@@ -1827,7 +1867,7 @@ function App() {
         setShowLoadingIndicator(false);
       }
     }
-  }, [isServerSelectorDisabled, showUntradeable, tradeableResults.length, untradeableResults.length]);
+  }, [isLoadingVelocities, isServerSelectorDisabled, showUntradeable, tradeableResults.length, untradeableResults.length]);
 
   // Reset scroll position on mount and route changes
   useEffect(() => {
@@ -1948,7 +1988,7 @@ function App() {
     }
 
     // Handle secret page - don't interfere with it
-    if (location.pathname === '/ultimate-price-king') {
+    if (location.pathname === '/crafting-inspiration') {
       lastProcessedURLRef.current = currentURLKey;
       isInitializingFromURLRef.current = false;
       return;
@@ -2048,9 +2088,22 @@ function App() {
             searchAbortControllerRef.current = new AbortController();
             const searchSignal = searchAbortControllerRef.current.signal;
 
+            // CRITICAL: Clear results IMMEDIATELY when new search starts
+            // This prevents old results from being displayed during new search
+            // isSearching flag will be true, so UI can show loading state instead of empty
+            setTradeableResults([]);
+            setUntradeableResults([]);
+            setShowUntradeable(false);
+            setSearchingItemsCount(0); // Reset count when starting new search
+
             try {
               const searchResult = await searchItems(searchQuery.trim(), false, searchSignal);
               const { results, converted, originalText, convertedText, searchedSimplified } = searchResult;
+              
+              // Update searching items count for display
+              if (results.length > 0) {
+                setSearchingItemsCount(results.length);
+              }
               
               if (lastProcessedURLRef.current !== currentURLKey) {
                 searchInProgressRef.current = false;
@@ -2058,10 +2111,8 @@ function App() {
               }
               
               // Show toast if conversion happened
-              // For simplified database search, only show toast if results were found
               if (converted && convertedText) {
                 if (searchedSimplified) {
-                  // Only show toast if simplified database search found results
                   if (results.length > 0) {
                     addToast(`「${originalText}」繁體搜尋無資料，在簡體中文資料庫找到結果！`, 'warning');
                   }
@@ -2070,68 +2121,49 @@ function App() {
                 }
               }
               
-              // Immediately show results (searchItems already filters untradeable items locally)
-              // Hide untradeable items immediately - they are already filtered by searchItems
-              // CRITICAL: Clear untradeableResults FIRST before setting tradeableResults
-              // This ensures untradeable items are never displayed, even during state updates
-              setUntradeableResults([]);
-              setShowUntradeable(false);
-              setTradeableResults(results);
-              setSearchCurrentPage(1); // Reset to first page on new search
-              searchResultsRef.current = results;
-              setError(null);
-              // Reset tracking ref for new search
+              // STEP 1: Get all search results (includes both marketable and non-marketable)
+              // Keep old display visible - no state changes yet to avoid flickering
+              
+              // STEP 2: Verify tradeability and separate items BEFORE any state update
+              const resultIds = results.map(item => item.id).filter(id => id > 0);
+              const { getMarketableItemsByIds } = await import('./services/universalis');
+              const marketableSet = await getMarketableItemsByIds(resultIds, searchSignal);
+              
+              // Check if search was aborted or superseded
+              if (lastProcessedURLRef.current !== currentURLKey || searchSignal.aborted) {
+                searchInProgressRef.current = false;
+                return;
+              }
+              
+              // STEP 3: Separate marketable and non-marketable items
+              const marketableItems = results.filter(item => marketableSet.has(item.id));
+              const nonMarketableItems = results.filter(item => !marketableSet.has(item.id));
+              
+              // STEP 4: NOW update state - ONLY after separation is complete
+              // CRITICAL: Use flushSync to ensure ALL state updates are synchronous and atomic
+              // Set isSearching to false INSIDE flushSync to ensure it happens together with results
+              // This prevents any intermediate renders with incorrect data
+              flushSync(() => {
+                setShowUntradeable(false); // Always show marketable by default
+                setTradeableResults(marketableItems); // Only marketable items - NEVER contains non-marketable
+                setUntradeableResults(nonMarketableItems); // Store non-marketable separately - NEVER mixed with marketable
+                setSearchCurrentPage(1); // Reset to first page
+                searchResultsRef.current = marketableItems.length > 0 ? marketableItems : nonMarketableItems;
+                setError(null);
+                setIsSearching(false); // Search complete - set INSIDE flushSync to ensure atomic update
+              });
+              
               prevTradeableResultsLengthRef.current = 0;
               
-              // Verify tradeability asynchronously in the background (for more accurate data)
-              // This doesn't block the UI - users see results immediately
-              // Use targeted query to check only search result items (efficient - uses WHERE IN)
-              const resultIds = results.map(item => item.id).filter(id => id > 0);
-              (async () => {
-                try {
-                  const { getMarketableItemsByIds } = await import('./services/universalis');
-                  const marketableSet = await getMarketableItemsByIds(resultIds, searchSignal);
-                  
-                  // Only update if this is still the current search
-                  if (lastProcessedURLRef.current === currentURLKey) {
-                    const tradeable = results.filter(item => marketableSet.has(item.id));
-                    const untradeable = results.filter(item => !marketableSet.has(item.id));
-                    
-                    // Keep track of untradeable items even when we have tradeable items
-                    // This allows users to view untradeable items via the button
-                    if (tradeable.length > 0) {
-                      // Set showUntradeable to false FIRST (show tradeable by default)
-                      setShowUntradeable(false);
-                      // Then update tradeable results
-                      setTradeableResults(tradeable);
-                      // Keep untradeable items record for the button to display
-                      setUntradeableResults(untradeable);
-                    } else {
-                      // Only show untradeable if there are no tradeable items
-                      setShowUntradeable(tradeable.length === 0 && untradeable.length > 0);
-                      setTradeableResults(tradeable);
-                      setUntradeableResults(untradeable);
-                    }
-                    searchResultsRef.current = tradeable.length > 0 ? tradeable : untradeable;
-                    
-                    // Show toast for multiple results after tradeability is verified
-                    if (results.length > 1 && previousSearchText !== searchQuery) {
-                      addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
-                    }
-                  }
-                } catch (error) {
-                  // Ignore abort errors
-                  if (error.name === 'AbortError' || (searchSignal && searchSignal.aborted)) {
-                    return;
-                  }
-                  console.error('Error verifying tradeability:', error);
-                  // If API fails, keep showing the results (they're already filtered locally)
-                  // Show toast with total results count if we have results
-                  if (lastProcessedURLRef.current === currentURLKey && results.length > 1 && previousSearchText !== searchQuery) {
-                    addToast(`找到 ${results.length} 個物品`, 'success');
-                  }
-                }
-              })();
+              // STEP 5: Show toast with counts
+              if (results.length > 1 && previousSearchText !== searchQuery) {
+                addToast(`找到 ${marketableItems.length} 個可交易物品${nonMarketableItems.length > 0 ? `、${nonMarketableItems.length} 個不可交易物品` : ''}`, 'success');
+              }
+              
+              // Note: ItemTable will now render only marketableItems (from tradeableResults)
+              // Velocity/price fetching will only happen for marketable items
+              // Button will show nonMarketableItems count and be disabled until loading completes
+              
               if (results.length === 0) {
                 addToast('未找到相關物品', 'warning');
                 // No results means velocity fetch won't run, so re-enable server selector here
@@ -2150,7 +2182,6 @@ function App() {
                   navigate(`/item/${item.id}`, { replace: true });
                   addToast(`已選擇: ${item.name}`, 'info');
                 }
-                // Note: Toast for multiple results is now shown in the getMarketableItems().then() callback
               }
               // If there are results, velocity fetch will handle re-enabling server selector
             } catch (err) {
@@ -2164,14 +2195,33 @@ function App() {
                 return;
               }
               console.error('Search error:', err);
-              setError('搜索失敗，請稍後再試');
-              setTradeableResults([]);
-              setUntradeableResults([]);
-              setShowUntradeable(false);
-              searchResultsRef.current = [];
-              addToast('搜索失敗', 'error');
-              // On error, re-enable server selector since velocity fetch won't run
-              if (lastProcessedURLRef.current === currentURLKey) {
+              
+              // If we have results but tradeability verification failed, show all as marketable (fallback)
+              if (results && results.length > 0) {
+                setShowUntradeable(false);
+                setTradeableResults(results);
+                setUntradeableResults([]);
+                searchResultsRef.current = results;
+                if (results.length > 1 && previousSearchText !== searchQuery) {
+                  addToast(`找到 ${results.length} 個物品`, 'success');
+                }
+                if (results.length === 1) {
+                  const item = results[0];
+                  setSelectedItem(item);
+                  selectedItemRef.current = item;
+                  addItemToHistory(item.id);
+                  navigate(`/item/${item.id}`, { replace: true });
+                  addToast(`已選擇: ${item.name}`, 'info');
+                }
+              } else {
+                // No results or search failed completely
+                setError('搜索失敗，請稍後再試');
+                setTradeableResults([]);
+                setUntradeableResults([]);
+                setShowUntradeable(false);
+                searchResultsRef.current = [];
+                addToast('搜索失敗', 'error');
+                // On error, re-enable server selector since velocity fetch won't run
                 setIsServerSelectorDisabled(false);
               }
             } finally {
@@ -2263,6 +2313,7 @@ function App() {
       setTradeableResults([]);
       setUntradeableResults([]);
       setShowUntradeable(false);
+      setSearchingItemsCount(0);
       if (!selectedItemRef.current) {
         setSelectedItem(null);
         setMarketInfo(null);
@@ -2270,8 +2321,8 @@ function App() {
         setMarketHistory([]);
         setError(null);
         setRateLimitMessage(null);
-        // Don't navigate if we're on ultimate-price-king, msq-price-checker, advanced-search or history page
-        if (!skipNavigation && !currentItemId && location.pathname !== '/ultimate-price-king' && location.pathname !== '/msq-price-checker' && location.pathname !== '/advanced-search' && location.pathname !== '/history') {
+        // Don't navigate if we're on crafting-inspiration, msq-price-checker, advanced-search or history page
+        if (!skipNavigation && !currentItemId && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker' && location.pathname !== '/advanced-search' && location.pathname !== '/history') {
           navigate('/');
         }
       }
@@ -2312,7 +2363,7 @@ function App() {
     lastFetchedItemIdsRef.current = ''; // Clear cache to force market data reload
 
     // Navigate to search results page, except when explicitly skipping navigation
-    // Allow navigation from all pages including history, ultimate-price-king and msq-price-checker pages
+    // Allow navigation from all pages including history, crafting-inspiration and msq-price-checker pages
     if (!skipNavigation && trimmedTerm) {
       navigate(`/search?q=${encodeURIComponent(trimmedTerm)}`, { replace: false });
     }
@@ -2325,14 +2376,26 @@ function App() {
       searchAbortControllerRef.current = new AbortController();
       const searchSignal = searchAbortControllerRef.current.signal;
       
+      // CRITICAL: Clear results IMMEDIATELY when new search starts
+      // This prevents old results from being displayed during new search
+      // isSearching flag will be true, so UI can show loading state instead of empty
+      setTradeableResults([]);
+      setUntradeableResults([]);
+      setShowUntradeable(false);
+      setSearchingItemsCount(0); // Reset count when starting new search
+      setIsSearching(true);
+      
       const searchResult = await searchItems(trimmedTerm, false, searchSignal);
       const { results, converted, originalText, convertedText, searchedSimplified } = searchResult;
       
+      // Update searching items count for display
+      if (results.length > 0) {
+        setSearchingItemsCount(results.length);
+      }
+      
       // Show toast if conversion happened
-      // For simplified database search, only show toast if results were found
       if (converted && convertedText) {
         if (searchedSimplified) {
-          // Only show toast if simplified database search found results
           if (results.length > 0) {
             addToast(`「${originalText}」繁體搜尋無資料，在簡體中文資料庫找到結果！`, 'warning');
           }
@@ -2341,58 +2404,54 @@ function App() {
         }
       }
       
-      // Immediately show results (searchItems already filters untradeable items locally)
-      // Hide untradeable items immediately - they are already filtered by searchItems
-      // CRITICAL: Clear untradeableResults FIRST before setting tradeableResults
-      // This ensures untradeable items are never displayed, even during state updates
-      setUntradeableResults([]);
-      setShowUntradeable(false);
-      setTradeableResults(results);
-      setSearchCurrentPage(1); // Reset to first page on new search
-      setError(null);
-      // Reset tracking ref for new search
-      prevTradeableResultsLengthRef.current = 0;
+      // STEP 1: Get all search results (includes both marketable and non-marketable)
+      // CRITICAL: isSearching=true, so table will NOT render anything during verification
+      // tradeableResults and untradeableResults are empty arrays, so table has NO data
       
-      // Verify tradeability asynchronously in the background (for more accurate data)
-      // This doesn't block the UI - users see results immediately
-      // Use targeted query to check only search result items (efficient - uses WHERE IN)
+      // STEP 2: Verify tradeability and separate items BEFORE any state update
+      // During this step, isSearching=true, so table remains hidden with no data
       const resultIds = results.map(item => item.id).filter(id => id > 0);
       const { getMarketableItemsByIds } = await import('./services/universalis');
-      getMarketableItemsByIds(resultIds, searchSignal).then(marketableSet => {
-        const tradeable = results.filter(item => marketableSet.has(item.id));
-        const untradeable = results.filter(item => !marketableSet.has(item.id));
-        
-        // Keep track of untradeable items even when we have tradeable items
-        // This allows users to view untradeable items via the button
-        if (tradeable.length > 0) {
-          // Set showUntradeable to false FIRST (show tradeable by default)
-          setShowUntradeable(false);
-          // Then update tradeable results
-          setTradeableResults(tradeable);
-          // Keep untradeable items record for the button to display
-          setUntradeableResults(untradeable);
-        } else {
-          // Only show untradeable if there are no tradeable items
-          setShowUntradeable(tradeable.length === 0 && untradeable.length > 0);
-          setTradeableResults(tradeable);
-          setUntradeableResults(untradeable);
-        }
-        
-        // Show toast for multiple results after tradeability is verified
-        if (results.length > 1) {
-          addToast(`找到 ${tradeable.length} 個可交易物品${untradeable.length > 0 ? `、${untradeable.length} 個不可交易物品` : ''}`, 'success');
-        }
-      }).catch(error => {
-        console.error('Error verifying tradeability:', error);
-        // If API fails, keep showing the results (they're already filtered locally)
-        // Show toast with total results count if we have results
-        if (results.length > 1) {
-          addToast(`找到 ${results.length} 個物品`, 'success');
-        }
+      const marketableSet = await getMarketableItemsByIds(resultIds, searchSignal);
+      
+      // Check if search was aborted
+      if (searchSignal.aborted) {
+        return;
+      }
+      
+      // STEP 3: Separate marketable and non-marketable items
+      const marketableItems = results.filter(item => marketableSet.has(item.id));
+      const nonMarketableItems = results.filter(item => !marketableSet.has(item.id));
+      
+      // STEP 4: NOW update state - ONLY after separation is complete
+      // CRITICAL: Use flushSync to ensure ALL state updates are synchronous and atomic
+      // Set isSearching to false INSIDE flushSync to ensure it happens together with results
+      // This prevents any intermediate renders with incorrect data
+      flushSync(() => {
+        setShowUntradeable(false); // Always show marketable by default
+        setTradeableResults(marketableItems); // Only marketable items - NEVER contains non-marketable
+        setUntradeableResults(nonMarketableItems); // Store non-marketable separately - NEVER mixed with marketable
+        setSearchCurrentPage(1); // Reset to first page
+        setError(null);
+        setIsSearching(false); // Search complete - set INSIDE flushSync to ensure atomic update
+        setSearchingItemsCount(0); // Reset count after search completes
       });
+      
+      prevTradeableResultsLengthRef.current = 0;
+      
+      // STEP 5: Show toast with counts
+      if (results.length > 1) {
+        addToast(`找到 ${marketableItems.length} 個可交易物品${nonMarketableItems.length > 0 ? `、${nonMarketableItems.length} 個不可交易物品` : ''}`, 'success');
+      }
+      
+      // Note: ItemTable will now render only marketableItems (from tradeableResults)
+      // Velocity/price fetching will only happen for marketable items
+      // Button will show nonMarketableItems count and be disabled until loading completes
       
       if (results.length === 0) {
         addToast('未找到相關物品', 'warning');
+        // No results means velocity fetch won't run, so re-enable server selector here
+        setIsServerSelectorDisabled(false);
       } else {
         // Record search keyword to history
         if (trimmedTerm) {
@@ -2410,7 +2469,6 @@ function App() {
           navigate(`/item/${item.id}`, { replace: true });
           addToast(`已選擇: ${item.name}`, 'info');
         }
-        // Note: Toast for multiple results is now shown in the getMarketableItems().then() callback
       }
     } catch (err) {
       // Ignore abort errors
@@ -2422,8 +2480,10 @@ function App() {
       setTradeableResults([]);
       setUntradeableResults([]);
       setShowUntradeable(false);
+      setSearchingItemsCount(0);
     } finally {
       setIsSearching(false);
+      setSearchingItemsCount(0); // Reset count when search completes (success or error)
       searchInProgressRef.current = false;
       // Clear last searched term after a short delay to allow for legitimate re-searches
       setTimeout(() => {
@@ -2436,10 +2496,51 @@ function App() {
 
   // Handle server option change
   const handleServerOptionChange = useCallback((option) => {
-    setSelectedServerOption(option);
+    console.log('[handleServerOptionChange] Called with option:', option, 'type:', typeof option);
+    
+    // Update selectedWorld first, then selectedServerOption to ensure consistency
+    if (option && datacenters && worlds) {
+      // If option is a number (worldId), find the datacenter containing this world
+      if (typeof option === 'number') {
+        const dc = datacenters.find(dc => dc.worlds && dc.worlds.includes(option));
+        if (dc && dc.worlds && dc.worlds.length > 0) {
+          const worldName = worlds[option];
+          const newWorld = {
+            region: dc.region || '',
+            section: dc.name,
+            world: worldName,
+            dcObj: dc,
+          };
+          console.log('[handleServerOptionChange] Updating selectedWorld to:', newWorld);
+          setSelectedWorld(newWorld);
+          setSelectedServerOption(option);
+        }
+      } 
+      // If option is a string (datacenter name), find the datacenter and set first world
+      else if (typeof option === 'string') {
+        const dc = datacenters.find(dc => dc.name === option);
+        if (dc && dc.worlds && dc.worlds.length > 0) {
+          const firstWorldId = dc.worlds[0];
+          const firstWorldName = worlds[firstWorldId];
+          const newWorld = {
+            region: dc.region || '',
+            section: dc.name,
+            world: firstWorldName,
+            dcObj: dc,
+          };
+          console.log('[handleServerOptionChange] Updating selectedWorld to:', newWorld);
+          setSelectedWorld(newWorld);
+          setSelectedServerOption(option);
+        }
+      }
+    } else {
+      // Fallback: just update selectedServerOption if we can't find the world
+      setSelectedServerOption(option);
+    }
+    
     // Disable server selector when server is changed - velocity fetch will re-enable it when done
     setIsServerSelectorDisabled(true);
-  }, []);
+  }, [datacenters, worlds]);
 
   // Load market data when item or server changes
   useEffect(() => {
@@ -2783,17 +2884,17 @@ function App() {
 
   // Determine what to show based on current route
   const isOnHistoryPage = location.pathname === '/history';
-  const isOnUltimatePriceKingPage = location.pathname === '/ultimate-price-king';
+  const isOnCraftingInspirationPage = location.pathname === '/crafting-inspiration';
   const isOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
   const isOnAdvancedSearchPage = location.pathname === '/advanced-search';
 
   // Check if current route is valid
   const isValidRoute = () => {
     const pathname = location.pathname;
-    // Valid routes: /, /history, /ultimate-price-king, /msq-price-checker, /advanced-search, /item/:id, /search
+    // Valid routes: /, /history, /crafting-inspiration, /msq-price-checker, /advanced-search, /item/:id, /search
     if (pathname === '/' || 
         pathname === '/history' || 
-        pathname === '/ultimate-price-king' || 
+        pathname === '/crafting-inspiration' || 
         pathname === '/msq-price-checker' ||
         pathname === '/advanced-search' ||
         pathname === '/search') {
@@ -2887,7 +2988,7 @@ function App() {
   }
 
   // Render crafting job price checker if on that route
-  if (isOnUltimatePriceKingPage) {
+  if (isOnCraftingInspirationPage) {
     return (
       <Suspense fallback={
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
@@ -2937,11 +3038,11 @@ function App() {
         getSimplifiedChineseName={getSimplifiedChineseName}
         addToast={addToast}
         showNavigationButtons={true}
-        onUltimatePriceKingClick={() => {
+        onCraftingInspirationClick={() => {
           setSearchText('');
-          navigate('/ultimate-price-king');
+          navigate('/crafting-inspiration');
         }}
-        activePage={isOnUltimatePriceKingPage ? 'ultimate-price-king' : isOnMSQPriceCheckerPage ? 'msq-price-checker' : isOnAdvancedSearchPage ? 'advanced-search' : null}
+        activePage={isOnCraftingInspirationPage ? 'crafting-inspiration' : isOnMSQPriceCheckerPage ? 'msq-price-checker' : isOnAdvancedSearchPage ? 'advanced-search' : null}
         onMSQPriceCheckerClick={() => {
           setSearchText('');
           navigate('/msq-price-checker');
@@ -3083,36 +3184,26 @@ function App() {
           )}
 
           {/* Search Results (not on history page) */}
-          {!isOnHistoryPage && (tradeableResults.length > 0 || untradeableResults.length > 0) && !selectedItem && (() => {
-            const currentResults = showUntradeable ? untradeableResults : tradeableResults;
+          {/* SearchResultsTable now handles both loading state and results display */}
+          {!isOnHistoryPage && !selectedItem && (() => {
+            // Determine which items to display based on showUntradeable flag
+            // Default: show ONLY marketable items (tradeableResults)
+            // When button clicked: show ONLY non-marketable items (untradeableResults)
+            const itemsToDisplay = showUntradeable ? untradeableResults : tradeableResults;
             
-            // Calculate filtered items count (same logic as ItemTable)
-            // This simulates the filtering that happens inside ItemTable
-            let filteredResults = currentResults;
-            if (marketableItems) {
-              const hasTradeableItems = currentResults.some(item => {
-                const tradable = searchTradability?.[item.id];
-                return tradable === true;
-              });
-              
-              if (hasTradeableItems) {
-                filteredResults = currentResults.filter(item => {
-                  const tradable = searchTradability?.[item.id];
-                  return tradable === true;
-                });
-              }
+            // If searching and no results yet, SearchResultsTable will show RunningLoader
+            // If not searching and no results, don't render anything
+            if (!isSearching && itemsToDisplay.length === 0) {
+              return null;
             }
             
-            // Use currentResults length for pagination display (stable)
-            // But check filteredResults when actually navigating
-            const totalPages = Math.ceil(currentResults.length / searchItemsPerPage);
-            const startIndex = (searchCurrentPage - 1) * searchItemsPerPage;
-            const endIndex = startIndex + searchItemsPerPage;
+            // No filtering needed - data is already separated correctly
+            // itemsToDisplay contains ONLY the items we want to show
 
             return (
               <SearchResultsTable
-                items={currentResults}
-                filteredItems={filteredResults}
+                items={itemsToDisplay}
+                filteredItems={itemsToDisplay}
                 selectedWorld={selectedWorld}
                 selectedServerOption={selectedServerOption}
                 onWorldChange={setSelectedWorld}
@@ -3122,6 +3213,7 @@ function App() {
                 serverOptions={serverOptions}
                 isServerSelectorDisabled={isServerSelectorDisabled}
                 marketableItems={marketableItems}
+                velocityLoadingProgress={velocityLoadingProgress}
                 itemVelocities={searchVelocities}
                 itemAveragePrices={searchAveragePrices}
                 itemMinListings={searchMinListings}
@@ -3129,26 +3221,31 @@ function App() {
                 itemTradability={searchTradability}
                 isLoadingVelocities={isLoadingVelocities}
                 showLoadingIndicator={showLoadingIndicator}
+                isSearching={isSearching}
+                searchingItemsCount={searchingItemsCount}
                 averagePriceHeader={selectedServerOption === selectedWorld?.section ? '全服平均價格' : '平均價格'}
                 getSimplifiedChineseName={getSimplifiedChineseName}
                 addToast={addToast}
                 title="搜索結果"
-                titleSuffix={filteredResults.length !== currentResults.length ? `，顯示 ${filteredResults.length} 個` : ''}
+                titleSuffix=""
                 showUntradeableButton={true}
                 untradeableCount={untradeableResults.length}
                 tradeableCount={tradeableResults.length}
-                onToggleUntradeable={setShowUntradeable}
+                onToggleUntradeable={(newValue) => {
+                  setShowUntradeable(newValue);
+                  setSearchCurrentPage(1); // Reset to first page when switching
+                }}
                 isShowUntradeable={showUntradeable}
                 isRaritySelectorDisabled={isServerSelectorDisabled}
                 externalCurrentPage={searchCurrentPage}
                 externalItemsPerPage={searchItemsPerPage}
                 onExternalPageChange={(newPage) => {
-                  // Check if target page has filtered data before changing
+                  // Check if target page has data before changing
                   const targetStartIndex = (newPage - 1) * searchItemsPerPage;
                   const targetEndIndex = newPage * searchItemsPerPage;
-                  const targetPageFilteredItems = filteredResults.slice(targetStartIndex, targetEndIndex);
+                  const targetPageItems = itemsToDisplay.slice(targetStartIndex, targetEndIndex);
                   
-                  if (targetPageFilteredItems.length === 0 && isServerSelectorDisabled) {
+                  if (targetPageItems.length === 0 && isServerSelectorDisabled) {
                     addToast('該頁面資料正在載入中，請稍候...', 'warning');
                     return;
                   }
@@ -3178,22 +3275,29 @@ function App() {
                         itemId={selectedItem.id}
                         alt={selectedItem.name}
                         className="w-16 h-16 mid:w-20 mid:h-20 object-contain rounded-lg border-2 border-ffxiv-gold/30 bg-slate-900/50 p-2 shadow-lg"
+                        priority={true}
                       />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1 mid:gap-2 flex-wrap">
                         <div className="flex flex-col gap-1">
-                          <h2 className="text-lg mid:text-xl font-bold text-ffxiv-gold break-words line-clamp-2">
-                            {selectedItem.searchLanguageName && selectedItem.nameTW && selectedItem.searchLanguageName !== selectedItem.nameTW
-                              ? (
-                                  <>
-                                    <span>{selectedItem.searchLanguageName}</span>
-                                    <span className="text-gray-400 font-normal text-base mid:text-lg ml-2">({selectedItem.nameTW})</span>
-                                  </>
-                                )
-                              : selectedItem.name
-                            }
-                          </h2>
+                          {selectedItem.searchLanguageName && selectedItem.nameTW && selectedItem.searchLanguageName !== selectedItem.nameTW
+                            ? (
+                                <>
+                                  <h2 className="text-lg mid:text-xl font-bold text-ffxiv-gold break-words line-clamp-2">
+                                    {selectedItem.searchLanguageName}
+                                  </h2>
+                                  <h3 className="text-gray-400 font-normal text-base mid:text-lg break-words line-clamp-2">
+                                    {selectedItem.nameTW}
+                                  </h3>
+                                </>
+                              )
+                            : (
+                                <h2 className="text-lg mid:text-xl font-bold text-ffxiv-gold break-words line-clamp-2">
+                                  {selectedItem.name}
+                                </h2>
+                              )
+                          }
                         </div>
                         <button
                           onClick={async () => {
@@ -3579,7 +3683,7 @@ function App() {
           {(() => {
             const isOnItemPage = location.pathname.startsWith('/item/');
             // Show loading if explicitly loading OR if on item page but item not loaded yet
-            const shouldShowLoading = (isLoadingItemFromURL || (isOnItemPage && !selectedItem && !isOnHistoryPage && location.pathname !== '/ultimate-price-king' && location.pathname !== '/msq-price-checker'));
+            const shouldShowLoading = (isLoadingItemFromURL || (isOnItemPage && !selectedItem && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker'));
             return shouldShowLoading && (
               <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-12 text-center">
                 <div className="relative inline-block">

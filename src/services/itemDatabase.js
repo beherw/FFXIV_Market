@@ -574,20 +574,83 @@ function performSearch(items, shopItems, shopItemIds, searchText, fuzzy = false,
         isTradable: isTradable, // Add tradable status
       };
     })
-    .filter(item => item.id > 0) // Ensure valid ID
-    .sort((a, b) => {
-      // Primary sort: Tradable items first (true before false)
-      // Convert boolean to number: true=1, false=0
-      // b.isTradable - a.isTradable gives: tradable items (1) before non-tradable (0)
+    .filter(item => item.id > 0); // Ensure valid ID
+
+  // Sort results by ilvl descending (highest first)
+  // First, get ilvls for all result items
+  const resultIds = results.map(item => item.id).filter(id => id > 0);
+  let ilvlsData = null;
+  
+  // Try to get ilvls data (async, but we'll sort synchronously if available)
+  // For now, we'll sort by ilvl if available in a separate async step
+  // This will be handled by the caller or ItemTable component
+  
+  // Sort by tradable first, then by ilvl descending, then by id descending
+  results.sort((a, b) => {
+    // Primary sort: Tradable items first (true before false)
+    const tradableDiff = (b.isTradable ? 1 : 0) - (a.isTradable ? 1 : 0);
+    if (tradableDiff !== 0) {
+      return tradableDiff;
+    }
+    
+    // Secondary sort: By ilvl descending (if available)
+    // Note: ilvl data will be loaded separately and sorted in ItemTable or caller
+    // For now, sort by ID descending as fallback
+    return b.id - a.id;
+  });
+
+  return results;
+}
+
+/**
+ * Load ilvl and version data for search results and sort by ilvl descending
+ * @param {Array} results - Search results array with id field
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<void>}
+ */
+async function loadIlvlAndVersionForResults(results, signal = null) {
+  if (results.length === 0) return;
+  
+  const resultIds = results.map(r => r.id).filter(id => id > 0);
+  if (resultIds.length === 0) return;
+  
+  try {
+    const { getIlvlsByIds, getItemPatchByIds } = await import('./supabaseData');
+    const [ilvls, patches] = await Promise.all([
+      getIlvlsByIds(resultIds, signal),
+      getItemPatchByIds(resultIds, signal)
+    ]);
+    
+    // Attach ilvl and version to each result item
+    results.forEach(item => {
+      item.ilvl = ilvls[item.id] || null;
+      item.version = patches[item.id] || null; // version is patch ID
+    });
+    
+    // Sort results by ilvl descending
+    results.sort((a, b) => {
+      // Primary sort: Tradable items first
       const tradableDiff = (b.isTradable ? 1 : 0) - (a.isTradable ? 1 : 0);
       if (tradableDiff !== 0) {
         return tradableDiff;
       }
-      // Secondary sort: By item ID (ascending)
-      return a.id - b.id;
+      
+      // Secondary sort: By ilvl descending (highest first)
+      const aIlvl = a.ilvl || null;
+      const bIlvl = b.ilvl || null;
+      
+      if (aIlvl !== null && bIlvl !== null) {
+        return bIlvl - aIlvl; // Descending order
+      }
+      if (aIlvl !== null) return -1;
+      if (bIlvl !== null) return 1;
+      // Both null, sort by id descending
+      return b.id - a.id;
     });
-
-  return results;
+  } catch (error) {
+    console.warn(`[ItemDB] ⚠️ Failed to load ilvl/version:`, error);
+    // Continue even if ilvl/version loading fails
+  }
 }
 
 /**
@@ -811,6 +874,10 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
     }
     
     results = performSearch(items, shopItems, shopItemIds, trimmedSearchText, false, marketItems);
+    
+    // Sort results by ilvl descending (highest first) at query time
+    // Also attach ilvl and version data to items for display
+    await loadIlvlAndVersionForResults(results, signal);
   } catch (error) {
     // Don't fallback if aborted
     if (error.name === 'AbortError' || (signal && signal.aborted)) {
@@ -885,14 +952,14 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
     }
   }
 
-  // Step 2b: If still no results, search other languages (CN, KO, EN, JA, DE, FR) in order
-  // Search order: TW (done) -> CN -> KO -> EN -> JA -> DE -> FR
+  // Step 2b: If still no results, search other languages (CN, EN, JA, KO, DE, FR) in order
+  // Search order: TW (done) -> CN -> EN -> JA -> KO -> DE -> FR -> rest
   if (results.length === 0) {
     const languageSearches = [
       { func: searchCnItems, name: 'CN' },
-      { func: searchKoItems, name: 'KO' },
       { func: searchEnItems, name: 'EN' },
       { func: searchJaItems, name: 'JA' },
+      { func: searchKoItems, name: 'KO' },
       { func: searchDeItems, name: 'DE' },
       { func: searchFrItems, name: 'FR' }
     ];
@@ -932,7 +999,12 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
             }
           }
           results = performSearch(items, shopItems, shopItemIds, trimmedSearchText, false, marketItems);
-          if (results.length > 0) break;
+          
+          // Load ilvl and version data for non-TW search results (same as TW search)
+          if (results.length > 0) {
+            await loadIlvlAndVersionForResults(results, signal);
+            break;
+          }
         }
 
         // If no results and has spaces, try fuzzy search for this language
@@ -963,7 +1035,12 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
               }
             }
             results = performSearch(fuzzyItems, shopItems, shopItemIds, trimmedSearchText, true, marketItems);
-            if (results.length > 0) break;
+            
+            // Load ilvl and version data for non-TW fuzzy search results (same as TW search)
+            if (results.length > 0) {
+              await loadIlvlAndVersionForResults(results, signal);
+              break;
+            }
           }
         }
       } catch (error) {
@@ -1175,22 +1252,10 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
         const validItems = itemsById.filter(item => item !== null && item['9: Name'].trim() !== '');
 
         // Convert items to result format (same as performSearch)
-        // Filter by tradeability using marketItems
+        // NOTE: Do NOT filter by tradeability here - return ALL matching items
+        // Tradeability filtering will be done in handleSearch after search completes
+        // This allows us to track untradeable items and show them via button
         results = validItems
-          .filter(item => {
-            // Filter out untradeable items using marketItems if available
-            if (marketItems !== null) {
-              const itemIdNum = parseInt(item['key: #'], 10);
-              return marketItems.has(itemIdNum);
-            }
-            // Fallback to IsUntradable field if marketItems not available
-            const untradableValue = (item['22: IsUntradable'] || '').toString().trim();
-            const isUntradable = untradableValue === 'True' || 
-                                untradableValue === 'true' || 
-                                untradableValue === 'TRUE' ||
-                                untradableValue === '1';
-            return !isUntradable;
-          })
           .map(item => {
             const id = item['key: #'];
             let name = item['9: Name'] || '';

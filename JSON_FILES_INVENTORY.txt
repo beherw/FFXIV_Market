@@ -70,7 +70,7 @@ Size: ~744 KB
 Used in:
   - src/App.jsx (dynamically imported)
   - src/components/ItemTable.jsx (dynamically imported)
-  - src/components/UltimatePriceKing.jsx (dynamically imported)
+  - src/components/CraftingInspiration.jsx (dynamically imported)
   - src/components/MSQPriceChecker.jsx (dynamically imported)
   - src/components/AdvancedSearch.jsx (dynamically imported)
 Purpose: Item level (iLevel) data
@@ -166,7 +166,7 @@ File: tw-job-abbr.json
 Location: teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json
 Size: ~1.5 KB
 Used in:
-  - src/components/UltimatePriceKing.jsx (imported directly)
+  - src/components/CraftingInspiration.jsx (imported directly)
   - src/components/AdvancedSearch.jsx (imported directly)
 Purpose: Traditional Chinese job abbreviations
   - Maps job IDs to Traditional Chinese abbreviations
@@ -267,7 +267,7 @@ src/components/ItemTable.jsx:
   - item-patch.json (dynamic import)
   - patch-names.json (dynamic import)
 
-src/components/UltimatePriceKing.jsx:
+src/components/CraftingInspiration.jsx:
   - tw-job-abbr.json (direct import)
   - ilvls.json (dynamic import)
 

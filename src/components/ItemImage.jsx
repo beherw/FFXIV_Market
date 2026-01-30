@@ -3,19 +3,44 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { getItemImageUrl, getItemImageUrlSync, getCalculatedIconUrls } from '../utils/itemImage';
 
 export default function ItemImage({ itemId, alt, className, priority = false, loadDelay = 0, isTradable = undefined, ...props }) {
-  const [imageUrl, setImageUrl] = useState(null);
-  const [iconIsLoading, setIconIsLoading] = useState(true);
+  // For priority items, initialize with calculated URL immediately to prevent flickering
+  // This ensures the image shows on first render instead of loading indicator
+  const getInitialState = () => {
+    if (priority && itemId && itemId > 0 && loadDelay === 0) {
+      const calculatedUrls = getCalculatedIconUrls(itemId);
+      if (calculatedUrls.length > 0) {
+        return {
+          imageUrl: calculatedUrls[0],
+          shouldLoad: true,
+          fallbackUrls: calculatedUrls,
+          iconIsLoading: true, // Still loading API URL in background
+          usingCalculatedUrl: true,
+        };
+      }
+    }
+    return {
+      imageUrl: null,
+      shouldLoad: false,
+      fallbackUrls: [],
+      iconIsLoading: true,
+      usingCalculatedUrl: false,
+    };
+  };
+
+  const initialState = getInitialState();
+  const [imageUrl, setImageUrl] = useState(initialState.imageUrl);
+  const [iconIsLoading, setIconIsLoading] = useState(initialState.iconIsLoading);
   const [hasError, setHasError] = useState(false);
-  const [fallbackUrls, setFallbackUrls] = useState([]);
+  const [fallbackUrls, setFallbackUrls] = useState(initialState.fallbackUrls);
   const [currentFallbackIndex, setCurrentFallbackIndex] = useState(0);
-  const [shouldLoad, setShouldLoad] = useState(false);
-  const [usingCalculatedUrl, setUsingCalculatedUrl] = useState(false);
+  const [shouldLoad, setShouldLoad] = useState(initialState.shouldLoad);
+  const [usingCalculatedUrl, setUsingCalculatedUrl] = useState(initialState.usingCalculatedUrl);
   const [retryCount, setRetryCount] = useState(0);
   const timeoutRef = useRef(null);
   const imgRef = useRef(null);
   const abortControllerRef = useRef(null);
   const retryTimeoutRef = useRef(null);
-  const fallbackUrlsRef = useRef([]);
+  const fallbackUrlsRef = useRef(initialState.fallbackUrls);
   const currentFallbackIndexRef = useRef(0);
   const isTradableRef = useRef(isTradable);
 
@@ -23,6 +48,31 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
   useEffect(() => {
     isTradableRef.current = isTradable;
   }, [isTradable]);
+
+  // For priority items, immediately set calculated URL when itemId changes
+  // This prevents flickering when switching between items in item info page
+  useEffect(() => {
+    if (priority && itemId && itemId > 0 && loadDelay === 0) {
+      const calculatedUrls = getCalculatedIconUrls(itemId);
+      if (calculatedUrls.length > 0) {
+        // Set calculated URL immediately when itemId changes
+        // Use functional update to avoid dependency on imageUrl
+        setImageUrl(prevUrl => {
+          // Only update if URL is different to avoid unnecessary re-renders
+          if (prevUrl !== calculatedUrls[0]) {
+            return calculatedUrls[0];
+          }
+          return prevUrl;
+        });
+        setUsingCalculatedUrl(true);
+        setFallbackUrls(calculatedUrls);
+        fallbackUrlsRef.current = calculatedUrls;
+        currentFallbackIndexRef.current = 0;
+        setIconIsLoading(true);
+        setShouldLoad(true);
+      }
+    }
+  }, [itemId, priority, loadDelay]);
 
   // Simplified icon loading: wait for sort, then load sequentially from top to bottom
   // Only load icons for page 1 items, respecting API rate limits
@@ -52,6 +102,13 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
       return;
     }
     
+    // For priority items (like item info page), load immediately without delay
+    // This prevents flickering when entering item info page
+    if (priority && loadDelay === 0) {
+      setShouldLoad(true);
+      return;
+    }
+    
     // Load with the specified delay (sequential loading from top to bottom)
     // Delay is calculated as index * 53ms to respect API rate limits (19 req/sec)
     timeoutRef.current = setTimeout(() => {
@@ -70,25 +127,28 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
         timeoutRef.current = null;
       }
     };
-  }, [loadDelay, isTradable]);
+  }, [loadDelay, isTradable, priority]);
 
   // Load image with retry logic
-  const loadImage = useCallback((attemptNumber = 0) => {
+  const loadImage = useCallback((attemptNumber = 0, forceReload = false) => {
     if (!itemId || itemId <= 0) {
       setIconIsLoading(false);
       setHasError(true);
       return;
     }
 
-    // Check cache first
-    const cachedUrl = getItemImageUrlSync(itemId);
-    if (cachedUrl) {
-      setImageUrl(cachedUrl);
-      setIconIsLoading(false);
-      setHasError(false);
-      setUsingCalculatedUrl(false);
-      setRetryCount(0);
-      return;
+    // Check cache first (unless forcing reload for priority/retry)
+    // Only use cached value if it's a valid URL (not null from failed load)
+    if (!forceReload) {
+      const cachedUrl = getItemImageUrlSync(itemId);
+      if (cachedUrl) {
+        setImageUrl(cachedUrl);
+        setIconIsLoading(false);
+        setHasError(false);
+        setUsingCalculatedUrl(false);
+        setRetryCount(0);
+        return;
+      }
     }
 
     // Create abort controller for this request
@@ -105,19 +165,33 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
     // This makes the page feel much faster - users see icons immediately
     // The API URL will replace it in the background when available
     if (calculatedUrls.length > 0) {
-      // Always set calculated URL if available - this ensures we show something immediately
-      setImageUrl(calculatedUrls[0]);
+      // For priority items, URL may already be set in useEffect to prevent flickering
+      // Only set it here if it's not already set (for non-priority items)
+      // Use functional update to avoid unnecessary re-renders
+      setImageUrl(prevUrl => {
+        // If URL is already set (from useEffect for priority items), keep it
+        if (priority && prevUrl === calculatedUrls[0]) {
+          return prevUrl;
+        }
+        // Otherwise, set the calculated URL
+        return calculatedUrls[0];
+      });
       setUsingCalculatedUrl(true);
-      // Keep iconIsLoading=true to show loading indicator while fetching API URL
-      setIconIsLoading(true);
+      // For priority items, loading state is already set in useEffect
+      // Only set it here for non-priority items
+      if (!priority) {
+        setIconIsLoading(true);
+      }
     } else {
       // No calculated URL - set loading state and wait for API
+      // For priority items, this should already be set in useEffect, but set it anyway to be safe
       setIconIsLoading(true);
     }
 
     // Fetch from API (no priority flag - sequential loading respects rate limits)
     // This runs in background - calculated URL is already shown for instant feedback
-    getItemImageUrl(itemId, abortSignal)
+    // Use forceReload for priority items or retries to bypass cache
+    getItemImageUrl(itemId, abortSignal, forceReload)
       .then(url => {
         // Check if component is still mounted and request wasn't cancelled
         if (abortSignal.aborted) {
@@ -142,12 +216,13 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
           if (calculatedUrls.length === 0) {
             // No calculated URL available, try retry
             if (attemptNumber < 2) {
-              const retryDelay = (attemptNumber + 1) * 500;
-              retryTimeoutRef.current = setTimeout(() => {
-                if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
-                  loadImage(attemptNumber + 1);
-                }
-              }, retryDelay);
+            const retryDelay = (attemptNumber + 1) * 500;
+            retryTimeoutRef.current = setTimeout(() => {
+              if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
+                // Always force reload on retry to bypass cache
+                loadImage(attemptNumber + 1, true);
+              }
+            }, retryDelay);
             } else {
               setHasError(true);
               setIconIsLoading(false);
@@ -170,7 +245,8 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
             const retryDelay = (attemptNumber + 1) * 500;
             retryTimeoutRef.current = setTimeout(() => {
               if (abortControllerRef.current && !abortControllerRef.current.signal.aborted) {
-                loadImage(attemptNumber + 1);
+                // Always force reload on retry to bypass cache
+                loadImage(attemptNumber + 1, true);
               }
             }, retryDelay);
           } else {
@@ -183,7 +259,7 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
           setIconIsLoading(false);
         }
       });
-  }, [itemId]);
+  }, [itemId, priority]);
 
   // 加载图片
   useEffect(() => {
@@ -206,11 +282,31 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
     setRetryCount(0);
     // Reset error state when starting to load
     setHasError(false);
-    // Reset loading state when starting to load
-    setIconIsLoading(true);
     
-    // Start loading
-    loadImage(0);
+    // For priority items, initial state already has calculated URL set
+    // For non-priority items, set loading state and try calculated URL
+    if (!priority) {
+      setIconIsLoading(true);
+      // Try to set calculated URL if available for non-priority items
+      if (itemId && itemId > 0) {
+        const calculatedUrls = getCalculatedIconUrls(itemId);
+        if (calculatedUrls.length > 0) {
+          setImageUrl(calculatedUrls[0]);
+          setUsingCalculatedUrl(true);
+          setFallbackUrls(calculatedUrls);
+          fallbackUrlsRef.current = calculatedUrls;
+          currentFallbackIndexRef.current = 0;
+        }
+      }
+    } else {
+      // For priority items, imageUrl is already set from initial state
+      // Ensure loading state is set to show loading indicator while fetching API URL
+      setIconIsLoading(true);
+    }
+    
+    // Start loading - use priority flag to force reload for item info page
+    // This ensures icons that failed in table will retry in item info page
+    loadImage(0, priority);
 
     // Cleanup: abort request on unmount or when itemId/shouldLoad changes
     return () => {
@@ -223,7 +319,7 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
         retryTimeoutRef.current = null;
       }
     };
-  }, [itemId, shouldLoad, loadImage]);
+  }, [itemId, shouldLoad, priority, loadImage]);
 
   const handleImageError = useCallback(() => {
     // Use refs to get current values (avoids stale closure issues)
@@ -245,9 +341,10 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
           const retryDelay = newRetryCount * 500;
           retryTimeoutRef.current = setTimeout(() => {
             // Reset fallback index and retry loading
+            // Use priority flag to force reload (bypass cache)
             currentFallbackIndexRef.current = 0;
             setCurrentFallbackIndex(0);
-            loadImage(newRetryCount);
+            loadImage(newRetryCount, priority);
           }, retryDelay);
           return newRetryCount;
         } else {
@@ -258,7 +355,7 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
         }
       });
     }
-  }, [loadImage]);
+  }, [loadImage, priority]);
 
   // Extract width and height from className to maintain aspect ratio
   const getDimensions = () => {

@@ -36,7 +36,7 @@ All components and pages have been verified to use the optimized `extracts.json`
 - **Status**: ✅ No extracts.json usage
 - **Uses**: equipment.json, ilvls.json (different files)
 
-### ✅ UltimatePriceKing.jsx (CraftingJobPriceChecker)
+### ✅ CraftingInspiration.jsx (CraftingJobPriceChecker)
 - **Status**: ✅ No extracts.json usage
 - **Uses**: recipeDatabase service, ilvls.json
 

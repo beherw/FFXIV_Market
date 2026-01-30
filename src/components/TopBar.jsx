@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import HistoryButton from './HistoryButton';
@@ -23,20 +24,23 @@ export default function TopBar({
   
   // Optional: custom navigation buttons
   showNavigationButtons = true,
-  activePage = null, // 'ultimate-price-king', 'msq-price-checker', 'advanced-search', 'history', or null
+  activePage = null, // 'crafting-inspiration', 'msq-price-checker', 'advanced-search', 'history', or null
   
   // Optional: custom handlers
   onMSQPriceCheckerClick,
-  onUltimatePriceKingClick,
+  onCraftingInspirationClick,
   onAdvancedSearchClick,
   onTaxRatesClick,
 }) {
   const navigate = useNavigate();
   const location = useLocation();
   
+  // Track if wiki button is currently processing (to prevent duplicate clicks)
+  const [isWikiProcessing, setIsWikiProcessing] = useState(false);
+  
   // Determine active page from location if not provided
   const currentActivePage = activePage || (() => {
-    if (location.pathname === '/ultimate-price-king') return 'ultimate-price-king';
+    if (location.pathname === '/crafting-inspiration') return 'crafting-inspiration';
     if (location.pathname === '/msq-price-checker') return 'msq-price-checker';
     if (location.pathname === '/advanced-search') return 'advanced-search';
     if (location.pathname === '/history') return 'history';
@@ -73,17 +77,17 @@ export default function TopBar({
     }
   };
   
-  const handleUltimatePriceKingClick = () => {
-    // If already on the ultimate price king page, do nothing
-    if (location.pathname === '/ultimate-price-king') {
+  const handleCraftingInspirationClick = () => {
+    // If already on the crafting inspiration page, do nothing
+    if (location.pathname === '/crafting-inspiration') {
       return;
     }
     
-    if (onUltimatePriceKingClick) {
-      onUltimatePriceKingClick();
+    if (onCraftingInspirationClick) {
+      onCraftingInspirationClick();
     } else {
       setSearchText('');
-      navigate('/ultimate-price-king');
+      navigate('/crafting-inspiration');
     }
   };
   
@@ -98,6 +102,14 @@ export default function TopBar({
       <div className={`topbar-external-links ${className}`}>
         <button
           onClick={async () => {
+            // Prevent duplicate clicks
+            if (isWikiProcessing) {
+              return;
+            }
+            
+            // Mark as processing
+            setIsWikiProcessing(true);
+            
             try {
               if (getSimplifiedChineseName) {
                 const simplifiedName = await getSimplifiedChineseName(selectedItem.id);
@@ -120,9 +132,16 @@ export default function TopBar({
               if (addToast) {
                 addToast('無法打開Wiki連結', 'error');
               }
+            } finally {
+              // Remove processing state after a short delay to allow window.open to complete
+              // This prevents rapid clicking but allows legitimate re-clicks after the page opens
+              setTimeout(() => {
+                setIsWikiProcessing(false);
+              }, 1000);
             }
           }}
-          className="topbar-external-link"
+          disabled={isWikiProcessing}
+          className={`topbar-external-link ${isWikiProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
           title="Wiki"
         >
           <span className="topbar-external-link-full">Wiki</span>
@@ -239,11 +258,11 @@ export default function TopBar({
                   {/* Visual Separator */}
                   <div className="topbar-nav-separator item-info-page item-info-page-desktop"></div>
 
-                  {/* Ultimate Price King Button */}
+                  {/* Crafting Inspiration Button */}
                   <div className="topbar-nav-button-container item-info-page-desktop">
                     <button
-                      onClick={handleUltimatePriceKingClick}
-                      className={`topbar-nav-button item-info-page ${currentActivePage === 'ultimate-price-king' ? 'active' : ''}`}
+                      onClick={handleCraftingInspirationClick}
+                      className={`topbar-nav-button item-info-page ${currentActivePage === 'crafting-inspiration' ? 'active' : ''}`}
                       title="製造職找價"
                     >
                       <svg
@@ -365,11 +384,11 @@ export default function TopBar({
                 {/* Visual Separator */}
                 <div className="topbar-nav-separator item-info-page"></div>
 
-                {/* Ultimate Price King Button */}
+                {/* Crafting Inspiration Button */}
                 <div className="topbar-nav-button-container">
                   <button
-                    onClick={handleUltimatePriceKingClick}
-                    className={`topbar-nav-button item-info-page ${currentActivePage === 'ultimate-price-king' ? 'active' : ''}`}
+                    onClick={handleCraftingInspirationClick}
+                    className={`topbar-nav-button item-info-page ${currentActivePage === 'crafting-inspiration' ? 'active' : ''}`}
                     title="製造職找價"
                   >
                     <svg
@@ -518,11 +537,11 @@ export default function TopBar({
                 {/* Visual Separator */}
                 <div className="topbar-nav-separator"></div>
 
-                {/* Ultimate Price King Button */}
+                {/* Crafting Inspiration Button */}
                 <div className="topbar-nav-button-container">
                   <button
-                    onClick={handleUltimatePriceKingClick}
-                    className={`topbar-nav-button ${currentActivePage === 'ultimate-price-king' ? 'active' : ''}`}
+                    onClick={handleCraftingInspirationClick}
+                    className={`topbar-nav-button ${currentActivePage === 'crafting-inspiration' ? 'active' : ''}`}
                     title="製造職找價"
                   >
                     <svg

@@ -5,9 +5,9 @@
 -- NEW SEARCH LOGIC:
 -- User input >> search TW (Traditional Chinese) strict then fuzzy
 -- User input >> search CN (Simplified Chinese) strict then fuzzy
--- User input >> search KO (Korean) strict then fuzzy
 -- User input >> search EN (English) strict then fuzzy
 -- User input >> search JA (Japanese) strict then fuzzy
+-- User input >> search KO (Korean) strict then fuzzy
 -- User input >> search DE (German) strict then fuzzy
 -- User input >> search FR (French) strict then fuzzy
 -- User input >> search other languages (if available)...
@@ -248,4 +248,4 @@ CREATE INDEX IF NOT EXISTS idx_tw_job_abbr_id ON tw_job_abbr(id);
 --    CREATE INDEX idx_ja_items_ja_trgm ON ja_items USING gin(ja gin_trgm_ops);
 --    CREATE INDEX idx_de_items_de_trgm ON de_items USING gin(de gin_trgm_ops);
 --    CREATE INDEX idx_fr_items_fr_trgm ON fr_items USING gin(fr gin_trgm_ops);
--- 8. Search order: TW (strict then fuzzy) -> CN (strict then fuzzy) -> KO (strict then fuzzy) -> EN (strict then fuzzy) -> JA (strict then fuzzy) -> DE (strict then fuzzy) -> FR (strict then fuzzy) -> other languages
+-- 8. Search order: TW (strict then fuzzy) -> CN (strict then fuzzy) -> EN (strict then fuzzy) -> JA (strict then fuzzy) -> KO (strict then fuzzy) -> DE (strict then fuzzy) -> FR (strict then fuzzy) -> other languages

@@ -51,9 +51,9 @@ export default function TaxRatesModal({
   const hasTaxRates = Object.keys(taxRates).length > 0;
   
   // Check if a specific server is selected (not DC)
-  const isSpecificServerSelected = selectedServerOption && 
-    selectedServerOption !== selectedWorld.section &&
-    typeof selectedServerOption === 'number';
+  // selectedServerOption is a number (worldId) when a specific server is selected
+  // selectedServerOption is a string (datacenter name) when DC is selected
+  const isSpecificServerSelected = selectedServerOption && typeof selectedServerOption === 'number';
 
   // City names mapping (Traditional Chinese)
   const cityNames = {
@@ -146,7 +146,10 @@ export default function TaxRatesModal({
                 }
 
                 // Check if this is the selected server
-                const isSelectedServer = isSpecificServerSelected && selectedServerOption === worldId;
+                // Compare as numbers to ensure type consistency
+                // Also check if selectedServerOption matches worldId (for both number and string cases)
+                const isSelectedServer = (isSpecificServerSelected && Number(selectedServerOption) === Number(worldId)) ||
+                                       (selectedServerOption === worldId);
 
                 // Find lowest and second lowest tax rates for this server
                 const validTaxes = Object.values(rates)

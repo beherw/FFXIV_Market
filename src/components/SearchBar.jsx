@@ -10,11 +10,16 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchHistory, setSearchHistory] = useState([]);
   const [isFocused, setIsFocused] = useState(false);
+  const [showHistoryOnFocus, setShowHistoryOnFocus] = useState(false);
+  const [shouldLoadHistoryIcons, setShouldLoadHistoryIcons] = useState(false);
+  const [shouldLoadRecommendationIcons, setShouldLoadRecommendationIcons] = useState(false);
   const debounceTimerRef = useRef(null);
   const onSearchRef = useRef(onSearch);
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
   const blurTimeoutRef = useRef(null);
+  const historyIconDelayRef = useRef(null);
+  const recommendationIconDelayRef = useRef(null);
   
   // Get history items
   const { historyItems } = useHistory();
@@ -67,14 +72,133 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
       if (blurTimeoutRef.current) {
         clearTimeout(blurTimeoutRef.current);
       }
+      if (historyIconDelayRef.current) {
+        clearTimeout(historyIconDelayRef.current);
+      }
+      if (recommendationIconDelayRef.current) {
+        clearTimeout(recommendationIconDelayRef.current);
+      }
     };
   }, []);
+
+  // Delay loading history icons on page load
+  // Cancel delay immediately if searchbar is clicked
+  useEffect(() => {
+    // Set initial delay for history icons (e.g., 500ms)
+    historyIconDelayRef.current = setTimeout(() => {
+      setShouldLoadHistoryIcons(true);
+    }, 500);
+
+    return () => {
+      if (historyIconDelayRef.current) {
+        clearTimeout(historyIconDelayRef.current);
+      }
+    };
+  }, []);
+
+  // Delay loading recommendation icons 1.5 seconds after dropdown shows with recommendations
+  useEffect(() => {
+    // Clear any existing timeout
+    if (recommendationIconDelayRef.current) {
+      clearTimeout(recommendationIconDelayRef.current);
+      recommendationIconDelayRef.current = null;
+    }
+
+    // Only set delay if dropdown is showing and has keyword suggestions
+    if (showDropdown && hasSearchResults && searchTerm.trim() && !showHistoryOnFocus) {
+      // Calculate keyword suggestions inline to avoid dependency issues
+      const searchTermTrimmed = searchTerm.trim();
+      const lowerSearchTerm = searchTermTrimmed.toLowerCase();
+      const abPatterns = new Set();
+      const bcPatterns = new Set();
+      
+      const tradeableResults = marketableItems 
+        ? searchResults.filter(item => marketableItems.has(item.id))
+        : searchResults;
+      
+      tradeableResults.forEach(item => {
+        if (item.name) {
+          const itemName = item.name;
+          const lowerItemName = itemName.toLowerCase();
+          let searchIndex = 0;
+          while ((searchIndex = lowerItemName.indexOf(lowerSearchTerm, searchIndex)) !== -1) {
+            const termStart = searchIndex;
+            const termEnd = searchIndex + searchTermTrimmed.length;
+            
+            if (termStart > 0) {
+              const charBefore = itemName[termStart - 1];
+              if (/[\u4e00-\u9fa5]/.test(charBefore)) {
+                const abPattern = itemName.substring(termStart - 1, termEnd);
+                if (abPattern.length >= 2 && abPattern.length <= 3) {
+                  abPatterns.add(abPattern);
+                }
+              }
+            }
+            
+            if (termEnd < itemName.length) {
+              const charAfter = itemName[termEnd];
+              if (/[\u4e00-\u9fa5]/.test(charAfter)) {
+                const bcPattern = itemName.substring(termStart, termEnd + 1);
+                if (bcPattern.length >= 2 && bcPattern.length <= 3) {
+                  bcPatterns.add(bcPattern);
+                }
+              }
+            }
+            
+            searchIndex = termEnd;
+          }
+        }
+      });
+      
+      const allPatterns = new Set([...abPatterns, ...bcPatterns]);
+      const sortedPatterns = Array.from(allPatterns)
+        .sort((a, b) => {
+          if (a.length !== b.length) {
+            return a.length - b.length;
+          }
+          return a.localeCompare(b, 'zh-CN');
+        });
+      
+      if (sortedPatterns.length > 0) {
+        recommendationIconDelayRef.current = setTimeout(() => {
+          setShouldLoadRecommendationIcons(true);
+        }, 1500);
+      }
+    } else {
+      // Reset when dropdown closes or conditions change
+      setShouldLoadRecommendationIcons(false);
+    }
+
+    return () => {
+      if (recommendationIconDelayRef.current) {
+        clearTimeout(recommendationIconDelayRef.current);
+      }
+    };
+  }, [showDropdown, hasSearchResults, searchTerm, showHistoryOnFocus, searchResults, marketableItems]);
 
   // Handle focus - show dropdown
   const handleFocus = () => {
     setIsFocused(true);
     if (!disabled) {
+      // Cancel history icon delay immediately when searchbar is clicked
+      if (historyIconDelayRef.current) {
+        clearTimeout(historyIconDelayRef.current);
+        historyIconDelayRef.current = null;
+        setShouldLoadHistoryIcons(true);
+      }
+      
+      // Always show dropdown when focused
+      // This ensures dropdown shows even when repeating the same search on search page
       setShowDropdown(true);
+      // If search box has text, show history/keywords dropdown 
+      // But only if we're NOT on search page (no search results)
+      // On search page, show keyword suggestions instead of history
+      if (searchTerm.trim() && !hasSearchResults) {
+        setShowHistoryOnFocus(true);
+      } else {
+        // On search page, don't show history on focus - show keyword suggestions instead
+        setShowHistoryOnFocus(false);
+      }
     }
   };
 
@@ -96,6 +220,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
     // Check if clicking on dropdown - if so, hide immediately
     if (dropdownRef.current && dropdownRef.current.contains(relatedTarget)) {
       setIsFocused(false);
+      setShowHistoryOnFocus(false);
       return;
     }
     
@@ -103,12 +228,14 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
     const activeElement = document.activeElement;
     if (dropdownRef.current && dropdownRef.current.contains(activeElement)) {
       setIsFocused(false);
+      setShowHistoryOnFocus(false);
       return;
     }
     
     // Small delay to allow click events on the prompt to fire first
     blurTimeoutRef.current = setTimeout(() => {
       setIsFocused(false);
+      setShowHistoryOnFocus(false);
       blurTimeoutRef.current = null;
     }, 150);
   };
@@ -204,6 +331,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
     }
     setIsFocused(false);
     setShowDropdown(false);
+    setShowHistoryOnFocus(false);
     setSearchTerm(keyword);
     if (onChange) {
       onChange(keyword);
@@ -233,11 +361,17 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
   }, []);
 
   // Close dropdown when search term changes (only if not on search page)
+  // On search page, keep dropdown open when user is focused and has search results
+  // But don't close if showHistoryOnFocus is true (user clicked on search box with text)
   useEffect(() => {
-    if (searchTerm.trim() && !hasSearchResults) {
+    if (searchTerm.trim() && !hasSearchResults && !showHistoryOnFocus) {
       setShowDropdown(false);
+    } else if (hasSearchResults && isFocused && searchTerm.trim() && !showHistoryOnFocus) {
+      // On search page with results, ensure dropdown stays open when focused
+      // But only if not showing history on focus
+      setShowDropdown(true);
     }
-  }, [searchTerm, hasSearchResults]);
+  }, [searchTerm, hasSearchResults, isFocused, showHistoryOnFocus]);
 
   // Handle history item click
   const handleHistoryItemClick = (item) => {
@@ -248,6 +382,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
     }
     setIsFocused(false);
     setShowDropdown(false);
+    setShowHistoryOnFocus(false);
     if (onItemSelect) {
       onItemSelect(item);
     }
@@ -262,6 +397,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
     }
     setIsFocused(false);
     setShowDropdown(false);
+    setShowHistoryOnFocus(false);
     setSearchTerm(keyword);
     if (onChange) {
       onChange(keyword);
@@ -299,8 +435,11 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
     if (onChange) {
       onChange(value);
     }
+    // Reset showHistoryOnFocus when user starts typing
+    setShowHistoryOnFocus(false);
     // Show dropdown when typing on search page
-    if (hasSearchResults) {
+    // Also show dropdown when focused on search page (for repeated searches)
+    if (hasSearchResults || isFocused) {
       setShowDropdown(true);
     }
   };
@@ -314,6 +453,11 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
       } else {
         onSearchRef.current('');
       }
+      // Blur the input after search to remove focus
+      if (inputRef.current) {
+        inputRef.current.blur();
+      }
+      setIsFocused(false);
     }
   };
 
@@ -390,7 +534,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
             ref={dropdownRef}
             className="absolute top-full left-0 right-0 mt-1 bg-slate-900/95 backdrop-blur-sm border border-purple-500/30 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto"
           >
-            {hasSearchResults && searchTerm.trim() ? (
+            {hasSearchResults && searchTerm.trim() && !showHistoryOnFocus ? (
               /* Keyword Suggestions Dropdown - Show when on search page with input */
               <>
                 <div className="px-3 py-2 border-b border-slate-700/50">
@@ -400,6 +544,10 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
                   {getKeywordSuggestions().map((keyword, index) => (
                     <button
                       key={`${keyword}-${index}`}
+                      onMouseDown={(e) => {
+                        // Prevent blur when clicking on recommendation
+                        e.preventDefault();
+                      }}
                       onClick={() => handleKeywordSuggestionClick(keyword)}
                       className="w-full px-3 py-2 flex items-center gap-3 hover:bg-purple-800/40 transition-colors text-left group"
                     >
@@ -550,6 +698,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
                               itemId={item.id}
                               alt={item.name}
                               className="w-8 h-8 object-contain rounded border border-slate-600/50 bg-slate-800/50 flex-shrink-0"
+                              loadDelay={shouldLoadHistoryIcons ? 0 : 100000}
                             />
                           </div>
                           <div className="flex-1 min-w-0">

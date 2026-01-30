@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ItemImage from './ItemImage';
 
 import { getIlvlsByIds, getRaritiesByIds, getItemPatchByIds, getPatchNames } from '../services/supabaseData';
+import { getItemImageUrlSync } from '../utils/itemImage';
 
 // Lazy load patch-names data
 let patchNamesDataRef = null;
@@ -133,11 +134,111 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
   const setSelectedRarities = externalSetSelectedRarities !== undefined ? externalSetSelectedRarities : setInternalSelectedRarities;
   const raritiesDataToUse = externalRaritiesData || raritiesData;
   
+  // Track previous items to detect when items change (e.g., switching between tradeable/untradeable)
+  const prevItemsRef = useRef(items);
+  
+  // Track which pages should have icons loaded (for preloading)
+  // Set of page numbers that should load icons
+  const pagesToLoadRef = useRef(new Set([1])); // Start with page 1
+  const preloadTimeoutRef = useRef(null);
+  const prevCurrentPageRef = useRef(currentPage);
+  // State to trigger re-render when pages to load change
+  const [pagesToLoadVersion, setPagesToLoadVersion] = useState(0);
+  
+  // Track which item IDs have already started loading icons (to avoid duplicate loading)
+  // This includes items that are cached or currently loading
+  const loadedItemsRef = useRef(new Set());
+  
+  // Track which item IDs are currently processing wiki requests (to prevent duplicate clicks)
+  const [wikiProcessingIds, setWikiProcessingIds] = useState(new Set());
+  
   // Load ilvls data lazily for sorting
   // For search results: load for all items (marketableItems may be null initially)
   // For other pages: only load for tradeable items when marketableItems is available (efficient)
+  // OPTIMIZATION: If items already contain ilvl data, extract it directly instead of querying
   useEffect(() => {
+    // Reset ilvlsData when items change (e.g., switching between tradeable/untradeable)
+    const itemsChanged = prevItemsRef.current !== items && 
+                         (prevItemsRef.current?.length !== items?.length || 
+                          (prevItemsRef.current && items && 
+                           prevItemsRef.current[0]?.id !== items[0]?.id));
+    
+    if (itemsChanged) {
+      setIlvlsData(null);
+    }
+    
+    // Update ref for next comparison
+    prevItemsRef.current = items;
+    
     if (items && items.length > 0 && !ilvlsData) {
+      // Check if items already contain ilvl data (from join query)
+      const firstItem = items[0];
+      if (firstItem && 'ilvl' in firstItem && firstItem.ilvl !== undefined) {
+        // Extract ilvl data from items
+        const ilvlsFromItems = {};
+        items.forEach(item => {
+          if (item.id && item.ilvl !== undefined && item.ilvl !== null) {
+            ilvlsFromItems[item.id.toString()] = item.ilvl;
+          }
+        });
+        
+        // Only set if we actually have data
+        if (Object.keys(ilvlsFromItems).length > 0) {
+          console.log(`[ItemTable] Using ilvl data from items (${Object.keys(ilvlsFromItems).length} items)`);
+          setIlvlsData(ilvlsFromItems);
+        }
+        return;
+      }
+      
+      // Otherwise, load ilvls from database
+      let itemIdsToLoad = [];
+      
+      // Check if we have untradeable items in the list (when combining tradeable + untradeable)
+      // If itemTradability is available, check if any items are marked as untradeable
+      const hasUntradeableItems = itemTradability && items.some(item => itemTradability[item.id] === false);
+      
+      if (marketableItems && marketableItems.size > 0 && !hasUntradeableItems) {
+        // marketableItems available and no untradeable items: only load for tradeable items (efficient)
+        itemIdsToLoad = items
+          .filter(item => marketableItems.has(item.id))
+          .map(item => item.id)
+          .filter(id => id > 0);
+      } else {
+        // Either marketableItems not loaded yet, or we have untradeable items in the list
+        // Load for all items to enable sorting and display - needed for combined display
+        itemIdsToLoad = items
+          .map(item => item.id)
+          .filter(id => id > 0);
+      }
+      
+      if (itemIdsToLoad.length > 0) {
+        getIlvlsByIds(itemIdsToLoad).then(data => {
+          // Debug: Log sample data to verify structure
+          if (Object.keys(data).length > 0) {
+            const sampleId = Object.keys(data)[0];
+            const sampleValue = data[sampleId];
+            console.log(`[ItemTable] Loaded ilvls data: sample id=${sampleId}, ilvl=${sampleValue}`, 
+              typeof sampleValue === 'number' ? '(correct)' : `(WRONG TYPE: ${typeof sampleValue})`);
+            
+            // Check if value equals id (which would indicate swapped columns)
+            if (sampleValue === parseInt(sampleId, 10)) {
+              console.error(`[ItemTable] ERROR: ilvls data appears to have swapped columns! id=${sampleId}, value=${sampleValue} (value equals id - this is wrong!)`);
+            }
+          }
+          setIlvlsData(data);
+        }).catch(error => {
+          console.error('[ItemTable] Error loading ilvls:', error);
+        });
+      }
+    }
+  }, [items, ilvlsData, marketableItems, itemTradability]);
+
+  // Load rarities data lazily
+  // For search results: load for all items (marketableItems may be null initially)
+  // For other pages: only load for tradeable items when marketableItems is available (efficient)
+  useEffect(() => {
+    // Only load if external data is not provided (undefined or null) and internal data is not loaded yet
+    if (items && items.length > 0 && (externalRaritiesData === undefined || externalRaritiesData === null) && !raritiesData) {
       let itemIdsToLoad = [];
       
       if (marketableItems && marketableItems.size > 0) {
@@ -148,41 +249,16 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
           .filter(id => id > 0);
       } else if (marketableItems === null || marketableItems === undefined) {
         // marketableItems not loaded yet (e.g., search results page)
-        // Load for all items to enable sorting - this is needed for search results
+        // Load for all items to enable filtering - this is needed for search results
         itemIdsToLoad = items
           .map(item => item.id)
           .filter(id => id > 0);
       } else {
-        // marketableItems is empty Set, no tradeable items, don't load
-        return;
-      }
-      
-      if (itemIdsToLoad.length > 0) {
-        getIlvlsByIds(itemIdsToLoad).then(data => {
-          setIlvlsData(data);
-        });
-      }
-    }
-  }, [items, ilvlsData, marketableItems]);
-
-  // Load rarities data (only for tradeable items when marketableItems is available - efficient)
-  useEffect(() => {
-    // Only load if external data is not provided (undefined or null) and internal data is not loaded yet
-    if (items && items.length > 0 && (externalRaritiesData === undefined || externalRaritiesData === null) && !raritiesData) {
-      // If marketableItems is available, only load metadata for tradeable items
-      let itemIdsToLoad = [];
-      if (marketableItems && marketableItems.size > 0) {
-        // Only load for tradeable items
+        // marketableItems is empty Set, no tradeable items
+        // Still load rarities for untradeable items to enable filtering
         itemIdsToLoad = items
-          .filter(item => marketableItems.has(item.id))
           .map(item => item.id)
           .filter(id => id > 0);
-      } else if (!marketableItems) {
-        // marketableItems not loaded yet, wait for it
-        return;
-      } else {
-        // marketableItems is empty Set, no tradeable items, don't load
-        return;
       }
       
       if (itemIdsToLoad.length > 0) {
@@ -194,41 +270,121 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, externalRaritiesData, raritiesData, marketableItems]);
 
-  // Load item-patch and patch-names data lazily (only for tradeable items when marketableItems is available - efficient)
+  // Load item-patch and patch-names data lazily
+  // For search results: load for all items (marketableItems may be null initially)
+  // For other pages: only load for tradeable items when marketableItems is available (efficient)
   useEffect(() => {
-    if (items && items.length > 0 && (!itemPatchData || !patchNamesData)) {
-      // If marketableItems is available, only load metadata for tradeable items
+    if (items && items.length > 0) {
+      // Check if items already contain version data (from join query)
+      const firstItem = items[0];
+      if (firstItem && 'version' in firstItem && firstItem.version !== undefined) {
+        // Extract patch data from items
+        const patchDataFromItems = {};
+        items.forEach(item => {
+          if (item.id && item.version !== undefined && item.version !== null) {
+            patchDataFromItems[item.id.toString()] = item.version; // version is patch ID
+          }
+        });
+        
+        if (Object.keys(patchDataFromItems).length > 0) {
+          // Check if patchDataFromItems is different from current itemPatchData
+          // Avoid infinite loop by only updating if data actually changed
+          const currentPatchKeys = itemPatchData ? Object.keys(itemPatchData).sort().join(',') : '';
+          const newPatchKeys = Object.keys(patchDataFromItems).sort().join(',');
+          const dataChanged = currentPatchKeys !== newPatchKeys || 
+            (itemPatchData && Object.keys(patchDataFromItems).some(id => itemPatchData[id] !== patchDataFromItems[id]));
+          
+          if (!dataChanged && patchNamesData) {
+            // Data already set and patchNamesData loaded, no need to update
+            return;
+          }
+          
+          // Load patchNamesData if not already loaded (needed to convert patch ID to version string)
+          if (!patchNamesData) {
+            loadPatchNamesData().then(patchNames => {
+              setPatchNamesData(patchNames);
+              console.log(`[ItemTable] Using patch data from items (${Object.keys(patchDataFromItems).length} items)`);
+              setItemPatchData(patchDataFromItems);
+            }).catch(error => {
+              console.error('[ItemTable] Error loading patch names:', error);
+            });
+          } else if (dataChanged) {
+            // patchNamesData already loaded, just set patch data if it changed
+            console.log(`[ItemTable] Using patch data from items (${Object.keys(patchDataFromItems).length} items)`);
+            setItemPatchData(patchDataFromItems);
+          }
+          return; // Don't continue to load from database if we're using items data
+        }
+      }
+      
+      // Otherwise, load patch data from database
+      // Check if we have untradeable items in the list (when combining tradeable + untradeable)
+      // If itemTradability is available, check if any items are marked as untradeable
+      const hasUntradeableItems = itemTradability && items.some(item => itemTradability[item.id] === false);
+      
+      // Determine which items need patch data loaded
       let itemIdsToLoad = [];
-      if (marketableItems && marketableItems.size > 0) {
-        // Only load for tradeable items
+      if (marketableItems && marketableItems.size > 0 && !hasUntradeableItems) {
+        // marketableItems available and no untradeable items: only load for tradeable items (efficient)
         itemIdsToLoad = items
           .filter(item => marketableItems.has(item.id))
           .map(item => item.id)
           .filter(id => id > 0);
-      } else if (!marketableItems) {
-        // marketableItems not loaded yet, wait for it
-        return;
       } else {
-        // marketableItems is empty Set, no tradeable items, don't load
-        return;
+        // Either marketableItems not loaded yet, or we have untradeable items in the list
+        // Load for all items to enable version display and filtering - needed for combined display
+        itemIdsToLoad = items
+          .map(item => item.id)
+          .filter(id => id > 0);
       }
       
-      if (itemIdsToLoad.length > 0) {
-        Promise.all([
-          getItemPatchByIds(itemIdsToLoad),
-          loadPatchNamesData() // patch_names is small, can load all
-        ]).then(([patchData, patchNames]) => {
-          setItemPatchData(patchData);
-          setPatchNamesData(patchNames);
-        });
+      // Check if we need to load patch data
+      // If we have untradeable items, we need to ensure all items have patch data loaded
+      const needsLoad = !itemPatchData || !patchNamesData || 
+        (hasUntradeableItems && itemIdsToLoad.some(id => !itemPatchData[id?.toString()]));
+      
+      if (needsLoad && itemIdsToLoad.length > 0) {
+        // Load patch data for items that don't have it yet
+        const itemsNeedingData = hasUntradeableItems && itemPatchData
+          ? itemIdsToLoad.filter(id => !itemPatchData[id?.toString()])
+          : itemIdsToLoad;
+        
+        if (itemsNeedingData.length > 0) {
+          Promise.all([
+            getItemPatchByIds(itemsNeedingData),
+            patchNamesData ? Promise.resolve(patchNamesData) : loadPatchNamesData() // patch_names is small, can load all
+          ]).then(([patchData, patchNames]) => {
+            // Merge new patch data with existing data
+            setItemPatchData(prev => ({ ...prev, ...patchData }));
+            if (!patchNamesData) {
+              setPatchNamesData(patchNames);
+            }
+          }).catch(error => {
+            console.error('[ItemTable] Error loading patch data:', error);
+          });
+        } else if (!patchNamesData) {
+          // Only need to load patch names
+          loadPatchNamesData().then(patchNames => {
+            setPatchNamesData(patchNames);
+          }).catch(error => {
+            console.error('[ItemTable] Error loading patch names:', error);
+          });
+        }
       }
     }
-  }, [items, itemPatchData, patchNamesData, marketableItems]);
+  }, [items, itemPatchData, patchNamesData, marketableItems, itemTradability]);
   
   // Helper function to get ilvl for an item
   const getIlvl = (itemId) => {
     if (!ilvlsData || !itemId) return null;
-    return ilvlsData[itemId.toString()] || null;
+    const ilvlValue = ilvlsData[itemId.toString()];
+    
+    // Debug: Check if value equals id (which would indicate swapped columns)
+    if (ilvlValue !== undefined && ilvlValue !== null && ilvlValue === parseInt(itemId, 10)) {
+      console.warn(`[ItemTable] Warning: ilvl value equals item id for item ${itemId}. This may indicate swapped columns in database.`);
+    }
+    
+    return ilvlValue !== undefined ? ilvlValue : null;
   };
 
   // Helper function to get rarity for an item
@@ -289,6 +445,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
   };
 
   // Filter items: hide untradeable items if there are any tradeable items
+  // If all items are untradeable, show them all
   // This should work both during loading and after loading completes
   const filteredItems = useMemo(() => {
     let filtered = items;
@@ -300,12 +457,20 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     if (hasIsTradableProperty) {
       // Items come from searchItems which already filtered correctly
       // Trust the isTradable property - don't filter again
-      // Only filter out items explicitly marked as untradeable
-      filtered = items.filter(item => {
-        // If isTradable is explicitly false, hide it
-        // If isTradable is true or undefined, show it
-        return item.isTradable !== false;
-      });
+      // Check if ALL items are untradeable
+      const allItemsUntradeable = items.length > 0 && items.every(item => item.isTradable === false);
+      
+      if (allItemsUntradeable) {
+        // If all items are untradeable, show them all
+        filtered = items;
+      } else {
+        // Only filter out items explicitly marked as untradeable when there are tradeable items
+        filtered = items.filter(item => {
+          // If isTradable is explicitly false, hide it
+          // If isTradable is true or undefined, show it
+          return item.isTradable !== false;
+        });
+      }
     } else if (marketableItems) {
       // Items don't have isTradable property (e.g., from history)
       // Use marketableItems to filter (fallback behavior)
@@ -324,6 +489,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
           return marketableItems.has(item.id);
         });
       }
+      // If no tradeable items, filtered remains as items (show all untradeable items)
     }
 
     // Filter by rarity if rarity filter is active (multi-select mode)
@@ -366,6 +532,8 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
   // CRITICAL: This creates the final sorted list after filtering untradeables
   // When sortColumn is 'id', this sorts by ilvl (descending by default)
   // sortedItems is the source of truth for the order in which icons should be loaded
+  // IMPORTANT: Items should already be sorted by ilvl descending from query time,
+  // so we only re-sort if user explicitly changes sort column/direction
   const sortedItems = useMemo(() => {
     if (!sortColumn) return filteredItems;
 
@@ -387,6 +555,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
       switch (sortColumn) {
         case 'id':
           // Sort by ilvl if available, otherwise by id
+          // CRITICAL: Use descending order by default (highest ilvl first)
           const aIlvl = ilvlsData ? (ilvlsData[a.id?.toString()] || null) : null;
           const bIlvl = ilvlsData ? (ilvlsData[b.id?.toString()] || null) : null;
           if (aIlvl !== null && bIlvl !== null) {
@@ -401,6 +570,12 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
           } else {
             aValue = a.id;
             bValue = b.id;
+          }
+          // Apply sort direction (default: descending for ilvl)
+          if (sortDirection === 'desc') {
+            return bValue - aValue; // Descending: higher values first
+          } else {
+            return aValue - bValue; // Ascending: lower values first
           }
           break;
         case 'name':
@@ -484,11 +659,18 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
       } else {
         // Normal comparison for other columns (id, name)
         // Note: tradable/untradable separation already happened at the top
-        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        // For 'id' column, sortDirection is already applied in the switch case above
+        if (sortColumn !== 'id') {
+          if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+          if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        }
+        // For 'id' column, comparison already done in switch case, just need to handle equal case
       }
       
-      // If values are equal, use ID as secondary sort
+      // If values are equal, use ID as secondary sort (descending for id column, ascending for others)
+      if (sortColumn === 'id') {
+        return b.id - a.id; // Descending by default for id column
+      }
       return a.id - b.id;
     });
   }, [filteredItems, sortColumn, sortDirection, itemTradability, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, ilvlsData]);
@@ -505,6 +687,158 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     const endIndex = startIndex + itemsPerPage;
     return sortedItems.slice(startIndex, endIndex);
   }, [sortedItems, currentPage, itemsPerPage]);
+  
+  // Calculate total pages for preloading logic
+  const totalPages = useMemo(() => {
+    if (!itemsPerPage || itemsPerPage <= 0) {
+      return 1;
+    }
+    return Math.ceil(sortedItems.length / itemsPerPage);
+  }, [sortedItems.length, itemsPerPage]);
+  
+  // Preload logic: After page 1 loads, start loading pages 2 and 3
+  // Estimate: First page has ~20 items, first 10 load immediately, remaining 10 load sequentially
+  // Total time: ~500ms (10 * 50ms) + API fetch time (~2-3s) ≈ 3-4 seconds
+  // IMPORTANT: Handle user navigating away before preload completes
+  useEffect(() => {
+    if (!itemsPerPage || itemsPerPage <= 0 || totalPages < 2) {
+      return;
+    }
+    
+    // Check if page 1 is ready to load (sort ready)
+    const isSortingByIlvl = sortColumn === 'id';
+    const hasIlvlData = ilvlsData !== null;
+    const isSortReady = !isSortingByIlvl || hasIlvlData;
+    
+    if (!isSortReady) {
+      return; // Wait for sort to complete
+    }
+    
+    // Only start preload timer if:
+    // 1. Page 1 is marked for loading
+    // 2. Pages 2 or 3 are not yet marked (not already loading)
+    // 3. User hasn't navigated to page 2 or 3 yet (if they have, those pages are already loading)
+    const shouldPreload = pagesToLoadRef.current.has(1) && 
+                          (currentPage === 1 || currentPage > 3) && // Only preload if on page 1 or beyond page 3
+                          (!pagesToLoadRef.current.has(2) || !pagesToLoadRef.current.has(3));
+    
+    if (shouldPreload) {
+      // Clear any existing timeout
+      if (preloadTimeoutRef.current) {
+        clearTimeout(preloadTimeoutRef.current);
+      }
+      
+      // Estimate first page load time: ~3 seconds
+      // Start preloading pages 2 and 3 after 3 seconds
+      preloadTimeoutRef.current = setTimeout(() => {
+        // Double-check: user might have navigated away during the delay
+        // Only add pages if they're not already marked and user hasn't navigated to them
+        const pagesToAdd = [];
+        if (totalPages >= 2 && !pagesToLoadRef.current.has(2) && currentPage !== 2) {
+          pagesToAdd.push(2);
+        }
+        if (totalPages >= 3 && !pagesToLoadRef.current.has(3) && currentPage !== 3) {
+          pagesToAdd.push(3);
+        }
+        
+        if (pagesToAdd.length > 0) {
+          pagesToAdd.forEach(page => {
+            pagesToLoadRef.current.add(page);
+          });
+          
+          // Force re-render by updating state
+          setPagesToLoadVersion(prev => prev + 1);
+          console.log(`[ItemTable] Preloading pages: ${pagesToAdd.join(', ')}`);
+        }
+      }, 3000); // 3 seconds delay
+    } else {
+      // If user has navigated to page 2 or 3, cancel preload timer
+      if (preloadTimeoutRef.current && (currentPage === 2 || currentPage === 3)) {
+        clearTimeout(preloadTimeoutRef.current);
+        preloadTimeoutRef.current = null;
+      }
+    }
+    
+    return () => {
+      if (preloadTimeoutRef.current) {
+        clearTimeout(preloadTimeoutRef.current);
+        preloadTimeoutRef.current = null;
+      }
+    };
+  }, [itemsPerPage, totalPages, sortColumn, ilvlsData, currentPage]);
+  
+  // Check and load adjacent pages when current page changes
+  // IMPORTANT: Handle user navigating before preload completes
+  useEffect(() => {
+    if (!itemsPerPage || itemsPerPage <= 0) {
+      return;
+    }
+    
+    // Only process if page actually changed
+    if (prevCurrentPageRef.current === currentPage) {
+      return;
+    }
+    
+    const previousPage = prevCurrentPageRef.current;
+    prevCurrentPageRef.current = currentPage;
+    
+    // Cancel preload timer if user navigated to a page that was being preloaded
+    if (preloadTimeoutRef.current && (currentPage === 2 || currentPage === 3)) {
+      clearTimeout(preloadTimeoutRef.current);
+      preloadTimeoutRef.current = null;
+    }
+    
+    // Immediately mark current page for loading (user is viewing it, must load now)
+    // This ensures that if user navigated before preload completed, we still load the page
+    if (!pagesToLoadRef.current.has(currentPage)) {
+      pagesToLoadRef.current.add(currentPage);
+    }
+    
+    // Check if current page and adjacent pages (current-2, current-1, current+1, current+2) should load
+    const pagesToCheck = [];
+    for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+      if (!pagesToLoadRef.current.has(i)) {
+        pagesToCheck.push(i);
+      }
+    }
+    
+    if (pagesToCheck.length > 0) {
+      pagesToCheck.forEach(page => {
+        pagesToLoadRef.current.add(page);
+      });
+      
+      // Force re-render by updating state
+      setPagesToLoadVersion(prev => prev + 1);
+      console.log(`[ItemTable] Page ${currentPage} changed (from ${previousPage}), loading adjacent pages: ${pagesToCheck.join(', ')}`);
+    } else if (currentPage !== previousPage) {
+      // Even if no new pages to add, force re-render to update current page display
+      setPagesToLoadVersion(prev => prev + 1);
+    }
+  }, [currentPage, itemsPerPage, totalPages]);
+  
+  // Reset pages to load when items change significantly
+  useEffect(() => {
+    const itemsChanged = prevItemsRef.current !== items && 
+                         (prevItemsRef.current?.length !== items?.length || 
+                          (prevItemsRef.current && items && 
+                           prevItemsRef.current[0]?.id !== items[0]?.id));
+    
+    if (itemsChanged) {
+      // Reset to only page 1
+      pagesToLoadRef.current.clear();
+      pagesToLoadRef.current.add(1);
+      prevCurrentPageRef.current = currentPage;
+      
+      // Force re-render by updating state
+      setPagesToLoadVersion(prev => prev + 1);
+      
+      // Clear preload timeout
+      if (preloadTimeoutRef.current) {
+        clearTimeout(preloadTimeoutRef.current);
+        preloadTimeoutRef.current = null;
+      }
+    }
+  }, [items, currentPage]);
 
   // Calculate conditions for header highlighting
   const shouldHighlightTradable = useMemo(() => {
@@ -934,47 +1268,48 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
             const isSortingByIlvl = sortColumn === 'id';
             const hasIlvlData = ilvlsData !== null;
             
-            // Wait for ilvl sort to complete: table always starts with ilvl sort, so must wait for ilvlsData
-            // After ilvlsData loads, sortedItems and paginatedItems will have correct order
-            const isSortReady = !isSortingByIlvl || hasIlvlData;
+            // Use API-based tradability - this is the source of truth
+            // Data is already separated before passing to table, so we only need to check itemTradability
+            const isTradableFromAPI = itemTradability ? itemTradability[item.id] : undefined;
             
-            // Only load icons for page 1 items
-            const isPage1 = currentPage === 1;
+            // Check if this is an untradeable item (we have tradeability data and it's false)
+            const isUntradeable = isTradableFromAPI === false;
+            
+            // For untradeable items, we can start loading icons immediately without waiting for ilvlsData
+            // For tradeable items, wait for ilvl sort to complete
+            const isSortReady = isUntradeable ? true : (!isSortingByIlvl || hasIlvlData);
+            
+            // Check if current page should load icons (preloading logic)
+            // paginatedItems only contains current page items, so currentPage is the page for all items here
+            const shouldLoadThisPage = !itemsPerPage || itemsPerPage <= 0 || pagesToLoadRef.current.has(currentPage);
             
             // Parallel loading optimization: first 10 items load immediately in parallel
             // Remaining items load sequentially to respect rate limits
             // Testing shows 10 concurrent requests = 2.67s for 30 items (vs 10.90s sequential)
             // All configurations tested with 0% failure rate
+            // IMPORTANT: Current page (user is viewing) always loads immediately
+            // Preload delays only apply to hidden preload area, not the visible current page
             let loadDelay;
-            if (!isPage1 || !isSortReady) {
-              loadDelay = 999999; // Large delay if not ready or not page 1
-            } else if (index < 10) {
-              // First 10 items: load immediately in parallel (0ms delay)
-              loadDelay = 0;
+            if (!isSortReady || !shouldLoadThisPage) {
+              loadDelay = 999999; // Large delay if sort not ready or page not marked for loading
             } else {
-              // Remaining items: sequential loading with 50ms delay per item
-              // This ensures we don't exceed rate limits after the initial parallel burst
-              loadDelay = (index - 10) * 50;
+              // User is viewing current page: always load immediately (no preload delay)
+              // First 10 items of current page load in parallel, rest sequentially
+              const pageLocalIndex = index; // Index within current page (0-based)
+              
+              if (pageLocalIndex < 10) {
+                // First 10 items of current page: load immediately in parallel (0ms delay)
+                loadDelay = 0;
+              } else {
+                // Remaining items: sequential loading with 50ms delay per item within page
+                loadDelay = (pageLocalIndex - 10) * 50;
+              }
             }
             
-            // Use API-based tradability if available, otherwise fallback to marketableItems
-            const isTradableFromAPI = itemTradability ? itemTradability[item.id] : undefined;
-            const isMarketable = marketableItems ? marketableItems.has(item.id) : undefined;
-            
-            // Determine tradeability: Only consider tradeable if we have positive confirmation
-            let isTradable;
-            if (isTradableFromAPI !== undefined) {
-              isTradable = isTradableFromAPI === true;
-            } else if (isMarketable !== undefined) {
-              isTradable = isMarketable === true;
-            } else {
-              isTradable = item.isTradable === true;
-            }
-            
-            // Only load icons for tradeable items (or if tradeability data isn't available yet)
-            const shouldLoadIcon = (isTradableFromAPI === undefined && isMarketable === undefined) 
-              ? true  // No tradeability data yet - load icon anyway
-              : (isTradableFromAPI === true) || (isMarketable === true);  // Only load if tradeable when we have data
+            // Load icons for all items (both tradeable and untradeable)
+            // Users want to see icons for untradeable items too
+            // Pass undefined to allow icon loading for all items (ItemImage only blocks if isTradable === false)
+            const shouldLoadIcon = true;
             
             const velocity = itemVelocities ? itemVelocities[item.id] : undefined;
             const averagePrice = itemAveragePrices ? itemAveragePrices[item.id] : undefined;
@@ -1001,21 +1336,46 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                 }`}
               >
                 <td className="px-2 sm:px-4 py-2">
-                  <ItemImage
-                    itemId={item.id}
-                    alt={item.name}
-                    className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded border border-purple-500/30 bg-slate-900/50"
-                    priority={false}
-                    loadDelay={loadDelay}
-                    isTradable={shouldLoadIcon ? true : false}
-                  />
+                  {(() => {
+                    // Check if this item's icon is already cached or loading
+                    const cachedUrl = getItemImageUrlSync(item.id);
+                    const isAlreadyLoaded = cachedUrl !== null || loadedItemsRef.current.has(item.id);
+                    
+                    // Mark as loading if not already marked and should load
+                    if (!isAlreadyLoaded && shouldLoadIcon && loadDelay < 999999) {
+                      loadedItemsRef.current.add(item.id);
+                    }
+                    
+                    // If already cached, use shorter delay (0ms) since it's instant
+                    const effectiveLoadDelay = cachedUrl ? 0 : loadDelay;
+                    
+                    return (
+                      <ItemImage
+                        itemId={item.id}
+                        alt={item.name}
+                        className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded border border-purple-500/30 bg-slate-900/50"
+                        priority={false}
+                        loadDelay={effectiveLoadDelay}
+                        isTradable={shouldLoadIcon ? undefined : false}
+                      />
+                    );
+                  })()}
                 </td>
                 <td className="px-2 sm:px-4 py-2 text-right font-mono text-xs">
-                  {getIlvl(item.id) !== null ? (
-                    <span className="text-green-400 font-semibold">{getIlvl(item.id)}</span>
-                  ) : (
-                    <span className="text-gray-400">{item.id}</span>
-                  )}
+                  {(() => {
+                    const ilvl = getIlvl(item.id);
+                    // Only show ilvl if it's a valid number and not equal to the item id
+                    if (ilvl !== null && ilvl !== undefined && typeof ilvl === 'number' && ilvl !== item.id) {
+                      return <span className="text-green-400 font-semibold">{ilvl}</span>;
+                    } else if (ilvl === item.id) {
+                      // If ilvl equals id, it means the database columns are swapped - show warning
+                      console.error(`[ItemTable] ERROR: Item ${item.id} has ilvl value equal to its id. Database columns may be swapped.`);
+                      return <span className="text-red-400 font-semibold" title="資料錯誤：ilvl 值等於物品 ID">-</span>;
+                    } else {
+                      // No ilvl data available - show dash instead of item id
+                      return <span className="text-gray-400">-</span>;
+                    }
+                  })()}
                 </td>
                 <td className="px-2 sm:px-4 py-2 text-center">
                   <VersionIcon version={getVersion(item.id)} />
@@ -1026,7 +1386,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                     <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-800/60 border border-slate-600/40">
                       <span className="text-gray-500 animate-pulse">...</span>
                     </div>
-                  ) : isTradable && velocity !== undefined && velocity !== null ? (
+                  ) : isTradableFromAPI === true && velocity !== undefined && velocity !== null ? (
                     <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-800/60 border border-slate-600/40">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-cyan-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -1108,9 +1468,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                   )}
                 </td>
                 <td className="px-2 sm:px-4 py-2 text-left text-xs">
-                  {isLoadingVelocities ? (
-                    <span className="text-gray-500 animate-pulse">...</span>
-                  ) : isTradableFromAPI !== undefined ? (
+                  {isTradableFromAPI !== undefined ? (
                     isTradableFromAPI ? (
                       <span className="inline-block px-1.5 py-0.5 text-[10px] bg-green-900/50 text-green-400 border border-green-500/30 rounded">
                         可交易
@@ -1121,9 +1479,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                       </span>
                     )
                   ) : (
-                    <span className="inline-block px-1.5 py-0.5 text-[10px] bg-red-900/50 text-red-400 border border-red-500/30 rounded">
-                      不可交易
-                    </span>
+                    <span className="text-gray-500 animate-pulse">...</span>
                   )}
                 </td>
                 <td className="px-2 sm:px-4 py-2">
@@ -1131,6 +1487,15 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
+                        
+                        // Prevent duplicate clicks
+                        if (wikiProcessingIds.has(item.id)) {
+                          return;
+                        }
+                        
+                        // Mark as processing
+                        setWikiProcessingIds(prev => new Set(prev).add(item.id));
+                        
                         try {
                           if (getSimplifiedChineseName) {
                             const simplifiedName = await getSimplifiedChineseName(item.id);
@@ -1153,9 +1518,24 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                           if (addToast) {
                             addToast('無法打開Wiki連結', 'error');
                           }
+                        } finally {
+                          // Remove from processing set after a short delay to allow window.open to complete
+                          // This prevents rapid clicking but allows legitimate re-clicks after the page opens
+                          setTimeout(() => {
+                            setWikiProcessingIds(prev => {
+                              const next = new Set(prev);
+                              next.delete(item.id);
+                              return next;
+                            });
+                          }, 1000);
                         }
                       }}
-                      className="text-ffxiv-accent hover:text-ffxiv-gold transition-colors whitespace-nowrap bg-transparent border-none p-0 cursor-pointer"
+                      disabled={wikiProcessingIds.has(item.id)}
+                      className={`transition-colors whitespace-nowrap bg-transparent border-none p-0 ${
+                        wikiProcessingIds.has(item.id)
+                          ? 'text-gray-500 cursor-not-allowed opacity-50'
+                          : 'text-ffxiv-accent hover:text-ffxiv-gold cursor-pointer'
+                      }`}
                     >
                       Wiki
                     </button>
@@ -1184,6 +1564,94 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
           })}
         </tbody>
       </table>
+      
+      {/* Hidden preload area: Load icons for preloaded pages without displaying them */}
+      {/* IMPORTANT: Only preload pages that user is NOT currently viewing */}
+      {/* If user navigated to a page before preload completed, main table handles loading */}
+      {itemsPerPage && itemsPerPage > 0 && sortedItems.length > 0 && (
+        <div className="hidden" aria-hidden="true">
+          {Array.from(pagesToLoadRef.current)
+            .filter(page => {
+              // Only preload pages that:
+              // 1. Are not the current page (user is viewing it, main table handles loading)
+              // 2. Are valid page numbers
+              // 3. User hasn't navigated to them yet (if they have, main table is loading them)
+              return page !== currentPage && page <= totalPages;
+            })
+            .map(page => {
+              const startIndex = (page - 1) * itemsPerPage;
+              const endIndex = Math.min(startIndex + itemsPerPage, sortedItems.length);
+              const pageItems = sortedItems.slice(startIndex, endIndex);
+              
+              return pageItems.map((item, index) => {
+                // Skip if already loaded or cached
+                const cachedUrl = getItemImageUrlSync(item.id);
+                const isAlreadyLoaded = cachedUrl !== null || loadedItemsRef.current.has(item.id);
+                
+                if (isAlreadyLoaded) {
+                  return null; // Don't render if already loaded
+                }
+                
+                // Double-check: if user navigated to this page, don't preload (main table handles it)
+                if (page === currentPage) {
+                  return null;
+                }
+                
+                const isSortingByIlvl = sortColumn === 'id';
+                const hasIlvlData = ilvlsData !== null;
+                const isTradableFromAPI = itemTradability ? itemTradability[item.id] : undefined;
+                const isUntradeable = isTradableFromAPI === false;
+                const isSortReady = isUntradeable ? true : (!isSortingByIlvl || hasIlvlData);
+                
+                if (!isSortReady) {
+                  return null;
+                }
+                
+                // Mark as loading (only if not already marked by main table)
+                if (!loadedItemsRef.current.has(item.id)) {
+                  loadedItemsRef.current.add(item.id);
+                }
+                
+                // Calculate delay for preloaded pages
+                // Preloaded pages should start loading after page 1 completes
+                const pageOffset = (page - 1) * itemsPerPage;
+                const globalIndex = pageOffset + index;
+                
+                let loadDelay;
+                if (page === 1) {
+                  // Page 1: immediate for first 10, then sequential
+                  // (This shouldn't happen since page 1 is currentPage, but handle it anyway)
+                  if (globalIndex < 10) {
+                    loadDelay = 0;
+                  } else {
+                    loadDelay = (globalIndex - 10) * 50;
+                  }
+                } else {
+                  // Preloaded pages (2, 3, etc.): start after page 1 completes (~3s) + sequential delay
+                  // Page 1 has ~20 items: first 10 load immediately, remaining 10 load sequentially
+                  // Estimate: 10 * 50ms = 500ms + API fetch time ≈ 3000ms total
+                  const page1CompletionTime = 3000;
+                  const preloadBaseDelay = page1CompletionTime;
+                  
+                  // Sequential loading: each item after the first 10 global items gets 50ms delay
+                  loadDelay = preloadBaseDelay + Math.max(0, (globalIndex - 10) * 50);
+                }
+                
+                return (
+                  <ItemImage
+                    key={`preload-${page}-${item.id}`}
+                    itemId={item.id}
+                    alt=""
+                    className="w-1 h-1"
+                    priority={false}
+                    loadDelay={loadDelay}
+                    isTradable={isTradableFromAPI === false ? false : undefined}
+                  />
+                );
+              });
+            })}
+        </div>
+      )}
     </div>
   );
 }

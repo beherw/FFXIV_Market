@@ -7,10 +7,11 @@ import TopBar from './TopBar';
 import TaxRatesModal from './TaxRatesModal';
 import SearchResultsTable from './SearchResultsTable';
 import ServerSelector from './ServerSelector';
+// RunningLoader is now handled by SearchResultsTable component for centralized loading display
 import { getMarketableItems, getMarketableItemsByIds } from '../services/universalis';
 import { searchItems, getSimplifiedChineseName, getItemById } from '../services/itemDatabase';
 import { loadRecipeDatabase, loadRecipesByJobAndLevel } from '../services/recipeDatabase';
-import { getTwJobAbbr, getTwItemUICategories, getTwItems, getIlvlsByIds, getRaritiesByIds, getEquipmentByIds, getEquipmentByJobs, getUICategoriesByIds, getTwItemById } from '../services/supabaseData';
+import { getTwJobAbbr, getTwItemUICategories, getTwItems, getIlvlsByIds, getRaritiesByIds, getEquipmentByIds, getEquipmentByJobs, getUICategoriesByIds, getTwItemById, getTwItemsByIds, getItemIdsByCategories, getItemIdsByIlvlRange } from '../services/supabaseData';
 
 export default function AdvancedSearch({
   addToast,
@@ -82,16 +83,27 @@ export default function AdvancedSearch({
   // Loading indicator state (same as main search page)
   const [showLoadingIndicator, setShowLoadingIndicator] = useState(false);
   const loadingIndicatorStartTimeRef = useRef(null);
+  const resultsTableRef = useRef(null);
   
   // Refs for request management
   const velocityFetchAbortControllerRef = useRef(null);
   const velocityFetchRequestIdRef = useRef(0);
   const velocityFetchInProgressRef = useRef(false);
   const [velocityFetchInProgress, setVelocityFetchInProgress] = useState(false); // State version for reactivity
+  const lastFetchedItemIdsRef = useRef(''); // Track last fetched item IDs and server to avoid duplicate fetches
+  const [velocityLoadingProgress, setVelocityLoadingProgress] = useState({ loaded: 0, total: 0 });
   const filterSearchRequestIdRef = useRef(0);
   const batchSearchRequestIdRef = useRef(0);
   const [isSearchButtonDisabled, setIsSearchButtonDisabled] = useState(false);
   const categorySearchInputRef = useRef(null);
+  const categoryScrollContainerRef = useRef(null);
+  const [shouldDisableCategoryScrollState, setShouldDisableCategoryScrollState] = useState(false);
+  
+  // Debounce timer for job selection
+  const jobDebounceTimerRef = useRef(null);
+  
+  // Disabled categories based on selected jobs
+  const [disabledCategories, setDisabledCategories] = useState(new Set());
   
   // Cache for Supabase data
   const twJobAbbrDataRef = useRef(null);
@@ -101,11 +113,6 @@ export default function AdvancedSearch({
   // State to trigger re-render when data loads
   const [jobAbbrLoaded, setJobAbbrLoaded] = useState(false);
   const [itemUICategoriesLoaded, setItemUICategoriesLoaded] = useState(false);
-  
-  // State to track job icon loading
-  const [jobIconsLoading, setJobIconsLoading] = useState(true);
-  const loadedJobIconsRef = useRef(new Set());
-  const totalJobIconsRef = useRef(0);
   
   // Cache for ilvls data (per-item basis, not full table)
   const ilvlsCacheRef = useRef({});
@@ -169,6 +176,41 @@ export default function AdvancedSearch({
     return result;
   }, []);
 
+  // Calculate disabled categories based on selected jobs
+  // All jobs (battle, crafting, gathering) should disable miscellaneous categories
+  const calculateDisabledCategories = useCallback((jobs) => {
+    const disabled = new Set();
+    
+    if (jobs.length === 0) {
+      return disabled;
+    }
+    
+    // Equipment category IDs (weapons, armor, accessories)
+    const equipmentCategoryIdsSet = new Set([
+      // Weapons (already handled by generic categories)
+      // Armor
+      34, 35, 36, 37, 38, // 頭部防具、身體防具、腿部防具、手部防具、腳部防具
+      112, // 套裝 (moved to equipment section but originally in miscellaneous)
+      // Accessories
+      40, 41, 42, 43, // 項鍊、耳飾、手鐲、戒指
+      // Soul crystal
+      62, // 靈魂水晶
+    ]);
+    
+    // If any job is selected (battle, crafting, or gathering), disable miscellaneous
+    // All jobs only have equipment categories, disable miscellaneous
+    const twItemUICategoriesData = twItemUICategoriesDataRef.current || {};
+    Object.entries(twItemUICategoriesData).forEach(([id, data]) => {
+      const categoryId = parseInt(id, 10);
+      // If it's not an equipment category and not excluded, disable it
+      if (!equipmentCategoryIdsSet.has(categoryId) && !EXCLUDED_CATEGORIES.includes(categoryId) && categoryId !== 11) {
+        disabled.add(categoryId);
+      }
+    });
+    
+    return disabled;
+  }, []);
+
   // Load Supabase data on mount (only small tables, not full item/rarity tables)
   useEffect(() => {
     const loadAllData = async () => {
@@ -191,6 +233,62 @@ export default function AdvancedSearch({
     loadAllData();
   }, []);
 
+  // Update disabled categories when selectedJobs changes (with debounce)
+  // Also clear non-set miscellaneous categories when jobs are selected
+  useEffect(() => {
+    // Clear existing debounce timer
+    if (jobDebounceTimerRef.current) {
+      clearTimeout(jobDebounceTimerRef.current);
+    }
+    
+    // If jobs are selected, clear non-set miscellaneous categories from selectedCategories
+    if (selectedJobs.length > 0) {
+      setSelectedCategories(prev => {
+        // Filter out miscellaneous categories except set (112)
+        // Miscellaneous categories are those not in equipmentCategoryIds (excluding 11 and 112)
+        const equipmentCategoryIdsSet = new Set([
+          34, 35, 36, 37, 38, // Armor
+          112, // 套裝 (keep this one)
+          40, 41, 42, 43, // Accessories
+          62, // Soul crystal
+        ]);
+        
+        return prev.filter(catId => {
+          // Keep generic categories (main_weapon, offhand_weapon)
+          if (typeof catId === 'string') {
+            return true;
+          }
+          
+          // Keep equipment categories (including set 112)
+          if (equipmentCategoryIdsSet.has(catId)) {
+            return true;
+          }
+          
+          // Keep shield (11) - it's not miscellaneous
+          if (catId === 11) {
+            return true;
+          }
+          
+          // Remove all other categories (miscellaneous except set)
+          return false;
+        });
+      });
+    }
+    
+    // Set debounce timer to update disabled categories after 500ms
+    jobDebounceTimerRef.current = setTimeout(() => {
+      const disabled = calculateDisabledCategories(selectedJobs);
+      setDisabledCategories(disabled);
+    }, 500);
+    
+    // Cleanup function
+    return () => {
+      if (jobDebounceTimerRef.current) {
+        clearTimeout(jobDebounceTimerRef.current);
+      }
+    };
+  }, [selectedJobs, calculateDisabledCategories]);
+
   // Reset to first page when rarity filter changes
   useEffect(() => {
     setCurrentPage(1);
@@ -199,7 +297,8 @@ export default function AdvancedSearch({
   // Reset to first page if currentPage exceeds totalPages (safety check for pagination)
   useEffect(() => {
     if (searchResults.length > 0 || untradeableResults.length > 0) {
-      const currentResults = showUntradeable ? untradeableResults : searchResults;
+      // When showUntradeable is true, combine both lists; otherwise show only tradeable
+      const currentResults = showUntradeable ? [...searchResults, ...untradeableResults] : searchResults;
       const totalPages = Math.ceil(currentResults.length / itemsPerPage);
       if (totalPages > 0 && currentPage > totalPages) {
         setCurrentPage(1);
@@ -881,8 +980,9 @@ export default function AdvancedSearch({
 
   // Manage loading indicator (same logic as main search page)
   useEffect(() => {
+    // When showUntradeable is true, combine both lists; otherwise show only tradeable
     const currentResults = activeTab === 'filter' 
-      ? (showUntradeable ? untradeableResults : searchResults)
+      ? (showUntradeable ? [...searchResults, ...untradeableResults] : searchResults)
       : searchResults;
     // Show loading indicator when searching or loading velocities, for >=50 items
     // Match the logic from main search page
@@ -921,6 +1021,25 @@ export default function AdvancedSearch({
       }
     }
   }, [isLoadingVelocities, isFilterSearching, velocityFetchInProgress, showUntradeable, searchResults.length, untradeableResults.length, activeTab]);
+
+  // Helper function to get background color class based on job role
+  const getJobRoleBgColor = (role) => {
+    switch (role) {
+      case 'tank':
+        return 'bg-blue-500/20'; // 蓝色 - 坦克
+      case 'healer':
+        return 'bg-green-500/20'; // 绿色 - 辅助
+      case 'melee':
+      case 'ranged':
+      case 'caster':
+        return 'bg-red-500/20'; // 红色 - 输出
+      case 'crafting':
+      case 'gathering':
+        return 'bg-gray-500/20'; // 灰色 - 生产职业
+      default:
+        return 'bg-slate-900/50';
+    }
+  };
 
   // Job icons mapping with Garland Tools URLs - separated into 生產 and 戰鬥職業
   // Only show higher tier jobs (exclude base classes 1-7, 26, 29)
@@ -985,24 +1104,36 @@ export default function AdvancedSearch({
       const abbr = getJobAbbreviation(jobId);
       if (!abbr) return; // Skip if no abbreviation mapping
       
-      const jobData = {
-        id: jobId,
-        name: data.tw,
-        iconUrl: `https://garlandtools.org/files/icons/job/${abbr}.png`,
-      };
-      
       // 生產職業: 8-15 (crafting)
       if (jobId >= 8 && jobId <= 15) {
+        const jobData = {
+          id: jobId,
+          name: data.tw,
+          iconUrl: `https://garlandtools.org/files/icons/job/${abbr}.png`,
+          role: 'crafting',
+        };
         crafting.push(jobData);
       }
       // 採集職業: 16-18 (gathering)
       else if (jobId >= 16 && jobId <= 18) {
+        const jobData = {
+          id: jobId,
+          name: data.tw,
+          iconUrl: `https://garlandtools.org/files/icons/job/${abbr}.png`,
+          role: 'gathering',
+        };
         gathering.push(jobData);
       }
       // 戰鬥職業: Only higher tier jobs (19-42, excluding lower tier)
       else if (jobId >= 19 && jobId <= 42) {
         const role = jobRoles[jobId];
         if (role && battleByRole[role]) {
+          const jobData = {
+            id: jobId,
+            name: data.tw,
+            iconUrl: `https://garlandtools.org/files/icons/job/${abbr}.png`,
+            role: role,
+          };
           battleByRole[role].push(jobData);
         }
       }
@@ -1017,48 +1148,6 @@ export default function AdvancedSearch({
     
     return { craftingJobs: crafting, gatheringJobs: gathering, battleJobsByRole: battleByRole };
   }, [jobAbbrLoaded, getJobAbbreviation]); // Recompute when job data loads or getJobAbbreviation changes
-
-  // Track total job icons count and reset loading state when jobs change
-  useEffect(() => {
-    const totalIcons = craftingJobs.length + gatheringJobs.length + 
-      battleJobsByRole.tank.length + battleJobsByRole.healer.length + 
-      battleJobsByRole.melee.length + battleJobsByRole.ranged.length + 
-      battleJobsByRole.caster.length;
-    
-    totalJobIconsRef.current = totalIcons;
-    
-    // Reset loading state if job data is not loaded yet or if we have no icons
-    if (!jobAbbrLoaded || totalIcons === 0) {
-      setJobIconsLoading(true);
-      loadedJobIconsRef.current.clear();
-    } else {
-      // If we have icons but haven't loaded any yet, set loading to true
-      if (loadedJobIconsRef.current.size === 0) {
-        setJobIconsLoading(true);
-      }
-    }
-  }, [craftingJobs, gatheringJobs, battleJobsByRole, jobAbbrLoaded]);
-
-  // Handle job icon load completion
-  const handleJobIconLoad = useCallback((jobId) => {
-    loadedJobIconsRef.current.add(jobId);
-    
-    // Check if all icons are loaded
-    if (loadedJobIconsRef.current.size >= totalJobIconsRef.current && totalJobIconsRef.current > 0) {
-      setJobIconsLoading(false);
-    }
-  }, []);
-
-  // Handle job icon load error
-  const handleJobIconError = useCallback((jobId) => {
-    // Still count as loaded even if error (to avoid infinite loading)
-    loadedJobIconsRef.current.add(jobId);
-    
-    // Check if all icons are loaded
-    if (loadedJobIconsRef.current.size >= totalJobIconsRef.current && totalJobIconsRef.current > 0) {
-      setJobIconsLoading(false);
-    }
-  }, []);
 
   // Map job-specific weapon categories to generic categories
   // Job-specific weapon categories that should be hidden and mapped to generic ones
@@ -1209,6 +1298,7 @@ export default function AdvancedSearch({
     // Weapons (already handled by generic categories)
     // Armor
     34, 35, 36, 37, 38, // 頭部防具、身體防具、腿部防具、手部防具、腳部防具
+    112, // 套裝
     // Accessories
     40, 41, 42, 43, // 項鍊、耳飾、手鐲、戒指
     // Soul crystal
@@ -1229,10 +1319,18 @@ export default function AdvancedSearch({
     // Separate equipment and miscellaneous categories
     // Exclude shield (11) from miscellaneous categories
     const equipmentCategories = allCategories.filter(cat => equipmentCategoryIds.has(cat.id));
-    const miscellaneousCategories = allCategories.filter(cat => !equipmentCategoryIds.has(cat.id) && cat.id !== 11); // Exclude shield (11) from miscellaneous
+    const miscellaneousCategories = allCategories
+      .filter(cat => !equipmentCategoryIds.has(cat.id) && cat.id !== 11) // Exclude shield (11) from miscellaneous
+      .map(cat => {
+        // Map category 63 (其他) to "坐騎/鳥甲"
+        if (cat.id === 63 || cat.name === '其他') {
+          return { ...cat, name: '坐騎/鳥甲' };
+        }
+        return cat;
+      });
     
-    // Sort equipment categories with custom order: head(34), body(35), hand(37), leg(36), feet(38), then accessories (earring, necklace, bracelet, ring)
-    const equipmentOrder = [34, 35, 37, 36, 38, 41, 40, 42, 43, 62];
+    // Sort equipment categories with custom order: head(34), set(112), body(35), hand(37), leg(36), feet(38), then accessories (earring, necklace, bracelet, ring)
+    const equipmentOrder = [34, 112, 35, 37, 36, 38, 41, 40, 42, 43, 62];
     equipmentCategories.sort((a, b) => {
       const indexA = equipmentOrder.indexOf(a.id);
       const indexB = equipmentOrder.indexOf(b.id);
@@ -1262,33 +1360,47 @@ export default function AdvancedSearch({
     ];
     
     // Separate equipment into groups:
-    // 1. Armor (head, body, hand, leg, feet): 34, 35, 37, 36, 38
+    // 1. Armor (head, set, body, hand, leg, feet): 34, 112, 35, 37, 36, 38
     // 2. Accessories: 41, 40, 42, 43 (earring, necklace, bracelet, ring)
     // 3. Others (soul crystal, etc.): 62
-    const armorIds = [34, 35, 37, 36, 38];
+    const armorIds = [34, 112, 35, 37, 36, 38]; // Include set (112) after head (34)
     const accessoryIds = [41, 40, 42, 43];
     const armorCategories = equipmentCategories.filter(cat => armorIds.includes(cat.id));
     const accessoryCategories = equipmentCategories.filter(cat => accessoryIds.includes(cat.id));
-    const otherEquipmentCategories = equipmentCategories.filter(cat => !armorIds.includes(cat.id) && !accessoryIds.includes(cat.id));
+    const otherEquipmentCategories = equipmentCategories
+      .filter(cat => !armorIds.includes(cat.id) && !accessoryIds.includes(cat.id))
+      .map(cat => {
+        // Map category 63 (其他) to "坐騎/鳥甲"
+        if (cat.id === 63 || cat.name === '其他') {
+          return { ...cat, name: '坐騎/鳥甲' };
+        }
+        // Also map category 62 (靈魂水晶) to "坐騎/鳥甲" if it exists
+        if (cat.id === 62) {
+          return { ...cat, name: '坐騎/鳥甲' };
+        }
+        return cat;
+      });
     
     return {
       weapons: genericCategories, // 主手、副手
       armor: armorCategories, // 头部、身体、手、腿、脚
       accessories: accessoryCategories, // 项链、耳饰、手镯、戒指
-      otherEquipment: otherEquipmentCategories, // 其他装备（如灵魂水晶）
+      otherEquipment: otherEquipmentCategories, // 其他裝備（如坐騎/鳥甲）
       miscellaneous: miscellaneousCategories,
     };
   }, [itemUICategoriesLoaded]); // Recompute when category data loads
 
-  // Filter categories based on search term
+  // Filter categories based on search term and disabled state
   const filteredItemCategories = useMemo(() => {
-    if (!categorySearchTerm.trim()) {
-      return itemCategories;
-    }
-
-    const searchTermLower = categorySearchTerm.toLowerCase().trim();
     const filterCategory = (category) => {
-      return category.name.toLowerCase().includes(searchTermLower);
+      // First check if category matches search term
+      if (categorySearchTerm.trim()) {
+        const searchTermLower = categorySearchTerm.toLowerCase().trim();
+        if (!category.name.toLowerCase().includes(searchTermLower)) {
+          return false;
+        }
+      }
+      return true;
     };
 
     return {
@@ -1299,6 +1411,57 @@ export default function AdvancedSearch({
       miscellaneous: itemCategories.miscellaneous.filter(filterCategory),
     };
   }, [itemCategories, categorySearchTerm]);
+
+  // Helper function to check if a category is disabled
+  const isCategoryDisabled = useCallback((categoryId) => {
+    const id = typeof categoryId === 'string' ? categoryId : categoryId;
+    // Generic categories (main_weapon, offhand_weapon) are never disabled
+    if (id === 'main_weapon' || id === 'offhand_weapon') {
+      return false;
+    }
+    return disabledCategories.has(parseInt(id, 10));
+  }, [disabledCategories]);
+
+  // Check if scroll should be disabled when jobs are selected (filtering)
+  // Disable scroll when jobs are selected since disabled categories are at the bottom
+  useEffect(() => {
+    const checkScrollNeeded = () => {
+      if (!categoryScrollContainerRef.current) {
+        return;
+      }
+      
+      const container = categoryScrollContainerRef.current;
+      
+      // If jobs are selected, scroll to top first, then disable scroll
+      if (selectedJobs.length > 0) {
+        // Scroll to top first
+        container.scrollTop = 0;
+        // Then disable scroll after a brief delay to ensure scroll completes
+        setTimeout(() => {
+          setShouldDisableCategoryScrollState(true);
+        }, 50);
+        return;
+      }
+      
+      // If no jobs selected, check if content actually needs scrolling
+      const scrollHeight = container.scrollHeight;
+      const clientHeight = container.clientHeight;
+      
+      // If content fits within container, disable scroll
+      // Add small buffer (2px) to account for rounding errors
+      const needsScroll = scrollHeight > clientHeight + 2;
+      
+      setShouldDisableCategoryScrollState(!needsScroll);
+    };
+    
+    // Check immediately
+    checkScrollNeeded();
+    
+    // Also check after a short delay to account for rendering
+    const timeoutId = setTimeout(checkScrollNeeded, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [selectedJobs, filteredItemCategories, categorySearchTerm]);
 
   // Handle job toggle
   const handleJobToggle = useCallback((jobId) => {
@@ -1336,8 +1499,27 @@ export default function AdvancedSearch({
   }, []);
 
   // Shared function to perform filter search logic
-  // This function contains all the common logic for filtering items by jobs, categories, level, and name
-  // Returns { itemIds, tradeableItemIds, untradeableItemIds } or null if error
+  // OPTIMIZED QUERY ORDER - Always use targeted queries, never load all data
+  // 
+  // Query order (designed to minimize data transfer):
+  // 1. Categories filter → getItemIdsByCategories() - Query ui_categories table by category IDs
+  // 2. Jobs filter → getEquipmentByJobs() - Query equipment table by job abbreviations
+  // 3. Intersect results if both filters are selected
+  // 4. Level filter → getEquipmentByIds() - Query equipment table by itemIds (already filtered)
+  // 5. Name filter → getTwItemById() - Query tw_items table by itemIds (already filtered)
+  // 6. Marketable filter → getMarketableItemsByIds() - Query market_items table by itemIds
+  // 7. Ilvls/Rarities → getIlvlsByIds() / getRaritiesByIds() - Only for final results
+  //
+  // Tables queried:
+  // - ui_categories: By category IDs (WHERE category IN (...))
+  // - equipment: By job abbreviations (WHERE jobs @> '["PLD"]') or by itemIds (WHERE id IN (...))
+  // - tw_recipes_by_job_level: By job IDs and level range (WHERE job IN (...) AND level BETWEEN ...)
+  // - tw_items: By itemIds only (WHERE id IN (...)) - NEVER load all items
+  // - market_items: By itemIds only (WHERE id IN (...)) - NEVER load all items
+  // - ilvls: By itemIds only (WHERE id IN (...)) - NEVER load all items
+  // - rarities: By itemIds only (WHERE id IN (...)) - NEVER load all items
+  //
+  // Returns { itemIds, tradeableItemIds, untradeableItemIds, marketableSet } or null if error
   // skipLimitCheck: if true, skip the MAX_ITEMS_LIMIT check (for "continue search" button)
   const performFilterSearchLogic = useCallback(async (skipLimitCheck = false) => {
     if (selectedJobs.length === 0 && selectedCategories.length === 0) {
@@ -1350,53 +1532,26 @@ export default function AdvancedSearch({
       return null;
     }
 
+    // OPTIMIZED QUERY ORDER: Always start with the filter that returns the fewest results
+    // This minimizes data transfer and processing time
+    
+    // Check for main/offhand weapon categories (needed for job compatibility filtering later)
+    const hasMainWeaponCategory = selectedCategories.includes('main_weapon');
+    const hasOffhandWeaponCategory = selectedCategories.includes('offhand_weapon');
+    
     let itemIds = new Set();
     
-    // Separate production and battle jobs
-    const productionJobIds = selectedJobs.filter(jobId => jobId >= 8 && jobId <= 18);
-    const battleJobIds = selectedJobs.filter(jobId => (jobId >= 1 && jobId <= 7) || (jobId >= 19 && jobId <= 42));
-
-    // Filter by production jobs (using recipes and equipment.json for tools)
-    if (productionJobIds.length > 0) {
-      // Use targeted query to load only recipes for selected jobs (optimized)
-      const { recipes } = await loadRecipesByJobAndLevel(productionJobIds, 1, 100);
-      recipes.forEach(recipe => {
-        if (recipe.result) {
-          itemIds.add(recipe.result);
-        }
-      });
-      
-      // Also add production tools from equipment - use targeted query by jobs
-      const productionJobAbbrs = productionJobIds.map(jobId => getJobAbbreviation(jobId)).filter(abbr => abbr);
-      if (productionJobAbbrs.length > 0) {
-        const equipmentData = await loadEquipmentByJobs(productionJobAbbrs);
-        Object.keys(equipmentData).forEach(itemId => {
-          itemIds.add(parseInt(itemId, 10));
-        });
-      }
-    }
-
-    // Filter by battle jobs - use targeted query by jobs
-    if (battleJobIds.length > 0) {
-      const battleJobAbbrs = battleJobIds.map(jobId => getJobAbbreviation(jobId)).filter(abbr => abbr);
-      if (battleJobAbbrs.length > 0) {
-        const equipmentData = await loadEquipmentByJobs(battleJobAbbrs);
-        Object.keys(equipmentData).forEach(itemId => {
-          itemIds.add(parseInt(itemId, 10));
-        });
-        console.log(`[AdvancedSearch] Found ${itemIds.size} items for jobs: ${battleJobAbbrs.join(', ')}`);
-      }
-    }
-
-    // Filter by categories
+    // STEP 1: Filter by categories FIRST (if selected) - this can dramatically reduce item count
+    // Query ui_categories table directly by category IDs to get itemIds
     if (selectedCategories.length > 0) {
-      // Map generic categories to specific categories based on selected jobs
+      // Map generic categories to specific categories
       let categoryIdsToFilter = new Set();
       
       selectedCategories.forEach(catId => {
         if (catId === 'main_weapon') {
-          // Map to job-specific categories based on selected jobs (weapons, production tools, gathering tools)
+          // When "主手" is selected, map to job-specific categories if jobs are selected
           if (selectedJobs.length > 0) {
+            // Map to job-specific categories based on selected jobs
             selectedJobs.forEach(jobId => {
               // Battle weapons
               const weaponCategories = jobToWeaponCategoryMap[jobId];
@@ -1415,17 +1570,18 @@ export default function AdvancedSearch({
               }
             });
           } else {
-            // If no jobs selected, include all main weapon/tool categories
+            // If no jobs selected, include ALL main weapon/tool categories
             genericCategoryGroups['主武器'].forEach(catId => categoryIdsToFilter.add(catId));
           }
         } else if (catId === 'offhand_weapon') {
-          // Map to job-specific offhand categories based on selected jobs (shields, production tools, gathering tools)
+          // When "副手" is selected, map to job-specific categories if jobs are selected
           if (selectedJobs.length > 0) {
+            // Map to job-specific offhand categories based on selected jobs
             selectedJobs.forEach(jobId => {
-              // Battle offhand weapons (e.g., shields for PLD)
-              const battleOffhandWeapon = jobToOffhandWeaponMap[jobId];
-              if (battleOffhandWeapon) {
-                categoryIdsToFilter.add(battleOffhandWeapon);
+              // Battle offhand
+              const offhandWeapon = jobToOffhandWeaponMap[jobId];
+              if (offhandWeapon) {
+                categoryIdsToFilter.add(offhandWeapon);
               }
               // Production offhand tools
               const productionOffhandTool = jobToProductionOffhandToolMap[jobId];
@@ -1439,7 +1595,7 @@ export default function AdvancedSearch({
               }
             });
           } else {
-            // If no jobs selected, include all offhand weapon/tool categories
+            // If no jobs selected, include ALL offhand weapon/tool categories
             genericCategoryGroups['副手武器'].forEach(catId => categoryIdsToFilter.add(catId));
           }
         } else {
@@ -1448,73 +1604,127 @@ export default function AdvancedSearch({
         }
       });
       
-      console.log(`[AdvancedSearch] Category filter: ${Array.from(categoryIdsToFilter).join(', ')}`);
+      console.log(`[AdvancedSearch] Step 1 - Category filter: ${Array.from(categoryIdsToFilter).join(', ')}`);
       
-      // If only categories selected (no jobs), get all items from database first
-      // NOTE: This requires loading all items, but only when category filter is used without job filter
-      if (itemIds.size === 0 && selectedJobs.length === 0) {
-        // Load all items lazily only when needed (category-only filter)
-        if (!twItemsDataRef.current) {
-          console.warn('[AdvancedSearch] Loading all items for category-only filter (this is necessary for this use case)');
-          const { getTwItems } = await import('../services/supabaseData');
-          twItemsDataRef.current = await getTwItems();
+      // Query ui_categories table directly by category IDs (NO need to load all items!)
+      const categoryItemIds = await getItemIdsByCategories(Array.from(categoryIdsToFilter));
+      console.log(`[AdvancedSearch] Found ${categoryItemIds.length} items matching categories`);
+      
+      // Filter out excluded categories
+      // Note: getItemIdsByCategories already returns items matching the specified categories
+      // We need to filter out items that are in EXCLUDED_CATEGORIES
+      if (categoryItemIds.length > 0) {
+        const uiCategoriesData = await loadUICategoriesByIds(categoryItemIds);
+        categoryItemIds.forEach(itemId => {
+          const itemCategoryId = uiCategoriesData[itemId];
+          // Include item if it doesn't have a category in EXCLUDED_CATEGORIES
+          // If itemCategoryId is undefined/null, include it (might be a valid item without category data)
+          if (!itemCategoryId || !EXCLUDED_CATEGORIES.includes(itemCategoryId)) {
+            itemIds.add(itemId);
+          }
+        });
+        console.log(`[AdvancedSearch] After excluding categories: ${itemIds.size} items`);
+      }
+    }
+    
+    // STEP 2: Filter by jobs (if selected) - intersect with category results
+    // Separate production and battle jobs
+    const productionJobIds = selectedJobs.filter(jobId => jobId >= 8 && jobId <= 18);
+    const battleJobIds = selectedJobs.filter(jobId => (jobId >= 1 && jobId <= 7) || (jobId >= 19 && jobId <= 42));
+    
+    let jobItemIds = new Set();
+    
+    // Filter by production jobs (using recipes and equipment)
+    if (productionJobIds.length > 0) {
+      // Use targeted query to load only recipes for selected jobs
+      const { recipes } = await loadRecipesByJobAndLevel(productionJobIds, 1, 100);
+      recipes.forEach(recipe => {
+        if (recipe.result) {
+          jobItemIds.add(recipe.result);
         }
-        const twItemsData = twItemsDataRef.current || {};
-        Object.keys(twItemsData).forEach(itemId => {
-          itemIds.add(parseInt(itemId, 10));
+      });
+      
+      // Also add production tools from equipment - use targeted query by jobs
+      const productionJobAbbrs = productionJobIds.map(jobId => getJobAbbreviation(jobId)).filter(abbr => abbr);
+      if (productionJobAbbrs.length > 0) {
+        const equipmentData = await loadEquipmentByJobs(productionJobAbbrs);
+        Object.keys(equipmentData).forEach(itemId => {
+          jobItemIds.add(parseInt(itemId, 10));
         });
       }
+    }
+
+    // Filter by battle jobs - use targeted query by jobs
+    if (battleJobIds.length > 0) {
+      const battleJobAbbrs = battleJobIds.map(jobId => getJobAbbreviation(jobId)).filter(abbr => abbr);
+      if (battleJobAbbrs.length > 0) {
+        const equipmentData = await loadEquipmentByJobs(battleJobAbbrs);
+        Object.keys(equipmentData).forEach(itemId => {
+          jobItemIds.add(parseInt(itemId, 10));
+        });
+        console.log(`[AdvancedSearch] Step 2 - Found ${jobItemIds.size} items for jobs: ${battleJobAbbrs.join(', ')}`);
+      }
+    }
+    
+    // Intersect category results with job results (if both are selected)
+    if (selectedCategories.length > 0 && selectedJobs.length > 0) {
+      // If both category and job filters are selected, take intersection
+      const intersection = new Set();
+      itemIds.forEach(itemId => {
+        if (jobItemIds.has(itemId)) {
+          intersection.add(itemId);
+        }
+      });
+      itemIds = intersection;
+      console.log(`[AdvancedSearch] After category + job intersection: ${itemIds.size} items`);
+    } else if (selectedJobs.length > 0 && selectedCategories.length === 0) {
+      // If only jobs selected (no categories), use job results
+      itemIds = jobItemIds;
+    }
+    // If only categories selected (no jobs), itemIds already set from category filter above
+    
+    // If jobs are selected and we have "主手" or "副手" category, filter by job compatibility
+    // This ensures that when user selects a job + "主手", they see all main hand weapons that job can use
+    if (selectedJobs.length > 0 && (hasMainWeaponCategory || hasOffhandWeaponCategory) && itemIds.size > 0) {
+      const itemIdsArray = Array.from(itemIds);
+      const equipmentData = await loadEquipmentByIds(itemIdsArray);
+      const selectedJobAbbrs = selectedJobs.map(jobId => getJobAbbreviation(jobId)).filter(abbr => abbr);
+      const jobCompatibleItems = new Set();
       
-      // Now load ui_categories for all items we have (use targeted query)
+      itemIds.forEach(itemId => {
+        const equipment = equipmentData[itemId];
+        if (equipment && equipment.jobs && Array.isArray(equipment.jobs)) {
+          // Check if any selected job can use this item
+          const canUse = selectedJobAbbrs.some(jobAbbr => equipment.jobs.includes(jobAbbr));
+          if (canUse) {
+            jobCompatibleItems.add(itemId);
+          }
+        } else {
+          // If no equipment data or no jobs field, include it (might be non-equipment item)
+          // But for weapons, we should have equipment data, so this is a safety net
+          jobCompatibleItems.add(itemId);
+        }
+      });
+      
+      console.log(`[AdvancedSearch] Job compatibility filter: ${jobCompatibleItems.size} items compatible with jobs ${selectedJobAbbrs.join(', ')}`);
+      itemIds = jobCompatibleItems;
+    }
+    
+    // Exclude items in excluded categories (if we haven't already done so)
+    if (selectedCategories.length === 0 && itemIds.size > 0) {
       const itemIdsArray = Array.from(itemIds);
       const uiCategoriesData = await loadUICategoriesByIds(itemIdsArray);
-      console.log(`[AdvancedSearch] Loaded ${Object.keys(uiCategoriesData).length} ui_categories for ${itemIdsArray.length} items`);
-      
-      // Filter items by category
-      if (categoryIdsToFilter.size > 0) {
-        const filteredItemIds = new Set();
-        let matchedCount = 0;
-        let excludedCount = 0;
-        itemIds.forEach(itemId => {
-          const itemCategoryId = uiCategoriesData[itemId];
-          // Exclude items in excluded categories
-          if (EXCLUDED_CATEGORIES.includes(itemCategoryId)) {
-            excludedCount++;
-            return;
-          }
-          if (itemCategoryId && categoryIdsToFilter.has(itemCategoryId)) {
-            filteredItemIds.add(itemId);
-            matchedCount++;
-          }
-        });
-        console.log(`[AdvancedSearch] Category filter result: ${matchedCount} matched, ${excludedCount} excluded, ${filteredItemIds.size} final items`);
-        itemIds = filteredItemIds;
-      } else {
-        // Even if no category filter is selected, exclude items in excluded categories
-        const filteredItemIds = new Set();
-        itemIds.forEach(itemId => {
-          const itemCategoryId = uiCategoriesData[itemId];
-          if (!EXCLUDED_CATEGORIES.includes(itemCategoryId)) {
-            filteredItemIds.add(itemId);
-          }
-        });
-        itemIds = filteredItemIds;
-      }
-    } else {
-      // Even if no category filter is selected, exclude items in excluded categories
-      // But only if we have items to check
-      if (itemIds.size > 0) {
-        const itemIdsArray = Array.from(itemIds);
-        const uiCategoriesData = await loadUICategoriesByIds(itemIdsArray);
-        const filteredItemIds = new Set();
-        itemIds.forEach(itemId => {
-          const itemCategoryId = uiCategoriesData[itemId];
-          if (!EXCLUDED_CATEGORIES.includes(itemCategoryId)) {
-            filteredItemIds.add(itemId);
-          }
-        });
-        itemIds = filteredItemIds;
-      }
+      const filteredItemIds = new Set();
+      itemIds.forEach(itemId => {
+        const itemCategoryId = uiCategoriesData[itemId];
+        // Include item if it doesn't have a category in EXCLUDED_CATEGORIES
+        // If itemCategoryId is undefined/null, include it (might be a valid item without category data)
+        if (!itemCategoryId || !EXCLUDED_CATEGORIES.includes(itemCategoryId)) {
+          filteredItemIds.add(itemId);
+        }
+      });
+      itemIds = filteredItemIds;
+      console.log(`[AdvancedSearch] After excluding categories (no category filter): ${itemIds.size} items`);
     }
 
     // Filter by equipment level range if specified (LevelEquip, not ilvl)
@@ -1610,37 +1820,35 @@ export default function AdvancedSearch({
         return similarity >= 0.6;
       };
       
-      // twItemsData is imported synchronously, so it should always be available
       // Filter items by name before checking tradeable status
-      // Load item names for the items we need to filter (targeted queries)
+      // Use batch query to load item names efficiently (targeted query)
       const itemIdsArray = Array.from(itemIds);
       const itemNamesMap = {};
       
-      // Load item names in batches (1000 at a time to avoid overwhelming Supabase)
-      const batchSize = 1000;
-      for (let i = 0; i < itemIdsArray.length; i += batchSize) {
-        const batch = itemIdsArray.slice(i, i + batchSize);
-        await Promise.all(batch.map(async (itemId) => {
-          // Check cache first
-          if (twItemsDataRef.current?.[itemId.toString()]) {
-            itemNamesMap[itemId] = twItemsDataRef.current[itemId.toString()].tw;
-            return;
+      // Check cache first and separate cached vs uncached items
+      const uncachedItemIds = [];
+      itemIdsArray.forEach(itemId => {
+        if (twItemsDataRef.current?.[itemId.toString()]) {
+          itemNamesMap[itemId] = twItemsDataRef.current[itemId.toString()].tw;
+        } else {
+          uncachedItemIds.push(itemId);
+        }
+      });
+      
+      // Load uncached item names in batch (much more efficient than individual queries)
+      if (uncachedItemIds.length > 0) {
+        const twItemsData = await getTwItemsByIds(uncachedItemIds);
+        
+        // Update cache and itemNamesMap
+        if (!twItemsDataRef.current) {
+          twItemsDataRef.current = {};
+        }
+        Object.entries(twItemsData).forEach(([itemId, data]) => {
+          if (data && data.tw) {
+            twItemsDataRef.current[itemId] = data;
+            itemNamesMap[parseInt(itemId, 10)] = data.tw;
           }
-          // Load individual item name
-          try {
-            const itemData = await getTwItemById(itemId);
-            if (itemData && itemData.tw) {
-              itemNamesMap[itemId] = itemData.tw;
-              // Cache it
-              if (!twItemsDataRef.current) {
-                twItemsDataRef.current = {};
-              }
-              twItemsDataRef.current[itemId.toString()] = { tw: itemData.tw };
-            }
-          } catch (error) {
-            console.error(`Failed to load item name for ${itemId}:`, error);
-          }
-        }));
+        });
       }
       
       itemIds.forEach(itemId => {
@@ -1669,6 +1877,7 @@ export default function AdvancedSearch({
       itemIds = filteredByName;
     }
 
+    // Check if any items match the filters (after job/category/level/name filtering)
     if (itemIds.size === 0) {
       addToast('未找到符合條件的物品', 'warning');
       return null;
@@ -1678,12 +1887,21 @@ export default function AdvancedSearch({
     // Use targeted query to check marketability for specific item IDs (optimized)
     const allItemIds = Array.from(itemIds);
     const marketableSet = await getMarketableItemsByIds(allItemIds);
-    setMarketableItems(marketableSet);
+    // Note: Don't call setMarketableItems here - it will be set in handleFilterSearch using the returned marketableSet
     let tradeableItemIds = allItemIds.filter(id => marketableSet.has(id));
     const untradeableItemIds = allItemIds.filter(id => !marketableSet.has(id));
 
+    // Verify that we have at least some items (tradeable or untradeable)
+    // Note: tradeableItemIds.length + untradeableItemIds.length should always equal allItemIds.length
+    // So if allItemIds.length > 0, at least one of them must be > 0
+    // This check is a safety net in case of unexpected data issues
     if (tradeableItemIds.length === 0 && untradeableItemIds.length === 0) {
-      addToast('未找到符合條件的物品', 'warning');
+      // This should never happen if allItemIds.length > 0, but handle it just in case
+      console.error('[AdvancedSearch] Unexpected: allItemIds.length > 0 but both tradeable and untradeable are empty', {
+        allItemIdsLength: allItemIds.length,
+        marketableSetSize: marketableSet.size
+      });
+      addToast('查詢市場資料時發生錯誤，請稍後再試', 'error');
       return null;
     }
 
@@ -1720,11 +1938,31 @@ export default function AdvancedSearch({
       return null; // Return null to indicate warning was set
     }
 
-    return { itemIds, tradeableItemIds, untradeableItemIds };
+    return { 
+      itemIds: Array.from(itemIds), 
+      tradeableItemIds, 
+      untradeableItemIds,
+      marketableSet 
+    };
   }, [selectedJobs, selectedCategories, selectedWorld, selectedServerOption, minLevel, maxLevel, itemNameFilter, filterFuzzySearch, addToast, loadRecipeDatabase, loadEquipmentByJobs, loadEquipmentByIds, loadUICategoriesByIds, loadIlvlsData, getJobAbbreviation]);
 
   // Handle filter search
   const handleFilterSearch = useCallback(async () => {
+    // If already searching, cancel the search
+    if (isFilterSearching) {
+      // Increment request ID to cancel ongoing search
+      filterSearchRequestIdRef.current++;
+      // Cancel any ongoing market data fetches
+      if (velocityFetchAbortControllerRef.current) {
+        velocityFetchAbortControllerRef.current.abort();
+        velocityFetchAbortControllerRef.current = null;
+      }
+      setIsFilterSearching(false);
+      setIsLoadingVelocities(false);
+      setVelocityFetchInProgress(false);
+      return;
+    }
+    
     // Clear warning first, even if button is disabled, so button can be enabled after timeout
     setTooManyItemsWarning(null);
     
@@ -1745,6 +1983,16 @@ export default function AdvancedSearch({
     velocityFetchInProgressRef.current = false;
     setVelocityFetchInProgress(false);
     setIsLoadingVelocities(false);
+    
+    // Scroll to results table when search starts
+    setTimeout(() => {
+      if (resultsTableRef.current) {
+        resultsTableRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        // Fallback: scroll to top if ref not available yet
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100);
 
     // Clear table immediately at the start of search
     setSearchResults([]);
@@ -1787,7 +2035,7 @@ export default function AdvancedSearch({
         return; // Error or warning already handled in performFilterSearchLogic
       }
 
-      const { tradeableItemIds, untradeableItemIds } = result;
+      const { tradeableItemIds, untradeableItemIds, marketableSet } = result;
       
       // Check if this request was superseded
       if (currentRequestId !== filterSearchRequestIdRef.current) {
@@ -1797,27 +2045,20 @@ export default function AdvancedSearch({
       
       setTooManyItemsWarning(null);
 
-      // CRITICAL: Get marketableItems from performFilterSearchLogic (it was set there)
-      // We need to ensure it's available for filtering in ItemTable
+      // CRITICAL: Use marketableSet from performFilterSearchLogic (already queried with targeted query)
       // performFilterSearchLogic already called setMarketableItems, but React state updates are async
-      // So we get it directly from getMarketableItems to ensure it's available immediately
-      const currentMarketableSet = await getMarketableItems();
-      
-      // Check again if this request was superseded
-      if (currentRequestId !== filterSearchRequestIdRef.current) {
-        setIsFilterSearching(false);
-        return;
-      }
-      
-      setMarketableItems(currentMarketableSet);
+      // So we use the returned marketableSet directly to avoid unnecessary full table query
+      setMarketableItems(marketableSet);
 
       // CRITICAL: Double-check that tradeableItemIds only contains tradeable items
       // This matches handleBatchSearch behavior - filter BEFORE setting searchResults
       // performFilterSearchLogic already filtered, but we ensure consistency here
-      const verifiedTradeableItemIds = tradeableItemIds.filter(id => currentMarketableSet.has(id));
+      const verifiedTradeableItemIds = tradeableItemIds.filter(id => marketableSet.has(id));
+      console.log(`[AdvancedSearch] handleFilterSearch: tradeableItemIds = ${tradeableItemIds.length}, verifiedTradeableItemIds = ${verifiedTradeableItemIds.length}, marketableSet.size = ${marketableSet.size}`);
 
       // Load ilvls data for sorting - use targeted query for these specific items
       const allItemIdsForSort = [...verifiedTradeableItemIds, ...untradeableItemIds];
+      console.log(`[AdvancedSearch] handleFilterSearch: Loading ilvls for ${allItemIdsForSort.length} items (${verifiedTradeableItemIds.length} tradeable + ${untradeableItemIds.length} untradeable)`);
       const ilvlsData = await loadIlvlsData(allItemIdsForSort);
       
       // Check again if this request was superseded
@@ -1826,27 +2067,22 @@ export default function AdvancedSearch({
         return;
       }
 
-      // Unified progressive loading function for both <500 and >500 items
-      // This function handles progressive item loading and market data fetching
-      const loadItemsProgressively = async (itemIds, isTradeable) => {
+      // Load all items at once (simple approach like main search)
+      // Let SearchResultsTable handle loading display
+      const loadAllItems = async (itemIds, isTradeable) => {
         // Check if this search request was superseded
         if (currentRequestId !== filterSearchRequestIdRef.current) {
-          return;
+          return [];
         }
         
-        // Use ilvlsData (already loaded above)
-        const ilvlsDataForSort = ilvlsData;
-        
-        // CRITICAL: For tradeable items, itemIds should already be filtered by performFilterSearchLogic
-        // But we double-check here to ensure consistency (matching handleBatchSearch behavior)
-        // For untradeable items, no filtering needed
+        // Filter and sort itemIds
         const filteredItemIds = isTradeable 
-          ? itemIds.filter(id => currentMarketableSet.has(id))
+          ? itemIds.filter(id => marketableSet.has(id))
           : itemIds;
         
         const sortedItemIds = [...filteredItemIds].sort((a, b) => {
-          const aIlvl = ilvlsDataForSort[a?.toString()] || null;
-          const bIlvl = ilvlsDataForSort[b?.toString()] || null;
+          const aIlvl = ilvlsData[a?.toString()] || null;
+          const bIlvl = ilvlsData[b?.toString()] || null;
           
           // Sort by ilvl descending (highest first)
           if (aIlvl !== null && bIlvl !== null) {
@@ -1858,54 +2094,25 @@ export default function AdvancedSearch({
           // If neither has ilvl, sort by ID descending
           return b - a;
         });
-
-        // Load first batch (20 items) immediately for fast display
-        const INITIAL_BATCH_SIZE = 20;
-        const initialBatch = sortedItemIds.slice(0, INITIAL_BATCH_SIZE);
         
-        // CRITICAL: Double-check that initialBatch only contains tradeable items
-        const verifiedInitialBatch = isTradeable 
-          ? initialBatch.filter(id => currentMarketableSet.has(id))
-          : initialBatch;
+        // Load all items at once
+        const itemPromises = sortedItemIds.map(id => getItemById(id));
+        const allItems = (await Promise.all(itemPromises)).filter(item => item !== null);
         
-        // Create items with names - load item names using targeted queries
-        const tempItems = await Promise.all(verifiedInitialBatch.map(async (id) => {
-          // Check cache first
-          let itemName = `物品 (ID: ${id})`;
-          if (twItemsDataRef.current?.[id.toString()]) {
-            itemName = twItemsDataRef.current[id.toString()].tw;
-          } else {
-            // Load item name using targeted query
-            try {
-              const itemData = await getTwItemById(id);
-              if (itemData && itemData.tw) {
-                itemName = itemData.tw;
-                // Cache it
-                if (!twItemsDataRef.current) {
-                  twItemsDataRef.current = {};
-                }
-                twItemsDataRef.current[id.toString()] = { tw: itemData.tw };
-              }
-            } catch (error) {
-              console.error(`Failed to load item name for ${id}:`, error);
-            }
-          }
-          return {
-            id: id,
-            name: itemName,
-            itemLevel: '',
-            shopPrice: '',
-            description: '',
-            inShop: false,
-            canBeHQ: true,
-            isTradable: true,
-          };
-        }));
+        // Check again if search was cancelled
+        if (currentRequestId !== filterSearchRequestIdRef.current) {
+          return [];
+        }
         
-        // Sort temp items by ilvl (descending, highest first)
-        const tempItemsSorted = tempItems.sort((a, b) => {
-          const aIlvl = ilvlsDataForSort[a.id?.toString()] || null;
-          const bIlvl = ilvlsDataForSort[b.id?.toString()] || null;
+        // Filter items using marketableSet
+        const filteredItems = isTradeable
+          ? allItems.filter(item => marketableSet.has(item.id))
+          : allItems;
+        
+        // Sort items by ilvl (descending, highest first)
+        const sortedItems = filteredItems.sort((a, b) => {
+          const aIlvl = ilvlsData[a.id?.toString()] || null;
+          const bIlvl = ilvlsData[b.id?.toString()] || null;
           
           if (aIlvl !== null && bIlvl !== null) {
             return bIlvl - aIlvl;
@@ -1914,544 +2121,93 @@ export default function AdvancedSearch({
           if (bIlvl !== null) return 1;
           return b.id - a.id;
         });
-
-        // Display initial batch immediately with temporary items
-        if (isTradeable) {
-          // CRITICAL: Clear old searchResults BEFORE setting new searchResults
-          // But keep untradeableResults if they exist (for the button)
-          setSearchResults([]);
-          // Don't clear untradeableResults here - they should be preserved if they exist
-          // setShowUntradeable(false); // Already set in handleFilterSearch
-          // Use flushSync to ensure state updates are applied synchronously before setting new results
-          flushSync(() => {
-            setSearchResults(tempItemsSorted);
-          });
-          
-                                  // Load full item details for initial batch asynchronously
-                                  (async () => {
-                                    const initialPromises = verifiedInitialBatch.map(id => getItemById(id));
-                                    const initialItems = (await Promise.all(initialPromises)).filter(item => item !== null);
-                                    
-                                    // Check if search was cancelled or superseded
-                                    if (currentRequestId !== filterSearchRequestIdRef.current) {
-                                      return;
-                                    }
-                                    
-                                    // CRITICAL: Filter items using currentMarketableSet to ensure only tradeable items
-                                    const filteredInitialItems = initialItems.filter(item => currentMarketableSet.has(item.id));
-                                    
-                                    // Sort initial items by ilvl (descending, highest first)
-                                    const initialItemsSorted = filteredInitialItems.sort((a, b) => {
-                                      const aIlvl = ilvlsDataForSort[a.id?.toString()] || null;
-                                      const bIlvl = ilvlsDataForSort[b.id?.toString()] || null;
-                                      
-                                      if (aIlvl !== null && bIlvl !== null) {
-                                        return bIlvl - aIlvl;
-                                      }
-                                      if (aIlvl !== null) return -1;
-                                      if (bIlvl !== null) return 1;
-                                      return b.id - a.id;
-                                    });
-                                    
-                                    // Check again before updating state
-                                    if (currentRequestId !== filterSearchRequestIdRef.current) {
-                                      return;
-                                    }
-                                    
-                                    // Load rarities for these items (for rarity filter)
-                                    const itemIdsForRarities = initialItemsSorted.map(item => item.id);
-                                    const raritiesForItems = await loadRaritiesData(itemIdsForRarities);
-                                    // Update rarities state
-                                    setRaritiesData(prev => ({ ...prev, ...raritiesForItems }));
-                                    
-                                    // Update with full item details
-                                    setSearchResults(initialItemsSorted);
-                                  })().catch(error => {
-                                    console.error('Error loading initial item details:', error);
-                                  });
-        } else {
-          // For untradeable items, load them even if there are tradeable items
-          // This allows users to view untradeable items via the button
-          setUntradeableResults(tempItemsSorted);
-          
-                                  // Load full details asynchronously
-                                  (async () => {
-                                    const initialPromises = initialBatch.map(id => getItemById(id));
-                                    const initialItems = (await Promise.all(initialPromises)).filter(item => item !== null);
-                                    
-                                    // Check if search was cancelled or superseded
-                                    if (currentRequestId !== filterSearchRequestIdRef.current) {
-                                      return;
-                                    }
-                                    
-                                    const initialItemsSorted = initialItems.sort((a, b) => {
-                                      const aIlvl = ilvlsDataForSort[a.id?.toString()] || null;
-                                      const bIlvl = ilvlsDataForSort[b.id?.toString()] || null;
-                                      
-                                      if (aIlvl !== null && bIlvl !== null) {
-                                        return bIlvl - aIlvl;
-                                      }
-                                      if (aIlvl !== null) return -1;
-                                      if (bIlvl !== null) return 1;
-                                      return b.id - a.id;
-                                    });
-                                    
-                                    // Check again before updating state
-                                    if (currentRequestId !== filterSearchRequestIdRef.current) {
-                                      return;
-                                    }
-                                    
-                                    // Always set untradeable results, even if tradeable items exist
-                                    setUntradeableResults(initialItemsSorted);
-                                  })().catch(error => {
-                                    console.error('Error loading untradeable item details:', error);
-                                  });
+        
+        // Load rarities for all items
+        const itemIdsForRarities = sortedItems.map(item => item.id);
+        const raritiesForItems = await loadRaritiesData(itemIdsForRarities);
+        
+        // Check again before updating state
+        if (currentRequestId !== filterSearchRequestIdRef.current) {
+          return [];
         }
-
-                                // Start loading market data immediately (non-blocking)
-                                if (selectedWorld && selectedServerOption && sortedItemIds.length > 0 && isTradeable) {
-                                  // Check if this search request was superseded
-                                  if (currentRequestId !== filterSearchRequestIdRef.current) {
-                                    return;
-                                  }
-                                  
-                                  // Cancel any previous fetch
-                                  if (velocityFetchAbortControllerRef.current) {
-                                    velocityFetchAbortControllerRef.current.abort();
-                                  }
-
-                                  const marketDataRequestId = ++velocityFetchRequestIdRef.current;
-                                  velocityFetchAbortControllerRef.current = new AbortController();
-                                  const abortSignal = velocityFetchAbortControllerRef.current.signal;
-                                  velocityFetchInProgressRef.current = true;
-                                  setVelocityFetchInProgress(true);
-                                  setIsLoadingVelocities(true);
-
-          // Start market data fetch in background (non-blocking)
-          (async () => {
-            const isDCQuery = selectedServerOption === selectedWorld.section;
-            const queryTarget = isDCQuery ? selectedWorld.section : selectedServerOption;
-            
-            // Helper function to get value from market data
-            const getValue = (nqData, hqData, field) => {
-              const nqWorld = nqData?.world?.[field];
-              const hqWorld = hqData?.world?.[field];
-              const nqDc = nqData?.dc?.[field];
-              const hqDc = hqData?.dc?.[field];
-              const nqValue = isDCQuery ? (nqDc !== undefined ? nqDc : nqWorld) : (nqWorld !== undefined ? nqWorld : undefined);
-              const hqValue = isDCQuery ? (hqDc !== undefined ? hqDc : hqWorld) : (hqWorld !== undefined ? hqWorld : undefined);
-              if (field === 'quantity') {
-                if (nqValue !== undefined || hqValue !== undefined) {
-                  return (nqValue || 0) + (hqValue || 0);
-                }
-              } else {
-                if (nqValue !== undefined && hqValue !== undefined) {
-                  return Math.min(nqValue, hqValue);
-                } else if (hqValue !== undefined) {
-                  return hqValue;
-                } else if (nqValue !== undefined) {
-                  return nqValue;
-                }
-              }
-              return null;
-            };
-
-            // Process a single batch of market data
-            const processMarketBatch = async (batchNumber, startIndex) => {
-              // Check if request was cancelled or superseded
-              if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || currentRequestId !== filterSearchRequestIdRef.current) {
-                return;
-              }
-              
-              // Determine batch size: first batch = 20, second batch = 50, rest = 100
-              let batchSize;
-              if (batchNumber === 0) {
-                batchSize = 20;
-              } else if (batchNumber === 1) {
-                batchSize = 50;
-              } else {
-                batchSize = 100;
-              }
-              
-              const batch = sortedItemIds.slice(startIndex, startIndex + batchSize);
-              if (batch.length === 0) {
-                return;
-              }
-              
-              const itemIdsString = batch.join(',');
-              
-              try {
-                const response = await fetch(`https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`, {
-                  signal: abortSignal
-                });
-                
-                if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || currentRequestId !== filterSearchRequestIdRef.current) {
-                  return;
-                }
-                
-                const data = await response.json();
-                
-                if (data && data.results) {
-                  const batchVelocities = {};
-                  const batchAveragePrices = {};
-                  const batchMinListings = {};
-                  const batchRecentPurchases = {};
-                  const batchTradability = {};
-                  
-                  data.results.forEach(item => {
-                    const itemId = item.itemId;
-                    
-                    const velocity = getValue(item.nq?.dailySaleVelocity, item.hq?.dailySaleVelocity, 'quantity');
-                    let averagePrice = null;
-                    if (!isDCQuery) {
-                      const nqWorld = item.nq?.averageSalePrice?.world?.price;
-                      const hqWorld = item.hq?.averageSalePrice?.world?.price;
-                      const nqDc = item.nq?.averageSalePrice?.dc?.price;
-                      const hqDc = item.hq?.averageSalePrice?.dc?.price;
-                      const nqValue = nqWorld !== undefined ? nqWorld : nqDc;
-                      const hqValue = hqWorld !== undefined ? hqWorld : hqDc;
-                      if (nqValue !== undefined && hqValue !== undefined) {
-                        averagePrice = Math.min(nqValue, hqValue);
-                      } else if (hqValue !== undefined) {
-                        averagePrice = hqValue;
-                      } else if (nqValue !== undefined) {
-                        averagePrice = nqValue;
-                      }
-                    } else {
-                      averagePrice = getValue(item.nq?.averageSalePrice, item.hq?.averageSalePrice, 'price');
-                    }
-                    
-                    const minListingPrice = getValue(item.nq?.minListing, item.hq?.minListing, 'price');
-                    const recentPurchasePrice = getValue(item.nq?.recentPurchase, item.hq?.recentPurchase, 'price');
-                    
-                    let minListing = null;
-                    if (minListingPrice !== null && minListingPrice !== undefined) {
-                      if (!isDCQuery) {
-                        const nqWorldPrice = item.nq?.minListing?.world?.price;
-                        const hqWorldPrice = item.hq?.minListing?.world?.price;
-                        let selectedData = null;
-                        if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
-                          selectedData = hqWorldPrice <= nqWorldPrice ? item.hq?.minListing?.world : item.nq?.minListing?.world;
-                        } else if (hqWorldPrice !== undefined) {
-                          selectedData = item.hq?.minListing?.world;
-                        } else if (nqWorldPrice !== undefined) {
-                          selectedData = item.nq?.minListing?.world;
-                        }
-                        if (selectedData !== null) {
-                          const region = selectedData?.region;
-                          minListing = { price: minListingPrice };
-                          if (region !== undefined) {
-                            minListing.region = region;
-                          }
-                        }
-                      } else {
-                        minListing = minListingPrice;
-                      }
-                    }
-                    
-                    let recentPurchase = null;
-                    if (recentPurchasePrice !== null && recentPurchasePrice !== undefined) {
-                      if (!isDCQuery) {
-                        const nqWorldPrice = item.nq?.recentPurchase?.world?.price;
-                        const hqWorldPrice = item.hq?.recentPurchase?.world?.price;
-                        let selectedData = null;
-                        if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
-                          selectedData = hqWorldPrice <= nqWorldPrice ? item.hq?.recentPurchase?.world : item.nq?.recentPurchase?.world;
-                        } else if (hqWorldPrice !== undefined) {
-                          selectedData = item.hq?.recentPurchase?.world;
-                        } else if (nqWorldPrice !== undefined) {
-                          selectedData = item.nq?.recentPurchase?.world;
-                        }
-                        const region = selectedData?.region;
-                        recentPurchase = { price: recentPurchasePrice };
-                        if (region !== undefined) {
-                          recentPurchase.region = region;
-                        }
-                      } else {
-                        recentPurchase = recentPurchasePrice;
-                      }
-                    }
-                    
-                    if (velocity !== null && velocity !== undefined) {
-                      batchVelocities[itemId] = velocity;
-                    }
-                    if (averagePrice !== null && averagePrice !== undefined) {
-                      batchAveragePrices[itemId] = Math.round(averagePrice);
-                    }
-                    if (minListing !== null && minListing !== undefined) {
-                      batchMinListings[itemId] = minListing;
-                    }
-                    if (recentPurchase !== null && recentPurchase !== undefined) {
-                      batchRecentPurchases[itemId] = recentPurchase;
-                    }
-                    batchTradability[itemId] = true;
-                  });
-                  
-                  batch.forEach(itemId => {
-                    if (!batchTradability.hasOwnProperty(itemId)) {
-                      batchTradability[itemId] = false;
-                    }
-                  });
-                  
-                  // Update state progressively after each batch
-                  if (!abortSignal.aborted && marketDataRequestId === velocityFetchRequestIdRef.current && currentRequestId === filterSearchRequestIdRef.current) {
-                    flushSync(() => {
-                      setItemVelocities(prev => ({ ...prev, ...batchVelocities }));
-                      setItemAveragePrices(prev => ({ ...prev, ...batchAveragePrices }));
-                      setItemMinListings(prev => ({ ...prev, ...batchMinListings }));
-                      setItemRecentPurchases(prev => ({ ...prev, ...batchRecentPurchases }));
-                      setItemTradability(prev => ({ ...prev, ...batchTradability }));
-                    });
-                    
-                    // Set loading to false after first batch completes
-                    if (batchNumber === 0) {
-                      setIsLoadingVelocities(false);
-                    }
-                  }
-                }
-              } catch (error) {
-                if (error.name === 'AbortError' || abortSignal.aborted) {
-                  return;
-                }
-                console.error('Error fetching market data:', error);
-                // Mark batch items as non-tradable on error
-                const batchTradability = {};
-                batch.forEach(itemId => {
-                  batchTradability[itemId] = false;
-                });
-                if (!abortSignal.aborted && marketDataRequestId === velocityFetchRequestIdRef.current && currentRequestId === filterSearchRequestIdRef.current) {
-                  flushSync(() => {
-                    setItemTradability(prev => ({ ...prev, ...batchTradability }));
-                  });
-                }
-              }
-            };
-
-            // Process batches recursively with non-blocking delays
-            const processBatchesRecursively = async (batchNumber, startIndex) => {
-              if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || currentRequestId !== filterSearchRequestIdRef.current) {
-                return;
-              }
-              
-              if (startIndex >= sortedItemIds.length) {
-                // Mark fetch as complete
-                if (marketDataRequestId === velocityFetchRequestIdRef.current && currentRequestId === filterSearchRequestIdRef.current && !abortSignal.aborted) {
-                  setIsLoadingVelocities(false);
-                  velocityFetchInProgressRef.current = false;
-                  setVelocityFetchInProgress(false);
-                }
-                return;
-              }
-              
-              // Process this batch
-              await processMarketBatch(batchNumber, startIndex);
-              
-              // Check if we should continue
-              if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || currentRequestId !== filterSearchRequestIdRef.current) {
-                return;
-              }
-              
-              // Determine batch size for next batch
-              let batchSize;
-              if (batchNumber === 0) {
-                batchSize = 20;
-              } else if (batchNumber === 1) {
-                batchSize = 50;
-              } else {
-                batchSize = 100;
-              }
-              
-              const nextIndex = startIndex + batchSize;
-              
-              // Schedule next batch in next event loop tick to break React batching
-              if (nextIndex < sortedItemIds.length) {
-                await new Promise(resolve => {
-                  setTimeout(() => {
-                    processBatchesRecursively(batchNumber + 1, nextIndex).then(resolve);
-                  }, batchNumber === 0 ? 0 : 100); // No delay for first batch, 100ms for others
-                });
-              } else {
-                // Mark fetch as complete
-                if (marketDataRequestId === velocityFetchRequestIdRef.current && currentRequestId === filterSearchRequestIdRef.current && !abortSignal.aborted) {
-                  setIsLoadingVelocities(false);
-                  velocityFetchInProgressRef.current = false;
-                  setVelocityFetchInProgress(false);
-                }
-              }
-            };
-            
-            // Start processing batches
-            try {
-              await processBatchesRecursively(0, 0);
-            } catch (error) {
-              if (error.name !== 'AbortError') {
-                console.error('Error in market data fetch:', error);
-              }
-            }
-          })().catch(error => {
-            if (error.name !== 'AbortError') {
-              console.error('Error in market data fetch:', error);
-            }
+        
+        // Update rarities state
+        setRaritiesData(prev => ({ ...prev, ...raritiesForItems }));
+        
+        // Mark untradeable items as non-tradable
+        if (!isTradeable) {
+          const untradeableTradability = {};
+          sortedItems.forEach(item => {
+            untradeableTradability[item.id] = false;
           });
+          setItemTradability(prev => ({ ...prev, ...untradeableTradability }));
         }
-
-                                // Load remaining items in batches (non-blocking progressive loading)
-                                const REMAINING_BATCH_SIZE = 50;
-                                
-                                // Process remaining batches progressively (non-blocking)
-                                const processRemainingBatches = async (batchIndex) => {
-                                  // Check if search was cancelled or superseded
-                                  if (currentRequestId !== filterSearchRequestIdRef.current) {
-                                    return;
-                                  }
-                                  
-                                  const startIndex = INITIAL_BATCH_SIZE + (batchIndex * REMAINING_BATCH_SIZE);
-                                  
-                                  if (startIndex >= sortedItemIds.length) {
-                                    return; // All batches processed
-                                  }
-                                  
-                                  const batch = sortedItemIds.slice(startIndex, startIndex + REMAINING_BATCH_SIZE);
-                                  if (batch.length === 0) {
-                                    return;
-                                  }
-                                  
-                                  // Load batch items
-                                  const batchPromises = batch.map(id => getItemById(id));
-                                  const batchItems = (await Promise.all(batchPromises)).filter(item => item !== null);
-                                  
-                                  // Check again if search was cancelled
-                                  if (currentRequestId !== filterSearchRequestIdRef.current) {
-                                    return;
-                                  }
-                                  
-                                  // CRITICAL: Filter items using currentMarketableSet to ensure only tradeable items
-                                  const filteredBatchItems = isTradeable 
-                                    ? batchItems.filter(item => currentMarketableSet.has(item.id))
-                                    : batchItems;
-                                  
-                                  // Sort batch items
-                                  const batchItemsSorted = filteredBatchItems.sort((a, b) => {
-                                    const aIlvl = ilvlsData[a.id?.toString()] || null;
-                                    const bIlvl = ilvlsData[b.id?.toString()] || null;
-                                    
-                                    if (aIlvl !== null && bIlvl !== null) {
-                                      return bIlvl - aIlvl;
-                                    }
-                                    if (aIlvl !== null) return -1;
-                                    if (bIlvl !== null) return 1;
-                                    return b.id - a.id;
-                                  });
-
-                                  // Check again before updating state
-                                  if (currentRequestId !== filterSearchRequestIdRef.current) {
-                                    return;
-                                  }
-
-                                  // Load rarities for this batch
-                                  const batchItemIds = batchItemsSorted.map(item => item.id);
-                                  loadRaritiesData(batchItemIds).then(raritiesForBatch => {
-                                    setRaritiesData(prev => ({ ...prev, ...raritiesForBatch }));
-                                  }).catch(error => {
-                                    console.error('Error loading rarities for batch:', error);
-                                  });
-                                  
-                                  // Update results with new batch
-                                  if (isTradeable) {
-                                    setSearchResults(prev => {
-                                      const combined = [...prev, ...batchItemsSorted];
-                                      // Re-sort combined results
-                                      return combined.sort((a, b) => {
-                                        const aIlvl = ilvlsData[a.id?.toString()] || null;
-                                        const bIlvl = ilvlsData[b.id?.toString()] || null;
-                                        
-                                        if (aIlvl !== null && bIlvl !== null) {
-                                          return bIlvl - aIlvl;
-                                        }
-                                        if (aIlvl !== null) return -1;
-                                        if (bIlvl !== null) return 1;
-                                        return b.id - a.id;
-                                      });
-                                    });
-                                  } else {
-                                    // Load untradeable items even if there are tradeable items
-                                    // This allows users to view untradeable items via the button
-                                    setUntradeableResults(prev => {
-                                      const combined = [...prev, ...batchItemsSorted];
-                                      // Re-sort combined results
-                                      return combined.sort((a, b) => {
-                                        const aIlvl = ilvlsData[a.id?.toString()] || null;
-                                        const bIlvl = ilvlsData[b.id?.toString()] || null;
-                                        
-                                        if (aIlvl !== null && bIlvl !== null) {
-                                          return bIlvl - aIlvl;
-                                        }
-                                        if (aIlvl !== null) return -1;
-                                        if (bIlvl !== null) return 1;
-                                        return b.id - a.id;
-                                      });
-                                    });
-                                  }
-                                  
-                                  // Schedule next batch in next event loop tick (non-blocking)
-                                  await new Promise(resolve => {
-                                    setTimeout(() => {
-                                      processRemainingBatches(batchIndex + 1).then(resolve);
-                                    }, 50); // Small delay to allow browser to paint
-                                  });
-                                };
-                                
-                                // Start processing remaining batches (non-blocking)
-                                if (sortedItemIds.length > INITIAL_BATCH_SIZE) {
-                                  processRemainingBatches(0).catch(error => {
-                                    console.error('Error loading remaining batches:', error);
-                                  });
-                                }
+        
+        return sortedItems;
       };
 
-      // Start loading tradeable items progressively
-      // Market data will start loading as soon as first batch is displayed (inside loadItemsProgressively)
-      // Don't await - let it run in background so temp items display immediately
-      // CRITICAL: Use verifiedTradeableItemIds (already filtered) instead of tradeableItemIds
+      // Load all items at once (simple approach like main search)
+      // Let SearchResultsTable handle loading display
+      let tradeableItems = [];
+      let untradeableItems = [];
+      
       if (verifiedTradeableItemIds.length > 0) {
-        // Keep track of untradeable items even when we have tradeable items
-        // This allows users to view untradeable items via the button
-        setShowUntradeable(false); // Show tradeable by default
+        // Load tradeable items
+        tradeableItems = await loadAllItems(verifiedTradeableItemIds, true);
         
-        // Start loading tradeable items in background (non-blocking) so temp items display immediately
-        // CRITICAL: Use verifiedTradeableItemIds instead of tradeableItemIds
-        loadItemsProgressively(verifiedTradeableItemIds, true).catch(error => {
-          console.error('Error loading tradeable items progressively:', error);
-        });
+        // Check if this request was superseded
+        if (currentRequestId !== filterSearchRequestIdRef.current) {
+          setIsFilterSearching(false);
+          return;
+        }
         
-        // Also load untradeable items in background if they exist
+        // Also load untradeable items if they exist
         if (untradeableItemIds.length > 0) {
-          loadItemsProgressively(untradeableItemIds, false).catch(error => {
-            console.error('Error loading untradeable items:', error);
-          });
+          untradeableItems = await loadAllItems(untradeableItemIds, false);
+          
+          // Check again if this request was superseded
+          if (currentRequestId !== filterSearchRequestIdRef.current) {
+            setIsFilterSearching(false);
+            return;
+          }
         }
       } else if (untradeableItemIds.length > 0) {
         // Only show untradeable items if there are NO tradeable items
-        loadItemsProgressively(untradeableItemIds, false).catch(error => {
-          console.error('Error loading untradeable items:', error);
-        });
+        untradeableItems = await loadAllItems(untradeableItemIds, false);
+        
+        // Check if this request was superseded
+        if (currentRequestId !== filterSearchRequestIdRef.current) {
+          setIsFilterSearching(false);
+          return;
+        }
       }
 
-      // Check if this request was superseded before showing toast
+      // Check if this request was superseded before updating state
       if (currentRequestId !== filterSearchRequestIdRef.current) {
         setIsFilterSearching(false);
         return;
       }
 
+      // Update state with all items at once (like main search)
+      flushSync(() => {
+        setShowUntradeable(false); // Always show tradeable by default
+        setSearchResults(tradeableItems);
+        setUntradeableResults(untradeableItems);
+        setCurrentPage(1); // Reset to first page
+        setIsFilterSearching(false); // Search complete - set INSIDE flushSync to ensure atomic update
+      });
+
       // Show toast with results count
-      // CRITICAL: Use verifiedTradeableItemIds instead of tradeableItemIds to match the fix above
-      if (verifiedTradeableItemIds.length > 0 || untradeableItemIds.length > 0) {
-        addToast(`找到 ${verifiedTradeableItemIds.length} 個可交易物品${untradeableItemIds.length > 0 ? `、${untradeableItemIds.length} 個不可交易物品` : ''}`, 'success');
+      if (tradeableItems.length > 0 || untradeableItems.length > 0) {
+        addToast(`找到 ${tradeableItems.length} 個可交易物品${untradeableItems.length > 0 ? `、${untradeableItems.length} 個不可交易物品` : ''}`, 'success');
       }
 
-      // Market data fetching is already started inside loadItemsProgressively when first batch is displayed
-      // No need to fetch again here - it's already running in the background
-      setIsFilterSearching(false);
+      // Start market data fetching in background (non-blocking)
+      // This is handled by SearchResultsTable component, but we can trigger it here if needed
+      if (selectedWorld && selectedServerOption && tradeableItems.length > 0) {
+        // Market data will be fetched by SearchResultsTable when it detects items
+        // No need to manually trigger here
+      }
     } catch (error) {
       // Check if this request was superseded
       if (currentRequestId !== filterSearchRequestIdRef.current) {
@@ -2463,6 +2219,458 @@ export default function AdvancedSearch({
       setIsFilterSearching(false);
     }
   }, [selectedJobs, selectedCategories, selectedWorld, selectedServerOption, addToast, isFilterSearching, isSearching, itemNameFilter, minLevel, maxLevel, filterFuzzySearch, isSearchButtonDisabled]);
+
+  // Fetch velocity, average price, and tradability data for search results (like main search page)
+  // This loads prices for ALL items when searchResults or selectedServerOption changes
+  useEffect(() => {
+    // Get displayed results first to check if we'll need to fetch
+    const displayedResults = showUntradeable ? untradeableResults : searchResults;
+    const willNeedFetch = displayedResults && displayedResults.length > 0 && selectedServerOption && selectedWorld;
+    
+    // Cancel any in-progress fetch
+    if (velocityFetchAbortControllerRef.current) {
+      velocityFetchAbortControllerRef.current.abort();
+      velocityFetchInProgressRef.current = false;
+      setVelocityFetchInProgress(false);
+    }
+    
+    // Reset state if no search results or no server selected
+    if (!displayedResults || displayedResults.length === 0 || !selectedServerOption || !selectedWorld) {
+      setItemVelocities({});
+      setItemAveragePrices({});
+      setItemMinListings({});
+      setItemRecentPurchases({});
+      setItemTradability({});
+      setIsLoadingVelocities(false);
+      setVelocityLoadingProgress({ loaded: 0, total: 0 });
+      velocityFetchInProgressRef.current = false;
+      setVelocityFetchInProgress(false);
+      lastFetchedItemIdsRef.current = '';
+      return;
+    }
+
+    // Get all item IDs from displayed results and sort by ilvl before API query
+    (async () => {
+      const allItemIds = displayedResults.map(item => item.id);
+      
+      // Check marketability ONLY for displayed items (efficient - uses WHERE IN)
+      const marketableSet = await getMarketableItemsByIds(allItemIds);
+      
+      // Filter to only marketable items before batch processing
+      // This ensures batch processing only handles tradeable items
+      const marketableItemIds = allItemIds.filter(id => marketableSet.has(id));
+      
+      // Load ilvls data ONLY for marketable items (efficient - uses WHERE IN)
+      const ilvlsData = await loadIlvlsData(marketableItemIds);
+      
+      // Sort item IDs by ilvl (descending, highest first), then by ID if no ilvl
+      const sortedItemIds = marketableItemIds.sort((a, b) => {
+        const aIlvl = ilvlsData[a?.toString()] || null;
+        const bIlvl = ilvlsData[b?.toString()] || null;
+        
+        // If both have ilvl, sort by ilvl descending (highest first)
+        if (aIlvl !== null && bIlvl !== null) {
+          return bIlvl - aIlvl;
+        }
+        // If only one has ilvl, prioritize it
+        if (aIlvl !== null) return -1;
+        if (bIlvl !== null) return 1;
+        // If neither has ilvl, sort by ID descending
+        return b - a;
+      });
+
+      if (sortedItemIds.length === 0) {
+        setItemVelocities({});
+        setItemAveragePrices({});
+        setItemMinListings({});
+        setItemRecentPurchases({});
+        setItemTradability({});
+        setIsLoadingVelocities(false);
+        setVelocityLoadingProgress({ loaded: 0, total: 0 });
+        velocityFetchInProgressRef.current = false;
+        setVelocityFetchInProgress(false);
+        lastFetchedItemIdsRef.current = '';
+        return;
+      }
+
+      // Create a stable key from item IDs and server option to detect if items or server changed
+      const itemIdsKey = [...sortedItemIds].sort((a, b) => a - b).join(',');
+      const serverKey = `${selectedServerOption}`;
+      const cacheKey = `${itemIdsKey}|${serverKey}`;
+      
+      // Clear state if server changed (to avoid showing stale DC prices when switching to server)
+      if (lastFetchedItemIdsRef.current && lastFetchedItemIdsRef.current !== cacheKey) {
+        const lastServerKey = lastFetchedItemIdsRef.current.split('|')[1];
+        if (lastServerKey !== serverKey) {
+          setItemVelocities({});
+          setItemAveragePrices({});
+          setItemMinListings({});
+          setItemRecentPurchases({});
+          setItemTradability({});
+        }
+      }
+      
+      // Skip if already fetching or if items and server haven't changed
+      if (velocityFetchInProgressRef.current || lastFetchedItemIdsRef.current === cacheKey) {
+        return;
+      }
+
+      // Set fetch in progress flag FIRST to prevent early returns
+      velocityFetchInProgressRef.current = true;
+      setVelocityFetchInProgress(true);
+
+      // Create new abort controller and request ID
+      const currentRequestId = ++velocityFetchRequestIdRef.current;
+      velocityFetchAbortControllerRef.current = new AbortController();
+      const abortSignal = velocityFetchAbortControllerRef.current.signal;
+
+      const fetchData = async () => {
+        setIsLoadingVelocities(true);
+        // Initialize loading progress: total = all items to load
+        setVelocityLoadingProgress({ loaded: 0, total: sortedItemIds.length });
+        try {
+          // Determine if we're querying DC or world
+          const isDCQuery = selectedServerOption === selectedWorld.section;
+          // When world is selected, use world ID; when DC is selected, use DC name
+          const queryTarget = isDCQuery 
+            ? selectedWorld.section  // DC name
+            : selectedServerOption;   // World ID (number)
+          
+          // Progressive batch sizes: 20, then 50, then 100 per batch
+          // Process each batch in a separate async function to break React's batching
+          const processBatch = async (batchNumber, startIndex) => {
+            // Check if request was cancelled or superseded
+            if (abortSignal.aborted || currentRequestId !== velocityFetchRequestIdRef.current) {
+              return;
+            }
+            
+            // Determine batch size: first batch = 20, second batch = 50, rest = 100
+            let batchSize;
+            if (batchNumber === 0) {
+              batchSize = 20; // First batch: 20 items for fast initial display
+            } else if (batchNumber === 1) {
+              batchSize = 50; // Second batch: 50 items
+            } else {
+              batchSize = 100; // Remaining batches: 100 items each
+            }
+            
+            const batch = sortedItemIds.slice(startIndex, startIndex + batchSize);
+            if (batch.length === 0) {
+              return;
+            }
+            
+            // Update loading progress: mark this batch as requested (before sending request)
+            if (!abortSignal.aborted && currentRequestId === velocityFetchRequestIdRef.current) {
+              setVelocityLoadingProgress(prev => ({
+                loaded: Math.min(prev.loaded + batch.length, prev.total),
+                total: prev.total
+              }));
+            }
+            
+            const itemIdsString = batch.join(',');
+            
+            try {
+              const response = await fetch(`https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`, {
+                signal: abortSignal
+              });
+              
+              // Check again after fetch
+              if (abortSignal.aborted || currentRequestId !== velocityFetchRequestIdRef.current) {
+                return;
+              }
+              
+              const data = await response.json();
+              
+              // Process batch results (same logic as App.jsx)
+              const batchVelocities = {};
+              const batchAveragePrices = {};
+              const batchMinListings = {};
+              const batchRecentPurchases = {};
+              const batchTradability = {};
+              
+              if (data && data.results) {
+                data.results.forEach(item => {
+                  const itemId = item.itemId;
+                  
+                  // Helper function to get value - when querying a specific server (!isDCQuery), only use world data, don't fallback to DC
+                  const getValue = (nqData, hqData, field) => {
+                    const nqWorld = nqData?.world?.[field];
+                    const hqWorld = hqData?.world?.[field];
+                    const nqDc = nqData?.dc?.[field];
+                    const hqDc = hqData?.dc?.[field];
+
+                    // When querying a specific server (!isDCQuery), only use world data, don't fallback to DC
+                    // When querying DC (isDCQuery), use DC data
+                    const nqValue = isDCQuery 
+                      ? (nqDc !== undefined ? nqDc : nqWorld)
+                      : (nqWorld !== undefined ? nqWorld : undefined);
+                    const hqValue = isDCQuery
+                      ? (hqDc !== undefined ? hqDc : hqWorld)
+                      : (hqWorld !== undefined ? hqWorld : undefined);
+
+                    if (field === 'quantity') {
+                      if (nqValue !== undefined || hqValue !== undefined) {
+                        return (nqValue || 0) + (hqValue || 0);
+                      }
+                    } else {
+                      if (nqValue !== undefined && hqValue !== undefined) {
+                        return Math.min(nqValue, hqValue);
+                      } else if (hqValue !== undefined) {
+                        return hqValue;
+                      } else if (nqValue !== undefined) {
+                        return nqValue;
+                      }
+                    }
+                    return null;
+                  };
+                  
+                  const velocity = getValue(
+                    item.nq?.dailySaleVelocity,
+                    item.hq?.dailySaleVelocity,
+                    'quantity'
+                  );
+
+                  // For average price, always fallback to DC data if world data doesn't exist (even when server is selected)
+                  let averagePrice = null;
+                  if (!isDCQuery) {
+                    // When server is selected, try world first, then fallback to DC
+                    const nqWorld = item.nq?.averageSalePrice?.world?.price;
+                    const hqWorld = item.hq?.averageSalePrice?.world?.price;
+                    const nqDc = item.nq?.averageSalePrice?.dc?.price;
+                    const hqDc = item.hq?.averageSalePrice?.dc?.price;
+                    
+                    const nqValue = nqWorld !== undefined ? nqWorld : nqDc;
+                    const hqValue = hqWorld !== undefined ? hqWorld : hqDc;
+                    
+                    if (nqValue !== undefined && hqValue !== undefined) {
+                      averagePrice = Math.min(nqValue, hqValue);
+                    } else if (hqValue !== undefined) {
+                      averagePrice = hqValue;
+                    } else if (nqValue !== undefined) {
+                      averagePrice = nqValue;
+                    }
+                  } else {
+                    // When DC is selected, use DC data
+                    averagePrice = getValue(
+                      item.nq?.averageSalePrice,
+                      item.hq?.averageSalePrice,
+                      'price'
+                    );
+                  }
+
+                  const minListingPrice = getValue(
+                    item.nq?.minListing,
+                    item.hq?.minListing,
+                    'price'
+                  );
+
+                  const recentPurchasePrice = getValue(
+                    item.nq?.recentPurchase,
+                    item.hq?.recentPurchase,
+                    'price'
+                  );
+
+                  // Extract region field when querying a specific world (not DC)
+                  let minListing = null;
+                  if (minListingPrice !== null && minListingPrice !== undefined) {
+                    if (!isDCQuery) {
+                      // When world is selected, only use world data, don't fallback to DC
+                      const nqWorldPrice = item.nq?.minListing?.world?.price;
+                      const hqWorldPrice = item.hq?.minListing?.world?.price;
+                      
+                      // Determine which one (NQ or HQ) has the better price, then get its region
+                      let selectedData = null;
+                      if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
+                        selectedData = hqWorldPrice <= nqWorldPrice 
+                          ? item.hq?.minListing?.world
+                          : item.nq?.minListing?.world;
+                      } else if (hqWorldPrice !== undefined) {
+                        selectedData = item.hq?.minListing?.world;
+                      } else if (nqWorldPrice !== undefined) {
+                        selectedData = item.nq?.minListing?.world;
+                      }
+                      
+                      // Only store minListing if world data actually exists
+                      if (selectedData !== null) {
+                        // Extract region if available
+                        const region = selectedData?.region;
+                        minListing = { price: minListingPrice };
+                        if (region !== undefined) {
+                          minListing.region = region;
+                        }
+                      }
+                    } else {
+                      // When DC is selected, just store the price
+                      minListing = minListingPrice;
+                    }
+                  }
+
+                  let recentPurchase = null;
+                  if (recentPurchasePrice !== null && recentPurchasePrice !== undefined) {
+                    if (!isDCQuery) {
+                      // When world is selected, only use world data, don't fallback to DC
+                      const nqWorldPrice = item.nq?.recentPurchase?.world?.price;
+                      const hqWorldPrice = item.hq?.recentPurchase?.world?.price;
+                      
+                      // Determine which one (NQ or HQ) has the better price, then get its region
+                      let selectedData = null;
+                      if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
+                        selectedData = hqWorldPrice <= nqWorldPrice 
+                          ? item.hq?.recentPurchase?.world
+                          : item.nq?.recentPurchase?.world;
+                      } else if (hqWorldPrice !== undefined) {
+                        selectedData = item.hq?.recentPurchase?.world;
+                      } else if (nqWorldPrice !== undefined) {
+                        selectedData = item.nq?.recentPurchase?.world;
+                      }
+                      
+                      // Only store recentPurchase if world data actually exists
+                      if (selectedData !== null) {
+                        // Extract region if available
+                        const region = selectedData?.region;
+                        recentPurchase = { price: recentPurchasePrice };
+                        if (region !== undefined) {
+                          recentPurchase.region = region;
+                        }
+                      }
+                    } else {
+                      // When DC is selected, just store the price
+                      recentPurchase = recentPurchasePrice;
+                    }
+                  }
+                  
+                  if (velocity !== null && velocity !== undefined) {
+                    batchVelocities[itemId] = velocity;
+                  }
+                  if (averagePrice !== null && averagePrice !== undefined) {
+                    batchAveragePrices[itemId] = Math.round(averagePrice);
+                  }
+                  if (minListing !== null && minListing !== undefined) {
+                    batchMinListings[itemId] = minListing;
+                  }
+                  if (recentPurchase !== null && recentPurchase !== undefined) {
+                    batchRecentPurchases[itemId] = recentPurchase;
+                  }
+                  batchTradability[itemId] = true;
+                });
+              }
+              
+              // Items not in results are non-tradable
+              batch.forEach(itemId => {
+                if (!batchTradability.hasOwnProperty(itemId)) {
+                  batchTradability[itemId] = false;
+                }
+              });
+              
+              // Update state immediately after each batch (progressive rendering)
+              // Use flushSync to force immediate synchronous rendering, breaking React's batching
+              if (!abortSignal.aborted && currentRequestId === velocityFetchRequestIdRef.current) {
+                flushSync(() => {
+                  // Merge new batch data with existing state
+                  setItemVelocities(prev => ({ ...prev, ...batchVelocities }));
+                  setItemAveragePrices(prev => ({ ...prev, ...batchAveragePrices }));
+                  setItemMinListings(prev => ({ ...prev, ...batchMinListings }));
+                  setItemRecentPurchases(prev => ({ ...prev, ...batchRecentPurchases }));
+                  setItemTradability(prev => ({ ...prev, ...batchTradability }));
+                });
+                
+                // Set loading to false after first batch completes to show immediate feedback
+                // Subsequent batches will continue loading in background
+                if (batchNumber === 0) {
+                  setIsLoadingVelocities(false);
+                }
+              }
+            } catch (error) {
+              // Ignore abort errors
+              if (error.name === 'AbortError' || abortSignal.aborted) {
+                return;
+              }
+              console.error('Error fetching market data:', error);
+              // Mark batch items as non-tradable on error
+              const batchTradability = {};
+              batch.forEach(itemId => {
+                batchTradability[itemId] = false;
+              });
+              // Update state even on error to mark items as non-tradable
+              if (!abortSignal.aborted && currentRequestId === velocityFetchRequestIdRef.current) {
+                flushSync(() => {
+                  setItemTradability(prev => ({ ...prev, ...batchTradability }));
+                });
+              }
+            }
+          };
+          
+          // Process batches recursively, scheduling each in separate event loop tick
+          const processBatchesRecursively = async (batchNumber, startIndex) => {
+            // Check if request was cancelled or superseded
+            if (abortSignal.aborted || currentRequestId !== velocityFetchRequestIdRef.current) {
+              return;
+            }
+            
+            if (startIndex >= sortedItemIds.length) {
+              // All batches processed
+              velocityFetchInProgressRef.current = false;
+              setVelocityFetchInProgress(false);
+              lastFetchedItemIdsRef.current = cacheKey;
+              return;
+            }
+            
+            // Determine batch size
+            let batchSize;
+            if (batchNumber === 0) {
+              batchSize = 20;
+            } else if (batchNumber === 1) {
+              batchSize = 50;
+            } else {
+              batchSize = 100;
+            }
+            
+            // Process this batch
+            await processBatch(batchNumber, startIndex);
+            
+            // Check if we should continue
+            if (abortSignal.aborted || currentRequestId !== velocityFetchRequestIdRef.current) {
+              return;
+            }
+            
+            const nextIndex = startIndex + batchSize;
+            
+            // Schedule next batch in next event loop tick to break React batching
+            if (nextIndex < sortedItemIds.length) {
+              // Use setTimeout to ensure next batch runs in separate event loop tick
+              // No delay for first batch (render immediately), small delay for others to allow browser to paint
+              await new Promise(resolve => {
+                setTimeout(() => {
+                  processBatchesRecursively(batchNumber + 1, nextIndex).then(resolve);
+                }, batchNumber === 0 ? 0 : 100); // No delay for first batch, 100ms for others
+              });
+            } else {
+              // All batches processed
+              velocityFetchInProgressRef.current = false;
+              setVelocityFetchInProgress(false);
+              lastFetchedItemIdsRef.current = cacheKey;
+            }
+          };
+          
+          // Start processing batches
+          await processBatchesRecursively(0, 0);
+        } catch (error) {
+          // Ignore abort errors
+          if (error.name === 'AbortError' || abortSignal.aborted) {
+            return;
+          }
+          console.error('Error in fetchData:', error);
+          velocityFetchInProgressRef.current = false;
+          setVelocityFetchInProgress(false);
+          setIsLoadingVelocities(false);
+          setVelocityLoadingProgress({ loaded: 0, total: 0 });
+        }
+      };
+      
+      // Start fetching data
+      fetchData();
+    })();
+  }, [searchResults, untradeableResults, showUntradeable, selectedServerOption, selectedWorld, loadIlvlsData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
@@ -2485,9 +2693,9 @@ export default function AdvancedSearch({
           setSearchText('');
           navigate('/msq-price-checker');
         }}
-        onUltimatePriceKingClick={() => {
+        onCraftingInspirationClick={() => {
           setSearchText('');
-          navigate('/ultimate-price-king');
+          navigate('/crafting-inspiration');
         }}
       />
 
@@ -2700,24 +2908,14 @@ export default function AdvancedSearch({
                   這個頁面測試量過於龐大，作者個人時間有限。各位使用大大有發現bug歡迎參考主頁上的巴哈或dc方式回報，感激感激
                 </p>
               </div>
-              
+
               {/* Job Icons and Categories Selection - Side by Side, Height Determined by Crafting Jobs */}
               <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                 {/* Job Icons Selection - Left Side */}
-                <div className="relative">
+                <div>
                   <label className="block text-sm font-semibold text-ffxiv-gold mb-4">
                     選擇職業
                   </label>
-                  
-                  {/* Loading Indicator Overlay */}
-                  {jobIconsLoading && (
-                    <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm rounded-lg border border-purple-500/30 flex items-center justify-center z-10">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-700 border-t-ffxiv-gold"></div>
-                        <p className="text-sm text-gray-300">載入職業圖示中...</p>
-                      </div>
-                    </div>
-                  )}
                   
                   {/* 戰鬥職業 - 4 rows, all left-aligned */}
                   <div className="space-y-[0.86821875rem]">
@@ -2730,18 +2928,16 @@ export default function AdvancedSearch({
                             key={job.id}
                             onClick={() => handleJobToggle(job.id)}
                             title={job.name}
-                            className={`p-2 rounded-lg border transition-all ${
+                            className={`p-2 rounded-lg border transition-all relative ${
                               isSelected
                                 ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                : 'bg-slate-900/50 border-purple-500/30 hover:border-purple-500/50'
+                                : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
                             }`}
                           >
                             <img 
                               src={job.iconUrl} 
                               alt={job.name}
-                              className="w-8 h-8 object-contain"
-                              onLoad={() => handleJobIconLoad(job.id)}
-                              onError={() => handleJobIconError(job.id)}
+                              className="w-8 h-8 object-contain relative z-10"
                             />
                           </button>
                         );
@@ -2756,18 +2952,16 @@ export default function AdvancedSearch({
                             key={job.id}
                             onClick={() => handleJobToggle(job.id)}
                             title={job.name}
-                            className={`p-2 rounded-lg border transition-all ${
+                            className={`p-2 rounded-lg border transition-all relative ${
                               isSelected
                                 ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                : 'bg-slate-900/50 border-purple-500/30 hover:border-purple-500/50'
+                                : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
                             }`}
                           >
                             <img 
                               src={job.iconUrl} 
                               alt={job.name}
-                              className="w-8 h-8 object-contain"
-                              onLoad={() => handleJobIconLoad(job.id)}
-                              onError={() => handleJobIconError(job.id)}
+                              className="w-8 h-8 object-contain relative z-10"
                             />
                           </button>
                         );
@@ -2783,18 +2977,16 @@ export default function AdvancedSearch({
                             key={job.id}
                             onClick={() => handleJobToggle(job.id)}
                             title={job.name}
-                            className={`p-2 rounded-lg border transition-all ${
+                            className={`p-2 rounded-lg border transition-all relative ${
                               isSelected
                                 ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                : 'bg-slate-900/50 border-purple-500/30 hover:border-purple-500/50'
+                                : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
                             }`}
                           >
                             <img 
                               src={job.iconUrl} 
                               alt={job.name}
-                              className="w-8 h-8 object-contain"
-                              onLoad={() => handleJobIconLoad(job.id)}
-                              onError={() => handleJobIconError(job.id)}
+                              className="w-8 h-8 object-contain relative z-10"
                             />
                           </button>
                         );
@@ -2809,18 +3001,16 @@ export default function AdvancedSearch({
                             key={job.id}
                             onClick={() => handleJobToggle(job.id)}
                             title={job.name}
-                            className={`p-2 rounded-lg border transition-all ${
+                            className={`p-2 rounded-lg border transition-all relative ${
                               isSelected
                                 ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                : 'bg-slate-900/50 border-purple-500/30 hover:border-purple-500/50'
+                                : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
                             }`}
                           >
                             <img 
                               src={job.iconUrl} 
                               alt={job.name}
-                              className="w-8 h-8 object-contain"
-                              onLoad={() => handleJobIconLoad(job.id)}
-                              onError={() => handleJobIconError(job.id)}
+                              className="w-8 h-8 object-contain relative z-10"
                             />
                           </button>
                         );
@@ -2839,16 +3029,16 @@ export default function AdvancedSearch({
                                 key={job.id}
                                 onClick={() => handleJobToggle(job.id)}
                                 title={job.name}
-                                className={`p-2 rounded-lg border transition-all ${
+                                className={`p-2 rounded-lg border transition-all relative ${
                                   isSelected
                                     ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                    : 'bg-slate-900/50 border-purple-500/30 hover:border-purple-500/50'
+                                    : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
                                 }`}
                               >
                                 <img 
                                   src={job.iconUrl} 
                                   alt={job.name}
-                                  className="w-8 h-8 object-contain"
+                                  className="w-8 h-8 object-contain relative z-10"
                                 />
                               </button>
                             );
@@ -2865,18 +3055,16 @@ export default function AdvancedSearch({
                               key={job.id}
                               onClick={() => handleJobToggle(job.id)}
                               title={job.name}
-                              className={`p-2 rounded-lg border transition-all ${
+                              className={`p-2 rounded-lg border transition-all relative ${
                                 isSelected
                                   ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                  : 'bg-slate-900/50 border-purple-500/30 hover:border-purple-500/50'
+                                  : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
                               }`}
                             >
                               <img
                                 src={job.iconUrl} 
                                 alt={job.name}
-                                className="w-8 h-8 object-contain"
-                                onLoad={() => handleJobIconLoad(job.id)}
-                                onError={() => handleJobIconError(job.id)}
+                                className="w-8 h-8 object-contain relative z-10"
                               />
                             </button>
                           );
@@ -2893,18 +3081,16 @@ export default function AdvancedSearch({
                             key={job.id}
                             onClick={() => handleJobToggle(job.id)}
                             title={job.name}
-                            className={`p-2 rounded-lg border transition-all ${
+                            className={`p-2 rounded-lg border transition-all relative ${
                               isSelected
                                 ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                : 'bg-slate-900/50 border-purple-500/30 hover:border-purple-500/50'
+                                : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
                             }`}
                           >
                             <img 
                               src={job.iconUrl} 
                               alt={job.name}
-                              className="w-8 h-8 object-contain"
-                              onLoad={() => handleJobIconLoad(job.id)}
-                              onError={() => handleJobIconError(job.id)}
+                              className="w-8 h-8 object-contain relative z-10"
                             />
                           </button>
                         );
@@ -2954,7 +3140,10 @@ export default function AdvancedSearch({
                         )}
                       </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto">
+                    <div 
+                      ref={categoryScrollContainerRef}
+                      className={`flex-1 ${shouldDisableCategoryScrollState ? 'overflow-hidden' : 'overflow-y-auto'}`}
+                    >
                       <div className="space-y-3">
                       {/* Equipment Categories Section */}
                       {([...filteredItemCategories.weapons, ...filteredItemCategories.armor, ...filteredItemCategories.otherEquipment, ...filteredItemCategories.accessories].length > 0) && (
@@ -2970,12 +3159,16 @@ export default function AdvancedSearch({
                               const selectedIdStr = typeof selectedId === 'string' ? selectedId : selectedId.toString();
                               return selectedIdStr === categoryId;
                             });
+                            const isDisabled = isCategoryDisabled(category.id);
                             return (
                               <button
                                 key={category.id}
-                                onClick={() => handleCategoryToggle(category.id)}
+                                onClick={() => !isDisabled && handleCategoryToggle(category.id)}
+                                disabled={isDisabled}
                                 className={`px-2 py-1.5 rounded text-xs transition-all text-center ${
-                                  isSelected
+                                  isDisabled
+                                    ? 'bg-slate-900/30 border border-slate-700/30 text-gray-600 cursor-not-allowed opacity-40'
+                                    : isSelected
                                     ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border border-ffxiv-gold text-ffxiv-gold'
                                     : 'bg-slate-800/50 border border-purple-500/20 text-gray-300 hover:border-purple-500/40'
                                 }`}
@@ -2996,12 +3189,16 @@ export default function AdvancedSearch({
                               const selectedIdStr = typeof selectedId === 'string' ? selectedId : selectedId.toString();
                               return selectedIdStr === categoryId;
                             });
+                            const isDisabled = isCategoryDisabled(category.id);
                             return (
                               <button
                                 key={category.id}
-                                onClick={() => handleCategoryToggle(category.id)}
+                                onClick={() => !isDisabled && handleCategoryToggle(category.id)}
+                                disabled={isDisabled}
                                 className={`px-2 py-1.5 rounded text-xs transition-all text-center ${
-                                  isSelected
+                                  isDisabled
+                                    ? 'bg-slate-900/30 border border-slate-700/30 text-gray-600 cursor-not-allowed opacity-40'
+                                    : isSelected
                                     ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border border-ffxiv-gold text-ffxiv-gold'
                                     : 'bg-slate-800/50 border border-purple-500/20 text-gray-300 hover:border-purple-500/40'
                                 }`}
@@ -3033,12 +3230,16 @@ export default function AdvancedSearch({
                               const selectedIdStr = typeof selectedId === 'string' ? selectedId : selectedId.toString();
                               return selectedIdStr === categoryId;
                             });
+                            const isDisabled = isCategoryDisabled(category.id);
                             return (
                               <button
                                 key={category.id}
-                                onClick={() => handleCategoryToggle(category.id)}
+                                onClick={() => !isDisabled && handleCategoryToggle(category.id)}
+                                disabled={isDisabled}
                                 className={`px-2 py-1.5 rounded text-xs transition-all text-center ${
-                                  isSelected
+                                  isDisabled
+                                    ? 'bg-slate-900/30 border border-slate-700/30 text-gray-600 cursor-not-allowed opacity-40'
+                                    : isSelected
                                     ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border border-ffxiv-gold text-ffxiv-gold'
                                     : 'bg-slate-800/50 border border-purple-500/20 text-gray-300 hover:border-purple-500/40'
                                 }`}
@@ -3076,104 +3277,6 @@ export default function AdvancedSearch({
                   </div>
                 </div>
               </div>
-
-              {/* Level Range and Server Selector */}
-              {selectedWorld && (
-                <div className="mb-6 flex flex-col lg:flex-row lg:justify-between gap-8 lg:gap-10">
-                  {/* Level Range Input */}
-                  <div className="flex-shrink-0">
-                    <label className="block text-sm font-semibold text-ffxiv-gold mb-2">
-                      裝備等級範圍
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        min="1"
-                        max="999"
-                        value={minLevelFocused ? (minLevel === 1 ? '' : minLevel) : minLevel}
-                        onChange={(e) => {
-                          const inputValue = e.target.value;
-                          if (inputValue === '') {
-                            setMinLevel(1);
-                            return;
-                          }
-                          const value = parseInt(inputValue);
-                          if (!isNaN(value)) {
-                            const clampedValue = Math.max(1, Math.min(999, value));
-                            setMinLevel(clampedValue);
-                            if (clampedValue > maxLevel) {
-                              setMaxLevel(clampedValue);
-                            }
-                          }
-                        }}
-                        onFocus={() => {
-                          setMinLevelFocused(true);
-                        }}
-                        onBlur={(e) => {
-                          setMinLevelFocused(false);
-                          if (e.target.value === '' || e.target.value === '1') {
-                            setMinLevel(1);
-                          }
-                        }}
-                        disabled={isLoadingVelocities || isFilterSearching}
-                        placeholder="1"
-                        className="w-40 px-3 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
-                      />
-                      <div className="text-gray-400">~</div>
-                      <input
-                        type="number"
-                        min="1"
-                        max="999"
-                        value={maxLevelFocused ? (maxLevel === 999 ? '' : maxLevel) : maxLevel}
-                        onChange={(e) => {
-                          const inputValue = e.target.value;
-                          if (inputValue === '') {
-                            setMaxLevel(999);
-                            return;
-                          }
-                          const value = parseInt(inputValue);
-                          if (!isNaN(value)) {
-                            const clampedValue = Math.max(1, Math.min(999, value));
-                            setMaxLevel(clampedValue);
-                            if (clampedValue < minLevel) {
-                              setMinLevel(clampedValue);
-                            }
-                          }
-                        }}
-                        onFocus={() => {
-                          setMaxLevelFocused(true);
-                        }}
-                        onBlur={(e) => {
-                          setMaxLevelFocused(false);
-                          if (e.target.value === '' || e.target.value === '999') {
-                            setMaxLevel(999);
-                          }
-                        }}
-                        disabled={isLoadingVelocities || isFilterSearching}
-                        placeholder="999"
-                        className="w-40 px-3 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Server Selector */}
-                  <div className="w-full lg:w-auto lg:ml-auto">
-                    <label className="block text-sm font-semibold text-ffxiv-gold mb-2">
-                      伺服器選擇
-                    </label>
-                    <ServerSelector
-                      datacenters={datacenters}
-                      worlds={worlds}
-                      selectedWorld={selectedWorld}
-                      onWorldChange={onWorldChange}
-                      selectedServerOption={selectedServerOption}
-                      onServerOptionChange={onServerOptionChange}
-                      serverOptions={serverOptions}
-                      disabled={isLoadingVelocities || isFilterSearching}
-                    />
-                  </div>
-                </div>
-              )}
 
               {/* Too Many Items Warning */}
               {tooManyItemsWarning && (
@@ -3242,7 +3345,7 @@ export default function AdvancedSearch({
                                 return; // Error already handled in performFilterSearchLogic
                               }
 
-                              let { tradeableItemIds, untradeableItemIds } = result;
+                              let { tradeableItemIds, untradeableItemIds, marketableSet } = result;
                               
                               // Check if this request was superseded
                               if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
@@ -3250,21 +3353,13 @@ export default function AdvancedSearch({
                                 return;
                               }
 
-                              // CRITICAL: Get marketableItems to verify tradeableItemIds
-                              // This matches handleFilterSearch behavior - verify BEFORE loading items
-                              const currentMarketableSet = await getMarketableItems();
-                              
-                              // Check again if this request was superseded
-                              if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                setIsFilterSearching(false);
-                                return;
-                              }
-                              
-                              setMarketableItems(currentMarketableSet);
+                              // CRITICAL: Use marketableSet from performFilterSearchLogic (already queried with targeted query)
+                              // This avoids unnecessary full table query
+                              setMarketableItems(marketableSet);
                               
                               // CRITICAL: Double-check that tradeableItemIds only contains tradeable items
                               // This matches handleBatchSearch behavior - filter BEFORE setting searchResults
-                              const verifiedTradeableItemIds = tradeableItemIds.filter(id => currentMarketableSet.has(id));
+                              const verifiedTradeableItemIds = tradeableItemIds.filter(id => marketableSet.has(id));
 
                               // Limit to MAX_ITEMS_LIMIT (this is the "continue search" path)
                               // Use verifiedTradeableItemIds instead of tradeableItemIds
@@ -3295,7 +3390,7 @@ export default function AdvancedSearch({
                                 
                                 // CRITICAL: For tradeable items, itemIds should already be filtered
                                 const filteredItemIds = isTradeable 
-                                  ? itemIds.filter(id => currentMarketableSet.has(id))
+                                  ? itemIds.filter(id => marketableSet.has(id))
                                   : itemIds;
                                 
                                 const sortedItemIds = [...filteredItemIds].sort((a, b) => {
@@ -3310,49 +3405,30 @@ export default function AdvancedSearch({
                                   return b - a;
                                 });
 
-                                // Load first batch (20 items) immediately for fast display
+                                // Load first batch (20 items) - load full data BEFORE displaying to prevent jumping
                                 const INITIAL_BATCH_SIZE = 20;
                                 const initialBatch = sortedItemIds.slice(0, INITIAL_BATCH_SIZE);
                                 
                                 const verifiedInitialBatch = isTradeable 
-                                  ? initialBatch.filter(id => currentMarketableSet.has(id))
+                                  ? initialBatch.filter(id => marketableSet.has(id))
                                   : initialBatch;
                                 
-                                // Create items with names - load item names using targeted queries
-                                const tempItems = await Promise.all(verifiedInitialBatch.map(async (id) => {
-                                  // Check cache first
-                                  let itemName = `物品 (ID: ${id})`;
-                                  if (twItemsDataRef.current?.[id.toString()]) {
-                                    itemName = twItemsDataRef.current[id.toString()].tw;
-                                  } else {
-                                    // Load item name using targeted query
-                                    try {
-                                      const itemData = await getTwItemById(id);
-                                      if (itemData && itemData.tw) {
-                                        itemName = itemData.tw;
-                                        // Cache it
-                                        if (!twItemsDataRef.current) {
-                                          twItemsDataRef.current = {};
-                                        }
-                                        twItemsDataRef.current[id.toString()] = { tw: itemData.tw };
-                                      }
-                                    } catch (error) {
-                                      console.error(`Failed to load item name for ${id}:`, error);
-                                    }
-                                  }
-                                  return {
-                                    id: id,
-                                    name: itemName,
-                                    itemLevel: '',
-                                    shopPrice: '',
-                                    description: '',
-                                    inShop: false,
-                                    canBeHQ: true,
-                                    isTradable: true,
-                                  };
-                                }));
+                                // Load full item details synchronously for initial batch BEFORE displaying
+                                // This prevents multiple re-renders and data jumping
+                                const initialPromises = verifiedInitialBatch.map(id => getItemById(id));
+                                const initialItems = (await Promise.all(initialPromises)).filter(item => item !== null);
                                 
-                                const tempItemsSorted = tempItems.sort((a, b) => {
+                                // Check if search was cancelled or superseded
+                                if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+                                  return;
+                                }
+                                
+                                // CRITICAL: Filter items using marketableSet to ensure only tradeable items
+                                const filteredInitialItems = isTradeable
+                                  ? initialItems.filter(item => marketableSet.has(item.id))
+                                  : initialItems;
+                                
+                                const initialItemsSorted = filteredInitialItems.sort((a, b) => {
                                   const aIlvl = ilvlsDataForSort[a.id?.toString()] || null;
                                   const bIlvl = ilvlsDataForSort[b.id?.toString()] || null;
                                   
@@ -3363,91 +3439,66 @@ export default function AdvancedSearch({
                                   if (bIlvl !== null) return 1;
                                   return b.id - a.id;
                                 });
-
-                                // Display initial batch immediately with temporary items
+                                
+                                // Load rarities for these items (for rarity filter)
+                                const itemIdsForRaritiesContinue = initialItemsSorted.map(item => item.id);
+                                const raritiesForItemsContinue = await loadRaritiesData(itemIdsForRaritiesContinue);
+                                
+                                // Check again before updating state
+                                if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+                                  return;
+                                }
+                                
+                                // Update rarities state
+                                setRaritiesData(prev => ({ ...prev, ...raritiesForItemsContinue }));
+                                
+                                // Display initial batch with full item details (only once, no jumping)
                                 if (isTradeable) {
                                   setSearchResults([]);
-                                  // Don't clear untradeableResults here - they should be preserved if they exist
                                   setShowUntradeable(false);
                                   flushSync(() => {
-                                    setSearchResults(tempItemsSorted);
-                                  });
-                                  
-                                  // Load full item details for initial batch asynchronously
-                                  (async () => {
-                                    const initialPromises = verifiedInitialBatch.map(id => getItemById(id));
-                                    const initialItems = (await Promise.all(initialPromises)).filter(item => item !== null);
-                                    
-                                    // Check if search was cancelled or superseded
-                                    if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                      return;
-                                    }
-                                    
-                                    const filteredInitialItems = initialItems.filter(item => currentMarketableSet.has(item.id));
-                                    
-                                    const initialItemsSorted = filteredInitialItems.sort((a, b) => {
-                                      const aIlvl = ilvlsDataForSort[a.id?.toString()] || null;
-                                      const bIlvl = ilvlsDataForSort[b.id?.toString()] || null;
-                                      
-                                      if (aIlvl !== null && bIlvl !== null) {
-                                        return bIlvl - aIlvl;
-                                      }
-                                      if (aIlvl !== null) return -1;
-                                      if (bIlvl !== null) return 1;
-                                      return b.id - a.id;
-                                    });
-                                    
-                                    // Load rarities for these items (for rarity filter)
-                                    const itemIdsForRaritiesContinue = initialItemsSorted.map(item => item.id);
-                                    const raritiesForItemsContinue = await loadRaritiesData(itemIdsForRaritiesContinue);
-                                    // Update rarities state
-                                    setRaritiesData(prev => ({ ...prev, ...raritiesForItemsContinue }));
-                                    
-                                    // Check again before updating state
-                                    if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                      return;
-                                    }
-                                    
                                     setSearchResults(initialItemsSorted);
-                                  })().catch(error => {
-                                    console.error('Error loading initial item details:', error);
                                   });
                                 } else {
-                                  // Load untradeable items even if there are tradeable items
-                                  // This allows users to view untradeable items via the button
-                                  setUntradeableResults(tempItemsSorted);
+                                  // For untradeable items, use the same initialBatch
+                                  const untradeableInitialPromises = initialBatch.map(id => getItemById(id));
+                                  const untradeableInitialItems = (await Promise.all(untradeableInitialPromises)).filter(item => item !== null);
                                   
-                                  (async () => {
-                                    const initialPromises = initialBatch.map(id => getItemById(id));
-                                    const initialItems = (await Promise.all(initialPromises)).filter(item => item !== null);
+                                  // Check if search was cancelled or superseded
+                                  if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+                                    return;
+                                  }
+                                  
+                                  const untradeableInitialItemsSorted = untradeableInitialItems.sort((a, b) => {
+                                    const aIlvl = ilvlsDataForSort[a.id?.toString()] || null;
+                                    const bIlvl = ilvlsDataForSort[b.id?.toString()] || null;
                                     
-                                    // Check if search was cancelled or superseded
-                                    if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                      return;
+                                    if (aIlvl !== null && bIlvl !== null) {
+                                      return bIlvl - aIlvl;
                                     }
-                                    
-                                    const initialItemsSorted = initialItems.sort((a, b) => {
-                                      const aIlvl = ilvlsDataForSort[a.id?.toString()] || null;
-                                      const bIlvl = ilvlsDataForSort[b.id?.toString()] || null;
-                                      
-                                      if (aIlvl !== null && bIlvl !== null) {
-                                        return bIlvl - aIlvl;
-                                      }
-                                      if (aIlvl !== null) return -1;
-                                      if (bIlvl !== null) return 1;
-                                      return b.id - a.id;
-                                    });
-                                    
-                                    // Check again before updating state
-                                    if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                      return;
-                                    }
-                                    
-                                    // Always set untradeable results, even if tradeable items exist
-                                    setUntradeableResults(initialItemsSorted);
-                                  })().catch(error => {
-                                    console.error('Error loading untradeable item details:', error);
+                                    if (aIlvl !== null) return -1;
+                                    if (bIlvl !== null) return 1;
+                                    return b.id - a.id;
                                   });
+                                  
+                                  // Check again before updating state
+                                  if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+                                    return;
+                                  }
+                                  
+                                  // Display untradeable results with full details (only once, no jumping)
+                                  setUntradeableResults([]);
+                                  flushSync(() => {
+                                    setUntradeableResults(untradeableInitialItemsSorted);
+                                  });
+                                  
+                                  // Mark all untradeable items as non-tradable in itemTradability
+                                  // This ensures ItemTable can properly display ilvl, version, and tradability columns
+                                  const untradeableTradabilityContinue = {};
+                                  untradeableInitialItemsSorted.forEach(item => {
+                                    untradeableTradabilityContinue[item.id] = false;
+                                  });
+                                  setItemTradability(prev => ({ ...prev, ...untradeableTradabilityContinue }));
                                 }
 
                                 // Start loading market data immediately (non-blocking)
@@ -3635,6 +3686,8 @@ export default function AdvancedSearch({
                                               setItemMinListings(prev => ({ ...prev, ...batchMinListings }));
                                               setItemRecentPurchases(prev => ({ ...prev, ...batchRecentPurchases }));
                                               setItemTradability(prev => ({ ...prev, ...batchTradability }));
+                                              // Update loading progress
+                                              setVelocityLoadingProgress(prev => ({ ...prev, loaded: prev.loaded + batch.length }));
                                             });
                                             
                                             if (batchNumber === 0) {
@@ -3670,6 +3723,7 @@ export default function AdvancedSearch({
                                           setIsLoadingVelocities(false);
                                           velocityFetchInProgressRef.current = false;
                                           setVelocityFetchInProgress(false);
+                                          setVelocityLoadingProgress({ loaded: 0, total: 0 });
                                         }
                                         return;
                                       }
@@ -3702,6 +3756,7 @@ export default function AdvancedSearch({
                                           setIsLoadingVelocities(false);
                                           velocityFetchInProgressRef.current = false;
                                           setVelocityFetchInProgress(false);
+                                          setVelocityLoadingProgress({ loaded: 0, total: 0 });
                                         }
                                       }
                                     };
@@ -3749,7 +3804,7 @@ export default function AdvancedSearch({
                                   }
                                   
                                   const filteredBatchItems = isTradeable 
-                                    ? batchItems.filter(item => currentMarketableSet.has(item.id))
+                                    ? batchItems.filter(item => marketableSet.has(item.id))
                                     : batchItems;
                                   
                                   const batchItemsSorted = filteredBatchItems.sort((a, b) => {
@@ -3777,36 +3832,23 @@ export default function AdvancedSearch({
                                     console.error('Error loading rarities for batch:', error);
                                   });
 
+                                  // Use flushSync to ensure atomic updates and prevent table jumping
                                   if (isTradeable) {
-                                    setSearchResults(prev => {
-                                      const combined = [...prev, ...batchItemsSorted];
-                                      return combined.sort((a, b) => {
-                                        const aIlvl = ilvlsData[a.id?.toString()] || null;
-                                        const bIlvl = ilvlsData[b.id?.toString()] || null;
-                                        
-                                        if (aIlvl !== null && bIlvl !== null) {
-                                          return bIlvl - aIlvl;
-                                        }
-                                        if (aIlvl !== null) return -1;
-                                        if (bIlvl !== null) return 1;
-                                        return b.id - a.id;
+                                    flushSync(() => {
+                                      setSearchResults(prev => {
+                                        // Since batchItemsSorted is already sorted and prev is already sorted,
+                                        // we can simply append without re-sorting to avoid layout shifts
+                                        return [...prev, ...batchItemsSorted];
                                       });
                                     });
                                   } else {
                                     // Load untradeable items even if there are tradeable items
                                     // This allows users to view untradeable items via the button
-                                    setUntradeableResults(prev => {
-                                      const combined = [...prev, ...batchItemsSorted];
-                                      return combined.sort((a, b) => {
-                                        const aIlvl = ilvlsData[a.id?.toString()] || null;
-                                        const bIlvl = ilvlsData[b.id?.toString()] || null;
-                                        
-                                        if (aIlvl !== null && bIlvl !== null) {
-                                          return bIlvl - aIlvl;
-                                        }
-                                        if (aIlvl !== null) return -1;
-                                        if (bIlvl !== null) return 1;
-                                        return b.id - a.id;
+                                    flushSync(() => {
+                                      setUntradeableResults(prev => {
+                                        // Since batchItemsSorted is already sorted and prev is already sorted,
+                                        // we can simply append without re-sorting to avoid layout shifts
+                                        return [...prev, ...batchItemsSorted];
                                       });
                                     });
                                   }
@@ -3867,6 +3909,7 @@ export default function AdvancedSearch({
                               addToast('搜索失敗，請稍後再試', 'error');
                               setIsLoadingVelocities(false);
                               setIsFilterSearching(false);
+                              setVelocityLoadingProgress({ loaded: 0, total: 0 });
                             }
                           }}
                           className="confirm-button-attention py-3"
@@ -3889,7 +3932,7 @@ export default function AdvancedSearch({
               )}
 
               {/* Item Name Filter, Search Button and Clear Filters Button */}
-              <div className="flex gap-3">
+              <div className="mb-6 flex gap-3">
                 {/* Item Name Filter Input */}
                 <div className="w-[40%] relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10">
@@ -3952,16 +3995,46 @@ export default function AdvancedSearch({
                   <button
                     onClick={handleFilterSearch}
                     disabled={isFilterSearching || isSearching || isSearchButtonDisabled || (selectedJobs.length === 0 && selectedCategories.length === 0) || tooManyItemsWarning !== null}
-                    className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
-                      isFilterSearching || isSearching || isSearchButtonDisabled || (selectedJobs.length === 0 && selectedCategories.length === 0) || tooManyItemsWarning !== null
+                    className={`flex-1 py-3 rounded-lg font-semibold transition-all relative overflow-hidden ${
+                      isFilterSearching || isSearching
+                        ? 'bg-gradient-to-r from-ffxiv-gold to-yellow-500 text-slate-900 hover:shadow-[0_0_20px_rgba(212,175,55,0.5)]'
+                        : isSearchButtonDisabled || (selectedJobs.length === 0 && selectedCategories.length === 0) || tooManyItemsWarning !== null
                         ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed opacity-50'
                         : 'bg-gradient-to-r from-ffxiv-gold to-yellow-500 text-slate-900 hover:shadow-[0_0_20px_rgba(212,175,55,0.5)]'
                     }`}
                   >
-                    {isFilterSearching || isSearching ? '搜索中...' : '搜索'}
+                    {isFilterSearching || isSearching ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>載入中...</span>
+                      </span>
+                    ) : (
+                      '搜索'
+                    )}
+                    {(isFilterSearching || isSearching) && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_ease-in-out_infinite] pointer-events-none"></div>
+                    )}
                   </button>
                   <button
                     onClick={() => {
+                      // If searching, cancel the search first
+                      if (isFilterSearching) {
+                        // Increment request ID to cancel ongoing search
+                        filterSearchRequestIdRef.current++;
+                        // Cancel any ongoing market data fetches
+                        if (velocityFetchAbortControllerRef.current) {
+                          velocityFetchAbortControllerRef.current.abort();
+                          velocityFetchAbortControllerRef.current = null;
+                        }
+                        setIsFilterSearching(false);
+                        setIsLoadingVelocities(false);
+                        setVelocityFetchInProgress(false);
+                        setVelocityLoadingProgress({ loaded: 0, total: 0 });
+                      }
+                      
                       // Clear all filter selections
                       setSelectedJobs([]);
                       setSelectedCategories([]);
@@ -3978,43 +4051,150 @@ export default function AdvancedSearch({
                       setItemTradability({});
                       setCurrentPage(1);
                       setTooManyItemsWarning(null);
-                      // Cancel any ongoing requests
-                      if (velocityFetchAbortControllerRef.current) {
-                        velocityFetchAbortControllerRef.current.abort();
-                      }
-                      setIsLoadingVelocities(false);
-                      setIsFilterSearching(false);
                     }}
-                    disabled={isFilterSearching || isSearching}
                     className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
                       isFilterSearching || isSearching
-                        ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed opacity-50'
+                        ? 'bg-red-600/80 text-white border border-red-500/70 hover:bg-red-600 hover:border-red-400 hover:shadow-[0_0_20px_rgba(220,38,38,0.5)]'
                         : 'bg-red-600/60 text-white border border-red-500/50 hover:bg-red-600/80 hover:border-red-400/70 hover:shadow-[0_0_20px_rgba(220,38,38,0.5)]'
                     }`}
                   >
-                  清空篩選
-                </button>
+                    {isFilterSearching || isSearching ? '停止搜尋' : '清空篩選'}
+                  </button>
               </div>
+
+              {/* Level Range and Server Selector */}
+              {selectedWorld && (
+                <div className="mb-6 flex flex-row items-center justify-between gap-6">
+                  {/* Level Range Input */}
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="1"
+                        max="999"
+                        value={minLevelFocused ? (minLevel === 1 ? '' : minLevel) : minLevel}
+                        onChange={(e) => {
+                          const inputValue = e.target.value;
+                          if (inputValue === '') {
+                            setMinLevel(1);
+                            return;
+                          }
+                          const value = parseInt(inputValue);
+                          if (!isNaN(value)) {
+                            const clampedValue = Math.max(1, Math.min(999, value));
+                            setMinLevel(clampedValue);
+                            if (clampedValue > maxLevel) {
+                              setMaxLevel(clampedValue);
+                            }
+                          }
+                        }}
+                        onFocus={() => {
+                          setMinLevelFocused(true);
+                        }}
+                        onBlur={(e) => {
+                          setMinLevelFocused(false);
+                          if (e.target.value === '' || e.target.value === '1') {
+                            setMinLevel(1);
+                          }
+                        }}
+                        disabled={isLoadingVelocities || isFilterSearching}
+                        placeholder="1"
+                        className="w-40 pl-3 pr-12 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                      />
+                      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                        <span className="text-xs text-gray-400" title="ilvl">ilvl</span>
+                      </div>
+                    </div>
+                    <div className="text-gray-400">~</div>
+                    <input
+                      type="number"
+                      min="1"
+                      max="999"
+                      value={maxLevelFocused ? (maxLevel === 999 ? '' : maxLevel) : maxLevel}
+                      onChange={(e) => {
+                        const inputValue = e.target.value;
+                        if (inputValue === '') {
+                          setMaxLevel(999);
+                          return;
+                        }
+                        const value = parseInt(inputValue);
+                        if (!isNaN(value)) {
+                          const clampedValue = Math.max(1, Math.min(999, value));
+                          setMaxLevel(clampedValue);
+                          if (clampedValue < minLevel) {
+                            setMinLevel(clampedValue);
+                          }
+                        }
+                      }}
+                      onFocus={() => {
+                        setMaxLevelFocused(true);
+                      }}
+                      onBlur={(e) => {
+                        setMaxLevelFocused(false);
+                        if (e.target.value === '' || e.target.value === '999') {
+                          setMaxLevel(999);
+                        }
+                      }}
+                      disabled={isLoadingVelocities || isFilterSearching}
+                      placeholder="999"
+                      className="w-40 px-3 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                    />
+                  </div>
+
+                  {/* Server Selector */}
+                  <div className="ml-auto">
+                    <ServerSelector
+                      datacenters={datacenters}
+                      worlds={worlds}
+                      selectedWorld={selectedWorld}
+                      onWorldChange={onWorldChange}
+                      selectedServerOption={selectedServerOption}
+                      onServerOptionChange={onServerOptionChange}
+                      serverOptions={serverOptions}
+                      disabled={isLoadingVelocities || isFilterSearching}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* Results */}
+          {/* Note: RunningLoader is now handled by SearchResultsTable component for centralized loading display */}
           {(() => {
             // CRITICAL: Only render if we have tradeable items OR (no tradeable items AND untradeable items)
             // This prevents untradeable items from being displayed when tradeable items exist
+            // Note: RunningLoader is now handled by SearchResultsTable component
             const hasTradeableItems = searchResults.length > 0;
             const shouldRender = activeTab === 'filter' 
-              ? (hasTradeableItems || (!hasTradeableItems && untradeableResults.length > 0))
-              : (activeTab === 'batch' && !BATCH_SEARCH_DISABLED && searchResults.length > 0);
+              ? (hasTradeableItems || (!hasTradeableItems && untradeableResults.length > 0) || isFilterSearching)
+              : (activeTab === 'batch' && !BATCH_SEARCH_DISABLED && (searchResults.length > 0 || isBatchSearching));
             
             if (!shouldRender) return null;
             
             // Determine which results to show based on activeTab and showUntradeable
-            // Allow user to toggle between tradeable and untradeable items via button
-            const shouldShowUntradeable = showUntradeable;
-            const allResultsForRarityCount = activeTab === 'filter' 
-              ? (shouldShowUntradeable ? untradeableResults : searchResults)
-              : (activeTab === 'batch' && !BATCH_SEARCH_DISABLED ? searchResults : []);
+            // When showUntradeable is true, combine tradeable and untradeable items together
+            // When showUntradeable is false, show only tradeable items
+            let allResultsForRarityCount;
+            let currentResults;
+            
+            if (activeTab === 'filter') {
+              if (showUntradeable) {
+                // Combine tradeable and untradeable items when button is clicked
+                allResultsForRarityCount = [...searchResults, ...untradeableResults];
+                currentResults = [...searchResults, ...untradeableResults];
+              } else {
+                // Show only tradeable items by default
+                allResultsForRarityCount = searchResults;
+                currentResults = searchResults;
+              }
+            } else if (activeTab === 'batch' && !BATCH_SEARCH_DISABLED) {
+              allResultsForRarityCount = searchResults;
+              currentResults = searchResults;
+            } else {
+              allResultsForRarityCount = [];
+              currentResults = [];
+            }
             
             // Calculate rarity counts for ALL results (before filtering)
             // This allows users to see all available rarities regardless of current page
@@ -4029,8 +4209,6 @@ export default function AdvancedSearch({
               });
               return counts;
             })();
-            
-            let currentResults = allResultsForRarityCount;
             
             // Calculate filtered items count (same logic as ItemTable)
             // This simulates the filtering that happens inside ItemTable
@@ -4070,6 +4248,7 @@ export default function AdvancedSearch({
             // Pagination is now handled by SearchResultsTable component
             
             return (
+              <div ref={resultsTableRef}>
               <SearchResultsTable
                 items={currentResults}
                 filteredItems={filteredResults}
@@ -4088,7 +4267,10 @@ export default function AdvancedSearch({
                 itemRecentPurchases={itemRecentPurchases}
                 itemTradability={itemTradability}
                 isLoadingVelocities={isLoadingVelocities}
+                velocityLoadingProgress={velocityLoadingProgress}
                 showLoadingIndicator={showLoadingIndicator}
+                isSearching={isFilterSearching || isBatchSearching}
+                searchingItemsCount={searchResults.length + untradeableResults.length}
                 averagePriceHeader="平均價格"
                 getSimplifiedChineseName={getSimplifiedChineseName}
                 addToast={addToast}
@@ -4114,6 +4296,7 @@ export default function AdvancedSearch({
                 }}
                 defaultItemsPerPage={50}
                 itemsPerPageOptions={[50, 100, 200]}
+                scrollRef={resultsTableRef}
                 onSelect={(item) => {
                   if (onItemSelect) {
                     const params = new URLSearchParams();
@@ -4130,6 +4313,7 @@ export default function AdvancedSearch({
                   }
                 }}
               />
+              </div>
             );
           })()}
         </div>
@@ -4144,6 +4328,7 @@ export default function AdvancedSearch({
         isLoading={isLoadingTaxRates}
         selectedWorld={selectedWorld}
         selectedServerOption={selectedServerOption}
+        onServerOptionChange={onServerOptionChange}
       />
     </div>
   );
