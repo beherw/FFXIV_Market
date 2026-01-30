@@ -19,7 +19,8 @@ export default function RelatedItems({ itemId, onItemClick }) {
     }
 
     setIsLoading(true);
-    findRelatedItems(itemId)
+    // findRelatedItems now handles the limit internally (optimized at database level)
+    findRelatedItems(itemId, 20)
       .then(ids => {
         setRelatedItemIds(ids);
         setIsLoading(false);
@@ -82,7 +83,7 @@ export default function RelatedItems({ itemId, onItemClick }) {
           </h3>
           {!isLoading && relatedItemIds.length > 0 && (
             <span className="text-xs text-gray-400 bg-purple-900/40 px-2 py-1 rounded border border-purple-500/30">
-              {relatedItemIds.length} 個
+              {relatedItems.length} 個
             </span>
           )}
         </div>

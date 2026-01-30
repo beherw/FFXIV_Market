@@ -346,27 +346,38 @@ export function getAllItemIds(tree) {
 }
 
 /**
- * Find all items that use this item as an ingredient (optimized - uses targeted query)
+ * Find all items that use this item as an ingredient (optimized - uses targeted query with limit)
  * @param {number} itemId - The ingredient item ID to search for
- * @returns {Promise<Array<number>>} - Array of unique result item IDs that use this item as ingredient
+ * @param {number} maxResults - Maximum number of unique result items to return (default: 20)
+ * @returns {Promise<Array<number>>} - Array of unique result item IDs that use this item as ingredient (limited to maxResults)
  */
-export async function findRelatedItems(itemId) {
+export async function findRelatedItems(itemId, maxResults = 20) {
   if (!itemId || itemId <= 0) {
     return [];
   }
 
-  // Use targeted query instead of loading all recipes
-  const recipes = await getTwRecipesByIngredientId(itemId);
+  // Optimize: Fetch more recipes than needed to ensure we get enough unique results
+  // Since multiple recipes can produce the same item, fetch 3x the desired results
+  // This ensures we get at least maxResults unique result IDs
+  const recipeLimit = maxResults * 3;
+
+  // Use targeted query with limit instead of loading all recipes
+  const recipes = await getTwRecipesByIngredientId(itemId, null, recipeLimit);
   const relatedItemIds = new Set();
 
-  // Extract result item IDs from recipes
-  recipes.forEach(recipe => {
+  // Extract result item IDs from recipes until we have enough unique results
+  for (const recipe of recipes) {
     if (recipe.result) {
       relatedItemIds.add(recipe.result);
+      // Early exit if we already have enough unique results
+      if (relatedItemIds.size >= maxResults) {
+        break;
+      }
     }
-  });
+  }
 
-  return Array.from(relatedItemIds);
+  // Convert to array and limit to maxResults (in case we got more than needed)
+  return Array.from(relatedItemIds).slice(0, maxResults);
 }
 
 /**

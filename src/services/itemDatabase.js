@@ -325,23 +325,23 @@ export async function loadItemDatabase() {
   console.trace(`[ItemDB] 🔍 Stack trace - find and replace with targeted query:`);
 
   try {
-    // Load items from Supabase
+    // Load items from JSON (in-memory, fast)
     const twItemsData = await getTwItems();
     
-    // Convert the Supabase data structure to an array of items matching the CSV format
-    // Supabase structure: { "13589": { "tw": "堅鋼投斧" }, ... }
+    // Convert the JSON data structure to an array of items matching the CSV format
+    // JSON structure: { "13589": { "tw": "堅鋼投斧" }, ... }
     // We need to convert to: [{ "key: #": "13589", "9: Name": "堅鋼投斧", ... }, ...]
     const items = Object.entries(twItemsData).map(([id, data]) => {
       const itemName = data.tw || '';
       // Transform to match the expected CSV format
       return {
-        'key: #': id,
-        '9: Name': itemName, // Traditional Chinese name from Supabase
+        'key: #': id.toString(),
+        '9: Name': itemName, // Traditional Chinese name from JSON
         '0: Singular': itemName, // Use same as fallback
-        '11: Level{Item}': '', // Not available in Supabase
-        '25: Price{Mid}': '', // Not available in Supabase
-        '8: Description': '', // Not available in Supabase
-        '22: IsUntradable': 'False', // Default to tradeable (we can't determine from Supabase)
+        '11: Level{Item}': '', // Not available in JSON
+        '25: Price{Mid}': '', // Not available in JSON
+        '8: Description': '', // Not available in JSON
+        '22: IsUntradable': 'False', // Default to tradeable (we can't determine from JSON)
         '27: CanBeHq': 'True', // Default to true (most items can be HQ)
       };
     }).filter(item => item['key: #'] && item['9: Name'].trim() !== '');

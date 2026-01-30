@@ -44,6 +44,66 @@ import twJobAbbrData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-
 
 import MapModal from './MapModal';
 import ItemImage from './ItemImage';
+
+// Module-level cache for ObtainMethods data - persists across component mounts/unmounts
+// Cache structure: { itemId: { sources: [], loadedData: {}, dataLoaded: boolean, timestamp: number } }
+const obtainMethodsCache = {};
+
+// Cache expiration time: 1 hour (3600000 ms) - data rarely changes
+const CACHE_EXPIRY_MS = 60 * 60 * 1000;
+
+/**
+ * Get cached data for an item, or null if not cached or expired
+ */
+function getCachedObtainMethodsData(itemId) {
+  if (!itemId) return null;
+  
+  const cached = obtainMethodsCache[itemId];
+  if (!cached) return null;
+  
+  // Check if cache is expired
+  const now = Date.now();
+  if (now - cached.timestamp > CACHE_EXPIRY_MS) {
+    delete obtainMethodsCache[itemId];
+    return null;
+  }
+  
+  return cached;
+}
+
+/**
+ * Store data in cache (deep clones to prevent mutations)
+ */
+function setCachedObtainMethodsData(itemId, sources, loadedData) {
+  if (!itemId) return;
+  
+  // Deep clone loadedData to prevent mutations from affecting cache
+  let clonedLoadedData;
+  try {
+    clonedLoadedData = structuredClone(loadedData);
+  } catch (e) {
+    // Fallback to JSON parse/stringify for deep copy
+    clonedLoadedData = JSON.parse(JSON.stringify(loadedData));
+  }
+  
+  // Clone sources array to prevent mutations
+  const clonedSources = sources.map(source => {
+    // Clone each source object
+    try {
+      return structuredClone(source);
+    } catch (e) {
+      return JSON.parse(JSON.stringify(source));
+    }
+  });
+  
+  obtainMethodsCache[itemId] = {
+    sources: clonedSources,
+    loadedData: clonedLoadedData,
+    dataLoaded: true,
+    timestamp: Date.now()
+  };
+}
+
 export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTree, isCraftingTreeExpanded = false }) {
   
   const navigate = useNavigate();
@@ -226,6 +286,29 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       // This prevents showing "no obtainable methods" when itemId is temporarily undefined during redirects
       // The component will show loading state due to the !itemId check in the render logic
       return;
+    }
+
+    // Check cache first - if data exists and is not expired, use it immediately
+    const cached = getCachedObtainMethodsData(itemId);
+    if (cached) {
+      console.log(`[ObtainMethods] 📦 Using cached data for item ${itemId}`);
+      // Update ref immediately
+      currentItemIdRef.current = itemId;
+      // Restore cached data - clone to avoid mutating cache
+      try {
+        loadedDataRef.current = structuredClone(cached.loadedData);
+      } catch (e) {
+        // Fallback to JSON parse/stringify for deep copy
+        loadedDataRef.current = JSON.parse(JSON.stringify(cached.loadedData));
+      }
+      setLoadedData(cached.loadedData); // React will handle immutability
+      setSources(cached.sources);
+      setDataLoaded(true);
+      setLoading(false);
+      // Update refs
+      prevItemIdRef.current = itemId;
+      layoutEffectPrevItemIdRef.current = itemId;
+      return; // Skip loading from Supabase
     }
 
     console.log(`[ObtainMethods] Loading obtainable methods for item ${itemId}`);
@@ -970,6 +1053,14 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     };
                     // CRITICAL: Also update ref to keep it in sync with state
                     loadedDataRef.current = updated;
+                    
+                    // Update cache with the latest data including reward items
+                    const cached = obtainMethodsCache[currentItemId];
+                    if (cached) {
+                      cached.loadedData = updated;
+                      cached.timestamp = Date.now(); // Refresh timestamp
+                    }
+                    
                     return updated;
                   });
                 }
@@ -1005,11 +1096,20 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             // Since setLoadedData was already called above (line 461), React will batch these updates
             // But to ensure renderSource has access to the latest data, we use React's automatic batching
             // which ensures state updates are applied in the order they were called
+            
+            // Get the final loadedData state (may have been updated with reward items)
+            // Use loadedDataRef.current which has the latest data including any reward item updates
+            const finalLoadedData = loadedDataRef.current || newLoadedData;
+            
             setSources(processedSources);
             setDataLoaded(true);
             setLoading(false);
             // Update ref to match current itemId after successful load
             currentItemIdRef.current = currentItemId;
+            
+            // Cache the loaded data for future use (use finalLoadedData which includes all updates)
+            setCachedObtainMethodsData(currentItemId, processedSources, finalLoadedData);
+            
             console.log(`[ObtainMethods] ✅ Loaded ${processedSources.length} obtainable method(s) for item ${currentItemId}`);
           }
         });
@@ -1036,6 +1136,86 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       abortController.abort();
     };
   }, [itemId]);
+
+  // ============================================================================
+  // HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  // ============================================================================
+  // All hooks (useCallback, useMemo) must be defined here before any early returns
+  // to prevent "Rendered more hooks than during the previous render" errors
+  
+  // Get source item count function (used in sorting)
+  const getSourceItemCount = useCallback((source) => {
+    const { type, data } = source;
+    
+    if (!data) return 0;
+    
+    // For array-based sources, count array length
+    if (Array.isArray(data)) {
+      // For VENDORS, count unique NPCs (since we group by NPC)
+      if (type === DataType.VENDORS) {
+        const uniqueNpcs = new Set(data.map(v => v.npcId));
+        return uniqueNpcs.size;
+      }
+      // For TRADE_SOURCES, count unique NPCs across all trade sources
+      if (type === DataType.TRADE_SOURCES) {
+        const uniqueNpcs = new Set();
+        data.forEach(tradeSource => {
+          tradeSource.npcs?.forEach(npc => {
+            const npcId = typeof npc === 'object' ? npc.id : npc;
+            if (npcId) uniqueNpcs.add(npcId);
+          });
+        });
+        return uniqueNpcs.size;
+      }
+      // For other array sources, count array length
+      return data.length;
+    }
+    
+    // For object-based sources (like GATHERED_BY), count nodes or other properties
+    if (typeof data === 'object') {
+      if (type === DataType.GATHERED_BY && data.nodes) {
+        return data.nodes.length;
+      }
+      if (type === DataType.ALARMS && Array.isArray(data)) {
+        return data.length;
+      }
+      // Default to 1 for object sources
+      return 1;
+    }
+    
+    return 0;
+  }, []); // No dependencies - pure function
+
+  // Sort sources by item count (descending) - more items appear first (on the left)
+  // OPTIMIZED: Memoized to prevent recalculation on every render
+  const sortedSources = useMemo(() => {
+    return [...sources].sort((a, b) => {
+      const countA = getSourceItemCount(a);
+      const countB = getSourceItemCount(b);
+      return countB - countA; // Descending order
+    });
+  }, [sources, getSourceItemCount]); // getSourceItemCount is stable (useCallback with no deps)
+
+  // Filter sources by selected method type
+  // OPTIMIZED: Memoized to prevent recalculation on every render
+  const filteredSources = useMemo(() => {
+    return filteredMethodType 
+      ? sortedSources.filter(source => source.type === filteredMethodType)
+      : sortedSources;
+  }, [sortedSources, filteredMethodType]);
+
+  // Get unique method types for filter tags
+  // OPTIMIZED: Memoized to prevent recalculation on every render
+  const uniqueMethodTypes = useMemo(() => {
+    return [...new Set(sortedSources.map(s => s.type))];
+  }, [sortedSources]);
+
+  // Filter sources - just return the filtered sources array (don't render here)
+  // Rendering will happen in JSX using renderSource function
+  // This hook must be before any early returns to maintain hooks order
+  const validSources = useMemo(() => {
+    return filteredSources; // Just return filtered sources, rendering happens in JSX
+  }, [filteredSources]);
 
   // Show loading state if data is still loading or sources are being fetched
   // Also show loading if itemId is undefined/null to prevent showing empty state during redirects
@@ -1262,13 +1442,15 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   });
 
   const getInstanceName = (instanceId) => {
+    // Use ref to access latest loadedData immediately, avoiding stale state issues
+    const currentLoadedData = loadedDataRef.current;
     // Try Traditional Chinese first
-    const twInstance = loadedData.twInstances[instanceId] || loadedData.twInstances[String(instanceId)];
+    const twInstance = currentLoadedData.twInstances[instanceId] || currentLoadedData.twInstances[String(instanceId)];
     if (twInstance?.tw) {
       return twInstance.tw;
     }
     // Fallback to English instances from Supabase
-    const instance = loadedData.instances[instanceId] || loadedData.instances[String(instanceId)];
+    const instance = currentLoadedData.instances[instanceId] || currentLoadedData.instances[String(instanceId)];
     if (instance?.en) {
       return instance.en;
     }
@@ -1276,14 +1458,18 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   };
 
   const getInstanceCNName = (instanceId) => {
+    // Use ref to access latest loadedData immediately, avoiding stale state issues
+    const currentLoadedData = loadedDataRef.current;
     // Get Simplified Chinese name from Supabase
-    const zhInstance = loadedData.zhInstances[instanceId] || loadedData.zhInstances[String(instanceId)];
+    const zhInstance = currentLoadedData.zhInstances[instanceId] || currentLoadedData.zhInstances[String(instanceId)];
     return zhInstance?.zh || null;
   };
 
   const getQuestCNName = (questId) => {
+    // Use ref to access latest loadedData immediately, avoiding stale state issues
+    const currentLoadedData = loadedDataRef.current;
     // Get Simplified Chinese quest name from Supabase
-    const zhQuest = loadedData.zhQuests[questId] || loadedData.zhQuests[String(questId)];
+    const zhQuest = currentLoadedData.zhQuests[questId] || currentLoadedData.zhQuests[String(questId)];
     return zhQuest?.zh || null;
   };
 
@@ -1304,15 +1490,17 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return tradeSource.requiredQuest;
     }
     
+    // Use ref to access latest loadedData immediately, avoiding stale state issues
+    const currentLoadedData = loadedDataRef.current;
     // Look up shop in shops table from Supabase
-    const shop = loadedData.shops[shopId] || loadedData.shops[String(shopId)];
+    const shop = currentLoadedData.shops[shopId] || currentLoadedData.shops[String(shopId)];
     if (shop && shop.requiredQuest) {
       return shop.requiredQuest;
     }
     
     // If not found in shops, try shops_by_npc from Supabase
     if (npcId) {
-      const npcShops = loadedData.shopsByNpc[npcId] || loadedData.shopsByNpc[String(npcId)];
+      const npcShops = currentLoadedData.shopsByNpc[npcId] || currentLoadedData.shopsByNpc[String(npcId)];
       if (npcShops) {
         const npcShop = typeof npcShops === 'object' && !Array.isArray(npcShops)
           ? npcShops[shopId] || npcShops[String(shopId)]
@@ -1367,6 +1555,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const renderSource = (source, index, useFlex1 = true) => {
     const { type, data } = source;
     const flexClass = useFlex1 ? 'flex-1' : '';
+    // Use ref to access latest loadedData immediately, avoiding stale state issues
+    // This is critical because renderSource is now called during render (not in useMemo)
+    const currentLoadedData = loadedDataRef.current;
 
     // Crafted By (製作) - data is an array of CraftedBy objects
     if (type === DataType.CRAFTED_BY) {
@@ -1960,7 +2151,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const instanceCNName = getInstanceCNName(instanceId);
               
               // Get instance icon and content type from instances.json for better display
-              const instance = loadedData.instances[instanceId] || loadedData.instances[String(instanceId)];
+              // Use ref to access latest loadedData immediately, avoiding stale state issues
+              const currentLoadedData = loadedDataRef.current;
+              const instance = currentLoadedData.instances[instanceId] || currentLoadedData.instances[String(instanceId)];
               const iconUrl = instance?.icon 
                 ? `https://xivapi.com${instance.icon}` 
                 : 'https://xivapi.com/i/061000/061801.png';
@@ -2073,8 +2266,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
     // Quests (任務) - data is an array of quest IDs
     if (type === DataType.QUESTS) {
+      // Use ref to access latest loadedData immediately, avoiding stale state issues
+      const currentLoadedData = loadedDataRef.current;
       const validQuests = data.filter(questId => {
-        const questData = loadedData.twQuests[questId] || loadedData.twQuests[String(questId)];
+        const questData = currentLoadedData.twQuests[questId] || currentLoadedData.twQuests[String(questId)];
         return questData && questData.tw;
       });
       
@@ -2090,14 +2285,14 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
             {validQuests.map((questId, questIndex) => {
-              const questData = loadedData.twQuests[questId] || loadedData.twQuests[String(questId)];
+              const questData = currentLoadedData.twQuests[questId] || currentLoadedData.twQuests[String(questId)];
               const questNameRaw = questData?.tw;
               const questName = cleanQuestName(questNameRaw);
               
               if (!questName) return null;
               
               // Get quest icon from quests.json
-              const quest = loadedData.quests[questId] || loadedData.quests[String(questId)];
+              const quest = currentLoadedData.quests[questId] || currentLoadedData.quests[String(questId)];
               const questIcon = quest?.icon 
                 ? `https://xivapi.com${quest.icon}` 
                 : 'https://xivapi.com/i/060000/060453.png';
@@ -2107,7 +2302,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const questCNName = cleanQuestName(questCNNameRaw);
               
               // Get quest details from quests-database-pages.json (lazy loaded)
-              const questDb = loadedData.questsDatabasePages[questId] || loadedData.questsDatabasePages[String(questId)];
+              const questDb = currentLoadedData.questsDatabasePages[questId] || currentLoadedData.questsDatabasePages[String(questId)];
               const questLevel = questDb?.level || null;
               const jobCategory = questDb?.jobCategory || null;
               const startingNpcId = questDb?.start || null;
@@ -2289,10 +2484,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         }
         const fateId = typeof fate === 'object' ? fate.id : fate;
         if (!fateId || typeof fateId !== 'number') return false;
+        // Use ref to access latest loadedData immediately, avoiding stale state issues
+        const currentLoadedData = loadedDataRef.current;
         // Accept FATE if we have any data source from Supabase
-        const twFate = loadedData.twFates[fateId] || loadedData.twFates[String(fateId)];
-        const fateData = loadedData.fates[fateId] || loadedData.fates[String(fateId)];
-        const fateDb = loadedData.fatesDatabasePages[fateId] || loadedData.fatesDatabasePages[String(fateId)];
+        const twFate = currentLoadedData.twFates[fateId] || currentLoadedData.twFates[String(fateId)];
+        const fateData = currentLoadedData.fates[fateId] || currentLoadedData.fates[String(fateId)];
+        const fateDb = currentLoadedData.fatesDatabasePages[fateId] || currentLoadedData.fatesDatabasePages[String(fateId)];
         return twFate || fateData || fateDb;
       });
       
@@ -2314,9 +2511,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const fateMapId = typeof fate === 'object' ? fate.mapId : null;
               const fateCoords = typeof fate === 'object' ? fate.coords : null;
               
+              // Use ref to access latest loadedData immediately, avoiding stale state issues
+              const currentLoadedData = loadedDataRef.current;
               // Get FATE name - Traditional Chinese for display, Simplified Chinese for wiki link
-              const twFate = loadedData.twFates[fateId] || loadedData.twFates[String(fateId)];
-              const zhFate = loadedData.zhFates[fateId] || loadedData.zhFates[String(fateId)];
+              const twFate = currentLoadedData.twFates[fateId] || currentLoadedData.twFates[String(fateId)];
+              const zhFate = currentLoadedData.zhFates[fateId] || currentLoadedData.zhFates[String(fateId)];
               const fateName = twFate?.name?.tw || twFate?.tw || `FATE ${fateId}`;
               // Use Simplified Chinese for wiki link - zh_fates table structure: { name: { zh: "..." } }
               const fateNameZh = zhFate?.name?.zh || zhFate?.zh || null;
@@ -2327,7 +2526,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               }
               
               // Get FATE icon
-              const fateData = loadedData.fates[fateId] || loadedData.fates[String(fateId)];
+              const fateData = currentLoadedData.fates[fateId] || currentLoadedData.fates[String(fateId)];
               const fateIcon = fateData?.icon 
                 ? `https://xivapi.com${fateData.icon}` 
                 : 'https://xivapi.com/i/060000/060502.png';
@@ -2345,7 +2544,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               }
               
               // Get FATE database page data for reward items
-              const fateDb = loadedData.fatesDatabasePages[fateId] || loadedData.fatesDatabasePages[String(fateId)];
+              const fateDb = currentLoadedData.fatesDatabasePages[fateId] || currentLoadedData.fatesDatabasePages[String(fateId)];
               const rewardItemsRaw = fateDb?.items || [];
               
               // Normalize reward item IDs to numbers for consistent comparison
@@ -3378,98 +3577,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     return null;
   };
 
-  // Helper function to count items in a source (matching what's actually displayed)
-  // OPTIMIZED: Memoized callback to prevent function recreation on every render
-  const getSourceItemCount = useCallback((source) => {
-    const { type, data } = source;
-    
-    if (!data) return 0;
-    
-    // For array-based sources, count array length
-    if (Array.isArray(data)) {
-      // For VENDORS, count unique NPCs (since we group by NPC)
-      if (type === DataType.VENDORS) {
-        const uniqueNpcs = new Set(data.map(v => v.npcId));
-        return uniqueNpcs.size;
-      }
-      // For TRADE_SOURCES, count unique NPCs across all trade sources
-      if (type === DataType.TRADE_SOURCES) {
-        const uniqueNpcs = new Set();
-        data.forEach(tradeSource => {
-          tradeSource.npcs?.forEach(npc => {
-            const npcId = typeof npc === 'object' ? npc.id : npc;
-            if (npcId) uniqueNpcs.add(npcId);
-          });
-        });
-        return uniqueNpcs.size;
-      }
-      // For other array sources, count array length
-      return data.length;
-    }
-    
-    // For object-based sources (like GATHERED_BY), count nodes or other properties
-    if (typeof data === 'object') {
-      if (type === DataType.GATHERED_BY && data.nodes) {
-        return data.nodes.length;
-      }
-      if (type === DataType.ALARMS && Array.isArray(data)) {
-        return data.length;
-      }
-      // Default to 1 for object sources
-      return 1;
-    }
-    
-    return 0;
-  }, []); // No dependencies - pure function
-
-  // ============================================================================
-  // ⚠️ CRITICAL WARNING: RULES OF HOOKS - HOOKS MUST BE AT TOP LEVEL! ⚠️
-  // ============================================================================
-  // React hooks (useState, useEffect, etc.) MUST be called at the top level of the component,
-  // BEFORE any conditional logic, computed values, or const/let declarations that depend on state.
-  // NEVER place hooks after computed values like sortedSources - this violates Rules of Hooks
-  // and causes "Rendered more hooks than during the previous render" errors.
-  //
-  // If you need to use computed values in a hook:
-  // 1. Place the hook at the top level with other hooks (before this comment)
-  // 2. Compute the value INSIDE the hook using the state/props it depends on
-  // 3. Use the state/props in the dependency array, not the computed value
-  //
-  // ALL HOOKS MUST BE DEFINED BEFORE THIS POINT - NO HOOKS AFTER sortedSources!
-  // ============================================================================
-
-  // Sort sources by item count (descending) - more items appear first (on the left)
-  // OPTIMIZED: Memoized to prevent recalculation on every render
-  const sortedSources = useMemo(() => {
-    return [...sources].sort((a, b) => {
-      const countA = getSourceItemCount(a);
-      const countB = getSourceItemCount(b);
-      return countB - countA; // Descending order
-    });
-  }, [sources, getSourceItemCount]); // getSourceItemCount is stable (useCallback with no deps)
-
-  // Filter sources by selected method type
-  // OPTIMIZED: Memoized to prevent recalculation on every render
-  const filteredSources = useMemo(() => {
-    return filteredMethodType 
-      ? sortedSources.filter(source => source.type === filteredMethodType)
-      : sortedSources;
-  }, [sortedSources, filteredMethodType]);
-
-  // Get unique method types for filter tags
-  // OPTIMIZED: Memoized to prevent recalculation on every render
-  const uniqueMethodTypes = useMemo(() => {
-    return [...new Set(sortedSources.map(s => s.type))];
-  }, [sortedSources]);
-
-  // Filter out null results (sources without valid lookups)
-  // OPTIMIZED: Memoized to prevent recalculation on every render
-  const validSources = useMemo(() => {
-    return filteredSources.map((source, index) => {
-      const rendered = renderSource(source, index, false); // Don't use flex-1, let containers wrap naturally
-      return rendered;
-    }).filter(Boolean);
-  }, [filteredSources]);
 
   // Get achievement info for tooltip
   const achievementTooltipInfo = hoveredAchievement ? getAchievementInfo(hoveredAchievement) : null;
@@ -3531,7 +3638,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       </div>
 
       <div className="flex flex-wrap gap-3 items-start">
-        {validSources}
+        {validSources.map((source, index) => renderSource(source, index, false)).filter(Boolean)}
       </div>
 
       {/* Achievement Tooltip */}
