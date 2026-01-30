@@ -1,6 +1,6 @@
 // Component to display item acquisition methods (取得方式)
 // Now uses Supabase for efficient data loading - only queries needed data
-import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getItemSources, DataType } from '../services/extractsService';
@@ -144,6 +144,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       };
       setLoadedData(emptyLoadedData);
       // Also update ref to ensure renderSource can access the reset data immediately
+      // OPTIMIZED: Direct assignment is fine for empty object (no deep copy needed)
       loadedDataRef.current = emptyLoadedData;
       // Update ref after resetting state
       layoutEffectPrevItemIdRef.current = itemId;
@@ -459,18 +460,14 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           // This ensures that when renderSource executes, loadedData state is already updated
           // React 18+ batches state updates, but we need loadedData to be available when sources render
           // IMPORTANT: Update ref FIRST, then set state, so renderSource can access latest data immediately
-          // Create a deep copy to avoid reference issues
-          loadedDataRef.current = { ...newLoadedData };
-          // Also update each nested object to ensure complete copy
-          Object.keys(newLoadedData).forEach(key => {
-            if (typeof newLoadedData[key] === 'object' && newLoadedData[key] !== null && !Array.isArray(newLoadedData[key])) {
-              loadedDataRef.current[key] = { ...newLoadedData[key] };
-            } else if (Array.isArray(newLoadedData[key])) {
-              loadedDataRef.current[key] = [...newLoadedData[key]];
-            } else {
-              loadedDataRef.current[key] = newLoadedData[key];
-            }
-          });
+          // OPTIMIZED: Use structuredClone for faster deep copy (or JSON.parse/stringify as fallback)
+          try {
+            // Use native structuredClone if available (faster than manual copy)
+            loadedDataRef.current = structuredClone(newLoadedData);
+          } catch (e) {
+            // Fallback to JSON parse/stringify for deep copy (still faster than manual copy)
+            loadedDataRef.current = JSON.parse(JSON.stringify(newLoadedData));
+          }
           setLoadedData(newLoadedData);
           
           // Process sources with additional data from Supabase
@@ -3382,7 +3379,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   };
 
   // Helper function to count items in a source (matching what's actually displayed)
-  const getSourceItemCount = (source) => {
+  // OPTIMIZED: Memoized callback to prevent function recreation on every render
+  const getSourceItemCount = useCallback((source) => {
     const { type, data } = source;
     
     if (!data) return 0;
@@ -3422,7 +3420,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     }
     
     return 0;
-  };
+  }, []); // No dependencies - pure function
 
   // ============================================================================
   // ⚠️ CRITICAL WARNING: RULES OF HOOKS - HOOKS MUST BE AT TOP LEVEL! ⚠️
@@ -3441,25 +3439,37 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   // ============================================================================
 
   // Sort sources by item count (descending) - more items appear first (on the left)
-  const sortedSources = [...sources].sort((a, b) => {
-    const countA = getSourceItemCount(a);
-    const countB = getSourceItemCount(b);
-    return countB - countA; // Descending order
-  });
+  // OPTIMIZED: Memoized to prevent recalculation on every render
+  const sortedSources = useMemo(() => {
+    return [...sources].sort((a, b) => {
+      const countA = getSourceItemCount(a);
+      const countB = getSourceItemCount(b);
+      return countB - countA; // Descending order
+    });
+  }, [sources, getSourceItemCount]); // getSourceItemCount is stable (useCallback with no deps)
 
   // Filter sources by selected method type
-  const filteredSources = filteredMethodType 
-    ? sortedSources.filter(source => source.type === filteredMethodType)
-    : sortedSources;
+  // OPTIMIZED: Memoized to prevent recalculation on every render
+  const filteredSources = useMemo(() => {
+    return filteredMethodType 
+      ? sortedSources.filter(source => source.type === filteredMethodType)
+      : sortedSources;
+  }, [sortedSources, filteredMethodType]);
 
   // Get unique method types for filter tags
-  const uniqueMethodTypes = [...new Set(sortedSources.map(s => s.type))];
+  // OPTIMIZED: Memoized to prevent recalculation on every render
+  const uniqueMethodTypes = useMemo(() => {
+    return [...new Set(sortedSources.map(s => s.type))];
+  }, [sortedSources]);
 
   // Filter out null results (sources without valid lookups)
-  const validSources = filteredSources.map((source, index) => {
-    const rendered = renderSource(source, index, false); // Don't use flex-1, let containers wrap naturally
-    return rendered;
-  }).filter(Boolean);
+  // OPTIMIZED: Memoized to prevent recalculation on every render
+  const validSources = useMemo(() => {
+    return filteredSources.map((source, index) => {
+      const rendered = renderSource(source, index, false); // Don't use flex-1, let containers wrap naturally
+      return rendered;
+    }).filter(Boolean);
+  }, [filteredSources]);
 
   // Get achievement info for tooltip
   const achievementTooltipInfo = hoveredAchievement ? getAchievementInfo(hoveredAchievement) : null;

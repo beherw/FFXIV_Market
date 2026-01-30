@@ -105,9 +105,9 @@ export default function RecentUpdatesSection({ onItemSelect, selectedDcName }) {
 
   const handleItemClick = async (item) => {
     if (onItemSelect && item.itemDetails) {
-      // Load full item details (with description) only when user clicks
+      // Load full item details only when user clicks
       const { getItemById } = await import('../services/itemDatabase');
-      const fullItemDetails = await getItemById(item.itemID, true);
+      const fullItemDetails = await getItemById(item.itemID);
       if (fullItemDetails) {
         onItemSelect(fullItemDetails);
       }
