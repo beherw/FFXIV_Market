@@ -1124,6 +1124,7 @@ export default function CraftingJobPriceChecker({
                 addToast={addToast}
                 currentPage={currentPage}
                 itemsPerPage={itemsPerPage}
+                itemsAlreadyFiltered={true}
               />
             )}
 
