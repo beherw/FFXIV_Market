@@ -2209,6 +2209,15 @@ function App() {
               const marketableItems = results.filter(item => marketableSet.has(item.id));
               const nonMarketableItems = results.filter(item => !marketableSet.has(item.id));
               
+              // Debug: Log separation results
+              console.log('[App] Item separation:', 
+                'totalResults:', results.length,
+                'marketableCount:', marketableItems.length,
+                'nonMarketableCount:', nonMarketableItems.length,
+                'marketableSetSize:', marketableSet.size,
+                'resultIdsLength:', resultIds.length
+              );
+              
               // STEP 4: NOW update state - ONLY after separation is complete
               // CRITICAL: Use flushSync to ensure ALL state updates are synchronous and atomic
               // Set isSearching to false INSIDE flushSync to ensure it happens together with results
@@ -2492,6 +2501,15 @@ function App() {
       // STEP 3: Separate marketable and non-marketable items
       const marketableItems = results.filter(item => marketableSet.has(item.id));
       const nonMarketableItems = results.filter(item => !marketableSet.has(item.id));
+      
+      // Debug: Log separation results
+      console.log('[App] Item separation (handleSearch):', 
+        'totalResults:', results.length,
+        'marketableCount:', marketableItems.length,
+        'nonMarketableCount:', nonMarketableItems.length,
+        'marketableSetSize:', marketableSet.size,
+        'resultIdsLength:', resultIds.length
+      );
       
       // STEP 4: NOW update state - ONLY after separation is complete
       // CRITICAL: Use flushSync to ensure ALL state updates are synchronous and atomic

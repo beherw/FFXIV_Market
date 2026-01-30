@@ -415,9 +415,10 @@ function fuzzyMatch(searchText, itemName) {
  * @param {string} searchText - Search text to use
  * @param {boolean} fuzzy - Whether to use fuzzy matching (default: false)
  * @param {Set} marketItems - Optional Set of marketable item IDs (from market_items table)
+ * @param {boolean} skipTradeabilityFilter - If true, return all items regardless of tradeability (default: false)
  * @returns {Array} Search results
  */
-function performSearch(items, shopItems, shopItemIds, searchText, fuzzy = false, marketItems = null) {
+function performSearch(items, shopItems, shopItemIds, searchText, fuzzy = false, marketItems = null, skipTradeabilityFilter = false) {
   const trimmedSearchText = searchText.trim();
   
   // Observable's behavior: if search text has spaces, split into words (AND condition)
@@ -477,7 +478,8 @@ function performSearch(items, shopItems, shopItemIds, searchText, fuzzy = false,
       }
       
       // Filter out untradeable items - only show items where IsUntradable is 'False' or empty
-      if (isUntradable) {
+      // UNLESS skipTradeabilityFilter is true (for main search to get all items for separation)
+      if (!skipTradeabilityFilter && isUntradable) {
         filteredByUntradable++;
         return false;
       }
@@ -764,8 +766,8 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
     // Check if search text has spaces - fuzzy search only works with spaces
     const hasSpaces = trimmedSearchText.includes(' ');
     
-    // Do fuzzy search first without marketability filtering
-    const tempResults = performSearch(items, shopItems, shopItemIds, trimmedSearchText, true, null);
+    // Do fuzzy search - return ALL items (both marketable and non-marketable) for proper separation
+    const tempResults = performSearch(items, shopItems, shopItemIds, trimmedSearchText, true, null, true);
     
     // Check marketability for fuzzy search results
     if (tempResults.length > 0) {
@@ -775,14 +777,8 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
       }
     }
     
-    // Filter results by marketability
-    results = tempResults.filter(r => {
-      if (marketItems) {
-        return marketItems.has(r.id);
-      }
-      // Fallback to IsUntradable field if marketability check failed
-      return true; // Keep all results if we can't check marketability
-    });
+    // Return ALL results (both marketable and non-marketable) - App.jsx will separate them
+    results = tempResults;
     
     // Return early - don't do conversion or simplified database search for explicit fuzzy mode
     return {
@@ -828,7 +824,9 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
       }
     }
     
-    results = performSearch(items, shopItems, shopItemIds, trimmedSearchText, false, marketItems);
+    // CRITICAL: Pass skipTradeabilityFilter=true to get ALL items (both marketable and non-marketable)
+    // This allows App.jsx to separate them properly for the toggle button
+    results = performSearch(items, shopItems, shopItemIds, trimmedSearchText, false, marketItems, true);
     
     // Sort results by ilvl descending (highest first) at query time
     // Also attach ilvl and version data to items for display
@@ -843,7 +841,8 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
     const { items } = await loadItemDatabase();
     
     // Fallback: Load full database (fuzzy search or error fallback)
-    results = performSearch(items, shopItems, shopItemIds, trimmedSearchText, false, marketItems);
+    // Return ALL items (both marketable and non-marketable) for proper separation
+    results = performSearch(items, shopItems, shopItemIds, trimmedSearchText, false, marketItems, true);
   }
   
   // Step 2: If no results AND search text has spaces, try fuzzy search with TW names (original input)
@@ -863,7 +862,8 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
           marketItems = await checkMarketabilityForItems(itemIds, signal);
         }
       }
-      results = performSearch(items, shopItems, shopItemIds, trimmedSearchText, true, marketItems);
+      // Return ALL items (both marketable and non-marketable) for proper separation
+      results = performSearch(items, shopItems, shopItemIds, trimmedSearchText, true, marketItems, true);
     } catch (error) {
       if (error.name !== 'AbortError' && (!signal || !signal.aborted)) {
         console.error('Error in fuzzy TW search:', error);
@@ -905,7 +905,8 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
         const items = transformSearchResultsToItems(searchResults, shopItems, shopItemIds, marketItems, twNamesCache);
         
         if (items.length > 0) {
-          results = performSearch(items, shopItems, shopItemIds, trimmedSearchText, false, marketItems);
+          // Return ALL items (both marketable and non-marketable) for proper separation
+          results = performSearch(items, shopItems, shopItemIds, trimmedSearchText, false, marketItems, true);
           
           // Load ilvl and version data for non-TW search results (same as TW search)
           if (results.length > 0) {
@@ -930,7 +931,8 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
           
           const fuzzyItems = transformSearchResultsToItems(fuzzyResults, shopItems, shopItemIds, marketItems, twNamesCache);
           if (fuzzyItems.length > 0) {
-            results = performSearch(fuzzyItems, shopItems, shopItemIds, trimmedSearchText, true, marketItems);
+            // Return ALL items (both marketable and non-marketable) for proper separation
+            results = performSearch(fuzzyItems, shopItems, shopItemIds, trimmedSearchText, true, marketItems, true);
             
             // Load ilvl and version data for non-TW fuzzy search results (same as TW search)
             if (results.length > 0) {
@@ -951,7 +953,8 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
   // Step 2c: Legacy fuzzy search fallback (if still no results and has spaces)
   if (results.length === 0 && hasSpaces) {
     const { items } = await loadItemDatabase();
-    results = performSearch(items, shopItems, shopItemIds, trimmedSearchText, true, marketItems);
+    // Return ALL items (both marketable and non-marketable) for proper separation
+    results = performSearch(items, shopItems, shopItemIds, trimmedSearchText, true, marketItems, true);
   }
 
   // Step 3: If still no results, convert user input to traditional Chinese and try again
@@ -990,7 +993,8 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
           throw new DOMException('Request aborted', 'AbortError');
         }
         const items = transformSearchResultsToItems(searchResults, shopItems, shopItemIds, marketItems);
-        results = performSearch(items, shopItems, shopItemIds, traditionalSearchText, false, marketItems);
+        // Return ALL items (both marketable and non-marketable) for proper separation
+        results = performSearch(items, shopItems, shopItemIds, traditionalSearchText, false, marketItems, true);
       } catch (error) {
         // Don't fallback if aborted
         if (error.name === 'AbortError' || (signal && signal.aborted)) {
@@ -998,14 +1002,16 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
         }
         console.error('Error in database search (converted), falling back to full load:', error);
         const { items } = await loadItemDatabase();
-        results = performSearch(items, shopItems, shopItemIds, traditionalSearchText, false, marketItems);
+        // Return ALL items (both marketable and non-marketable) for proper separation
+        results = performSearch(items, shopItems, shopItemIds, traditionalSearchText, false, marketItems, true);
       }
       
       // Step 3b: If still no results AND converted text has spaces, try fuzzy search with converted traditional Chinese
       // Note: Fuzzy search requires full database load
       if (results.length === 0 && convertedHasSpaces) {
         const { items } = await loadItemDatabase();
-        results = performSearch(items, shopItems, shopItemIds, traditionalSearchText, true, marketItems);
+        // Return ALL items (both marketable and non-marketable) for proper separation
+        results = performSearch(items, shopItems, shopItemIds, traditionalSearchText, true, marketItems, true);
       }
     }
   }

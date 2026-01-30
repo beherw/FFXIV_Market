@@ -1647,7 +1647,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         return (
                           <div className="text-xs text-gray-400 mt-1">
                             {masterbookId ? (
-                              <button
+                              <span
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
@@ -1663,10 +1663,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                     navigate(`/item/${masterbookId}`);
                                   }
                                 }}
-                                className="text-ffxiv-gold hover:text-yellow-400 hover:underline transition-colors"
+                                className="text-ffxiv-gold hover:text-yellow-400 hover:underline transition-colors cursor-pointer"
                               >
                                 {displayName}
-                              </button>
+                              </span>
                             ) : (
                               <span>{displayName}</span>
                             )}

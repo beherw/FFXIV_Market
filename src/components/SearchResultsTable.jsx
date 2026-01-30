@@ -81,6 +81,17 @@ export default function SearchResultsTable({
       onPageChange = null, // Optional callback when page changes
       scrollRef = null, // Optional ref to scroll to when page changes (instead of top of page)
 }) {
+  // Debug: Log button visibility conditions (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[SearchResultsTable] Button props:', 
+      'untradeableCount:', untradeableCount,
+      'hasOnToggle:', !!onToggleUntradeable,
+      'showUntradeableButton:', showUntradeableButton,
+      'isServerSelectorDisabled:', isServerSelectorDisabled,
+      'isShowUntradeable:', isShowUntradeable
+    );
+  }
+
   // Pagination state (use external if provided, otherwise use internal)
   const [internalCurrentPage, setInternalCurrentPage] = useState(1);
   const [internalItemsPerPage, setInternalItemsPerPage] = useState(defaultItemsPerPage);
@@ -210,18 +221,20 @@ export default function SearchResultsTable({
             </span>
           </div>
         )}
-        {/* Show/Hide Non-Marketable Items Button - COMPLETELY REWRITTEN */}
+        {/* Show/Hide Non-Marketable Items Button - ALWAYS VISIBLE */}
         {/* Logic:
-            1. Show button when there are non-marketable items (untradeableCount > 0)
-            2. Button is disabled until server selector is enabled (table fully loaded)
-            3. Button shows count of hidden non-marketable items
-            4. Clicking toggles between showing marketable vs non-marketable items
+            1. Always show button if onToggleUntradeable is provided (even if count is 0)
+            2. If untradeableCount === 0: Show disabled tag "無不可交易物品"
+            3. If untradeableCount > 0 but loading: Show disabled tag with count
+            4. If untradeableCount > 0 and loaded: Show enabled button with count
+            5. Button is disabled until server selector is enabled (all API requests complete)
+            6. Clicking toggles between showing marketable vs non-marketable items
         */}
-        {showUntradeableButton && untradeableCount > 0 && onToggleUntradeable && (
+        {onToggleUntradeable && (
           <button
             onClick={() => {
               // Prevent click when disabled
-              if (isServerSelectorDisabled) return;
+              if (isServerSelectorDisabled || untradeableCount === 0) return;
               
               // Toggle visibility
               onToggleUntradeable(!isShowUntradeable);
@@ -233,16 +246,23 @@ export default function SearchResultsTable({
                 setCurrentPage(1);
               }
             }}
-            disabled={isServerSelectorDisabled}
-            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 backdrop-blur-sm shadow-sm ${
-              isServerSelectorDisabled
-                ? 'bg-gradient-to-r from-slate-700/40 via-slate-600/30 to-slate-700/40 text-gray-500 border border-slate-600/30 cursor-not-allowed opacity-50'
-                : isShowUntradeable
-                  ? 'bg-gradient-to-r from-slate-700/70 via-slate-600/60 to-slate-700/70 text-gray-200 border border-slate-500/50 hover:from-slate-600/80 hover:via-slate-500/70 hover:to-slate-600/80 hover:border-slate-400/60 hover:shadow-md'
-                  : 'bg-gradient-to-r from-slate-800/70 via-slate-700/60 to-slate-800/70 text-gray-300 border border-slate-600/50 hover:from-slate-700/80 hover:via-slate-600/70 hover:to-slate-700/80 hover:border-slate-500/60 hover:shadow-md hover:text-gray-200'
+            disabled={isServerSelectorDisabled || untradeableCount === 0}
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 backdrop-blur-sm shadow-sm border ${
+              untradeableCount === 0
+                ? 'bg-gradient-to-r from-slate-700/40 via-slate-600/30 to-slate-700/40 text-gray-500 border-slate-600/30 cursor-not-allowed opacity-60'
+                : isServerSelectorDisabled
+                  ? 'bg-gradient-to-r from-slate-700/40 via-slate-600/30 to-slate-700/40 text-gray-400 border-slate-600/30 cursor-not-allowed opacity-70'
+                  : isShowUntradeable
+                    ? 'bg-gradient-to-r from-purple-800/70 via-purple-700/60 to-purple-800/70 text-purple-200 border-purple-500/60 hover:from-purple-700/80 hover:via-purple-600/70 hover:to-purple-700/80 hover:border-purple-400/70 hover:shadow-md'
+                    : 'bg-gradient-to-r from-amber-800/70 via-amber-700/60 to-amber-800/70 text-amber-200 border-amber-500/60 hover:from-amber-700/80 hover:via-amber-600/70 hover:to-amber-700/80 hover:border-amber-400/70 hover:shadow-md'
             }`}
           >
-            {isShowUntradeable ? `隱藏不可交易物品` : `顯示不可交易物品 (${untradeableCount}個)`}
+            {untradeableCount === 0 
+              ? '無不可交易物品'
+              : isShowUntradeable 
+                ? `隱藏不可交易物品` 
+                : `顯示不可交易物品 (${untradeableCount}個)`
+            }
           </button>
         )}
         {/* Loading Indicator - show only for >=50 items, with minimum display time */}

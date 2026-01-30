@@ -49,6 +49,9 @@ export default function CraftingJobPriceChecker({
   const [selectedJobs, setSelectedJobs] = useState([]);
   const ilvlValidationTimeoutRef = useRef(null);
   const [searchResults, setSearchResults] = useState([]);
+  const [tradeableResults, setTradeableResults] = useState([]);
+  const [untradeableResults, setUntradeableResults] = useState([]);
+  const [showUntradeable, setShowUntradeable] = useState(false);
   const [isRecipeSearching, setIsRecipeSearching] = useState(false);
   const [itemVelocities, setItemVelocities] = useState({});
   const [itemAveragePrices, setItemAveragePrices] = useState({});
@@ -501,6 +504,9 @@ export default function CraftingJobPriceChecker({
 
     setIsRecipeSearching(true);
     setSearchResults([]);
+    setTradeableResults([]);
+    setUntradeableResults([]);
+    setShowUntradeable(false);
     setItemVelocities({});
     setItemAveragePrices({});
     setItemMinListings({});
@@ -535,11 +541,17 @@ export default function CraftingJobPriceChecker({
       // Filter out non-tradeable items using targeted marketable API (optimized)
       const marketableSet = await getMarketableItemsByIds(itemIds);
       let tradeableItemIds = itemIds.filter(id => marketableSet.has(id));
+      const untradeableItemIds = itemIds.filter(id => !marketableSet.has(id));
 
-      if (tradeableItemIds.length === 0) {
-        addToast('沒有可交易的物品', 'warning');
+      if (tradeableItemIds.length === 0 && untradeableItemIds.length === 0) {
+        addToast('沒有找到物品', 'warning');
         setIsRecipeSearching(false);
         return;
+      }
+      
+      if (tradeableItemIds.length === 0) {
+        addToast('沒有可交易的物品', 'warning');
+        // Still show untradeable items
       }
 
       // Sort item IDs by ilvl (descending, highest first) before API query
@@ -571,12 +583,34 @@ export default function CraftingJobPriceChecker({
       }
 
       setTooManyItemsWarning(null);
-      addToast(`找到 ${tradeableItemIds.length} 個可交易物品，正在獲取市場數據...`, 'info');
+      if (tradeableItemIds.length > 0) {
+        addToast(`找到 ${tradeableItemIds.length} 個可交易物品${untradeableItemIds.length > 0 ? `、${untradeableItemIds.length} 個不可交易物品` : ''}，正在獲取市場數據...`, 'info');
+      }
 
-      // Fetch item details for display (optimized - batch query)
+      // Fetch item details for both tradeable and untradeable items
       const { getTwItemsByIds } = await import('../services/supabaseData');
-      const itemsData = await getTwItemsByIds(tradeableItemIds);
-      const items = tradeableItemIds.map(id => {
+      const allItemIds = tradeableItemIds.length > 0 ? tradeableItemIds : untradeableItemIds;
+      const itemsData = await getTwItemsByIds(allItemIds);
+      
+      const tradeableItems = tradeableItemIds.map(id => {
+        const itemData = itemsData[id];
+        if (!itemData || !itemData.tw) {
+          return null;
+        }
+        const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+        return {
+          id,
+          name: cleanName,
+          nameTW: cleanName,
+          searchLanguageName: null,
+          description: '',
+          itemLevel: '',
+          shopPrice: '',
+          inShop: false,
+        };
+      }).filter(item => item !== null);
+      
+      const untradeableItems = untradeableItemIds.map(id => {
         const itemData = itemsData[id];
         if (!itemData || !itemData.tw) {
           return null;
@@ -594,24 +628,32 @@ export default function CraftingJobPriceChecker({
         };
       }).filter(item => item !== null);
 
-      if (items.length === 0) {
+      if (tradeableItems.length === 0 && untradeableItems.length === 0) {
         addToast('無法獲取物品信息', 'error');
         setIsRecipeSearching(false);
         return;
       }
 
-      setSearchResults(items);
-
-      // Fetch market data (updates state progressively)
-      const marketData = await fetchMarketData(tradeableItemIds, false);
+      setTradeableResults(tradeableItems);
+      setUntradeableResults(untradeableItems);
+      setShowUntradeable(false); // Default to showing tradeable items
       
-      if (!marketData) {
-        setIsRecipeSearching(false);
-        return;
+      // Set searchResults based on what should be displayed
+      const itemsToDisplay = tradeableItems.length > 0 ? tradeableItems : untradeableItems;
+      setSearchResults(itemsToDisplay);
+
+      // Fetch market data (updates state progressively) - only for tradeable items
+      if (tradeableItemIds.length > 0) {
+        const marketData = await fetchMarketData(tradeableItemIds, false);
+        
+        if (!marketData) {
+          setIsRecipeSearching(false);
+          return;
+        }
       }
 
       // State is already updated progressively by fetchMarketData
-      addToast(`搜索完成！找到 ${items.length} 個可交易物品`, 'success');
+      addToast(`搜索完成！找到 ${tradeableItems.length} 個可交易物品${untradeableItems.length > 0 ? `、${untradeableItems.length} 個不可交易物品` : ''}`, 'success');
     } catch (error) {
       console.error('Search error:', error);
       addToast('搜索失敗，請稍後再試', 'error');
@@ -620,6 +662,15 @@ export default function CraftingJobPriceChecker({
       setIsRecipeSearching(false);
     }
   }, [ilvlMin, ilvlMax, selectedJobs, isRecipeSearching, isRangeValid, getMaxRange, addToast, fetchMarketData]);
+
+  // Update searchResults when showUntradeable changes
+  useEffect(() => {
+    const itemsToDisplay = showUntradeable ? untradeableResults : tradeableResults;
+    // Only update if we have results to avoid clearing during search
+    if (tradeableResults.length > 0 || untradeableResults.length > 0) {
+      setSearchResults(itemsToDisplay);
+    }
+  }, [showUntradeable, tradeableResults, untradeableResults]);
 
   // Job icons mapping with XIVAPI URLs
   const jobIconUrls = {
@@ -1173,6 +1224,12 @@ export default function CraftingJobPriceChecker({
             title="搜索結果"
             defaultItemsPerPage={50}
             itemsPerPageOptions={[50, 100, 200]}
+            untradeableCount={untradeableResults.length}
+            tradeableCount={tradeableResults.length}
+            onToggleUntradeable={(newValue) => {
+              setShowUntradeable(newValue);
+            }}
+            isShowUntradeable={showUntradeable}
             onSelect={(item) => {
               window.open(`${window.location.origin}${getInternalUrl(`/item/${item.id}`)}`, '_blank', 'noopener,noreferrer');
             }}

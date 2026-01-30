@@ -69,6 +69,9 @@ export default function MSQPriceChecker({
   
   const [selectedEquipCategory, setSelectedEquipCategory] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
+  const [tradeableResults, setTradeableResults] = useState([]);
+  const [untradeableResults, setUntradeableResults] = useState([]);
+  const [showUntradeable, setShowUntradeable] = useState(false);
   const [itemVelocities, setItemVelocities] = useState({});
   const [itemAveragePrices, setItemAveragePrices] = useState({});
   const [itemMinListings, setItemMinListings] = useState({});
@@ -581,6 +584,9 @@ export default function MSQPriceChecker({
     }
 
     setSearchResults([]);
+    setTradeableResults([]);
+    setUntradeableResults([]);
+    setShowUntradeable(false);
     setItemVelocities({});
     setItemAveragePrices({});
     setItemMinListings({});
@@ -601,6 +607,9 @@ export default function MSQPriceChecker({
       if (itemIds.length === 0) {
         setIlvlInfoMessage('未找到該物品等級的物品');
         setSearchResults([]);
+        setTradeableResults([]);
+        setUntradeableResults([]);
+        setShowUntradeable(false);
         setIsLoadingVelocities(false);
         setIsSearchingLocal(false);
         return;
@@ -632,6 +641,9 @@ export default function MSQPriceChecker({
       if (itemIds.length === 0) {
         addToast('該裝備分類中沒有相符的物品', 'warning');
         setSearchResults([]);
+        setTradeableResults([]);
+        setUntradeableResults([]);
+        setShowUntradeable(false);
         setIsLoadingVelocities(false);
         setIsSearchingLocal(false);
         return;
@@ -675,6 +687,9 @@ export default function MSQPriceChecker({
       if (items.length === 0) {
         addToast('無法獲取物品信息', 'error');
         setSearchResults([]);
+        setTradeableResults([]);
+        setUntradeableResults([]);
+        setShowUntradeable(false);
         setIsLoadingVelocities(false);
         setIsSearchingLocal(false);
         return;
@@ -702,7 +717,18 @@ export default function MSQPriceChecker({
       });
 
       console.log(`[MSQPriceChecker] Setting search results: ${itemsWithInfo.length} items`);
-      setSearchResults(itemsWithInfo);
+      
+      // Separate tradeable and untradeable items
+      const tradeableItems = itemsWithInfo.filter(item => tradeableItemIds.includes(item.id));
+      const untradeableItems = itemsWithInfo.filter(item => !tradeableItemIds.includes(item.id));
+      
+      setTradeableResults(tradeableItems);
+      setUntradeableResults(untradeableItems);
+      setShowUntradeable(false); // Default to showing tradeable items
+      
+      // Set searchResults based on what should be displayed
+      const itemsToDisplay = tradeableItems.length > 0 ? tradeableItems : untradeableItems;
+      setSearchResults(itemsToDisplay);
 
       // Fetch prices using the extracted function
       await fetchPricesForItems(itemsToQueryAPI, finalItemIds);
@@ -714,6 +740,15 @@ export default function MSQPriceChecker({
       setIsSearchingLocal(false);
     }
   }, [ilvlInput, selectedEquipCategory, selectedWorld, selectedServerOption, addToast, itemMatchesEquipCategory, itemMatchesAnyCategory, searchParams, setSearchParams, loadEquipmentDataByIds, fetchPricesForItems]);
+
+  // Update searchResults when showUntradeable changes
+  useEffect(() => {
+    const itemsToDisplay = showUntradeable ? untradeableResults : tradeableResults;
+    // Only update if we have results to avoid clearing during search
+    if (tradeableResults.length > 0 || untradeableResults.length > 0) {
+      setSearchResults(itemsToDisplay);
+    }
+  }, [showUntradeable, tradeableResults, untradeableResults]);
 
   const maxRange = 50;
 
@@ -887,6 +922,12 @@ export default function MSQPriceChecker({
               getSimplifiedChineseName={getSimplifiedChineseName}
               addToast={addToast}
               title="搜索結果"
+              untradeableCount={untradeableResults.length}
+              tradeableCount={tradeableResults.length}
+              onToggleUntradeable={(newValue) => {
+                setShowUntradeable(newValue);
+              }}
+              isShowUntradeable={showUntradeable}
               onSelect={(item) => {
                 if (onItemSelect) {
                   // Prepare navigation URL with server param
