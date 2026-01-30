@@ -606,8 +606,8 @@ async function main() {
       console.warn('  ⚠ Helper function exec_sql not found or not accessible');
       console.warn('  Error:', error.message);
       console.warn('  💡 Make sure exec_sql function uses sql_query parameter name');
-      console.warn('  💡 Run create_helper_function.sql in Supabase SQL Editor');
-      console.warn('  💡 Or create tables manually using create_tables.sql');
+      console.warn('  💡 Run sql/create_helper_function.sql in Supabase SQL Editor');
+      console.warn('  💡 Or create tables manually using sql/create_tables.sql');
       console.log('');
     } else {
       console.log('  ✓ Helper function exec_sql found - will auto-create tables\n');

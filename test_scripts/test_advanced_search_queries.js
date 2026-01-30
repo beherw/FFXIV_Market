@@ -3,7 +3,7 @@
  * 這個文件用於手動測試各種查詢組合，確保join查詢正確工作
  */
 
-import { supabase } from './src/services/supabaseClient.js';
+import { supabase } from '../src/services/supabaseClient.js';
 
 // 測試1: 單選職業（例如：PLD）
 async function testSingleJob() {

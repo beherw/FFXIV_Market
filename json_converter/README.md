@@ -14,7 +14,7 @@ Add:
 
 ### 2. Setup Helper Function (One-time)
 
-Run `create_helper_function.sql` in Supabase SQL Editor to enable automatic table creation.
+Run `sql/create_helper_function.sql` in Supabase SQL Editor to enable automatic table creation.
 
 ### 3. Push to GitHub
 
@@ -29,8 +29,13 @@ That's it! The workflow will:
 - `json_list.txt` - List of JSON files to convert
 - `json_to_csv.js` - Converts JSON files to CSV
 - `sync_smart.js` - Smart sync script (creates tables + syncs data)
-- `create_tables.sql` - SQL to create tables manually (optional)
-- `create_helper_function.sql` - Helper function for auto table creation
+
+### SQL Files (in `sql/` directory)
+- `sql/create_helper_function.sql` - **Required (one-time)** - Helper function for auto table creation
+- `sql/create_tables.sql` - **Optional** - SQL to create tables manually (fallback if auto-creation fails)
+- `sql/optimize_database_indexes.sql` - **Optional** - Creates composite indexes for better query performance
+- `sql/optimize_search_indexes.sql` - **Optional** - Creates trigram indexes for fast text search (ILIKE queries)
+- `sql/verify_indexes.sql` - **Optional** - Diagnostic script to verify indexes are created and being used
 
 ### Output
 - `csv_output/` - Generated CSV files (gitignored, auto-generated)
@@ -86,8 +91,8 @@ node sync_smart.js
 ## Troubleshooting
 
 **"Table does not exist" errors:**
-- Run `create_helper_function.sql` in Supabase SQL Editor
-- Or run `create_tables.sql` manually once
+- Run `sql/create_helper_function.sql` in Supabase SQL Editor
+- Or run `sql/create_tables.sql` manually once
 
 **"Helper function not found":**
 - Verify `exec_sql` function exists in Supabase
