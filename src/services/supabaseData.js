@@ -2408,12 +2408,8 @@ export async function getItemSourcesById(itemId, signal = null) {
       }
 
       if (!data || !data.sources) {
-        console.log(`[Supabase] 📋 Raw database response for item ${itemIdNum}:`, JSON.stringify(data, null, 2));
         return [];
       }
-
-      // Log raw database response
-      console.log(`[Supabase] 📋 Raw database response for item ${itemIdNum}:`, JSON.stringify(data, null, 2));
 
       // Parse sources if it's a JSON string (from CSV import)
       let sources = data.sources;

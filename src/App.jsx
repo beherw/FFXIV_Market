@@ -961,6 +961,26 @@ function App() {
       });
 
       if (sortedItemIds.length === 0) {
+        // CRITICAL: When showing untradeable items, don't clear universalis data
+        // Keep the existing data so it's still visible when switching back to tradeable items
+        // Only clear data if we're showing tradeable items but they're all filtered out (shouldn't happen)
+        if (showUntradeable) {
+          // Showing untradeable items - keep existing universalis data, just stop loading
+          setIsLoadingVelocities(false);
+          setVelocityLoadingProgress({ loaded: 0, total: 0 });
+          // Only enable server selector if server data is loaded AND no fetch is in progress
+          if (isServerDataLoaded && !velocityFetchInProgressRef.current) {
+            setIsServerSelectorDisabled(false);
+          }
+          velocityFetchInProgressRef.current = false;
+          // Clear lastFetchedItemIdsRef so when switching back to tradeable items, it will trigger a new fetch
+          // Use a special marker to indicate we're showing untradeable items
+          lastFetchedItemIdsRef.current = 'UNTradeable';
+          return;
+        }
+        
+        // Only clear data if we're showing tradeable items but have no marketable items
+        // This should rarely happen, but handle it gracefully
         setSearchVelocities({});
         setSearchAveragePrices({});
         setSearchMinListings({});
@@ -984,13 +1004,21 @@ function App() {
       
       // Clear state if server changed (to avoid showing stale DC prices when switching to server)
       if (lastFetchedItemIdsRef.current && lastFetchedItemIdsRef.current !== cacheKey) {
-        const lastServerKey = lastFetchedItemIdsRef.current.split('|')[1];
-        if (lastServerKey !== serverKey) {
-          setSearchVelocities({});
-          setSearchAveragePrices({});
-          setSearchMinListings({});
-          setSearchRecentPurchases({});
-          setSearchTradability({});
+        // Handle special case: 'UNTradeable' marker means we were showing untradeable items
+        // In this case, we want to fetch new data (don't clear existing data)
+        if (lastFetchedItemIdsRef.current === 'UNTradeable') {
+          // Don't clear data - we're switching from untradeable to tradeable, keep existing data visible
+          // The new fetch will update it
+        } else {
+          // Normal case: check if server changed
+          const lastServerKey = lastFetchedItemIdsRef.current.split('|')[1];
+          if (lastServerKey !== serverKey) {
+            setSearchVelocities({});
+            setSearchAveragePrices({});
+            setSearchMinListings({});
+            setSearchRecentPurchases({});
+            setSearchTradability({});
+          }
         }
       }
       
