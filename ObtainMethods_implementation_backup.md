@@ -1,4 +1,4 @@
-// Component to display item acquisition methods (取得方式)
+// Component to display item acquisition methods (取得方式) 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
