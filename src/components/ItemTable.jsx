@@ -150,7 +150,7 @@ const ItemNameCell = ({ itemName, addToast }) => {
   );
 };
 
-export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null, selectedRarities: externalSelectedRarities, setSelectedRarities: externalSetSelectedRarities, raritiesData: externalRaritiesData, externalRarityFilter = false, externalRarityCounts = null, isServerDataLoaded = true, isRaritySelectorDisabled = false }) {
+export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null, selectedRarities: externalSelectedRarities, setSelectedRarities: externalSetSelectedRarities, raritiesData: externalRaritiesData, externalRarityFilter = false, externalRarityCounts = null, isServerDataLoaded = true, isRaritySelectorDisabled = false, itemsAlreadyFiltered = false }) {
   const [sortColumn, setSortColumn] = useState('id');
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc' - default to desc for highest ilvl first
   const [ilvlsData, setIlvlsData] = useState(null);
@@ -265,10 +265,9 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
   const filteredItems = useMemo(() => {
     let filtered = items;
     
-    // Always filter if marketableItems is available
-    // During loading: use marketableItems to filter
-    // After loading: use itemTradability (more accurate) but fallback to marketableItems
-    if (marketableItems) {
+    // Skip marketability filtering if items are already pre-filtered (e.g., tradeableResults)
+    // This prevents double-filtering which can cause items to disappear
+    if (!itemsAlreadyFiltered && marketableItems) {
       // CRITICAL: First check using marketableItems (always available)
       // This ensures filtering works even when itemTradability hasn't loaded yet
       const hasTradeableItemsByMarketable = items.some(item => marketableItems.has(item.id));
@@ -320,7 +319,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     }
 
     return filtered;
-  }, [items, isLoadingVelocities, itemTradability, marketableItems, selectedRarities, raritiesDataToUse, externalRarityFilter, selectedVersions, itemPatchData, patchNamesData]);
+  }, [items, isLoadingVelocities, itemTradability, marketableItems, selectedRarities, raritiesDataToUse, externalRarityFilter, selectedVersions, itemPatchData, patchNamesData, itemsAlreadyFiltered]);
 
   // Sort items based on current sort column and direction
   const sortedItems = useMemo(() => {

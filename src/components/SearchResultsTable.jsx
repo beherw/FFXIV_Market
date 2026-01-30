@@ -433,6 +433,7 @@ export default function SearchResultsTable({
         raritiesData={raritiesData}
         externalRarityFilter={externalRarityFilter}
         externalRarityCounts={externalRarityCounts}
+        itemsAlreadyFiltered={true}
         isRaritySelectorDisabled={isRaritySelectorDisabled}
       />
       
