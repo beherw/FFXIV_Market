@@ -362,8 +362,11 @@ export async function getTwItemById(itemId) {
  */
 export async function getTwItemsByIds(itemIds, signal = null) {
   if (!itemIds || itemIds.length === 0) {
+    console.log(`[getTwItemsByIds] ⚠️ No itemIds provided, returning empty object`);
     return {};
   }
+
+  console.log(`[getTwItemsByIds] 📥 Querying ${itemIds.length} items:`, itemIds);
 
   // Check if already aborted
   if (signal && signal.aborted) {
@@ -381,6 +384,7 @@ export async function getTwItemsByIds(itemIds, signal = null) {
     }
 
     const batch = itemIds.slice(i, i + batchSize);
+    console.log(`[getTwItemsByIds] 🔍 Querying batch ${i / batchSize + 1} with ${batch.length} items:`, batch);
     const { data, error } = await supabase
       .from('tw_items')
       .select('id, tw')
@@ -392,19 +396,24 @@ export async function getTwItemsByIds(itemIds, signal = null) {
     }
 
     if (error) {
-      console.error(`Error fetching tw_items for batch:`, error);
+      console.error(`[getTwItemsByIds] ❌ Error fetching tw_items for batch:`, error);
       continue; // Continue with next batch
     }
+
+    console.log(`[getTwItemsByIds] 📋 Batch result:`, data, `count:`, data?.length || 0);
 
     if (data) {
       data.forEach(row => {
         if (row.tw && row.tw.trim() !== '') {
           result[row.id] = { tw: row.tw };
+        } else {
+          console.warn(`[getTwItemsByIds] ⚠️ Item ${row.id} has empty or missing tw field`);
         }
       });
     }
   }
 
+  console.log(`[getTwItemsByIds] ✅ Final result:`, result, `keys:`, Object.keys(result));
   return result;
 }
 
@@ -2852,12 +2861,17 @@ export async function getItemSourcesById(itemId, signal = null) {
       }
 
       if (!data || !data.sources) {
+        console.log(`[Supabase] 📋 Raw database response for item ${itemIdNum}:`, JSON.stringify(data, null, 2));
         return [];
       }
+
+      // Log raw database response
+      console.log(`[Supabase] 📋 Raw database response for item ${itemIdNum}:`, JSON.stringify(data, null, 2));
 
       // Parse sources if it's a JSON string (from CSV import)
       let sources = data.sources;
       if (typeof sources === 'string') {
+        console.log(`[Supabase] 📋 Sources is a string, parsing JSON for item ${itemIdNum}...`);
         try {
           sources = JSON.parse(sources);
         } catch (parseError) {
@@ -2869,11 +2883,13 @@ export async function getItemSourcesById(itemId, signal = null) {
       // Ensure sources is an array
       if (!Array.isArray(sources)) {
         console.warn(`[Supabase] Sources for item ${itemIdNum} is not an array:`, typeof sources);
+        console.log(`[Supabase] 📋 Sources value:`, sources);
         return [];
       }
 
       const loadDuration = performance.now() - loadStartTime;
       console.log(`[Supabase] ✅ Loaded extracts for item ${itemIdNum} (${sources.length} sources) in ${loadDuration.toFixed(2)}ms`);
+      console.log(`[Supabase] 📋 Parsed sources data for item ${itemIdNum}:`, JSON.stringify(sources, null, 2));
 
       // Cache the result
       targetedQueryCache.extracts[itemIdNum] = sources;

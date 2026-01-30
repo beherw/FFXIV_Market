@@ -35,6 +35,7 @@ export function extractIdsFromSources(sources) {
 
   sources.forEach(source => {
     const { type, data } = source;
+    console.log(`[extractIdsFromSources] Processing source type:`, type, `data:`, data);
 
     // TRADE_SOURCES (type 2)
     if (type === 2 && Array.isArray(data)) {
@@ -149,7 +150,7 @@ export function extractIdsFromSources(sources) {
       });
     }
 
-    // CRAFTED_BY (type 1) - extract item IDs from ingredients
+    // CRAFTED_BY (type 1) - extract item IDs from ingredients and masterbook IDs
     if (type === 1 && Array.isArray(data)) {
       data.forEach(craft => {
         if (Array.isArray(craft.ingredients)) {
@@ -158,6 +159,15 @@ export function extractIdsFromSources(sources) {
               ids.itemIds.add(ingredient.id);
             }
           });
+        }
+        // Extract masterbook ID if present
+        if (craft.masterbook && craft.masterbook.id) {
+          const masterbookId = typeof craft.masterbook.id === 'string' 
+            ? parseInt(craft.masterbook.id, 10) 
+            : craft.masterbook.id;
+          if (masterbookId && !isNaN(masterbookId)) {
+            ids.itemIds.add(masterbookId);
+          }
         }
       });
     }
@@ -171,10 +181,38 @@ export function extractIdsFromSources(sources) {
         }
       });
     }
+
+    // MASTERBOOKS (type 18) - extract item IDs from CompactMasterbook objects
+    if (type === 18 && Array.isArray(data)) {
+      console.log(`[extractIdsFromSources] Processing MASTERBOOKS (type 18) with data:`, data);
+      data.forEach(book => {
+        console.log(`[extractIdsFromSources] Processing book:`, book, `type:`, typeof book);
+        // Handle both object format {id: number|string, name?: I18nName} and direct ID format
+        if (typeof book === 'object' && book !== null && book.id !== undefined) {
+          const bookId = typeof book.id === 'string' ? parseInt(book.id, 10) : book.id;
+          console.log(`[extractIdsFromSources] Extracted bookId from object:`, bookId);
+          if (bookId && !isNaN(bookId)) {
+            ids.itemIds.add(bookId);
+            console.log(`[extractIdsFromSources] Added bookId to itemIds:`, bookId);
+          }
+        } else if (typeof book === 'number' || (typeof book === 'string' && !isNaN(parseInt(book, 10)))) {
+          // Direct ID format
+          const bookId = typeof book === 'string' ? parseInt(book, 10) : book;
+          console.log(`[extractIdsFromSources] Extracted bookId from direct ID:`, bookId);
+          if (bookId) {
+            ids.itemIds.add(bookId);
+            console.log(`[extractIdsFromSources] Added bookId to itemIds:`, bookId);
+          }
+        } else {
+          console.warn(`[extractIdsFromSources] Unknown book format:`, book);
+        }
+      });
+      console.log(`[extractIdsFromSources] Final itemIds after MASTERBOOKS processing:`, Array.from(ids.itemIds));
+    }
   });
 
   // Convert Sets to Arrays and sort for consistent caching
-  return {
+  const result = {
     npcIds: Array.from(ids.npcIds).sort((a, b) => a - b),
     shopIds: Array.from(ids.shopIds).sort((a, b) => a - b),
     instanceIds: Array.from(ids.instanceIds).sort((a, b) => a - b),
@@ -184,4 +222,6 @@ export function extractIdsFromSources(sources) {
     zoneIds: Array.from(ids.zoneIds).sort((a, b) => a - b),
     fateIds: Array.from(ids.fateIds).sort((a, b) => a - b),
   };
+  console.log(`[extractIdsFromSources] Final result itemIds:`, result.itemIds, `length:`, result.itemIds.length);
+  return result;
 }

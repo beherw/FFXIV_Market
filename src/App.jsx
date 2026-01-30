@@ -75,6 +75,8 @@ function App() {
   const imageContainerRef = useRef(null);
   const switchCountRef = useRef(0);
   const currentIntervalRef = useRef(3500); // Start at 3.5 seconds
+  const craftingTreeRef = useRef(null);
+  const prevCraftingTreeExpandedRef = useRef(false);
   
   // Crafting tree states
   const [craftingTree, setCraftingTree] = useState(null);
@@ -102,6 +104,9 @@ function App() {
     craftingTree: 0,
     relatedItems: 0
   });
+  
+  // Track if crafting tree was expanded from ObtainMethods
+  const [expandedFromObtainMethods, setExpandedFromObtainMethods] = useState(false);
   
   // Marketable items and velocity states
   const [marketableItems, setMarketableItems] = useState(null);
@@ -2886,6 +2891,47 @@ function App() {
       });
   }, [excludeCrystals, selectedItem, hasCraftingRecipe]);
 
+  // Scroll to crafting tree when it's expanded from ObtainMethods
+  useEffect(() => {
+    // Only scroll if it changed from false to true (expanded) AND was expanded from ObtainMethods
+    if (isCraftingTreeExpanded && !prevCraftingTreeExpandedRef.current && expandedFromObtainMethods) {
+      // Use requestAnimationFrame to wait for next paint, then scroll
+      const scrollToTree = () => {
+        // Try multiple times with increasing delays to ensure DOM is ready
+        const attemptScroll = (attempt = 0) => {
+          if (craftingTreeRef.current) {
+            // Calculate offset to account for fixed header
+            const element = craftingTreeRef.current;
+            const elementPosition = element.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - 100; // 100px offset from top
+            
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            });
+            
+            // Reset the flag after scrolling
+            setExpandedFromObtainMethods(false);
+          } else if (attempt < 5) {
+            // Retry up to 5 times with increasing delays
+            setTimeout(() => attemptScroll(attempt + 1), 100 * (attempt + 1));
+          } else {
+            // Give up after 5 attempts
+            setExpandedFromObtainMethods(false);
+          }
+        };
+        
+        // Start scrolling after a short delay
+        requestAnimationFrame(() => {
+          setTimeout(() => attemptScroll(), 100);
+        });
+      };
+      
+      scrollToTree();
+    }
+    prevCraftingTreeExpandedRef.current = isCraftingTreeExpanded;
+  }, [isCraftingTreeExpanded, expandedFromObtainMethods, craftingTree]);
+
   // Handle excludeCrystals toggle
   const handleExcludeCrystalsChange = useCallback((newValue) => {
     setExcludeCrystals(newValue);
@@ -3481,8 +3527,13 @@ function App() {
                   {/* Crafting Price Tree Button */}
                   <button
                     onClick={() => {
+                      const wasExpanded = isCraftingTreeExpanded;
                       setIsCraftingTreeExpanded(!isCraftingTreeExpanded);
                       setButtonOrder(prev => ({ ...prev, craftingTree: Math.max(...Object.values(prev)) + 1 }));
+                      // Reset flag when clicking button directly (not from ObtainMethods)
+                      if (!wasExpanded) {
+                        setExpandedFromObtainMethods(false);
+                      }
                     }}
                     disabled={!hasCraftingRecipe || isLoadingCraftingTree}
                     className={`
@@ -3575,22 +3626,28 @@ function App() {
                     key: 'craftingTree',
                     order: buttonOrder.craftingTree,
                     component: (
-                      <Suspense key="craftingTree" fallback={
-                        <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
-                          <p className="mt-4 text-sm text-gray-400">載入製作價格樹...</p>
-                        </div>
-                      }>
-                        <CraftingTree
-                          tree={craftingTree}
-                          selectedServerOption={selectedServerOption}
-                          selectedWorld={selectedWorld}
-                          worlds={worlds}
-                          onItemSelect={handleItemSelect}
-                          excludeCrystals={excludeCrystals}
-                          onExcludeCrystalsChange={handleExcludeCrystalsChange}
-                        />
-                      </Suspense>
+                      <div 
+                        key="craftingTreeContainer" 
+                        ref={craftingTreeRef}
+                        className="scroll-mt-20"
+                      >
+                        <Suspense fallback={
+                          <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
+                            <p className="mt-4 text-sm text-gray-400">載入製作價格樹...</p>
+                          </div>
+                        }>
+                          <CraftingTree
+                            tree={craftingTree}
+                            selectedServerOption={selectedServerOption}
+                            selectedWorld={selectedWorld}
+                            worlds={worlds}
+                            onItemSelect={handleItemSelect}
+                            excludeCrystals={excludeCrystals}
+                            onExcludeCrystalsChange={handleExcludeCrystalsChange}
+                          />
+                        </Suspense>
+                      </div>
                     )
                   });
                 }
@@ -3637,7 +3694,14 @@ function App() {
                             <ObtainMethods
                               itemId={selectedItem.id}
                               onItemClick={handleItemSelect}
-                              onExpandCraftingTree={() => setIsCraftingTreeExpanded(true)}
+                              onExpandCraftingTree={() => {
+                                const wasExpanded = isCraftingTreeExpanded;
+                                setIsCraftingTreeExpanded(prev => !prev);
+                                // Set flag if expanding (not collapsing)
+                                if (!wasExpanded) {
+                                  setExpandedFromObtainMethods(true);
+                                }
+                              }}
                               isCraftingTreeExpanded={isCraftingTreeExpanded}
                             />
                           </Suspense>
@@ -3650,7 +3714,11 @@ function App() {
                 // Sort by order (descending - highest order first, meaning last clicked appears on top)
                 sections.sort((a, b) => b.order - a.order);
                 
-                return sections.map(section => section.component);
+                return (
+                  <>
+                    {sections.map(section => section.component)}
+                  </>
+                );
               })()}
 
               {/* Server Upload Times - Show when DC is selected */}

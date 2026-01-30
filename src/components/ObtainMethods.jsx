@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { getItemSources, DataType } from '../services/extractsService';
 import { getItemById } from '../services/itemDatabase';
 import { extractIdsFromSources } from '../utils/extractIdsFromSources';
+import { getHuijiWikiUrlForItem } from '../utils/wikiUtils';
 // Supabase batch query functions
 import {
   getTwNpcsByIds,
@@ -91,6 +92,34 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   });
   
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [wikiUrl, setWikiUrl] = useState(null); // Store Wiki URL for activity content notice
+
+  // Load Wiki URL when itemId changes (for activity content notice)
+  useEffect(() => {
+    if (!itemId) {
+      setWikiUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    getHuijiWikiUrlForItem(itemId)
+      .then(url => {
+        if (!cancelled) {
+          setWikiUrl(url);
+        }
+      })
+      .catch(error => {
+        if (!cancelled) {
+          console.error(`[ObtainMethods] Failed to generate Wiki URL:`, error);
+          // Fallback to ID-based URL
+          setWikiUrl(`https://ff14.huijiwiki.com/wiki/物品:${encodeURIComponent(itemId)}`);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [itemId]);
 
   // Load sources and all required data from Supabase
   useEffect(() => {
@@ -118,7 +147,20 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         
         // Step 2: Extract all required IDs from sources
         console.log(`[ObtainMethods] 🔍 Raw sources data for item ${itemId}:`, sourcesData);
+        console.log(`[ObtainMethods] 📋 Detailed sources structure for item ${itemId}:`, JSON.stringify(sourcesData, null, 2));
+        
+        // Validate sourcesData before processing
+        if (!sourcesData || !Array.isArray(sourcesData)) {
+          console.warn(`[ObtainMethods] ⚠️ Invalid sources data for item ${itemId}:`, sourcesData);
+          setSources([]);
+          setLoading(false);
+          setDataLoaded(true);
+          return;
+        }
+        
         const requiredIds = extractIdsFromSources(sourcesData);
+        console.log(`[ObtainMethods] 🔍 Required IDs after extraction:`, requiredIds);
+        console.log(`[ObtainMethods] 🔍 Required IDs itemIds specifically:`, requiredIds.itemIds, `length:`, requiredIds.itemIds?.length);
         
         // Step 2.5: Get FATE IDs from fate_sources table and add to requiredIds
         const fateSourcesFromTable = await getFateSourcesByItemId(itemId, abortController.signal);
@@ -140,6 +182,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           questIds: requiredIds.questIds.length,
           achievementIds: requiredIds.achievementIds.length,
           itemIds: requiredIds.itemIds.length,
+          itemIdsList: requiredIds.itemIds, // Show actual item IDs
           zoneIds: requiredIds.zoneIds.length,
           fateIds: requiredIds.fateIds.length,
           fateIdsList: requiredIds.fateIds
@@ -219,9 +262,20 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         
         // Item queries (for currency names, etc.)
         if (requiredIds.itemIds.length > 0) {
+          console.log(`[ObtainMethods] 🔍 Adding item query for ${requiredIds.itemIds.length} items:`, requiredIds.itemIds);
           queries.push(
-            getTwItemsByIds(requiredIds.itemIds, abortController.signal).then(data => ({ type: 'twItems', data }))
+            getTwItemsByIds(requiredIds.itemIds, abortController.signal)
+              .then(data => {
+                console.log(`[ObtainMethods] 🔍 getTwItemsByIds result:`, data, `keys:`, Object.keys(data || {}));
+                return { type: 'twItems', data };
+              })
+              .catch(err => {
+                console.error(`[ObtainMethods] ❌ Error loading twItems:`, err);
+                return { type: 'twItems', data: {} };
+              })
           );
+        } else {
+          console.log(`[ObtainMethods] ⚠️ No itemIds to query, itemIds.length:`, requiredIds.itemIds.length);
         }
         
         // Special sources queries (these return arrays of IDs, not full data objects)
@@ -242,8 +296,19 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           
           // Combine results into loadedData object
           const newLoadedData = { ...loadedData };
-          results.forEach(({ type, data }) => {
-            newLoadedData[type] = data;
+          results.forEach((result) => {
+            // Add error handling for malformed results
+            if (!result || typeof result !== 'object') {
+              console.warn(`[ObtainMethods] ⚠️ Invalid result in query results:`, result);
+              return;
+            }
+            const { type, data } = result;
+            if (!type) {
+              console.warn(`[ObtainMethods] ⚠️ Result missing type:`, result);
+              return;
+            }
+            // Safely assign data, handling null/undefined
+            newLoadedData[type] = data || (Array.isArray(data) ? [] : {});
             const count = typeof data === 'object' && !Array.isArray(data) ? Object.keys(data).length : (Array.isArray(data) ? data.length : 0);
             console.log(`[ObtainMethods] ✅ Loaded ${type}: ${count} items`);
           });
@@ -251,6 +316,15 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           setLoadedData(newLoadedData);
           
           // Process sources with additional data from Supabase
+          // Validate sourcesData before processing
+          if (!sourcesData || !Array.isArray(sourcesData)) {
+            console.warn(`[ObtainMethods] ⚠️ Invalid sourcesData in processing step for item ${itemId}:`, sourcesData);
+            setSources([]);
+            setLoading(false);
+            setDataLoaded(true);
+            return;
+          }
+          
           let processedSources = [...sourcesData];
           
           // Collect zoneIds from FATEs - we'll do this after processing sources
@@ -439,16 +513,118 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             
           }
           
-          // After processing all FATE sources, query place data for collected zoneIds
-          if (fateZoneIds.size > 0) {
-            const zoneIdsToQuery = Array.from(fateZoneIds).filter(zoneId => {
+          // Unified zoneId collection: Collect zoneIds from all possible sources
+          // This ensures we load place data for all zoneIds used by any obtainable method
+          const allZoneIds = new Set();
+          
+          // 1. Collect zoneIds from FATE sources (already collected in fateZoneIds)
+          fateZoneIds.forEach(zoneId => allZoneIds.add(zoneId));
+          
+          // 2. Collect zoneIds from instances (from loaded data and source data)
+          const instancesData = newLoadedData.instances || {};
+          Object.keys(instancesData).forEach(instanceIdStr => {
+            const instance = instancesData[instanceIdStr];
+            if (instance?.position?.zoneid) {
+              allZoneIds.add(instance.position.zoneid);
+            }
+          });
+          const instancesSource = processedSources.find(s => s.type === DataType.INSTANCES);
+          if (instancesSource && Array.isArray(instancesSource.data)) {
+            instancesSource.data.forEach(instanceId => {
+              if (typeof instanceId === 'object' && instanceId.zoneId) {
+                allZoneIds.add(instanceId.zoneId);
+              }
+            });
+          }
+          
+          // 3. Collect zoneIds from quests (from questsDatabasePages startingPoint and npcs array)
+          const questsDatabasePages = newLoadedData.questsDatabasePages || {};
+          Object.keys(questsDatabasePages).forEach(questIdStr => {
+            const questDb = questsDatabasePages[questIdStr];
+            // Collect zoneId from startingPoint
+            if (questDb?.startingPoint?.zoneid) {
+              allZoneIds.add(questDb.startingPoint.zoneid);
+            }
+            // Also collect zoneIds from NPCs in quest's npcs array (these NPCs might be used for location fallback)
+            if (Array.isArray(questDb?.npcs)) {
+              questDb.npcs.forEach(npcId => {
+                // These NPCs will have their zoneIds collected from npcsData below
+                // But we need to ensure these NPCs are in the loaded npcs data
+                // The zoneIds will be collected from npcsData in step 4
+              });
+            }
+          });
+          
+          // 4. Collect zoneIds from NPCs (from npcs position and npcsDatabasePages)
+          const npcsData = newLoadedData.npcs || {};
+          Object.keys(npcsData).forEach(npcIdStr => {
+            const npc = npcsData[npcIdStr];
+            if (npc?.position?.zoneid) {
+              allZoneIds.add(npc.position.zoneid);
+            }
+          });
+          const npcsDatabasePages = newLoadedData.npcsDatabasePages || {};
+          Object.keys(npcsDatabasePages).forEach(npcIdStr => {
+            const npcDb = npcsDatabasePages[npcIdStr];
+            if (npcDb?.position?.zoneid) {
+              allZoneIds.add(npcDb.position.zoneid);
+            }
+          });
+          
+          // 5. Collect zoneIds from gathered nodes (from GATHERED_BY sources)
+          const gatheredBySource = processedSources.find(s => s.type === DataType.GATHERED_BY);
+          if (gatheredBySource && gatheredBySource.data?.nodes) {
+            gatheredBySource.data.nodes.forEach(node => {
+              if (node?.zoneId) {
+                allZoneIds.add(node.zoneId);
+              }
+            });
+          }
+          
+          // 6. Collect zoneIds from alarms (from ALARMS sources)
+          const alarmsSource = processedSources.find(s => s.type === DataType.ALARMS);
+          if (alarmsSource && Array.isArray(alarmsSource.data)) {
+            alarmsSource.data.forEach(alarm => {
+              if (alarm?.zoneId) {
+                allZoneIds.add(alarm.zoneId);
+              }
+            });
+          }
+          
+          // 7. Collect zoneIds from vendors (from VENDORS sources)
+          const vendorsSource = processedSources.find(s => s.type === DataType.VENDORS);
+          if (vendorsSource && Array.isArray(vendorsSource.data)) {
+            vendorsSource.data.forEach(vendor => {
+              if (vendor?.zoneId) {
+                allZoneIds.add(vendor.zoneId);
+              }
+            });
+          }
+          
+          // 8. Collect zoneIds from trade sources (from TRADE_SOURCES)
+          const tradeSourcesSource = processedSources.find(s => s.type === DataType.TRADE_SOURCES);
+          if (tradeSourcesSource && Array.isArray(tradeSourcesSource.data)) {
+            tradeSourcesSource.data.forEach(tradeSource => {
+              if (Array.isArray(tradeSource.npcs)) {
+                tradeSource.npcs.forEach(npc => {
+                  if (typeof npc === 'object' && npc.zoneId) {
+                    allZoneIds.add(npc.zoneId);
+                  }
+                });
+              }
+            });
+          }
+          
+          // Query place data for all collected zoneIds that are missing
+          if (allZoneIds.size > 0) {
+            const zoneIdsToQuery = Array.from(allZoneIds).filter(zoneId => {
               const hasTwPlace = newLoadedData.twPlaces[zoneId] || newLoadedData.twPlaces[String(zoneId)];
               const hasPlace = newLoadedData.places[zoneId] || newLoadedData.places[String(zoneId)];
               return !hasTwPlace && !hasPlace;
             });
             
             if (zoneIdsToQuery.length > 0) {
-              console.log(`[ObtainMethods] 🔍 Querying place data for FATE zoneIds:`, zoneIdsToQuery);
+              console.log(`[ObtainMethods] 🔍 Querying place data for ${zoneIdsToQuery.length} zoneIds from all sources:`, zoneIdsToQuery);
               try {
                 const [twPlaces, places] = await Promise.all([
                   getTwPlacesByIds(zoneIdsToQuery, abortController.signal),
@@ -463,19 +639,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 // Also update newLoadedData for immediate use
                 newLoadedData.twPlaces = { ...newLoadedData.twPlaces, ...twPlaces };
                 newLoadedData.places = { ...newLoadedData.places, ...places };
-                console.log(`[ObtainMethods] ✅ Loaded place data for ${zoneIdsToQuery.length} zones:`, zoneIdsToQuery);
+                console.log(`[ObtainMethods] ✅ Loaded place data for ${zoneIdsToQuery.length} zones`);
                 console.log(`[ObtainMethods] 📦 Sample twPlaces data:`, Object.entries(twPlaces).slice(0, 3));
-                // Update loadedData state immediately so getPlaceName can access it
-                setLoadedData(prev => ({
-                  ...prev,
-                  twPlaces: { ...prev.twPlaces, ...twPlaces },
-                  places: { ...prev.places, ...places }
-                }));
               } catch (err) {
                 console.error(`[ObtainMethods] Error loading place data:`, err);
               }
             } else {
-              console.log(`[ObtainMethods] ℹ️ All FATE zoneIds already have place data loaded`);
+              console.log(`[ObtainMethods] ℹ️ All zoneIds already have place data loaded`);
             }
           }
           
@@ -562,6 +732,66 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 });
               }
             }
+          }
+          
+          // Extract FATE reward item IDs from fatesDatabasePages and load twItems
+          const fateRewardItemIds = new Set();
+          const fatesDatabasePages = newLoadedData.fatesDatabasePages || {};
+          const currentItemIdNum = parseInt(itemId, 10);
+          
+          Object.keys(fatesDatabasePages).forEach(fateIdStr => {
+            const fateDb = fatesDatabasePages[fateIdStr];
+            if (fateDb && Array.isArray(fateDb.items)) {
+              fateDb.items.forEach(itemIdRaw => {
+                // Normalize item ID to number
+                const normalizedItemId = typeof itemIdRaw === 'number' ? itemIdRaw : parseInt(itemIdRaw, 10);
+                if (normalizedItemId && !isNaN(normalizedItemId)) {
+                  fateRewardItemIds.add(normalizedItemId);
+                }
+              });
+            }
+          });
+          
+          // Also add current item if it's a rare reward (in fate_sources but not in items array)
+          // Note: fateSourcesForItem is already declared above (line 346)
+          if (fateSourcesForItem.length > 0) {
+            // Check if current item is in any FATE's items array (normalize IDs for comparison)
+            const isInAnyFateItems = Object.values(fatesDatabasePages).some(fateDb => {
+              if (!fateDb || !Array.isArray(fateDb.items)) return false;
+              return fateDb.items.some(itemIdRaw => {
+                const normalizedItemId = typeof itemIdRaw === 'number' ? itemIdRaw : parseInt(itemIdRaw, 10);
+                return normalizedItemId === currentItemIdNum;
+              });
+            });
+            
+            // If current item is not in any FATE's items array but is in fate_sources, it's a rare reward
+            if (!isInAnyFateItems) {
+              fateRewardItemIds.add(currentItemIdNum);
+            }
+          }
+          
+          // Query missing twItems for FATE reward items
+          const missingRewardItemIds = Array.from(fateRewardItemIds).filter(itemId => {
+            const itemIdStr = String(itemId);
+            return !newLoadedData.twItems[itemId] && !newLoadedData.twItems[itemIdStr];
+          });
+          
+          if (missingRewardItemIds.length > 0) {
+            console.log(`[ObtainMethods] 🔍 Loading ${missingRewardItemIds.length} FATE reward items:`, missingRewardItemIds);
+            getTwItemsByIds(missingRewardItemIds, abortController.signal)
+              .then(rewardItemsData => {
+                if (abortController.signal.aborted) return;
+                console.log(`[ObtainMethods] ✅ Loaded ${Object.keys(rewardItemsData).length} FATE reward items`);
+                setLoadedData(prev => ({
+                  ...prev,
+                  twItems: { ...prev.twItems, ...rewardItemsData }
+                }));
+              })
+              .catch(err => {
+                if (!abortController.signal.aborted) {
+                  console.error(`[ObtainMethods] Error loading FATE reward items:`, err);
+                }
+              });
           }
           
           setSources(processedSources);
@@ -985,7 +1215,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         
                         return (
                           <div className="text-xs text-gray-400 mt-1">
-                            專用配方書:{' '}
                             {masterbookId ? (
                               <button
                                 onClick={(e) => {
@@ -1870,26 +2099,46 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               
               // Get FATE database page data for reward items
               const fateDb = loadedData.fatesDatabasePages[fateId] || loadedData.fatesDatabasePages[String(fateId)];
-              const rewardItems = fateDb?.items || [];
+              const rewardItemsRaw = fateDb?.items || [];
+              
+              // Normalize reward item IDs to numbers for consistent comparison
+              let rewardItems = rewardItemsRaw.map(id => typeof id === 'number' ? id : parseInt(id, 10)).filter(id => !isNaN(id));
               
               // Check if current item is in this FATE's rewards
-              // If the current item is not in the FATE's items array but the FATE is in fate-sources.json for this item,
-              // it means the item is a rare reward - show it in rare rating
-              const isCurrentItemInRewards = rewardItems.includes(itemId);
+              const currentItemIdNum = parseInt(itemId, 10);
               const fateSourcesForItemCheck = loadedData.fateSources || [];
               const isFateInSourcesForItem = fateSourcesForItemCheck && fateSourcesForItemCheck.includes(fateId);
               
-              // Gold/Silver rating: show all items from FATE's items array
+              // If FATE's items array is empty but this FATE is in sources for current item,
+              // add current item to reward items (fallback when database doesn't have items array populated)
+              if (rewardItems.length === 0 && isFateInSourcesForItem) {
+                console.log(`[ObtainMethods] ⚠️ FATE ${fateId} has empty items array, but is in sources for item ${currentItemIdNum}. Adding current item to rewards.`);
+                rewardItems = [currentItemIdNum];
+              }
+              
+              const isCurrentItemInRewards = rewardItems.includes(currentItemIdNum);
+              
+              // Debug: Log reward items for troubleshooting
+              console.log(`[ObtainMethods] 🔍 FATE ${fateId} - fateDb:`, fateDb, 'rewardItemsRaw:', rewardItemsRaw, 'rewardItems:', rewardItems, 'isCurrentItemInRewards:', isCurrentItemInRewards, 'isFateInSourcesForItem:', isFateInSourcesForItem);
+              
+              // Silver rating: show all items from FATE's items array
+              // Silver rating gives 1x of each reward item
+              const silverRewardItems = rewardItems;
+              
+              // Gold rating: same items as silver but with ×5 quantity (displayed in UI)
+              // Gold rating gives 5x of each reward item (same items as silver)
               const goldRewardItems = rewardItems;
               
               // Rare rating: show current item if it's not in the items array but FATE is in sources for this item
-              const rareRewardItems = (!isCurrentItemInRewards && isFateInSourcesForItem) ? [itemId] : [];
+              // This handles cases where an item is a rare drop from FATE but not in the standard reward list
+              // Only show as rare if there are other reward items (meaning current item is separate from standard rewards)
+              const rareRewardItems = (!isCurrentItemInRewards && isFateInSourcesForItem && rewardItemsRaw.length > 0) ? [currentItemIdNum] : [];
               
               // Check if this FATE is a notorious monster (惡名精英) - usually level 32+ and has specific icon
               const isNotoriousMonster = fateLevel && fateLevel >= 32 && fateIcon.includes('060958');
               
-              // Create wiki URL using Simplified Chinese name (only if available)
-              const wikiUrl = fateNameZh ? `https://ff14.huijiwiki.com/wiki/${encodeURIComponent(fateNameZh)}` : null;
+              // Create wiki URL using Simplified Chinese name with "临危受命:" prefix (only if available)
+              const wikiUrl = fateNameZh ? `https://ff14.huijiwiki.com/wiki/临危受命:${encodeURIComponent(fateNameZh)}` : null;
               
               return (
                 <div key={fateIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
@@ -1921,7 +2170,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   </div>
                   
                   {/* Reward Items with Ratings */}
-                  {(goldRewardItems.length > 0 || rareRewardItems.length > 0) && (
+                  {(silverRewardItems.length > 0 || goldRewardItems.length > 0 || rareRewardItems.length > 0) && (
                     <div className="mt-2 pt-2 border-t border-slate-700/50 w-full">
                       <div className="text-xs text-gray-400 mb-2 font-medium">獎勵物品</div>
                       <div className="w-full border border-slate-700/50 rounded-lg overflow-hidden bg-slate-900/30">
@@ -1933,59 +2182,19 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                             </tr>
                           </thead>
                             <tbody>
-                              {/* Silver Rating - only show if there are items for silver */}
-                              {goldRewardItems.length > 0 && (
-                                <tr className="border-b border-slate-700/30 bg-slate-900/30">
-                                  <td className="py-2.5 px-3 text-gray-300 align-top font-medium whitespace-nowrap">銀牌</td>
-                                  <td className="py-2.5 px-3 w-auto">
-                                    <div className="flex flex-wrap gap-2">
-                                    {goldRewardItems.map((rewardItemId) => {
-                                    const rewardItem = loadedData.twItems[rewardItemId] || loadedData.twItems[String(rewardItemId)];
-                                    if (!rewardItem || !rewardItem.tw) return null;
-                                    
-                                    return (
-                                      <button
-                                        key={`silver-${rewardItemId}`}
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          if (onItemClick) {
-                                            getItemById(rewardItemId).then(item => {
-                                              if (item) {
-                                                onItemClick(item);
-                                              } else {
-                                                navigate(`/item/${rewardItemId}`);
-                                              }
-                                            });
-                                          } else {
-                                            navigate(`/item/${rewardItemId}`);
-                                          }
-                                        }}
-                                        className="flex items-center gap-1.5 text-blue-400 hover:text-ffxiv-gold transition-colors"
-                                      >
-                                        <ItemImage
-                                          itemId={rewardItemId}
-                                          alt={rewardItem.tw}
-                                          className="w-5 h-5 object-contain"
-                                        />
-                                        <span className="hover:underline">{rewardItem.tw}</span>
-                                      </button>
-                                    );
-                                    }).filter(Boolean)}
-                                  </div>
-                                </td>
-                              </tr>
-                              )}
-                            
-                            {/* Gold Rating */}
+                            {/* Gold Rating - best rating, show first */}
                             {goldRewardItems.length > 0 && (
-                              <tr className="bg-slate-900/30">
+                              <tr className="border-b border-slate-700/30 bg-slate-900/30">
                                 <td className="py-2.5 px-3 text-gray-300 align-top font-medium whitespace-nowrap">金牌</td>
                                 <td className="py-2.5 px-3 w-auto">
                                   <div className="flex flex-wrap gap-2">
                                     {goldRewardItems.map((rewardItemId) => {
                                       const rewardItem = loadedData.twItems[rewardItemId] || loadedData.twItems[String(rewardItemId)];
-                                      if (!rewardItem || !rewardItem.tw) return null;
+                                      // Debug: Log if item data is missing
+                                      if (!rewardItem || !rewardItem.tw) {
+                                        console.warn(`[ObtainMethods] ⚠️ FATE ${fateId} reward item ${rewardItemId} missing twItems data for gold rating.`);
+                                        return null;
+                                      }
                                       
                                       // Show quantity ×5 for gold rating
                                       const quantityText = ' ×5';
@@ -2024,7 +2233,55 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                               </tr>
                             )}
                             
-                            {/* Rare Rating - only for FATE 1362 when viewing item 6155 */}
+                            {/* Silver Rating - show after gold */}
+                            {silverRewardItems.length > 0 && (
+                              <tr className="bg-slate-900/30">
+                                <td className="py-2.5 px-3 text-gray-300 align-top font-medium whitespace-nowrap">銀牌</td>
+                                <td className="py-2.5 px-3 w-auto">
+                                  <div className="flex flex-wrap gap-2">
+                                    {silverRewardItems.map((rewardItemId) => {
+                                      const rewardItem = loadedData.twItems[rewardItemId] || loadedData.twItems[String(rewardItemId)];
+                                      // Debug: Log if item data is missing
+                                      if (!rewardItem || !rewardItem.tw) {
+                                        console.warn(`[ObtainMethods] ⚠️ FATE ${fateId} reward item ${rewardItemId} missing twItems data. Available twItems keys:`, Object.keys(loadedData.twItems || {}).slice(0, 5));
+                                        return null;
+                                      }
+                                      
+                                      return (
+                                        <button
+                                          key={`silver-${rewardItemId}`}
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            if (onItemClick) {
+                                              getItemById(rewardItemId).then(item => {
+                                                if (item) {
+                                                  onItemClick(item);
+                                                } else {
+                                                  navigate(`/item/${rewardItemId}`);
+                                                }
+                                              });
+                                            } else {
+                                              navigate(`/item/${rewardItemId}`);
+                                            }
+                                          }}
+                                          className="flex items-center gap-1.5 text-blue-400 hover:text-ffxiv-gold transition-colors"
+                                        >
+                                          <ItemImage
+                                            itemId={rewardItemId}
+                                            alt={rewardItem.tw}
+                                            className="w-5 h-5 object-contain"
+                                          />
+                                          <span className="hover:underline">{rewardItem.tw}</span>
+                                        </button>
+                                      );
+                                    }).filter(Boolean)}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                            
+                            {/* Rare Rating - show last */}
                             {rareRewardItems.length > 0 && (
                               <tr className="bg-slate-900/30">
                                 <td className="py-2.5 px-3 text-gray-300 align-top font-medium whitespace-nowrap">稀有</td>
@@ -2595,66 +2852,140 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       );
     }
 
-    // Masterbooks (製作書) - data is an array of item IDs (masterbook item IDs)
+    // Masterbooks (製作書) - data is an array of CompactMasterbook objects: [{id: number|string, name?: I18nName}]
     if (type === DataType.MASTERBOOKS) {
       if (!data || !Array.isArray(data) || data.length === 0) {
         return null;
       }
 
-      const validMasterbooks = data.filter(bookId => {
-        const bookData = loadedData.twItems[bookId] || loadedData.twItems[String(bookId)];
-        return bookData && bookData.tw;
+      // Extract masterbook IDs from objects or use direct IDs
+      const masterbookEntries = data.map(book => {
+        // Handle both object format {id: number, name?: I18nName} and direct ID format
+        if (typeof book === 'object' && book !== null) {
+          const bookId = typeof book.id === 'string' ? parseInt(book.id, 10) : book.id;
+          const bookName = book.name?.tw || book.name?.zh || book.name?.en;
+          return { id: bookId, name: bookName };
+        } else {
+          // Direct ID format (number or string)
+          const bookId = typeof book === 'string' ? parseInt(book, 10) : book;
+          return { id: bookId, name: null };
+        }
+      }).filter(entry => entry.id && !isNaN(entry.id));
+
+      console.log(`[ObtainMethods] 🔍 Masterbook entries:`, masterbookEntries);
+      console.log(`[ObtainMethods] 🔍 Loaded twItems data:`, loadedData.twItems);
+
+      // Filter valid masterbooks - only show entries that have data in database or name from source
+      // Don't show entries that are just IDs without any data
+      const validMasterbooks = masterbookEntries.filter(entry => {
+        const bookData = loadedData.twItems[entry.id] || loadedData.twItems[String(entry.id)];
+        const hasItemData = bookData && bookData.tw;
+        const hasNameFromSource = entry.name;
+        // Only show if we have item data OR if we have a name from source
+        // Don't show if it's just an ID without any data
+        return hasItemData || hasNameFromSource;
       });
       
-      if (validMasterbooks.length === 0) {
-        return null;
+      console.log(`[ObtainMethods] 🔍 Valid masterbooks (with data):`, validMasterbooks);
+      
+      // Check if all masterbooks are missing from database
+      const allMissing = masterbookEntries.length > 0 && validMasterbooks.length === 0;
+      
+      // If we have valid masterbooks, show them
+      if (validMasterbooks.length > 0) {
+        // Generate huiji wiki URL for the item
+        const huijiUrl = `https://ff14.huijiwiki.com/wiki/物品:${encodeURIComponent(itemId)}`;
+        
+        return (
+          <div key={`masterbook-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+            <div className="flex items-center gap-2 mb-2">
+              <img src="https://xivapi.com/i/065000/065002.png" alt="Masterbook" className="w-6 h-6" />
+              <span className="text-ffxiv-gold font-medium">製作書</span>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {validMasterbooks.map((entry, bookIndex) => {
+                const bookId = entry.id;
+                const bookData = loadedData.twItems[bookId] || loadedData.twItems[String(bookId)];
+                // Use item name from loaded data, fallback to name from source
+                const bookName = bookData?.tw || entry.name;
+                
+                return (
+                  <button
+                    key={bookIndex}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (onItemClick) {
+                        getItemById(bookId).then(item => {
+                          if (item) {
+                            onItemClick(item);
+                          } else {
+                            navigate(`/item/${bookId}`);
+                          }
+                        });
+                      } else {
+                        navigate(`/item/${bookId}`);
+                      }
+                    }}
+                    className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
+                  >
+                    <ItemImage
+                      itemId={bookId}
+                      alt={bookName}
+                      className="w-7 h-7 object-contain"
+                    />
+                    <span className="hover:underline">{bookName}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
       }
       
-      return (
-        <div key={`masterbook-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
-          <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/065000/065002.png" alt="Masterbook" className="w-6 h-6" />
-            <span className="text-ffxiv-gold font-medium">製作書</span>
+      // If all masterbooks are missing, show activity content notice
+      if (allMissing) {
+        return (
+          <div key={`masterbook-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+            <div className="flex items-center gap-2 mb-2">
+              <img src="https://xivapi.com/i/065000/065002.png" alt="Masterbook" className="w-6 h-6" />
+              <span className="text-ffxiv-gold font-medium">製作書</span>
+            </div>
+            <div className="mt-2 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
+              <div className="flex items-start gap-2">
+                <span className="text-yellow-400 text-lg">⚠️</span>
+                <div className="flex-1">
+                  <p className="text-sm text-yellow-300 mb-2">
+                    此物品的製作書資訊可能來自限時活動內容，資料庫中暫無詳細資料。
+                  </p>
+                  {wikiUrl ? (
+                    <a
+                      href={wikiUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-600/30 hover:bg-yellow-600/50 border border-yellow-500/50 rounded text-sm text-yellow-200 hover:text-yellow-100 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                      查看灰機 Wiki
+                    </a>
+                  ) : (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-600/30 border border-yellow-500/50 rounded text-sm text-yellow-200 opacity-50">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-400 border-t-transparent"></div>
+                      載入中...
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {validMasterbooks.map((bookId, bookIndex) => {
-              const bookData = loadedData.twItems[bookId] || loadedData.twItems[String(bookId)];
-              const bookName = bookData?.tw;
-              
-              if (!bookName) return null;
-              
-              return (
-                <button
-                  key={bookIndex}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (onItemClick) {
-                      getItemById(bookId).then(item => {
-                        if (item) {
-                          onItemClick(item);
-                        } else {
-                          navigate(`/item/${bookId}`);
-                        }
-                      });
-                    } else {
-                      navigate(`/item/${bookId}`);
-                    }
-                  }}
-                  className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
-                >
-                  <ItemImage
-                    itemId={bookId}
-                    alt={bookName}
-                    className="w-7 h-7 object-contain"
-                  />
-                  <span className="hover:underline">{bookName}</span>
-                </button>
-              );
-            }).filter(Boolean)}
-          </div>
-        </div>
-      );
+        );
+      }
+      
+      // If no masterbooks at all, return null
+      return null;
     }
 
     // Alarms (鬧鐘提醒) - data is an array of Alarm objects with node information

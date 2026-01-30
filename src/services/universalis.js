@@ -259,11 +259,17 @@ export async function getMarketData(server, itemId, options = {}) {
       return null;
     }
 
+    // 404 is normal - item has no market data, return null silently
+    if (error.response?.status === 404) {
+      return null;
+    }
+
     // Check for rate limit errors
     if (requestManager.isRateLimitError(error)) {
       throw new Error('請求頻率過高，請稍後再試');
     }
 
+    // Log other errors
     console.error(`Error fetching market data for ${server}:`, error);
     throw error;
   }
@@ -313,6 +319,11 @@ export async function getMarketDataByDataCenter(itemId, dataCenter) {
     });
     return response.data;
   } catch (error) {
+    // 404 is normal - item has no market data, return null silently
+    if (error.response?.status === 404) {
+      return null;
+    }
+    // Log other errors
     console.error(`Error fetching market data for ${dataCenter}:`, error);
     return null;
   }
