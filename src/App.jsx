@@ -25,7 +25,7 @@ import { getIlvls, getItemPatch, getPatchNames } from './services/supabaseData';
 import { initializeSupabaseConnection } from './services/supabaseClient';
 import TopBar from './components/TopBar';
 import NotFound from './components/NotFound';
-import ErrorBoundary from './components/ErrorBoundary';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { APP_VERSION } from './constants/version';
 
 // Lazy load route-based components with error handling
