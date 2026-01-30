@@ -81,17 +81,6 @@ export default function SearchResultsTable({
       onPageChange = null, // Optional callback when page changes
       scrollRef = null, // Optional ref to scroll to when page changes (instead of top of page)
 }) {
-  // Debug: Log button visibility conditions (only in development)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[SearchResultsTable] Button props:', 
-      'untradeableCount:', untradeableCount,
-      'hasOnToggle:', !!onToggleUntradeable,
-      'showUntradeableButton:', showUntradeableButton,
-      'isServerSelectorDisabled:', isServerSelectorDisabled,
-      'isShowUntradeable:', isShowUntradeable
-    );
-  }
-
   // Pagination state (use external if provided, otherwise use internal)
   const [internalCurrentPage, setInternalCurrentPage] = useState(1);
   const [internalItemsPerPage, setInternalItemsPerPage] = useState(defaultItemsPerPage);

@@ -2520,7 +2520,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               // Use Simplified Chinese for wiki link - zh_fates table structure: { name: { zh: "..." } }
               const fateNameZh = zhFate?.name?.zh || zhFate?.zh || null;
               
-              // Debug: Log if zhFate data is missing or incorrect
               if (!fateNameZh && fateId) {
                 console.warn(`[ObtainMethods] ⚠️ FATE ${fateId} missing Simplified Chinese name. zhFate data:`, zhFate);
               }
@@ -2535,7 +2534,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const zoneName = fateZoneId ? getPlaceNameCN(fateZoneId) : '';
               const hasLocation = fateCoords && fateCoords.x !== undefined && fateCoords.y !== undefined && fateMapId;
               
-              // Debug: Log if zone name is missing (check raw data, not formatted name)
               if (fateZoneId) {
                 const rawZoneName = getPlaceName(fateZoneId);
                 if (!rawZoneName || rawZoneName === `Zone ${fateZoneId}`) {
@@ -2632,7 +2630,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                   <div className="flex flex-wrap gap-2">
                                     {goldRewardItems.map((rewardItemId) => {
                                       const rewardItem = loadedData.twItems[rewardItemId] || loadedData.twItems[String(rewardItemId)];
-                                      // Debug: Log if item data is missing
                                       if (!rewardItem || !rewardItem.tw) {
                                         console.warn(`[ObtainMethods] ⚠️ FATE ${fateId} reward item ${rewardItemId} missing twItems data for gold rating.`);
                                         return null;
@@ -2683,7 +2680,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                   <div className="flex flex-wrap gap-2">
                                     {silverRewardItems.map((rewardItemId) => {
                                       const rewardItem = loadedData.twItems[rewardItemId] || loadedData.twItems[String(rewardItemId)];
-                                      // Debug: Log if item data is missing
                                       if (!rewardItem || !rewardItem.tw) {
                                         console.warn(`[ObtainMethods] ⚠️ FATE ${fateId} reward item ${rewardItemId} missing twItems data. Available twItems keys:`, Object.keys(loadedData.twItems || {}).slice(0, 5));
                                         return null;

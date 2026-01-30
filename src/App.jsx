@@ -25,17 +25,46 @@ import { getIlvls, getItemPatch, getPatchNames } from './services/supabaseData';
 import { initializeSupabaseConnection } from './services/supabaseClient';
 import TopBar from './components/TopBar';
 import NotFound from './components/NotFound';
+import ErrorBoundary from './components/ErrorBoundary';
 import { APP_VERSION } from './constants/version';
 
-// Lazy load route-based components
-const CraftingJobPriceChecker = lazy(() => import('./components/CraftingInspiration.jsx'));
-const MSQPriceChecker = lazy(() => import('./components/MSQPriceChecker.jsx'));
-const AdvancedSearch = lazy(() => import('./components/AdvancedSearch.jsx'));
-const CraftingTree = lazy(() => import('./components/CraftingTree.jsx'));
-const RelatedItems = lazy(() => import('./components/RelatedItems.jsx'));
-const HistorySection = lazy(() => import('./components/HistorySection.jsx'));
-const RecentUpdatesSection = lazy(() => import('./components/RecentUpdatesSection.jsx'));
-const ObtainMethods = lazy(() => import('./components/ObtainMethods.jsx'));
+// Lazy load route-based components with error handling
+const createLazyComponent = (importFn, componentName) => {
+  return lazy(() => 
+    importFn().catch(error => {
+      console.error(`Failed to load ${componentName}:`, error);
+      // Return a fallback component that shows an error message
+      return {
+        default: () => (
+          <div className="bg-gradient-to-br from-red-900/60 via-red-800/40 to-red-900/60 rounded-lg border border-red-500/40 p-6 text-center">
+            <div className="text-red-400 mb-2">
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-8 w-8 mx-auto" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <p className="text-red-300 font-semibold mb-1">載入失敗</p>
+            <p className="text-red-400/80 text-sm">無法載入 {componentName}，請重新整理頁面</p>
+          </div>
+        )
+      };
+    })
+  );
+};
+
+const CraftingJobPriceChecker = createLazyComponent(() => import('./components/CraftingInspiration.jsx'), 'CraftingInspiration');
+const MSQPriceChecker = createLazyComponent(() => import('./components/MSQPriceChecker.jsx'), 'MSQPriceChecker');
+const AdvancedSearch = createLazyComponent(() => import('./components/AdvancedSearch.jsx'), 'AdvancedSearch');
+const CraftingTree = createLazyComponent(() => import('./components/CraftingTree.jsx'), 'CraftingTree');
+const RelatedItems = createLazyComponent(() => import('./components/RelatedItems.jsx'), 'RelatedItems');
+const HistorySection = createLazyComponent(() => import('./components/HistorySection.jsx'), 'HistorySection');
+const RecentUpdatesSection = createLazyComponent(() => import('./components/RecentUpdatesSection.jsx'), 'RecentUpdatesSection');
+const ObtainMethods = createLazyComponent(() => import('./components/ObtainMethods.jsx'), 'ObtainMethods');
 
 function App() {
   const navigate = useNavigate();
@@ -52,11 +81,8 @@ function App() {
   const [selectedWorld, setSelectedWorld] = useState(null);
   const [selectedServerOption, setSelectedServerOption] = useState(null);
   
-  // Track selectedItem changes for debugging
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7246/ingest/00fcbdc5-09ba-467f-8449-d6775c089f46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:selectedItem-effect',message:'selectedItem changed',data:{itemId:selectedItem?.id,itemName:selectedItem?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
+    // Track selectedItem changes
   }, [selectedItem]);
   const [marketInfo, setMarketInfo] = useState(null);
   const [marketListings, setMarketListings] = useState([]);
@@ -1932,9 +1958,6 @@ function App() {
 
   // Handle item selection
   const handleItemSelect = useCallback((item, options = {}) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7246/ingest/00fcbdc5-09ba-467f-8449-d6775c089f46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:1899',message:'handleItemSelect called',data:{itemId:item.id,fromObtainable:options.fromObtainable},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     setMarketInfo(null);
     setMarketListings([]);
     setMarketHistory([]);
@@ -1965,17 +1988,10 @@ function App() {
     setIsLoadingMarket(true);
     
     // Update selectedItem first, then auto-expand will happen in useEffect
-    // #region agent log
-    fetch('http://127.0.0.1:7246/ingest/00fcbdc5-09ba-467f-8449-d6775c089f46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:1930',message:'Setting selectedItem before navigate',data:{itemId:item.id,previousItemId:selectedItemRef.current?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     setSelectedItem(item);
     selectedItemRef.current = item;
     
     addItemToHistory(item.id);
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7246/ingest/00fcbdc5-09ba-467f-8449-d6775c089f46',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.jsx:1935',message:'Calling navigate',data:{itemId:item.id,url:`/item/${item.id}`},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     navigate(`/item/${item.id}`, { replace: false });
     
     addToast(`已選擇: ${item.name}`, 'info');
@@ -2208,15 +2224,6 @@ function App() {
               // STEP 3: Separate marketable and non-marketable items
               const marketableItems = results.filter(item => marketableSet.has(item.id));
               const nonMarketableItems = results.filter(item => !marketableSet.has(item.id));
-              
-              // Debug: Log separation results
-              console.log('[App] Item separation:', 
-                'totalResults:', results.length,
-                'marketableCount:', marketableItems.length,
-                'nonMarketableCount:', nonMarketableItems.length,
-                'marketableSetSize:', marketableSet.size,
-                'resultIdsLength:', resultIds.length
-              );
               
               // STEP 4: NOW update state - ONLY after separation is complete
               // CRITICAL: Use flushSync to ensure ALL state updates are synchronous and atomic
@@ -2502,15 +2509,6 @@ function App() {
       const marketableItems = results.filter(item => marketableSet.has(item.id));
       const nonMarketableItems = results.filter(item => !marketableSet.has(item.id));
       
-      // Debug: Log separation results
-      console.log('[App] Item separation (handleSearch):', 
-        'totalResults:', results.length,
-        'marketableCount:', marketableItems.length,
-        'nonMarketableCount:', nonMarketableItems.length,
-        'marketableSetSize:', marketableSet.size,
-        'resultIdsLength:', resultIds.length
-      );
-      
       // STEP 4: NOW update state - ONLY after separation is complete
       // CRITICAL: Use flushSync to ensure ALL state updates are synchronous and atomic
       // Set isSearching to false INSIDE flushSync to ensure it happens together with results
@@ -2584,8 +2582,6 @@ function App() {
 
   // Handle server option change
   const handleServerOptionChange = useCallback((option) => {
-    console.log('[handleServerOptionChange] Called with option:', option, 'type:', typeof option);
-    
     // Update selectedWorld first, then selectedServerOption to ensure consistency
     if (option && datacenters && worlds) {
       // If option is a number (worldId), find the datacenter containing this world
@@ -2599,7 +2595,6 @@ function App() {
             world: worldName,
             dcObj: dc,
           };
-          console.log('[handleServerOptionChange] Updating selectedWorld to:', newWorld);
           setSelectedWorld(newWorld);
           setSelectedServerOption(option);
         }
@@ -2616,7 +2611,6 @@ function App() {
             world: firstWorldName,
             dcObj: dc,
           };
-          console.log('[handleServerOptionChange] Updating selectedWorld to:', newWorld);
           setSelectedWorld(newWorld);
           setSelectedServerOption(option);
         }
@@ -3613,6 +3607,10 @@ function App() {
                   {/* Crafting Price Tree Button */}
                   <button
                     onClick={() => {
+                      // Prevent expanding if still loading or craftingTree is not ready
+                      if (isLoadingCraftingTree || !hasCraftingRecipe || !craftingTree) {
+                        return;
+                      }
                       const wasExpanded = isCraftingTreeExpanded;
                       setIsCraftingTreeExpanded(!isCraftingTreeExpanded);
                       setButtonOrder(prev => ({ ...prev, craftingTree: Math.max(...Object.values(prev)) + 1 }));
@@ -3621,10 +3619,10 @@ function App() {
                         setExpandedFromObtainMethods(false);
                       }
                     }}
-                    disabled={!hasCraftingRecipe || isLoadingCraftingTree}
+                    disabled={!hasCraftingRecipe || isLoadingCraftingTree || !craftingTree}
                     className={`
                       relative flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 overflow-hidden
-                      ${hasCraftingRecipe && !isLoadingCraftingTree
+                      ${hasCraftingRecipe && !isLoadingCraftingTree && craftingTree
                         ? isCraftingTreeExpanded
                           ? 'bg-gradient-to-r from-amber-900/60 via-yellow-800/50 to-orange-900/60 border border-ffxiv-gold/60 text-ffxiv-gold shadow-[0_0_20px_rgba(212,175,55,0.4)]'
                           : 'bg-gradient-to-r from-purple-900/50 via-indigo-900/40 to-purple-900/50 border border-purple-400/40 text-purple-200 hover:text-ffxiv-gold hover:border-ffxiv-gold/50 hover:shadow-[0_0_15px_rgba(212,175,55,0.2)] animate-[craftingPulse_3s_ease-in-out_infinite]'
@@ -3634,6 +3632,8 @@ function App() {
                     title={
                       isLoadingCraftingTree 
                         ? '載入配方中...' 
+                        : !craftingTree && hasCraftingRecipe
+                          ? '準備中...'
                         : hasCraftingRecipe 
                           ? (isCraftingTreeExpanded ? '收起製作價格樹' : '展開製作價格樹')
                           : '此物品無製作配方'
@@ -3707,7 +3707,7 @@ function App() {
                 const sections = [];
                 
                 // Crafting Price Tree
-                if (isCraftingTreeExpanded && craftingTree) {
+                if (isCraftingTreeExpanded && craftingTree && !isLoadingCraftingTree) {
                   sections.push({
                     key: 'craftingTree',
                     order: buttonOrder.craftingTree,
@@ -3717,22 +3717,24 @@ function App() {
                         ref={craftingTreeRef}
                         className="scroll-mt-20"
                       >
-                        <Suspense fallback={
-                          <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
-                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
-                            <p className="mt-4 text-sm text-gray-400">載入製作價格樹...</p>
-                          </div>
-                        }>
-                          <CraftingTree
-                            tree={craftingTree}
-                            selectedServerOption={selectedServerOption}
-                            selectedWorld={selectedWorld}
-                            worlds={worlds}
-                            onItemSelect={handleItemSelect}
-                            excludeCrystals={excludeCrystals}
-                            onExcludeCrystalsChange={handleExcludeCrystalsChange}
-                          />
-                        </Suspense>
+                        <ErrorBoundary fallbackMessage="製作價格樹載入失敗，請重新整理頁面">
+                          <Suspense fallback={
+                            <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
+                              <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
+                              <p className="mt-4 text-sm text-gray-400">載入製作價格樹...</p>
+                            </div>
+                          }>
+                            <CraftingTree
+                              tree={craftingTree}
+                              selectedServerOption={selectedServerOption}
+                              selectedWorld={selectedWorld}
+                              worlds={worlds}
+                              onItemSelect={handleItemSelect}
+                              excludeCrystals={excludeCrystals}
+                              onExcludeCrystalsChange={handleExcludeCrystalsChange}
+                            />
+                          </Suspense>
+                        </ErrorBoundary>
                       </div>
                     )
                   });
@@ -3744,17 +3746,19 @@ function App() {
                     key: 'relatedItems',
                     order: buttonOrder.relatedItems,
                     component: (
-                      <Suspense key="relatedItems" fallback={
-                        <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
-                          <p className="mt-4 text-sm text-gray-400">載入相關物品...</p>
-                        </div>
-                      }>
-                        <RelatedItems
-                          itemId={selectedItem?.id}
-                          onItemClick={handleItemSelect}
-                        />
-                      </Suspense>
+                      <ErrorBoundary key="relatedItems" fallbackMessage="相關物品載入失敗，請重新整理頁面">
+                        <Suspense fallback={
+                          <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
+                            <p className="mt-4 text-sm text-gray-400">載入相關物品...</p>
+                          </div>
+                        }>
+                          <RelatedItems
+                            itemId={selectedItem?.id}
+                            onItemClick={handleItemSelect}
+                          />
+                        </Suspense>
+                      </ErrorBoundary>
                     )
                   });
                 }
@@ -3771,16 +3775,21 @@ function App() {
                         </div>
                         <div className="absolute inset-0 rounded-xl border border-indigo-500/10 pointer-events-none"></div>
                         <div className="relative z-10">
-                          <Suspense fallback={
-                            <div className="p-8 text-center">
-                              <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-400/30 border-t-indigo-400 mx-auto"></div>
-                              <p className="mt-4 text-sm text-gray-400">載入取得方式...</p>
-                            </div>
-                          }>
-                            <ObtainMethods
-                              itemId={selectedItem.id}
-                              onItemClick={handleItemSelect}
+                          <ErrorBoundary fallbackMessage="取得方式載入失敗，請重新整理頁面">
+                            <Suspense fallback={
+                              <div className="p-8 text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-400/30 border-t-indigo-400 mx-auto"></div>
+                                <p className="mt-4 text-sm text-gray-400">載入取得方式...</p>
+                              </div>
+                            }>
+                              <ObtainMethods
+                                itemId={selectedItem.id}
+                                onItemClick={handleItemSelect}
                               onExpandCraftingTree={() => {
+                                // Prevent expanding if still loading or craftingTree is not ready
+                                if (isLoadingCraftingTree || !hasCraftingRecipe || !craftingTree) {
+                                  return;
+                                }
                                 const wasExpanded = isCraftingTreeExpanded;
                                 setIsCraftingTreeExpanded(prev => !prev);
                                 // Set flag if expanding (not collapsing)
@@ -3791,6 +3800,7 @@ function App() {
                               isCraftingTreeExpanded={isCraftingTreeExpanded}
                             />
                           </Suspense>
+                          </ErrorBoundary>
                         </div>
                       </div>
                     )
