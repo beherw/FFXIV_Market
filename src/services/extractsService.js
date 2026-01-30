@@ -51,7 +51,7 @@ export async function loadExtractsIndex() {
     }
   }
 
-  // BASE_URL from Vite already includes trailing slash (e.g., '/' or '/market_tester/')
+  // BASE_URL from Vite already includes trailing slash (e.g., '/' or '/FFXIV_Market/')
   const basePath = import.meta.env.BASE_URL || '/';
   // Construct path and normalize any double slashes
   const indexPath = `${basePath}data/extracts-index.json`.replace(/([^:]\/)\/+/g, '$1');
@@ -187,7 +187,7 @@ export async function loadChunk(chunkIndex, signal = null) {
     }
   }
 
-  // BASE_URL from Vite already includes trailing slash (e.g., '/' or '/market_tester/')
+  // BASE_URL from Vite already includes trailing slash (e.g., '/' or '/FFXIV_Market/')
   const basePath = import.meta.env.BASE_URL || '/';
   // Construct path and normalize any double slashes
   const chunkPath = `${basePath}data/extracts-chunk-${chunkIndex}.json`.replace(/([^:]\/)\/+/g, '$1');

@@ -43,7 +43,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
   // Listen for storage changes to update search history
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === 'market_tester_search_history') {
+      if (e.key === 'ffxiv_market_search_history') {
         const history = getSearchHistory();
         setSearchHistory(history);
       }

@@ -1,5 +1,5 @@
 // Item history management using localStorage with event notification
-const HISTORY_KEY = 'market_tester_item_history';
+const HISTORY_KEY = 'ffxiv_market_item_history';
 const MAX_HISTORY_ITEMS = 10;
 
 // Event listeners for history changes

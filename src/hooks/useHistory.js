@@ -24,7 +24,7 @@ export function useHistory() {
     
     // Also listen for storage events (for cross-tab sync)
     const handleStorageChange = (e) => {
-      if (e.key === 'market_tester_item_history') {
+      if (e.key === 'ffxiv_market_item_history') {
         setHistoryIds(getItemHistory());
       }
     };

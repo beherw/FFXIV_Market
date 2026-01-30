@@ -1,5 +1,5 @@
 // Search keyword history management using localStorage
-const SEARCH_HISTORY_KEY = 'market_tester_search_history';
+const SEARCH_HISTORY_KEY = 'ffxiv_market_search_history';
 const MAX_SEARCH_HISTORY = 10;
 
 /**
