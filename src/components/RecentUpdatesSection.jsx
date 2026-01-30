@@ -35,28 +35,20 @@ export default function RecentUpdatesSection({ onItemSelect, selectedDcName }) {
       
       // Fetch item names directly from Supabase (without loading full item objects or descriptions)
       // RecentUpdatesSection only needs item names for display
-      const { getTwItemById } = await import('../services/supabaseData');
-      const itemsWithDetails = await Promise.all(
-        items.map(async (item) => {
-          try {
-            // Use targeted query to get only the name (no descriptions, no full item object)
-            const itemData = await getTwItemById(item.itemID);
-            const itemName = itemData?.tw ? itemData.tw.replace(/^["']|["']$/g, '').trim() : `物品 #${item.itemID}`;
-            
-            return {
-              ...item,
-              name: itemName,
-              itemDetails: itemData ? { id: item.itemID, name: itemName } : null
-            };
-          } catch {
-            return {
-              ...item,
-              name: `物品 #${item.itemID}`,
-              itemDetails: null
-            };
-          }
-        })
-      );
+      // Use batch query instead of individual queries for better performance
+      const { getTwItemsByIds } = await import('../services/supabaseData');
+      const itemIds = items.map(item => item.itemID);
+      const itemsData = await getTwItemsByIds(itemIds);
+      const itemsWithDetails = items.map((item) => {
+        const itemData = itemsData[item.itemID];
+        const itemName = itemData?.tw ? itemData.tw.replace(/^["']|["']$/g, '').trim() : `物品 #${item.itemID}`;
+        
+        return {
+          ...item,
+          name: itemName,
+          itemDetails: itemData ? { id: item.itemID, name: itemName } : null
+        };
+      });
       
       // Filter out items without details and deduplicate by itemID
       const validItems = itemsWithDetails.filter(item => item.itemDetails);

@@ -2097,9 +2097,26 @@ export default function AdvancedSearch({
           return b - a;
         });
         
-        // Load all items at once
-        const itemPromises = sortedItemIds.map(id => getItemById(id));
-        const allItems = (await Promise.all(itemPromises)).filter(item => item !== null);
+        // Load all items at once using batch query (optimized)
+        const { getTwItemsByIds } = await import('../services/supabaseData');
+        const itemsData = await getTwItemsByIds(sortedItemIds);
+        const allItems = sortedItemIds.map(id => {
+          const itemData = itemsData[id];
+          if (!itemData || !itemData.tw) {
+            return null;
+          }
+          const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+          return {
+            id,
+            name: cleanName,
+            nameTW: cleanName,
+            searchLanguageName: null,
+            description: '',
+            itemLevel: '',
+            shopPrice: '',
+            inShop: false,
+          };
+        }).filter(item => item !== null);
         
         // Check again if search was cancelled
         if (currentRequestId !== filterSearchRequestIdRef.current) {
@@ -3417,8 +3434,26 @@ export default function AdvancedSearch({
                                 
                                 // Load full item details synchronously for initial batch BEFORE displaying
                                 // This prevents multiple re-renders and data jumping
-                                const initialPromises = verifiedInitialBatch.map(id => getItemById(id));
-                                const initialItems = (await Promise.all(initialPromises)).filter(item => item !== null);
+                                // Use batch query instead of individual queries (optimized)
+                                const { getTwItemsByIds } = await import('../services/supabaseData');
+                                const itemsData = await getTwItemsByIds(verifiedInitialBatch);
+                                const initialItems = verifiedInitialBatch.map(id => {
+                                  const itemData = itemsData[id];
+                                  if (!itemData || !itemData.tw) {
+                                    return null;
+                                  }
+                                  const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+                                  return {
+                                    id,
+                                    name: cleanName,
+                                    nameTW: cleanName,
+                                    searchLanguageName: null,
+                                    description: '',
+                                    itemLevel: '',
+                                    shopPrice: '',
+                                    inShop: false,
+                                  };
+                                }).filter(item => item !== null);
                                 
                                 // Check if search was cancelled or superseded
                                 if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
@@ -3463,8 +3498,26 @@ export default function AdvancedSearch({
                                   });
                                 } else {
                                   // For untradeable items, use the same initialBatch
-                                  const untradeableInitialPromises = initialBatch.map(id => getItemById(id));
-                                  const untradeableInitialItems = (await Promise.all(untradeableInitialPromises)).filter(item => item !== null);
+                                // Use batch query instead of individual queries (optimized)
+                                const { getTwItemsByIds: getTwItemsByIdsUntradeable } = await import('../services/supabaseData');
+                                const untradeableItemsData = await getTwItemsByIdsUntradeable(initialBatch);
+                                const untradeableInitialItems = initialBatch.map(id => {
+                                  const itemData = untradeableItemsData[id];
+                                  if (!itemData || !itemData.tw) {
+                                    return null;
+                                  }
+                                  const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+                                  return {
+                                    id,
+                                    name: cleanName,
+                                    nameTW: cleanName,
+                                    searchLanguageName: null,
+                                    description: '',
+                                    itemLevel: '',
+                                    shopPrice: '',
+                                    inShop: false,
+                                  };
+                                }).filter(item => item !== null);
                                   
                                   // Check if search was cancelled or superseded
                                   if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
@@ -3797,8 +3850,26 @@ export default function AdvancedSearch({
                                     return;
                                   }
                                   
-                                  const batchPromises = batch.map(id => getItemById(id));
-                                  const batchItems = (await Promise.all(batchPromises)).filter(item => item !== null);
+                                  // Use batch query instead of individual queries (optimized)
+                                  const { getTwItemsByIds: getTwItemsByIdsBatch } = await import('../services/supabaseData');
+                                  const batchItemsData = await getTwItemsByIdsBatch(batch);
+                                  const batchItems = batch.map(id => {
+                                    const itemData = batchItemsData[id];
+                                    if (!itemData || !itemData.tw) {
+                                      return null;
+                                    }
+                                    const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+                                    return {
+                                      id,
+                                      name: cleanName,
+                                      nameTW: cleanName,
+                                      searchLanguageName: null,
+                                      description: '',
+                                      itemLevel: '',
+                                      shopPrice: '',
+                                      inShop: false,
+                                    };
+                                  }).filter(item => item !== null);
                                   
                                   // Check again if search was cancelled
                                   if (continueSearchRequestId !== filterSearchRequestIdRef.current) {

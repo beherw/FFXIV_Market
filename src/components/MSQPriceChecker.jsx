@@ -651,8 +651,26 @@ export default function MSQPriceChecker({
       }
 
       // Fetch item details for display (show all items, including untradeable)
-      const itemPromises = finalItemIds.map(id => getItemById(id));
-      const items = (await Promise.all(itemPromises)).filter(item => item !== null);
+      // Use batch query instead of individual queries for better performance
+      const { getTwItemsByIds } = await import('../services/supabaseData');
+      const itemsData = await getTwItemsByIds(finalItemIds);
+      const items = finalItemIds.map(id => {
+        const itemData = itemsData[id];
+        if (!itemData || !itemData.tw) {
+          return null;
+        }
+        const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+        return {
+          id,
+          name: cleanName,
+          nameTW: cleanName,
+          searchLanguageName: null,
+          description: '',
+          itemLevel: '',
+          shopPrice: '',
+          inShop: false,
+        };
+      }).filter(item => item !== null);
 
       if (items.length === 0) {
         addToast('無法獲取物品信息', 'error');

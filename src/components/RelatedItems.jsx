@@ -31,31 +31,32 @@ export default function RelatedItems({ itemId, onItemClick }) {
       });
   }, [itemId]);
 
-  // Load item details for related items
+  // Load item details for related items (optimized - batch query instead of individual queries)
   useEffect(() => {
     if (relatedItemIds.length === 0) {
       setRelatedItems([]);
       return;
     }
 
-    Promise.all(
-      relatedItemIds.map(async (id) => {
-        try {
-          const item = await getItemById(id);
-          return item ? { id, name: item.name } : null;
-        } catch (error) {
-          console.error(`Failed to load item ${id}:`, error);
-          return null;
-        }
-      })
-    )
-      .then(items => {
-        setRelatedItems(items.filter(item => item !== null));
-      })
-      .catch(error => {
+    // Use batch query instead of individual queries for better performance
+    (async () => {
+      try {
+        const { getTwItemsByIds } = await import('../services/supabaseData');
+        const itemsData = await getTwItemsByIds(relatedItemIds);
+        const items = relatedItemIds.map(id => {
+          const itemData = itemsData[id];
+          if (!itemData || !itemData.tw) {
+            return null;
+          }
+          const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+          return { id, name: cleanName };
+        }).filter(item => item !== null);
+        setRelatedItems(items);
+      } catch (error) {
         console.error('Failed to load related items:', error);
         setRelatedItems([]);
-      });
+      }
+    })();
   }, [relatedItemIds]);
 
   // Expose loading state and item count to parent

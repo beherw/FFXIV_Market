@@ -541,9 +541,26 @@ export default function CraftingJobPriceChecker({
       setTooManyItemsWarning(null);
       addToast(`找到 ${tradeableItemIds.length} 個可交易物品，正在獲取市場數據...`, 'info');
 
-      // Fetch item details for display
-      const itemPromises = tradeableItemIds.map(id => getItemById(id));
-      const items = (await Promise.all(itemPromises)).filter(item => item !== null);
+      // Fetch item details for display (optimized - batch query)
+      const { getTwItemsByIds } = await import('../services/supabaseData');
+      const itemsData = await getTwItemsByIds(tradeableItemIds);
+      const items = tradeableItemIds.map(id => {
+        const itemData = itemsData[id];
+        if (!itemData || !itemData.tw) {
+          return null;
+        }
+        const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+        return {
+          id,
+          name: cleanName,
+          nameTW: cleanName,
+          searchLanguageName: null,
+          description: '',
+          itemLevel: '',
+          shopPrice: '',
+          inShop: false,
+        };
+      }).filter(item => item !== null);
 
       if (items.length === 0) {
         addToast('無法獲取物品信息', 'error');
@@ -909,8 +926,26 @@ export default function CraftingJobPriceChecker({
                           tradeableItemIds = tradeableItemIds.slice(0, MAX_ITEMS_LIMIT);
                           
                           // Fetch item details for display
-                          const itemPromises = tradeableItemIds.map(id => getItemById(id));
-                          const items = (await Promise.all(itemPromises)).filter(item => item !== null);
+                          // Use batch query instead of individual queries (optimized)
+                          const { getTwItemsByIds } = await import('../services/supabaseData');
+                          const itemsData = await getTwItemsByIds(tradeableItemIds);
+                          const items = tradeableItemIds.map(id => {
+                            const itemData = itemsData[id];
+                            if (!itemData || !itemData.tw) {
+                              return null;
+                            }
+                            const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+                            return {
+                              id,
+                              name: cleanName,
+                              nameTW: cleanName,
+                              searchLanguageName: null,
+                              description: '',
+                              itemLevel: '',
+                              shopPrice: '',
+                              inShop: false,
+                            };
+                          }).filter(item => item !== null);
                           setSearchResults(items);
                           
                           // Fetch market data with limit flag (updates state progressively)

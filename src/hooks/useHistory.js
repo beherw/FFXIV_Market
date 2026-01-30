@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getItemHistory, subscribeToHistory, clearItemHistory as clearHistory } from '../utils/itemHistory';
-import { getItemById } from '../services/itemDatabase';
 
 /**
  * Custom hook for managing history items
@@ -61,19 +60,30 @@ export function useHistory() {
       setIsLoading(true);
       
       try {
-        const items = await Promise.all(
-          historyIds.map(async (id) => {
-            try {
-              return await getItemById(id);
-            } catch (error) {
-              console.error(`Failed to load item ${id}:`, error);
-              return null;
-            }
-          })
-        );
+        // Use batch query instead of individual queries for better performance
+        const { getTwItemsByIds } = await import('../services/supabaseData');
+        const itemsData = await getTwItemsByIds(historyIds);
         
-        const validItems = items.filter(item => item !== null);
-        setHistoryItems(validItems);
+        // Convert batch query results to item format
+        const items = historyIds.map(id => {
+          const itemData = itemsData[id];
+          if (!itemData || !itemData.tw) {
+            return null;
+          }
+          const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+          return {
+            id,
+            name: cleanName,
+            nameTW: cleanName,
+            searchLanguageName: null,
+            description: '', // History items don't need descriptions for display
+            itemLevel: '',
+            shopPrice: '',
+            inShop: false,
+          };
+        }).filter(item => item !== null);
+        
+        setHistoryItems(items);
         lastLoadedIdsRef.current = currentIdsStr;
       } catch (error) {
         console.error('Failed to load history items:', error);
