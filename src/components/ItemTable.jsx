@@ -149,6 +149,10 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
   // This includes items that are cached or currently loading
   const loadedItemsRef = useRef(new Set());
   
+  // Track scroll position to prevent auto-scroll when filter changes
+  const scrollPositionRef = useRef({ x: 0, y: 0 });
+  const isFilterChangingRef = useRef(false);
+  
   // Track which item IDs are currently processing wiki requests (to prevent duplicate clicks)
   const [wikiProcessingIds, setWikiProcessingIds] = useState(new Set());
   
@@ -840,6 +844,40 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     }
   }, [items, currentPage]);
 
+  // Save and restore scroll position when filter changes to prevent auto-scroll
+  // Track previous filter values to detect changes
+  const prevSelectedRaritiesRef = useRef(selectedRarities);
+  const prevSelectedVersionsRef = useRef(selectedVersions);
+  
+  useEffect(() => {
+    // Check if filter actually changed
+    const rarityChanged = JSON.stringify(prevSelectedRaritiesRef.current) !== JSON.stringify(selectedRarities);
+    const versionChanged = JSON.stringify(prevSelectedVersionsRef.current) !== JSON.stringify(selectedVersions);
+    
+    if ((rarityChanged || versionChanged) && isFilterChangingRef.current) {
+      // Restore scroll position after DOM updates
+      requestAnimationFrame(() => {
+        // Use setTimeout to ensure it runs after React's render cycle
+        setTimeout(() => {
+          if (scrollPositionRef.current.x !== 0 || scrollPositionRef.current.y !== 0) {
+            window.scrollTo({
+              left: scrollPositionRef.current.x,
+              top: scrollPositionRef.current.y,
+              behavior: 'auto' // Instant scroll, not smooth
+            });
+            // Reset after restoring
+            scrollPositionRef.current = { x: 0, y: 0 };
+            isFilterChangingRef.current = false;
+          }
+        }, 0);
+      });
+    }
+    
+    // Update previous values
+    prevSelectedRaritiesRef.current = selectedRarities;
+    prevSelectedVersionsRef.current = selectedVersions;
+  }, [selectedRarities, selectedVersions]);
+
   // Calculate conditions for header highlighting
   const shouldHighlightTradable = useMemo(() => {
     if (sortedItems.length <= 5) return false;
@@ -1063,6 +1101,13 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                       key={rarity.value}
                       type="button"
                       onClick={() => {
+                        // Mark that filter is changing to save scroll position
+                        isFilterChangingRef.current = true;
+                        // Save current scroll position
+                        scrollPositionRef.current = {
+                          x: window.scrollX || window.pageXOffset,
+                          y: window.scrollY || window.pageYOffset
+                        };
                         if (isSelected) {
                           // If this rarity is already selected, remove it from selection
                           setSelectedRarities(prev => prev.filter(r => r !== rarity.value));
@@ -1114,6 +1159,13 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                       key={version}
                       type="button"
                       onClick={() => {
+                        // Mark that filter is changing to save scroll position
+                        isFilterChangingRef.current = true;
+                        // Save current scroll position
+                        scrollPositionRef.current = {
+                          x: window.scrollX || window.pageXOffset,
+                          y: window.scrollY || window.pageYOffset
+                        };
                         if (isSelected) {
                           // If this version is already selected, remove it from selection
                           setSelectedVersions(prev => prev.filter(v => v !== version));
