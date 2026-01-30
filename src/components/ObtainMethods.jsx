@@ -3255,7 +3255,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         )}
         
         {/* Filter Tags - Inline with header */}
-        {uniqueMethodTypes.length > 0 && (
+        {uniqueMethodTypes.length > 1 && (
           <div className="flex items-center gap-1.5 ml-auto flex-wrap">
             <button
               onClick={() => setFilteredMethodType(null)}
