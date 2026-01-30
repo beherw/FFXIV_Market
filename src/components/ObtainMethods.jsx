@@ -1,207 +1,44 @@
 // Component to display item acquisition methods (取得方式)
-import { useState, useEffect, useRef, useMemo } from 'react';
+// Now uses Supabase for efficient data loading - only queries needed data
+import { useState, useEffect, useMemo } from 'react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getItemSources, DataType } from '../services/extractsService';
 import { getItemById } from '../services/itemDatabase';
-// Small files that are frequently used - keep as static imports
-// FILE SIZE: 76KB, 4.8K lines - Static import
+import { extractIdsFromSources } from '../utils/extractIdsFromSources';
+// Supabase batch query functions
+import {
+  getTwNpcsByIds,
+  getNpcsByIds,
+  getNpcsDatabasePagesByIds,
+  getTwShopsByIds,
+  getShopsByIds,
+  getShopsByNpcIds,
+  getTwInstancesByIds,
+  getInstancesByIds,
+  getZhInstancesByIds,
+  getTwQuestsByIds,
+  getQuestsByIds,
+  getZhQuestsByIds,
+  getQuestsDatabasePagesByIds,
+  getTwFatesByIds,
+  getFatesByIds,
+  getZhFatesByIds,
+  getFatesDatabasePagesByIds,
+  getTwAchievementsByIds,
+  getTwAchievementDescriptionsByIds,
+  getAchievementsByIds,
+  getTwPlacesByIds,
+  getPlacesByIds,
+  getFateSourcesByItemId,
+  getLootSourcesByItemId,
+  getTwItemsByIds
+} from '../services/supabaseData';
+// Small static files - keep as imports (small size)
 import twNpcTitlesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-npc-titles.json';
-// FILE SIZE: 108KB, 5.5K lines - Static import
-import twShopsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-shops.json';
-// FILE SIZE: 36KB, 1.7K lines - Static import
-import twInstancesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-instances.json';
-// FILE SIZE: 256KB, 15K lines - Static import
-import twQuestsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-quests.json';
-// FILE SIZE: 172KB, 10K lines - Static import
-import twAchievementsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-achievements.json';
-// FILE SIZE: 276KB, 10K lines - Static import
-import twAchievementDescriptionsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-achievement-descriptions.json';
-// FILE SIZE: 4KB, 128 lines - Static import
 import twJobAbbrData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json';
-// FILE SIZE: 436KB, 14K lines - Static import
-import twFatesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-fates.json';
-// FILE SIZE: 16KB, 1.6K lines - Static import
-import fateSourcesData from '../../teamcraft_git/libs/data/src/lib/json/fate-sources.json';
-// FILE SIZE: 116KB, 12K lines - Static import
-import lootSourcesData from '../../teamcraft_git/libs/data/src/lib/json/loot-sources.json';
-// FILE SIZE: 208KB, 14K lines - Static import
-import twPlacesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-places.json';
 
-// Lazy load cache for large JSON files
-let npcsDataCache = null;
-let shopsDataCache = null;
-let shopsByNpcDataCache = null;
-let gilShopNamesDataCache = null;
-let zhInstancesDataCache = null;
-let zhQuestsDataCache = null;
-let zhFatesDataCache = null;
-let npcsDatabasePagesDataCache = null;
-let questsDatabasePagesDataCache = null;
-// Large static imports converted to lazy loading to prevent blocking
-let twNpcsDataCache = null;
-let twItemsDataCache = null;
-let achievementsDataCache = null;
-let fatesDataCache = null;
-let fatesDatabasePagesDataCache = null;
-let placesDataCache = null;
-let instancesDataCache = null;
-let questsDataCache = null;
-
-// Lazy load functions for large JSON files
-const loadNpcsData = async () => {
-  if (!npcsDataCache) {
-    // FILE SIZE: 16MB, 1M+ lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/npcs.json');
-    npcsDataCache = module.default;
-  }
-  return npcsDataCache;
-};
-
-const loadShopsData = async () => {
-  if (!shopsDataCache) {
-    // FILE SIZE: 9.2MB, 595K lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/shops.json');
-    shopsDataCache = module.default;
-  }
-  return shopsDataCache;
-};
-
-const loadShopsByNpcData = async () => {
-  if (!shopsByNpcDataCache) {
-    // FILE SIZE: 27MB, 1.5M+ lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/shops-by-npc.json');
-    shopsByNpcDataCache = module.default;
-  }
-  return shopsByNpcDataCache;
-};
-
-const loadGilShopNamesData = async () => {
-  if (!gilShopNamesDataCache) {
-    // FILE SIZE: 156KB, 6.6K lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/gil-shop-names.json');
-    gilShopNamesDataCache = module.default;
-  }
-  return gilShopNamesDataCache;
-};
-
-const loadZhInstancesData = async () => {
-  if (!zhInstancesDataCache) {
-    // FILE SIZE: 36KB, 1.9K lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/zh/zh-instances.json');
-    zhInstancesDataCache = module.default;
-  }
-  return zhInstancesDataCache;
-};
-
-const loadZhQuestsData = async () => {
-  if (!zhQuestsDataCache) {
-    // FILE SIZE: 268KB, 15K lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/zh/zh-quests.json');
-    zhQuestsDataCache = module.default;
-  }
-  return zhQuestsDataCache;
-};
-
-const loadZhFatesData = async () => {
-  if (!zhFatesDataCache) {
-    // FILE SIZE: 460KB, 14K lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/zh/zh-fates.json');
-    zhFatesDataCache = module.default;
-  }
-  return zhFatesDataCache;
-};
-
-const loadNpcsDatabasePagesData = async () => {
-  if (!npcsDatabasePagesDataCache) {
-    // FILE SIZE: 14MB - MUST BE LAZY LOADED
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/db/npcs-database-pages.json');
-    npcsDatabasePagesDataCache = module.default;
-  }
-  return npcsDatabasePagesDataCache;
-};
-
-const loadQuestsDatabasePagesData = async () => {
-  if (!questsDatabasePagesDataCache) {
-    // FILE SIZE: 6.7MB - MUST BE LAZY LOADED
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/db/quests-database-pages.json');
-    questsDatabasePagesDataCache = module.default;
-  }
-  return questsDatabasePagesDataCache;
-};
-
-// Lazy load functions for large static imports (converted from static imports to prevent blocking)
-const loadTwNpcsData = async () => {
-  if (!twNpcsDataCache) {
-    // FILE SIZE: 1.3MB, 84K lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/tw/tw-npcs.json');
-    twNpcsDataCache = module.default;
-  }
-  return twNpcsDataCache;
-};
-
-const loadTwItemsData = async () => {
-  if (!twItemsDataCache) {
-    // FILE SIZE: 2.1MB, 128K lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/tw/tw-items.json');
-    twItemsDataCache = module.default;
-  }
-  return twItemsDataCache;
-};
-
-const loadAchievementsData = async () => {
-  if (!achievementsDataCache) {
-    // FILE SIZE: 924KB, 31K lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/achievements.json');
-    achievementsDataCache = module.default;
-  }
-  return achievementsDataCache;
-};
-
-const loadFatesData = async () => {
-  if (!fatesDataCache) {
-    // FILE SIZE: 2.1MB, 44K lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/fates.json');
-    fatesDataCache = module.default;
-  }
-  return fatesDataCache;
-};
-
-const loadFatesDatabasePagesData = async () => {
-  if (!fatesDatabasePagesDataCache) {
-    // FILE SIZE: 1.8MB
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/db/fates-database-pages.json');
-    fatesDatabasePagesDataCache = module.default;
-  }
-  return fatesDatabasePagesDataCache;
-};
-
-const loadPlacesData = async () => {
-  if (!placesDataCache) {
-    // FILE SIZE: 736KB, 33K lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/places.json');
-    placesDataCache = module.default;
-  }
-  return placesDataCache;
-};
-
-const loadInstancesData = async () => {
-  if (!instancesDataCache) {
-    // FILE SIZE: 1.3MB, 19K lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/instances.json');
-    instancesDataCache = module.default;
-  }
-  return instancesDataCache;
-};
-
-const loadQuestsData = async () => {
-  if (!questsDataCache) {
-    // FILE SIZE: 1.9MB, 96K lines
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/quests.json');
-    questsDataCache = module.default;
-  }
-  return questsDataCache;
-};
+// All data loading now uses Supabase batch queries - no JSON file loading needed
 
 import MapModal from './MapModal';
 import ItemImage from './ItemImage';
@@ -214,350 +51,523 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const [hoveredAchievement, setHoveredAchievement] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [filteredMethodType, setFilteredMethodType] = useState(null); // null = show all
-  // Cache for lazy-loaded data (loaded on demand)
-  const [npcsDataLoaded, setNpcsDataLoaded] = useState(null);
-  const [shopsDataLoaded, setShopsDataLoaded] = useState(null);
-  const [shopsByNpcDataLoaded, setShopsByNpcDataLoaded] = useState(null);
-  const [gilShopNamesDataLoaded, setGilShopNamesDataLoaded] = useState(null);
-  const [zhInstancesDataLoaded, setZhInstancesDataLoaded] = useState(null);
-  const [zhQuestsDataLoaded, setZhQuestsDataLoaded] = useState(null);
-  const [zhFatesDataLoaded, setZhFatesDataLoaded] = useState(null);
-  const [npcsDatabasePagesDataLoaded, setNpcsDatabasePagesDataLoaded] = useState(null);
-  const [questsDatabasePagesDataLoaded, setQuestsDatabasePagesDataLoaded] = useState(null);
-  // Refs for lazy-loaded data (converted from static imports) - loaded on mount
-  const dataRefs = useRef({
-    twNpcsData: null,
-    twItemsData: null,
-    achievementsData: null,
-    fatesData: null,
-    fatesDatabasePagesData: null,
-    placesData: null,
-    instancesData: null,
-    questsData: null
+  
+  // Data loaded from Supabase - organized by type for efficient access
+  const [loadedData, setLoadedData] = useState({
+    // NPC data
+    twNpcs: {},
+    npcs: {},
+    npcsDatabasePages: {},
+    // Shop data
+    twShops: {},
+    shops: {},
+    shopsByNpc: {},
+    // Instance data
+    twInstances: {},
+    instances: {},
+    zhInstances: {},
+    // Quest data
+    twQuests: {},
+    quests: {},
+    zhQuests: {},
+    questsDatabasePages: {},
+    // FATE data
+    twFates: {},
+    fates: {},
+    zhFates: {},
+    fatesDatabasePages: {},
+    // Achievement data
+    twAchievements: {},
+    twAchievementDescriptions: {},
+    achievements: {},
+    // Place data
+    twPlaces: {},
+    places: {},
+    // Item data (for currency names, etc.)
+    twItems: {},
+    // Special sources
+    fateSources: [],
+    lootSources: []
   });
+  
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  // Create a data accessor object that provides access to lazy-loaded data
-  // This allows the component to use the same variable names throughout
-  const dataFiles = useMemo(() => {
-    if (!dataLoaded) {
-      return {
-        twNpcsData: {},
-        twItemsData: {},
-        achievementsData: {},
-        fatesData: {},
-        fatesDatabasePagesData: {},
-        placesData: {},
-        instancesData: {},
-        questsData: {}
-      };
+  // Load sources and all required data from Supabase
+  useEffect(() => {
+    if (!itemId) {
+      setSources([]);
+      setLoading(false);
+      setDataLoaded(false);
+      return;
     }
-    return {
-      twNpcsData: dataRefs.current.twNpcsData || {},
-      twItemsData: dataRefs.current.twItemsData || {},
-      achievementsData: dataRefs.current.achievementsData || {},
-      fatesData: dataRefs.current.fatesData || {},
-      fatesDatabasePagesData: dataRefs.current.fatesDatabasePagesData || {},
-      placesData: dataRefs.current.placesData || {},
-      instancesData: dataRefs.current.instancesData || {},
-      questsData: dataRefs.current.questsData || {}
-    };
-  }, [dataLoaded]);
-  
-  // Destructure for convenient access throughout component
-  const { twNpcsData, twItemsData, achievementsData, fatesData, fatesDatabasePagesData, placesData, instancesData, questsData } = dataFiles;
-
-  // Load all large data files in parallel on mount
-  useEffect(() => {
-    Promise.all([
-      loadTwNpcsData(),
-      loadTwItemsData(),
-      loadAchievementsData(),
-      loadFatesData(),
-      loadFatesDatabasePagesData(),
-      loadPlacesData(),
-      loadInstancesData(),
-      loadQuestsData()
-    ]).then(([twNpcs, twItems, achievements, fates, fatesDb, places, instances, quests]) => {
-      dataRefs.current.twNpcsData = twNpcs;
-      dataRefs.current.twItemsData = twItems;
-      dataRefs.current.achievementsData = achievements;
-      dataRefs.current.fatesData = fates;
-      dataRefs.current.fatesDatabasePagesData = fatesDb;
-      dataRefs.current.placesData = places;
-      dataRefs.current.instancesData = instances;
-      dataRefs.current.questsData = quests;
-      setDataLoaded(true);
-    }).catch(error => {
-      console.error('Failed to load ObtainMethods data:', error);
-      setDataLoaded(true); // Still set to true to prevent infinite loading
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!itemId || !dataLoaded) return; // Wait for data to load before processing
 
     setLoading(true);
     setFilteredMethodType(null); // Reset filter when item changes
+    setDataLoaded(false);
     
     // Create abort controller for cancellation
     const abortController = new AbortController();
     
+    // Step 1: Get sources from Supabase
     getItemSources(itemId, abortController.signal)
-      .then(data => {
+      .then(async sourcesData => {
         // Check if request was cancelled
         if (abortController.signal.aborted) {
           return;
         }
-        // Check if we need to add FATE sources from fate-sources.json
-        const hasFates = data.some(source => source.type === DataType.FATES);
         
-        // Filter out ISLAND_PASTURE sources - these are Eureka-related and should not be displayed as FATEs
-        data = data.filter(source => source.type !== DataType.ISLAND_PASTURE);
+        // Step 2: Extract all required IDs from sources
+        console.log(`[ObtainMethods] 🔍 Raw sources data for item ${itemId}:`, sourcesData);
+        const requiredIds = extractIdsFromSources(sourcesData);
         
-        // Filter out invalid FATE sources (gathering nodes misclassified as FATEs)
-        data = data.filter(source => {
-          if (source.type === DataType.FATES && Array.isArray(source.data)) {
-            // Check if this FATE source has any valid FATEs
-            const hasValidFate = source.data.some(fate => {
-              // Skip if this looks like a gathering node (has nodeId, itemId but no id)
-              if (typeof fate === 'object') {
-                if ((fate.nodeId !== undefined || fate.itemId !== undefined) && fate.id === undefined) {
-                  return false; // This is a gathering node, not a FATE
-                }
-              }
-              const fateId = typeof fate === 'object' ? fate.id : fate;
-              if (!fateId || typeof fateId !== 'number') return false;
-              // Check if we have any data source for this FATE
-              const twFate = twFatesData[fateId];
-              const fateData = fatesData[fateId];
-              const fateDb = fatesDatabasePagesData[fateId] || fatesDatabasePagesData[String(fateId)];
-              return twFate || fateData || fateDb;
-            });
-            return hasValidFate; // Keep source only if it has at least one valid FATE
-          }
-          return true; // Keep all non-FATE sources
+        // Step 2.5: Get FATE IDs from fate_sources table and add to requiredIds
+        const fateSourcesFromTable = await getFateSourcesByItemId(itemId, abortController.signal);
+        console.log(`[ObtainMethods] 🔍 FATE IDs from fate_sources table for item ${itemId}:`, fateSourcesFromTable);
+        if (Array.isArray(fateSourcesFromTable) && fateSourcesFromTable.length > 0) {
+          fateSourcesFromTable.forEach(fateId => {
+            if (!requiredIds.fateIds.includes(fateId)) {
+              requiredIds.fateIds.push(fateId);
+            }
+          });
+          // Also need to query fatesDatabasePages to get zoneIds for these FATEs
+          // We'll add zoneIds after we get the FATE data, but we need to ensure we query fatesDatabasePages
+        }
+        
+        console.log(`[ObtainMethods] 📊 Extracted IDs for item ${itemId}:`, {
+          npcIds: requiredIds.npcIds.length,
+          shopIds: requiredIds.shopIds.length,
+          instanceIds: requiredIds.instanceIds.length,
+          questIds: requiredIds.questIds.length,
+          achievementIds: requiredIds.achievementIds.length,
+          itemIds: requiredIds.itemIds.length,
+          zoneIds: requiredIds.zoneIds.length,
+          fateIds: requiredIds.fateIds.length,
+          fateIdsList: requiredIds.fateIds
         });
         
-        // Always check fate-sources.json and merge any additional FATEs
-        // Check both string and number keys since JSON keys are strings
-        const fateSourcesForItem = fateSourcesData[itemId] || fateSourcesData[String(itemId)];
-        if (fateSourcesForItem) {
-          const fateIds = fateSourcesForItem;
-          const existingFateIds = new Set();
-          
-          // Collect existing FATE IDs from FATES sources only
-          if (hasFates) {
-            const fatesSource = data.find(s => s.type === DataType.FATES);
-            if (fatesSource && Array.isArray(fatesSource.data)) {
-              fatesSource.data.forEach(fate => {
-                const fateId = typeof fate === 'object' ? fate.id : fate;
-                if (fateId) existingFateIds.add(fateId);
-              });
-            }
-          }
-          
-          // Add missing FATEs from fate-sources.json
-          const missingFateIds = fateIds.filter(fateId => !existingFateIds.has(fateId));
-          
-          if (missingFateIds.length > 0) {
-            const newFateSources = missingFateIds.map(fateId => {
-              const fateDb = fatesDatabasePagesData[fateId] || fatesDatabasePagesData[String(fateId)];
-              if (!fateDb) return null;
-              
-              return {
-                id: fateId,
-                level: fateDb.lvl || fateDb.lvlMax || 0,
-                zoneId: fateDb.zoneid,
-                mapId: fateDb.map,
-                coords: (fateDb.x !== undefined && fateDb.y !== undefined) ? {
-                  x: fateDb.x,
-                  y: fateDb.y
-                } : null
-              };
-            }).filter(Boolean);
-            
-            if (newFateSources.length > 0) {
-              // Create or merge into FATES source
-              if (hasFates) {
-                const fatesSource = data.find(s => s.type === DataType.FATES);
-                if (fatesSource) {
-                  fatesSource.data = [...(fatesSource.data || []), ...newFateSources];
-                }
-              } else {
-                data.push({
-                  type: DataType.FATES,
-                  data: newFateSources
-                });
-              }
-            }
+        // Step 3: Batch query Supabase for all required data (parallel)
+        const queries = [];
+        
+        // NPC queries
+        if (requiredIds.npcIds.length > 0) {
+          queries.push(
+            getTwNpcsByIds(requiredIds.npcIds, abortController.signal).then(data => ({ type: 'twNpcs', data })),
+            getNpcsByIds(requiredIds.npcIds, abortController.signal).then(data => ({ type: 'npcs', data })),
+            getNpcsDatabasePagesByIds(requiredIds.npcIds, abortController.signal).then(data => ({ type: 'npcsDatabasePages', data }))
+          );
+        }
+        
+        // Shop queries
+        if (requiredIds.shopIds.length > 0) {
+          queries.push(
+            getTwShopsByIds(requiredIds.shopIds, abortController.signal).then(data => ({ type: 'twShops', data })),
+            getShopsByIds(requiredIds.shopIds, abortController.signal).then(data => ({ type: 'shops', data }))
+          );
+          // Shops by NPC (if we have NPC IDs)
+          if (requiredIds.npcIds.length > 0) {
+            queries.push(
+              getShopsByNpcIds(requiredIds.npcIds, abortController.signal).then(data => ({ type: 'shopsByNpc', data }))
+            );
           }
         }
         
-        // Recalculate hasFates after potentially adding FATEs from fate-sources.json
-        const hasFatesAfterMerge = data.some(source => source.type === DataType.FATES);
-        
-        // Also check reverse lookup: find FATEs that reward this item
-        // 1. Check if any FATE's items array includes this item
-        // 2. Check if any FATE in fate-sources.json for other items also rewards this item (rare drops)
-        Object.keys(fatesDatabasePagesData).forEach(fateIdStr => {
-          const fateDb = fatesDatabasePagesData[fateIdStr];
-          if (!fateDb) return;
-          
-          const fateId = parseInt(fateIdStr, 10);
-          const fateItems = Array.isArray(fateDb.items) ? fateDb.items : [];
-          const itemIsInFateItems = fateItems.includes(itemId);
-          
-          // Check if this FATE is already included
-          let alreadyIncluded = false;
-          if (hasFatesAfterMerge) {
-            const fatesSource = data.find(s => s.type === DataType.FATES);
-            if (fatesSource && Array.isArray(fatesSource.data)) {
-              alreadyIncluded = fatesSource.data.some(fate => {
-                const existingFateId = typeof fate === 'object' ? fate.id : fate;
-                return existingFateId === fateId;
-              });
-            }
-          }
-          
-          // Check if this FATE should be included:
-          // - Item is in FATE's items array, OR
-          // - FATE is in fate-sources.json for this item (already handled above), OR
-          // - FATE is in fate-sources.json for other items AND we're viewing one of those items
-          //   (this handles cases where an item is a reward but not in the items array)
-          const fateSourcesForItem = fateSourcesData[itemId] || fateSourcesData[String(itemId)];
-          const isFateInSourcesForItem = fateSourcesForItem && fateSourcesForItem.includes(fateId);
-          const shouldInclude = itemIsInFateItems || isFateInSourcesForItem;
-          
-          if (shouldInclude && !alreadyIncluded) {
-            const newFateSource = {
-              id: fateId,
-              level: fateDb.lvl || fateDb.lvlMax || 0,
-              zoneId: fateDb.zoneid,
-              mapId: fateDb.map,
-              coords: (fateDb.x !== undefined && fateDb.y !== undefined) ? {
-                x: fateDb.x,
-                y: fateDb.y
-              } : null
-            };
-            
-            if (hasFatesAfterMerge) {
-              const fatesSource = data.find(s => s.type === DataType.FATES);
-              if (fatesSource) {
-                fatesSource.data = [...(fatesSource.data || []), newFateSource];
-              } else {
-                // Should not happen, but create if missing
-                data.push({
-                  type: DataType.FATES,
-                  data: [newFateSource]
-                });
-              }
-            } else {
-              data.push({
-                type: DataType.FATES,
-                data: [newFateSource]
-              });
-            }
-          }
-        });
-        
-        // Check quests.json directly for quests that reward this item (fallback for missing/extracted data)
-        const hasQuests = data.some(source => source.type === DataType.QUESTS);
-        const questIdsFromQuestsJson = [];
-        
-        // Find all quests that reward this item
-        Object.keys(questsData).forEach(questIdStr => {
-          const quest = questsData[questIdStr];
-          if (!quest || !quest.rewards) return;
-          
-          // Check if any reward matches this item
-          const hasItemReward = quest.rewards.some(reward => reward.id === itemId);
-          if (hasItemReward) {
-            questIdsFromQuestsJson.push(parseInt(questIdStr, 10));
-          }
-        });
-        
-        // Add quest sources if found and not already present
-        if (questIdsFromQuestsJson.length > 0) {
-          if (hasQuests) {
-            // Merge with existing quest sources
-            const questsSource = data.find(s => s.type === DataType.QUESTS);
-            if (questsSource && Array.isArray(questsSource.data)) {
-              const existingQuestIds = new Set(questsSource.data.map(q => typeof q === 'object' ? q.id : q));
-              const newQuestIds = questIdsFromQuestsJson.filter(qId => !existingQuestIds.has(qId));
-              if (newQuestIds.length > 0) {
-                questsSource.data = [...questsSource.data, ...newQuestIds];
-              }
-            }
-          } else {
-            // Also check if type 18 (MASTERBOOKS) contains quest IDs (data error fix)
-            const masterbooksSource = data.find(s => s.type === DataType.MASTERBOOKS);
-            if (masterbooksSource && Array.isArray(masterbooksSource.data)) {
-              // Check if the data looks like quest IDs (reasonable quest ID range)
-              const looksLikeQuestIds = masterbooksSource.data.every(id => {
-                const numId = typeof id === 'object' ? id.id : id;
-                return typeof numId === 'number' && numId > 1000 && numId < 1000000;
-              });
-              
-              if (looksLikeQuestIds) {
-                // Convert MASTERBOOKS source to QUESTS source
-                masterbooksSource.type = DataType.QUESTS;
-                const existingQuestIds = new Set(masterbooksSource.data.map(q => typeof q === 'object' ? q.id : q));
-                const newQuestIds = questIdsFromQuestsJson.filter(qId => !existingQuestIds.has(qId));
-                if (newQuestIds.length > 0) {
-                  masterbooksSource.data = [...masterbooksSource.data, ...newQuestIds];
-                }
-              } else {
-                // Add as new QUESTS source
-                data.push({
-                  type: DataType.QUESTS,
-                  data: questIdsFromQuestsJson
-                });
-              }
-            } else {
-              // Add as new QUESTS source
-              data.push({
-                type: DataType.QUESTS,
-                data: questIdsFromQuestsJson
-              });
-            }
-          }
+        // Instance queries
+        if (requiredIds.instanceIds.length > 0) {
+          queries.push(
+            getTwInstancesByIds(requiredIds.instanceIds, abortController.signal).then(data => ({ type: 'twInstances', data })),
+            getInstancesByIds(requiredIds.instanceIds, abortController.signal).then(data => ({ type: 'instances', data })),
+            getZhInstancesByIds(requiredIds.instanceIds, abortController.signal).then(data => ({ type: 'zhInstances', data }))
+          );
         }
         
-        // Check loot-sources.json for items obtainable from coffers/containers
-        if (lootSourcesData[itemId] && Array.isArray(lootSourcesData[itemId]) && lootSourcesData[itemId].length > 0) {
-          const lootSourceIds = lootSourcesData[itemId];
-          const hasTreasures = data.some(source => source.type === DataType.TREASURES);
+        // Quest queries
+        if (requiredIds.questIds.length > 0) {
+          queries.push(
+            getTwQuestsByIds(requiredIds.questIds, abortController.signal).then(data => ({ type: 'twQuests', data })),
+            getQuestsByIds(requiredIds.questIds, abortController.signal).then(data => ({ type: 'quests', data })),
+            getZhQuestsByIds(requiredIds.questIds, abortController.signal).then(data => ({ type: 'zhQuests', data })),
+            getQuestsDatabasePagesByIds(requiredIds.questIds, abortController.signal).then(data => ({ type: 'questsDatabasePages', data }))
+          );
+        }
+        
+        // FATE queries
+        if (requiredIds.fateIds.length > 0) {
+          queries.push(
+            getTwFatesByIds(requiredIds.fateIds, abortController.signal).then(data => ({ type: 'twFates', data })),
+            getFatesByIds(requiredIds.fateIds, abortController.signal).then(data => ({ type: 'fates', data })),
+            getZhFatesByIds(requiredIds.fateIds, abortController.signal).then(data => ({ type: 'zhFates', data })),
+            getFatesDatabasePagesByIds(requiredIds.fateIds, abortController.signal).then(data => ({ type: 'fatesDatabasePages', data }))
+          );
+        }
+        
+        // Achievement queries
+        if (requiredIds.achievementIds.length > 0) {
+          queries.push(
+            getTwAchievementsByIds(requiredIds.achievementIds, abortController.signal).then(data => ({ type: 'twAchievements', data })),
+            getTwAchievementDescriptionsByIds(requiredIds.achievementIds, abortController.signal).then(data => ({ type: 'twAchievementDescriptions', data })),
+            getAchievementsByIds(requiredIds.achievementIds, abortController.signal).then(data => ({ type: 'achievements', data }))
+          );
+        }
+        
+        // Place queries
+        if (requiredIds.zoneIds.length > 0) {
+          queries.push(
+            getTwPlacesByIds(requiredIds.zoneIds, abortController.signal).then(data => ({ type: 'twPlaces', data })),
+            getPlacesByIds(requiredIds.zoneIds, abortController.signal).then(data => ({ type: 'places', data }))
+          );
+        }
+        
+        // Item queries (for currency names, etc.)
+        if (requiredIds.itemIds.length > 0) {
+          queries.push(
+            getTwItemsByIds(requiredIds.itemIds, abortController.signal).then(data => ({ type: 'twItems', data }))
+          );
+        }
+        
+        // Special sources queries (these return arrays of IDs, not full data objects)
+        queries.push(
+          Promise.resolve({ type: 'fateSources', data: fateSourcesFromTable }).then(result => {
+            console.log(`[ObtainMethods] 📦 fateSources query result:`, result);
+            return result;
+          }),
+          getLootSourcesByItemId(itemId, abortController.signal).then(data => ({ type: 'lootSources', data }))
+        );
+        
+        // Execute all queries in parallel
+        console.log(`[ObtainMethods] 🚀 Executing ${queries.length} parallel queries for item ${itemId}...`);
+        return Promise.all(queries).then(async results => {
+          if (abortController.signal.aborted) {
+            return;
+          }
           
-          // Filter out invalid loot source IDs and check if items exist
-          const validLootSources = lootSourceIds.filter(lootSourceId => {
-            const lootItem = twItemsData[lootSourceId];
-            return lootItem && lootItem.tw;
+          // Combine results into loadedData object
+          const newLoadedData = { ...loadedData };
+          results.forEach(({ type, data }) => {
+            newLoadedData[type] = data;
+            const count = typeof data === 'object' && !Array.isArray(data) ? Object.keys(data).length : (Array.isArray(data) ? data.length : 0);
+            console.log(`[ObtainMethods] ✅ Loaded ${type}: ${count} items`);
           });
           
-          if (validLootSources.length > 0) {
-            if (hasTreasures) {
-              // Merge with existing TREASURES source
-              const treasuresSource = data.find(s => s.type === DataType.TREASURES);
-              if (treasuresSource && Array.isArray(treasuresSource.data)) {
-                const existingTreasureIds = new Set(treasuresSource.data.map(id => typeof id === 'object' ? id.id : id));
-                const newTreasureIds = validLootSources.filter(id => !existingTreasureIds.has(id));
-                if (newTreasureIds.length > 0) {
-                  treasuresSource.data = [...treasuresSource.data, ...newTreasureIds];
+          setLoadedData(newLoadedData);
+          
+          // Process sources with additional data from Supabase
+          let processedSources = [...sourcesData];
+          
+          // Collect zoneIds from FATEs - we'll do this after processing sources
+          const fateZoneIds = new Set();
+          
+          // Handle ISLAND_PASTURE sources that are actually FATEs
+          // Some FATEs are incorrectly classified as ISLAND_PASTURE (type 14) but have FATE data structure
+          const islandPastureFates = [];
+          const existingFateIdsFromSources = new Set(); // Track FATE IDs that already have full data in sources
+          
+          processedSources = processedSources.filter(source => {
+            if (source.type === DataType.ISLAND_PASTURE && Array.isArray(source.data)) {
+              // Check if this looks like a FATE (has id, level, zoneId, etc.)
+              const looksLikeFate = source.data.some(item => {
+                if (typeof item === 'object' && item.id && typeof item.id === 'number') {
+                  // Has numeric id and other FATE-like properties
+                  return item.level !== undefined || item.zoneId !== undefined || item.coords !== undefined;
+                }
+                return false;
+              });
+              
+              if (looksLikeFate) {
+                // Convert to FATE source - preserve all data including zoneId, mapId, coords
+                islandPastureFates.push({
+                  type: DataType.FATES,
+                  data: source.data.map(fate => {
+                    // Ensure we preserve all FATE data including zoneId
+                    if (typeof fate === 'object' && fate.id) {
+                      existingFateIdsFromSources.add(fate.id);
+                      // Collect zoneId for place data query
+                      if (fate.zoneId) {
+                        fateZoneIds.add(fate.zoneId);
+                      }
+                      return fate; // Return as-is to preserve zoneId, mapId, coords
+                    }
+                    return fate;
+                  })
+                });
+                return false; // Remove from processedSources, will add as FATE below
+              }
+            }
+            // Also track FATE IDs from existing FATES sources
+            if (source.type === DataType.FATES && Array.isArray(source.data)) {
+              source.data.forEach(fate => {
+                if (typeof fate === 'object' && fate.id) {
+                  existingFateIdsFromSources.add(fate.id);
+                  if (fate.zoneId) {
+                    fateZoneIds.add(fate.zoneId);
+                  }
+                }
+              });
+            }
+            return source.type !== DataType.ISLAND_PASTURE;
+          });
+          
+          // Add converted FATEs
+          if (islandPastureFates.length > 0) {
+            const existingFatesSource = processedSources.find(s => s.type === DataType.FATES);
+            if (existingFatesSource) {
+              // Merge with existing FATES source
+              islandPastureFates.forEach(fateSource => {
+                existingFatesSource.data = [...(existingFatesSource.data || []), ...(fateSource.data || [])];
+              });
+            } else {
+              // Add as new FATES source
+              processedSources.push(...islandPastureFates);
+            }
+          }
+          
+          // Filter out invalid FATE sources (gathering nodes misclassified as FATEs)
+          processedSources = processedSources.filter(source => {
+            if (source.type === DataType.FATES && Array.isArray(source.data)) {
+              const hasValidFate = source.data.some(fate => {
+                if (typeof fate === 'object') {
+                  if ((fate.nodeId !== undefined || fate.itemId !== undefined) && fate.id === undefined) {
+                    return false; // This is a gathering node, not a FATE
+                  }
+                }
+                const fateId = typeof fate === 'object' ? fate.id : fate;
+                if (!fateId || typeof fateId !== 'number') return false;
+                // Check if we have data for this FATE
+                const twFate = newLoadedData.twFates[fateId];
+                const fateData = newLoadedData.fates[fateId];
+                const fateDb = newLoadedData.fatesDatabasePages[fateId] || newLoadedData.fatesDatabasePages[String(fateId)];
+                return twFate || fateData || fateDb;
+              });
+              return hasValidFate;
+            }
+            return true;
+          });
+          
+          // Merge FATE sources from fate_sources table
+          const fateSourcesForItem = newLoadedData.fateSources || [];
+          console.log(`[ObtainMethods] 🔍 FATE sources from fate_sources table for item ${itemId}:`, fateSourcesForItem);
+          
+          if (fateSourcesForItem.length > 0) {
+            const hasFates = processedSources.some(source => source.type === DataType.FATES);
+            const existingFateIds = new Set();
+            
+            // Collect existing FATE IDs from sources
+            if (hasFates) {
+              const fatesSource = processedSources.find(s => s.type === DataType.FATES);
+              if (fatesSource && Array.isArray(fatesSource.data)) {
+                fatesSource.data.forEach(fate => {
+                  const fateId = typeof fate === 'object' ? fate.id : fate;
+                  if (fateId) existingFateIds.add(fateId);
+                  // Collect zoneId from existing FATEs
+                  if (typeof fate === 'object' && fate.zoneId) {
+                    fateZoneIds.add(fate.zoneId);
+                  }
+                });
+              }
+            }
+            
+            // Find missing FATE IDs that need to be added
+            const missingFateIds = fateSourcesForItem.filter(fateId => !existingFateIds.has(fateId) && !existingFateIdsFromSources.has(fateId));
+            console.log(`[ObtainMethods] 🔍 Missing FATE IDs to add:`, missingFateIds);
+            
+            if (missingFateIds.length > 0) {
+              const newFateSources = missingFateIds.map(fateId => {
+                // Try to get FATE data from fates table first (may have position info)
+                const fateData = newLoadedData.fates[fateId] || newLoadedData.fates[String(fateId)];
+                const fateDb = newLoadedData.fatesDatabasePages[fateId] || newLoadedData.fatesDatabasePages[String(fateId)];
+                console.log(`[ObtainMethods] 🔍 FATE ${fateId} data:`, { fateData, fateDb });
+                
+                // Build FATE source object - prefer position from fateData, fallback to fateDb
+                let zoneId = null;
+                let mapId = null;
+                let coords = null;
+                let level = 0;
+                
+                // Try to get position from fateData (fates table)
+                if (fateData?.position) {
+                  zoneId = fateData.position.zoneid;
+                  mapId = fateData.position.map;
+                  if (fateData.position.x !== undefined && fateData.position.y !== undefined) {
+                    coords = { x: fateData.position.x, y: fateData.position.y };
+                  }
+                }
+                
+                // Get level from fateData or fateDb
+                if (fateData?.level) {
+                  level = fateData.level;
+                } else if (fateDb) {
+                  level = fateDb.lvl || fateDb.lvlMax || 0;
+                }
+                
+                // If no position data found, log warning
+                if (!zoneId && !fateDb) {
+                  console.warn(`[ObtainMethods] ⚠️ No database data found for FATE ${fateId}`);
+                  return null;
+                }
+                
+                // Collect zoneId for place data query if available
+                if (zoneId) {
+                  fateZoneIds.add(zoneId);
+                }
+                
+                // Return FATE source object (zoneId may be null if not available)
+                return {
+                  id: fateId,
+                  level: level,
+                  zoneId: zoneId,
+                  mapId: mapId,
+                  coords: coords
+                };
+              }).filter(Boolean);
+              
+              console.log(`[ObtainMethods] 🔍 New FATE sources to add:`, newFateSources);
+              console.log(`[ObtainMethods] 🔍 FATE zoneIds to query:`, Array.from(fateZoneIds));
+              
+              if (newFateSources.length > 0) {
+                if (hasFates) {
+                  const fatesSource = processedSources.find(s => s.type === DataType.FATES);
+                  if (fatesSource) {
+                    fatesSource.data = [...(fatesSource.data || []), ...newFateSources];
+                  }
+                } else {
+                  processedSources.push({
+                    type: DataType.FATES,
+                    data: newFateSources
+                  });
+                }
+              }
+            }
+            
+          }
+          
+          // After processing all FATE sources, query place data for collected zoneIds
+          if (fateZoneIds.size > 0) {
+            const zoneIdsToQuery = Array.from(fateZoneIds).filter(zoneId => {
+              const hasTwPlace = newLoadedData.twPlaces[zoneId] || newLoadedData.twPlaces[String(zoneId)];
+              const hasPlace = newLoadedData.places[zoneId] || newLoadedData.places[String(zoneId)];
+              return !hasTwPlace && !hasPlace;
+            });
+            
+            if (zoneIdsToQuery.length > 0) {
+              console.log(`[ObtainMethods] 🔍 Querying place data for FATE zoneIds:`, zoneIdsToQuery);
+              try {
+                const [twPlaces, places] = await Promise.all([
+                  getTwPlacesByIds(zoneIdsToQuery, abortController.signal),
+                  getPlacesByIds(zoneIdsToQuery, abortController.signal)
+                ]);
+                // Update loadedData with place data
+                setLoadedData(prev => ({
+                  ...prev,
+                  twPlaces: { ...prev.twPlaces, ...twPlaces },
+                  places: { ...prev.places, ...places }
+                }));
+                // Also update newLoadedData for immediate use
+                newLoadedData.twPlaces = { ...newLoadedData.twPlaces, ...twPlaces };
+                newLoadedData.places = { ...newLoadedData.places, ...places };
+                console.log(`[ObtainMethods] ✅ Loaded place data for ${zoneIdsToQuery.length} zones:`, zoneIdsToQuery);
+                console.log(`[ObtainMethods] 📦 Sample twPlaces data:`, Object.entries(twPlaces).slice(0, 3));
+                // Update loadedData state immediately so getPlaceName can access it
+                setLoadedData(prev => ({
+                  ...prev,
+                  twPlaces: { ...prev.twPlaces, ...twPlaces },
+                  places: { ...prev.places, ...places }
+                }));
+              } catch (err) {
+                console.error(`[ObtainMethods] Error loading place data:`, err);
+              }
+            } else {
+              console.log(`[ObtainMethods] ℹ️ All FATE zoneIds already have place data loaded`);
+            }
+          }
+          
+          // Check quests that reward this item (from quests table)
+          const hasQuests = processedSources.some(source => source.type === DataType.QUESTS);
+          const questIdsFromQuests = [];
+          const questsData = newLoadedData.quests || {};
+          
+          Object.keys(questsData).forEach(questIdStr => {
+            const quest = questsData[questIdStr];
+            if (!quest || !quest.rewards) return;
+            
+            const hasItemReward = Array.isArray(quest.rewards) && quest.rewards.some(reward => reward.id === parseInt(itemId, 10));
+            if (hasItemReward) {
+              questIdsFromQuests.push(parseInt(questIdStr, 10));
+            }
+          });
+          
+          if (questIdsFromQuests.length > 0) {
+            if (hasQuests) {
+              const questsSource = processedSources.find(s => s.type === DataType.QUESTS);
+              if (questsSource && Array.isArray(questsSource.data)) {
+                const existingQuestIds = new Set(questsSource.data.map(q => typeof q === 'object' ? q.id : q));
+                const newQuestIds = questIdsFromQuests.filter(qId => !existingQuestIds.has(qId));
+                if (newQuestIds.length > 0) {
+                  questsSource.data = [...questsSource.data, ...newQuestIds];
                 }
               }
             } else {
-              // Add as new TREASURES source (reusing TREASURES type for loot sources/coffers)
-              data.push({
-                type: DataType.TREASURES,
-                data: validLootSources
-              });
+              const masterbooksSource = processedSources.find(s => s.type === DataType.MASTERBOOKS);
+              if (masterbooksSource && Array.isArray(masterbooksSource.data)) {
+                const looksLikeQuestIds = masterbooksSource.data.every(id => {
+                  const numId = typeof id === 'object' ? id.id : id;
+                  return typeof numId === 'number' && numId > 1000 && numId < 1000000;
+                });
+                
+                if (looksLikeQuestIds) {
+                  masterbooksSource.type = DataType.QUESTS;
+                  const existingQuestIds = new Set(masterbooksSource.data.map(q => typeof q === 'object' ? q.id : q));
+                  const newQuestIds = questIdsFromQuests.filter(qId => !existingQuestIds.has(qId));
+                  if (newQuestIds.length > 0) {
+                    masterbooksSource.data = [...masterbooksSource.data, ...newQuestIds];
+                  }
+                } else {
+                  processedSources.push({
+                    type: DataType.QUESTS,
+                    data: questIdsFromQuests
+                  });
+                }
+              } else {
+                processedSources.push({
+                  type: DataType.QUESTS,
+                  data: questIdsFromQuests
+                });
+              }
             }
           }
-        }
-        
-        setSources(data || []);
-        setLoading(false);
+          
+          // Check loot sources from loot_sources table
+          const lootSourceIds = newLoadedData.lootSources || [];
+          if (lootSourceIds.length > 0) {
+            const hasTreasures = processedSources.some(source => source.type === DataType.TREASURES);
+            const twItemsData = newLoadedData.twItems || {};
+            
+            const validLootSources = lootSourceIds.filter(lootSourceId => {
+              const lootItem = newLoadedData.twItems[lootSourceId] || newLoadedData.twItems[String(lootSourceId)];
+              return lootItem && lootItem.tw;
+            });
+            
+            if (validLootSources.length > 0) {
+              if (hasTreasures) {
+                const treasuresSource = processedSources.find(s => s.type === DataType.TREASURES);
+                if (treasuresSource && Array.isArray(treasuresSource.data)) {
+                  const existingTreasureIds = new Set(treasuresSource.data.map(id => typeof id === 'object' ? id.id : id));
+                  const newTreasureIds = validLootSources.filter(id => !existingTreasureIds.has(id));
+                  if (newTreasureIds.length > 0) {
+                    treasuresSource.data = [...treasuresSource.data, ...newTreasureIds];
+                  }
+                }
+              } else {
+                processedSources.push({
+                  type: DataType.TREASURES,
+                  data: validLootSources
+                });
+              }
+            }
+          }
+          
+          setSources(processedSources);
+          setDataLoaded(true);
+          setLoading(false);
+        });
       })
       .catch(err => {
         // Don't update state if request was cancelled
@@ -582,67 +592,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     };
   }, [itemId]);
 
-  // Load gil-shop-names data when needed
-  useEffect(() => {
-    if (!gilShopNamesDataLoaded) {
-      loadGilShopNamesData().then(data => setGilShopNamesDataLoaded(data));
-    }
-  }, [gilShopNamesDataLoaded]);
-  
-  // Load zh data when needed
-  useEffect(() => {
-    if (!zhInstancesDataLoaded && sources.some(s => s.type === DataType.INSTANCES)) {
-      loadZhInstancesData().then(data => setZhInstancesDataLoaded(data));
-    }
-  }, [sources, zhInstancesDataLoaded]);
-  
-  useEffect(() => {
-    if (!zhQuestsDataLoaded && sources.some(s => s.type === DataType.QUESTS)) {
-      loadZhQuestsData().then(data => setZhQuestsDataLoaded(data));
-    }
-  }, [sources, zhQuestsDataLoaded]);
-  
-  // Load zhFatesData when needed (for FATEs)
-  useEffect(() => {
-    if (!zhFatesDataLoaded && sources.some(s => s.type === DataType.FATES)) {
-      loadZhFatesData().then(data => setZhFatesDataLoaded(data));
-    }
-  }, [sources, zhFatesDataLoaded]);
-  
-  // Load npcs data when needed (for vendors/quests)
-  useEffect(() => {
-    if (!npcsDataLoaded && sources.some(s => s.type === DataType.VENDORS || s.type === DataType.QUESTS)) {
-      loadNpcsData().then(data => setNpcsDataLoaded(data));
-    }
-  }, [sources, npcsDataLoaded]);
-  
-  // Load shops data when component mounts (only if needed)
-  useEffect(() => {
-    if (!shopsDataLoaded && sources.some(s => s.type === DataType.VENDORS || s.type === DataType.TRADE_SOURCES)) {
-      loadShopsData().then(data => setShopsDataLoaded(data));
-    }
-  }, [sources, shopsDataLoaded]);
-  
-  useEffect(() => {
-    if (!shopsByNpcDataLoaded && sources.some(s => s.type === DataType.VENDORS || s.type === DataType.TRADE_SOURCES)) {
-      loadShopsByNpcData().then(data => setShopsByNpcDataLoaded(data));
-    }
-  }, [sources, shopsByNpcDataLoaded]);
-  
-  // Load npcs-database-pages data when needed (for NPC titles and locations)
-  useEffect(() => {
-    if (!npcsDatabasePagesDataLoaded && sources.some(s => s.type === DataType.VENDORS || s.type === DataType.QUESTS)) {
-      loadNpcsDatabasePagesData().then(data => setNpcsDatabasePagesDataLoaded(data));
-    }
-  }, [sources, npcsDatabasePagesDataLoaded]);
-  
-  // Load quests-database-pages data when needed (for quest details)
-  useEffect(() => {
-    if (!questsDatabasePagesDataLoaded && sources.some(s => s.type === DataType.QUESTS)) {
-      loadQuestsDatabasePagesData().then(data => setQuestsDatabasePagesDataLoaded(data));
-    }
-  }, [sources, questsDatabasePagesDataLoaded]);
-
   // Show loading state if data is still loading or sources are being fetched
   if (!dataLoaded || loading) {
     return (
@@ -655,7 +604,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
   if (sources.length === 0) {
     // Check if item is a treasure map (名稱包含"地圖")
-    const itemData = twItemsData[itemId];
+    const itemData = loadedData.twItems[itemId] || loadedData.twItems[String(itemId)];
     const itemName = itemData?.tw || '';
     const isTreasureMap = itemName && itemName.includes('地圖');
     
@@ -710,44 +659,47 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   };
 
   const getNpcName = (npcId) => {
-    const npc = twNpcsData[npcId];
+    const npc = loadedData.twNpcs[npcId] || loadedData.twNpcs[String(npcId)];
     return npc?.tw || `NPC ${npcId}`;
   };
 
   const getNpcTitle = (npcId) => {
-    // Try tw-npc-titles.json first
+    // Try tw-npc-titles.json first (static import)
     const titleData = twNpcTitlesData[npcId] || twNpcTitlesData[String(npcId)];
     if (titleData?.tw) {
       return titleData.tw;
     }
-    // Fallback to npcs-database-pages.json (lazy loaded)
-    if (npcsDatabasePagesDataLoaded) {
-      const npcDb = npcsDatabasePagesDataLoaded[npcId] || npcsDatabasePagesDataLoaded[String(npcId)];
-      if (npcDb?.title?.zh) {
-        return npcDb.title.zh;
-      }
+    // Fallback to npcs-database-pages from Supabase
+    const npcDb = loadedData.npcsDatabasePages[npcId] || loadedData.npcsDatabasePages[String(npcId)];
+    if (npcDb?.title?.zh) {
+      return npcDb.title.zh;
     }
     return null;
   };
 
   const getPlaceName = (zoneId) => {
+    if (!zoneId) return '';
     // Try Traditional Chinese first
-    const twPlace = twPlacesData[zoneId];
+    const twPlace = loadedData.twPlaces[zoneId] || loadedData.twPlaces[String(zoneId)];
     if (twPlace?.tw) {
       return twPlace.tw;
     }
-    // Fallback to English places.json
-    const place = placesData[zoneId];
-    return place?.en || `Zone ${zoneId}`;
+    // Fallback to English places from Supabase
+    const place = loadedData.places[zoneId] || loadedData.places[String(zoneId)];
+    if (place?.en) {
+      return place.en;
+    }
+    // If still not found, log for debugging
+    console.warn(`[ObtainMethods] ⚠️ Place name not found for zoneId ${zoneId}. Available twPlaces keys:`, Object.keys(loadedData.twPlaces).slice(0, 10));
+    return `Zone ${zoneId}`;
   };
 
   const getShopName = (shopId) => {
-    // Try Traditional Chinese shop names
-    const twShop = twShopsData[shopId];
+    // Try Traditional Chinese shop names from Supabase
+    const twShop = loadedData.twShops[shopId] || loadedData.twShops[String(shopId)];
     if (twShop?.tw) {
       return twShop.tw;
     }
-    // Fallback to shop name from trade source if available
     return null;
   };
 
@@ -759,33 +711,21 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     if (shopName.tw) return shopName.tw;
     if (shopName.zh) return shopName.zh;
     
-    // If not available, try to find shop ID by matching English name (lazy loaded)
-    if (shopName.en && gilShopNamesDataLoaded) {
-      for (const [shopId, shopData] of Object.entries(gilShopNamesDataLoaded)) {
-        if (shopData?.en === shopName.en) {
-          // Found matching shop ID, get Traditional Chinese name from tw-shops.json
-          const twShop = twShopsData[shopId];
-          if (twShop?.tw) {
-            return twShop.tw;
-          }
-        }
-      }
-    }
-    
+    // If not available, try to find shop ID by matching English name
+    // Note: gil_shop_names table might need to be queried if needed
+    // For now, just return null if not in shopName object
     return null;
   };
 
   const getCurrencyName = (currencyItemId) => {
-    // Get currency name directly from tw-items.json (synchronous lookup)
+    // Get currency name from Supabase loaded data
     if (!currencyItemId) return '貨幣';
     
-    const currencyItem = twItemsData[currencyItemId];
+    const currencyItem = loadedData.twItems[currencyItemId] || loadedData.twItems[String(currencyItemId)];
     if (currencyItem?.tw) {
       return currencyItem.tw;
     }
     
-    // Fallback: try async lookup from item database
-    // Note: This will return a promise, so we handle it in the component
     return null;
   };
 
@@ -793,9 +733,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const getAchievementInfo = (achievementId) => {
     if (!achievementId) return null;
     const achievementIdStr = achievementId.toString();
-    const achievement = twAchievementsData[achievementIdStr];
-    const description = twAchievementDescriptionsData[achievementIdStr];
-    const achievementData = achievementsData[achievementIdStr];
+    const achievement = loadedData.twAchievements[achievementIdStr] || loadedData.twAchievements[achievementId];
+    const description = loadedData.twAchievementDescriptions[achievementIdStr] || loadedData.twAchievementDescriptions[achievementId];
+    const achievementData = loadedData.achievements[achievementIdStr] || loadedData.achievements[achievementId];
     
     if (achievement?.tw) {
       return {
@@ -854,12 +794,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
   const getInstanceName = (instanceId) => {
     // Try Traditional Chinese first
-    const twInstance = twInstancesData[instanceId];
+    const twInstance = loadedData.twInstances[instanceId] || loadedData.twInstances[String(instanceId)];
     if (twInstance?.tw) {
       return twInstance.tw;
     }
-    // Fallback to English instances.json
-    const instance = instancesData[instanceId];
+    // Fallback to English instances from Supabase
+    const instance = loadedData.instances[instanceId] || loadedData.instances[String(instanceId)];
     if (instance?.en) {
       return instance.en;
     }
@@ -867,16 +807,14 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   };
 
   const getInstanceCNName = (instanceId) => {
-    // Get Simplified Chinese name from zh-instances.json for Huiji Wiki (lazy loaded)
-    if (!zhInstancesDataLoaded) return null;
-    const zhInstance = zhInstancesDataLoaded[instanceId];
+    // Get Simplified Chinese name from Supabase
+    const zhInstance = loadedData.zhInstances[instanceId] || loadedData.zhInstances[String(instanceId)];
     return zhInstance?.zh || null;
   };
 
   const getQuestCNName = (questId) => {
-    // Get Simplified Chinese quest name from zh-quests.json for Huiji Wiki (lazy loaded)
-    if (!zhQuestsDataLoaded) return null;
-    const zhQuest = zhQuestsDataLoaded[questId];
+    // Get Simplified Chinese quest name from Supabase
+    const zhQuest = loadedData.zhQuests[questId] || loadedData.zhQuests[String(questId)];
     return zhQuest?.zh || null;
   };
 
@@ -888,36 +826,34 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   };
 
   // Get quest requirement for a shop by shop ID and NPC ID
-  // Look up from multiple sources: trade source data, shops.json, and shops-by-npc.json
+  // Look up from multiple sources: trade source data, shops table, and shops_by_npc table
   const getShopQuestRequirement = (shopId, npcId, tradeSource) => {
     if (!shopId) return null;
     
-    // First, check if tradeSource has requiredQuest (from extracts.json after extraction runs)
+    // First, check if tradeSource has requiredQuest (from extracts)
     if (tradeSource && tradeSource.requiredQuest) {
       return tradeSource.requiredQuest;
     }
     
-    // Look up shop in shops.json (lazy loaded)
-    if (shopsDataLoaded) {
-      const shop = Array.isArray(shopsDataLoaded) 
-        ? shopsDataLoaded.find(s => s.id === shopId)
-        : shopsDataLoaded[shopId];
-      
-      // Check if shop has requiredQuest property (will be populated after extraction runs)
-      if (shop && shop.requiredQuest) {
-        return shop.requiredQuest;
-      }
+    // Look up shop in shops table from Supabase
+    const shop = loadedData.shops[shopId] || loadedData.shops[String(shopId)];
+    if (shop && shop.requiredQuest) {
+      return shop.requiredQuest;
     }
     
-    // If not found in shops.json, try shops-by-npc.json (lazy loaded)
-    if (npcId && shopsByNpcDataLoaded && shopsByNpcDataLoaded[npcId]) {
-      const npcShops = shopsByNpcDataLoaded[npcId];
-      const npcShop = Array.isArray(npcShops)
-        ? npcShops.find(s => s.id === shopId)
-        : npcShops[shopId];
-      
-      if (npcShop && npcShop.requiredQuest) {
-        return npcShop.requiredQuest;
+    // If not found in shops, try shops_by_npc from Supabase
+    if (npcId) {
+      const npcShops = loadedData.shopsByNpc[npcId] || loadedData.shopsByNpc[String(npcId)];
+      if (npcShops) {
+        const npcShop = typeof npcShops === 'object' && !Array.isArray(npcShops)
+          ? npcShops[shopId] || npcShops[String(shopId)]
+          : Array.isArray(npcShops)
+            ? npcShops.find(s => (s.id || s) === shopId)
+            : null;
+        
+        if (npcShop && (npcShop.requiredQuest || (typeof npcShop === 'object' && npcShop.requiredQuest))) {
+          return npcShop.requiredQuest || (typeof npcShop === 'object' ? npcShop.requiredQuest : null);
+        }
       }
     }
     
@@ -954,7 +890,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const getMasterbookName = (masterbookId) => {
     if (!masterbookId) return null;
     const itemId = typeof masterbookId === 'string' ? parseInt(masterbookId, 10) : masterbookId;
-    const itemData = twItemsData[itemId];
+    const itemData = loadedData.twItems[itemId] || loadedData.twItems[String(itemId)];
     return itemData?.tw || null;
   };
 
@@ -1114,7 +1050,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         }
         
         // Get currency item data for linking
-        const currencyItemData = currencyItemId ? twItemsData[currencyItemId] : null;
+        const currencyItemData = currencyItemId ? (loadedData.twItems[currencyItemId] || loadedData.twItems[String(currencyItemId)]) : null;
         const hasCurrencyItem = currencyItemData && currencyItemData.tw;
         
         // Get shop name - try Traditional Chinese from shopName object or tw-shops.json
@@ -1184,7 +1120,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               
               // Get quest requirement for this shop/NPC combination
               const requiredQuestId = getShopQuestRequirement(entry.shopId, npcId, entry.tradeSource);
-              const questName = requiredQuestId ? (twQuestsData[requiredQuestId]?.tw || twQuestsData[requiredQuestId]?.en) : null;
+              const questData = loadedData.twQuests[requiredQuestId] || loadedData.twQuests[String(requiredQuestId)];
+              const questEnData = loadedData.quests[requiredQuestId] || loadedData.quests[String(requiredQuestId)];
+              const questName = questData?.tw || questEnData?.name?.en || questEnData?.en || null;
               
               return (
                 <div key={`npc-${entryIndex}`} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
@@ -1487,7 +1425,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           <div className="flex flex-wrap gap-2 mt-2">
             {data.map((treasureId, treasureIndex) => {
               // Check if item exists in tw-items.json
-              const treasureItemData = twItemsData[treasureId];
+              const treasureItemData = loadedData.twItems[treasureId] || loadedData.twItems[String(treasureId)];
               if (!treasureItemData || !treasureItemData.tw) {
                 return null; // Skip if no lookup available
               }
@@ -1549,7 +1487,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const instanceCNName = getInstanceCNName(instanceId);
               
               // Get instance icon and content type from instances.json for better display
-              const instance = instancesData[instanceId];
+              const instance = loadedData.instances[instanceId] || loadedData.instances[String(instanceId)];
               const iconUrl = instance?.icon 
                 ? `https://xivapi.com${instance.icon}` 
                 : 'https://xivapi.com/i/061000/061801.png';
@@ -1571,7 +1509,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               
               return (
                 <div key={instanceIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
-                  {instanceCNName ? (
+                  {instanceCNName && (
                     <a
                       href={`https://ff14.huijiwiki.com/wiki/${encodeURIComponent(instanceCNName)}`}
                       target="_blank"
@@ -1584,7 +1522,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         {instanceName}
                       </span>
                     </a>
-                  ) : (
+                  )}
+                  {!instanceCNName && (
                     <div className="flex items-center gap-2">
                       <img src={contentTypeIcon} alt="Instance" className="w-7 h-7" />
                       <span className="text-sm text-gray-300">{instanceName}</span>
@@ -1602,7 +1541,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     if (type === DataType.DESYNTHS) {
       // data is an array of item IDs that can be desynthed to get this item
       const validDesynthItems = data.filter(itemId => {
-        const itemData = twItemsData[itemId];
+        const itemData = loadedData.twItems[itemId] || loadedData.twItems[String(itemId)];
         return itemData && itemData.tw;
       });
       
@@ -1618,7 +1557,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           </div>
           <div className="grid grid-cols-3 gap-2 mt-2">
             {validDesynthItems.map((desynthItemId, desynthIndex) => {
-              const desynthItemData = twItemsData[desynthItemId];
+              const desynthItemData = loadedData.twItems[desynthItemId] || loadedData.twItems[String(desynthItemId)];
               const desynthName = desynthItemData?.tw;
               
               if (!desynthName) return null;
@@ -1662,7 +1601,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Quests (任務) - data is an array of quest IDs
     if (type === DataType.QUESTS) {
       const validQuests = data.filter(questId => {
-        const questData = twQuestsData[questId];
+        const questData = loadedData.twQuests[questId] || loadedData.twQuests[String(questId)];
         return questData && questData.tw;
       });
       
@@ -1678,14 +1617,14 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
             {validQuests.map((questId, questIndex) => {
-              const questData = twQuestsData[questId];
+              const questData = loadedData.twQuests[questId] || loadedData.twQuests[String(questId)];
               const questNameRaw = questData?.tw;
               const questName = cleanQuestName(questNameRaw);
               
               if (!questName) return null;
               
               // Get quest icon from quests.json
-              const quest = questsData[questId];
+              const quest = loadedData.quests[questId] || loadedData.quests[String(questId)];
               const questIcon = quest?.icon 
                 ? `https://xivapi.com${quest.icon}` 
                 : 'https://xivapi.com/i/060000/060453.png';
@@ -1695,7 +1634,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const questCNName = cleanQuestName(questCNNameRaw);
               
               // Get quest details from quests-database-pages.json (lazy loaded)
-              const questDb = questsDatabasePagesDataLoaded ? questsDatabasePagesDataLoaded[questId] : null;
+              const questDb = loadedData.questsDatabasePages[questId] || loadedData.questsDatabasePages[String(questId)];
               const questLevel = questDb?.level || null;
               const jobCategory = questDb?.jobCategory || null;
               const startingNpcId = questDb?.start || null;
@@ -1744,8 +1683,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               }
               
               // Also try npcs-database-pages.json for NPC location (try both string and number keys) (lazy loaded)
-              if ((!zoneId || !coords || coords.x === undefined || coords.y === undefined) && startingNpcId && npcsDatabasePagesDataLoaded) {
-                const npcDb = npcsDatabasePagesDataLoaded[startingNpcId] || npcsDatabasePagesDataLoaded[String(startingNpcId)];
+              if ((!zoneId || !coords || coords.x === undefined || coords.y === undefined) && startingNpcId) {
+                const npcDb = loadedData.npcsDatabasePages[startingNpcId] || loadedData.npcsDatabasePages[String(startingNpcId)];
                 if (npcDb?.position) {
                   zoneId = zoneId || npcDb.position.zoneid;
                   mapId = mapId || npcDb.position.map;
@@ -1785,7 +1724,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   <div className="flex items-center gap-2 mb-1">
                     <img src={questIcon} alt="Quest" className="w-7 h-7 object-contain flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      {questCNName ? (
+                      {questCNName && (
                         <a
                           href={`https://ff14.huijiwiki.com/wiki/任务:${encodeURIComponent(questCNName)}`}
                           target="_blank"
@@ -1795,7 +1734,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         >
                           {questName}
                         </a>
-                      ) : (
+                      )}
+                      {!questCNName && (
                         <span className="text-sm font-medium text-gray-300">{questName}</span>
                       )}
                     </div>
@@ -1876,10 +1816,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         }
         const fateId = typeof fate === 'object' ? fate.id : fate;
         if (!fateId || typeof fateId !== 'number') return false;
-        // Accept FATE if we have any data source: twFatesData, fatesData, or fatesDatabasePagesData
-        const twFate = twFatesData[fateId];
-        const fateData = fatesData[fateId];
-        const fateDb = fatesDatabasePagesData[fateId] || fatesDatabasePagesData[String(fateId)];
+        // Accept FATE if we have any data source from Supabase
+        const twFate = loadedData.twFates[fateId] || loadedData.twFates[String(fateId)];
+        const fateData = loadedData.fates[fateId] || loadedData.fates[String(fateId)];
+        const fateDb = loadedData.fatesDatabasePages[fateId] || loadedData.fatesDatabasePages[String(fateId)];
         return twFate || fateData || fateDb;
       });
       
@@ -1902,13 +1842,19 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const fateCoords = typeof fate === 'object' ? fate.coords : null;
               
               // Get FATE name - Traditional Chinese for display, Simplified Chinese for wiki link
-              const twFate = twFatesData[fateId];
-              const zhFate = zhFatesDataLoaded?.[fateId];
-              const fateName = twFate?.name?.tw || `FATE ${fateId}`;
-              const fateNameZh = zhFate?.name?.zh || fateName; // Use ZH for wiki link
+              const twFate = loadedData.twFates[fateId] || loadedData.twFates[String(fateId)];
+              const zhFate = loadedData.zhFates[fateId] || loadedData.zhFates[String(fateId)];
+              const fateName = twFate?.name?.tw || twFate?.tw || `FATE ${fateId}`;
+              // Use Simplified Chinese for wiki link - zh_fates table structure: { name: { zh: "..." } }
+              const fateNameZh = zhFate?.name?.zh || zhFate?.zh || null;
+              
+              // Debug: Log if zhFate data is missing or incorrect
+              if (!fateNameZh && fateId) {
+                console.warn(`[ObtainMethods] ⚠️ FATE ${fateId} missing Simplified Chinese name. zhFate data:`, zhFate);
+              }
               
               // Get FATE icon
-              const fateData = fatesData[fateId];
+              const fateData = loadedData.fates[fateId] || loadedData.fates[String(fateId)];
               const fateIcon = fateData?.icon 
                 ? `https://xivapi.com${fateData.icon}` 
                 : 'https://xivapi.com/i/060000/060502.png';
@@ -1917,15 +1863,20 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const zoneName = fateZoneId ? getPlaceName(fateZoneId) : '';
               const hasLocation = fateCoords && fateCoords.x !== undefined && fateCoords.y !== undefined && fateMapId;
               
+              // Debug: Log if zone name is missing
+              if (fateZoneId && !zoneName) {
+                console.warn(`[ObtainMethods] ⚠️ FATE ${fateId} zoneId ${fateZoneId} missing place name. Available twPlaces:`, Object.keys(loadedData.twPlaces).slice(0, 5));
+              }
+              
               // Get FATE database page data for reward items
-              const fateDb = fatesDatabasePagesData[fateId] || fatesDatabasePagesData[String(fateId)];
+              const fateDb = loadedData.fatesDatabasePages[fateId] || loadedData.fatesDatabasePages[String(fateId)];
               const rewardItems = fateDb?.items || [];
               
               // Check if current item is in this FATE's rewards
               // If the current item is not in the FATE's items array but the FATE is in fate-sources.json for this item,
               // it means the item is a rare reward - show it in rare rating
               const isCurrentItemInRewards = rewardItems.includes(itemId);
-              const fateSourcesForItemCheck = fateSourcesData[itemId] || fateSourcesData[String(itemId)];
+              const fateSourcesForItemCheck = loadedData.fateSources || [];
               const isFateInSourcesForItem = fateSourcesForItemCheck && fateSourcesForItemCheck.includes(fateId);
               
               // Gold/Silver rating: show all items from FATE's items array
@@ -1937,25 +1888,29 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               // Check if this FATE is a notorious monster (惡名精英) - usually level 32+ and has specific icon
               const isNotoriousMonster = fateLevel && fateLevel >= 32 && fateIcon.includes('060958');
               
-              // Create wiki URL using Chinese name
-              const wikiUrl = `https://ff14.huijiwiki.com/wiki/${encodeURIComponent(fateNameZh)}`;
+              // Create wiki URL using Simplified Chinese name (only if available)
+              const wikiUrl = fateNameZh ? `https://ff14.huijiwiki.com/wiki/${encodeURIComponent(fateNameZh)}` : null;
               
               return (
                 <div key={fateIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
                   <div className="flex items-center gap-2 mb-1">
                     <img src={fateIcon} alt="FATE" className="w-7 h-7 object-contain" />
                     <div className="flex-1">
-                      <a
-                        href={wikiUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                        className="text-sm font-medium text-blue-400 hover:text-ffxiv-gold hover:underline transition-colors cursor-pointer"
-                      >
-                        {fateName}
-                      </a>
+                      {wikiUrl ? (
+                        <a
+                          href={wikiUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                          className="text-sm font-medium text-blue-400 hover:text-ffxiv-gold hover:underline transition-colors cursor-pointer"
+                        >
+                          {fateName}
+                        </a>
+                      ) : (
+                        <span className="text-sm font-medium text-gray-300">{fateName}</span>
+                      )}
                       {fateLevel && (
                         <div className="text-xs text-gray-400 mt-0.5">
                           {zoneName ? `${zoneName} ` : ''}{fateLevel}級危命任務
@@ -1985,7 +1940,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                   <td className="py-2.5 px-3 w-auto">
                                     <div className="flex flex-wrap gap-2">
                                     {goldRewardItems.map((rewardItemId) => {
-                                    const rewardItem = twItemsData[rewardItemId];
+                                    const rewardItem = loadedData.twItems[rewardItemId] || loadedData.twItems[String(rewardItemId)];
                                     if (!rewardItem || !rewardItem.tw) return null;
                                     
                                     return (
@@ -2029,7 +1984,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                 <td className="py-2.5 px-3 w-auto">
                                   <div className="flex flex-wrap gap-2">
                                     {goldRewardItems.map((rewardItemId) => {
-                                      const rewardItem = twItemsData[rewardItemId];
+                                      const rewardItem = loadedData.twItems[rewardItemId] || loadedData.twItems[String(rewardItemId)];
                                       if (!rewardItem || !rewardItem.tw) return null;
                                       
                                       // Show quantity ×5 for gold rating
@@ -2076,7 +2031,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                 <td className="py-2.5 px-3 w-auto">
                                   <div className="flex flex-wrap gap-2">
                                     {rareRewardItems.map((rewardItemId) => {
-                                      const rewardItem = twItemsData[rewardItemId];
+                                      const rewardItem = loadedData.twItems[rewardItemId] || loadedData.twItems[String(rewardItemId)];
                                       if (!rewardItem || !rewardItem.tw) return null;
                                       
                                       return (
@@ -2284,7 +2239,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
 
       const validReductionItems = data.filter(itemId => {
-        const itemData = twItemsData[itemId];
+        const itemData = loadedData.twItems[itemId] || loadedData.twItems[String(itemId)];
         return itemData && itemData.tw;
       });
       
@@ -2300,7 +2255,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           </div>
           <div className={validReductionItems.length === 1 ? "flex justify-center gap-2 mt-2" : "grid grid-cols-3 gap-2 mt-2"}>
             {validReductionItems.map((reductionItemId, reductionIndex) => {
-              const reductionItemData = twItemsData[reductionItemId];
+              const reductionItemData = loadedData.twItems[reductionItemId] || loadedData.twItems[String(reductionItemId)];
               const reductionName = reductionItemData?.tw;
               
               if (!reductionName) return null;
@@ -2348,7 +2303,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
 
       const validVentureItems = data.filter(itemId => {
-        const itemData = twItemsData[itemId];
+        const itemData = loadedData.twItems[itemId] || loadedData.twItems[String(itemId)];
         return itemData && itemData.tw;
       });
       
@@ -2364,7 +2319,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
             {validVentureItems.map((ventureItemId, ventureIndex) => {
-              const ventureItemData = twItemsData[ventureItemId];
+              const ventureItemData = loadedData.twItems[ventureItemId] || loadedData.twItems[String(ventureItemId)];
               const ventureName = ventureItemData?.tw;
               
               if (!ventureName) return null;
@@ -2411,7 +2366,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
       const validSeeds = data.filter(seed => {
         const seedId = typeof seed === 'object' ? seed.id : seed;
-        const seedData = twItemsData[seedId];
+        const seedData = loadedData.twItems[seedId] || loadedData.twItems[String(seedId)];
         return seedData && seedData.tw;
       });
       
@@ -2428,7 +2383,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           <div className="flex flex-wrap gap-2 mt-2">
             {validSeeds.map((seed, seedIndex) => {
               const seedId = typeof seed === 'object' ? seed.id : seed;
-              const seedData = twItemsData[seedId];
+              const seedData = loadedData.twItems[seedId] || loadedData.twItems[String(seedId)];
               const seedName = seedData?.tw;
               
               if (!seedName) return null;
@@ -2497,7 +2452,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
 
       const validCrops = data.filter(cropId => {
-        const cropData = twItemsData[cropId];
+        const cropData = loadedData.twItems[cropId] || loadedData.twItems[String(cropId)];
         return cropData && cropData.tw;
       });
       
@@ -2513,7 +2468,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
             {validCrops.map((cropId, cropIndex) => {
-              const cropData = twItemsData[cropId];
+              const cropData = loadedData.twItems[cropId] || loadedData.twItems[String(cropId)];
               const cropName = cropData?.tw;
               
               if (!cropName) return null;
@@ -2583,7 +2538,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
       const validRequirements = data.filter(reqId => {
         if (typeof reqId === 'number') {
-          const reqData = twItemsData[reqId];
+          const reqData = loadedData.twItems[reqId] || loadedData.twItems[String(reqId)];
           return reqData && reqData.tw;
         }
         return false;
@@ -2601,7 +2556,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
             {validRequirements.map((reqId, reqIndex) => {
-              const reqData = twItemsData[reqId];
+              const reqData = loadedData.twItems[reqId] || loadedData.twItems[String(reqId)];
               const reqName = reqData?.tw;
               
               if (!reqName) return null;
@@ -2647,7 +2602,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
 
       const validMasterbooks = data.filter(bookId => {
-        const bookData = twItemsData[bookId];
+        const bookData = loadedData.twItems[bookId] || loadedData.twItems[String(bookId)];
         return bookData && bookData.tw;
       });
       
@@ -2663,7 +2618,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
             {validMasterbooks.map((bookId, bookIndex) => {
-              const bookData = twItemsData[bookId];
+              const bookData = loadedData.twItems[bookId] || loadedData.twItems[String(bookId)];
               const bookName = bookData?.tw;
               
               if (!bookName) return null;
@@ -3068,7 +3023,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       }}
                       className="ml-1 text-ffxiv-gold hover:text-yellow-400 hover:underline pointer-events-auto"
                     >
-                      {twItemsData[achievementTooltipInfo.itemReward]?.tw || `Item ${achievementTooltipInfo.itemReward}`}
+                      {(loadedData.twItems[achievementTooltipInfo.itemReward] || loadedData.twItems[String(achievementTooltipInfo.itemReward)])?.tw || `Item ${achievementTooltipInfo.itemReward}`}
                     </button>
                   </div>
                 )}
@@ -3090,3 +3045,4 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     </div>
   );
 }
+

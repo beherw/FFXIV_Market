@@ -95,6 +95,7 @@ export async function loadExtractsIndex() {
     throw error;
   }
   */
+  // Return statement moved above comment block
 }
 
 /**
@@ -139,8 +140,8 @@ function getChunkIndex(itemId, index) {
  */
 export async function loadChunk(chunkIndex, signal = null) {
   // No longer needed with Supabase - return empty object for backward compatibility
-  return {};
   /* DISABLED CODE - Old JSON chunk loading
+  return {};
   // #region agent log
   const { logDebug } = await import('../utils/debugLogger');
   const loadStartTime = performance.now();
@@ -257,6 +258,8 @@ export async function loadChunk(chunkIndex, signal = null) {
     chunkLoadPromises.delete(chunkIndex);
     throw error;
   }
+  */
+  return {};
 }
 
 /**

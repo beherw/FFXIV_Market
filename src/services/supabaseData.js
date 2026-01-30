@@ -40,7 +40,30 @@ const targetedQueryCache = {
   equipment: {},
   ui_categories: {},
   itemIdsByCategories: {},
-  extracts: {}
+  extracts: {},
+  // ObtainMethods related caches
+  tw_npcs: {},
+  npcs: {},
+  npcs_database_pages: {},
+  tw_shops: {},
+  shops: {},
+  shops_by_npc: {},
+  tw_instances: {},
+  instances: {},
+  zh_instances: {},
+  tw_quests: {},
+  quests: {},
+  zh_quests: {},
+  quests_database_pages: {},
+  tw_fates: {},
+  fates: {},
+  zh_fates: {},
+  fates_database_pages: {},
+  tw_achievements: {},
+  tw_achievement_descriptions: {},
+  achievements: {},
+  tw_places: {},
+  places: {}
 };
 const targetedQueryPromises = {
   ilvls: {},
@@ -54,7 +77,30 @@ const targetedQueryPromises = {
   tw_recipes_by_ingredient: {},
   tw_recipes_by_job_level: {},
   itemIdsByCategories: {},
-  extracts: {}
+  extracts: {},
+  // ObtainMethods related promises
+  tw_npcs: {},
+  npcs: {},
+  npcs_database_pages: {},
+  tw_shops: {},
+  shops: {},
+  shops_by_npc: {},
+  tw_instances: {},
+  instances: {},
+  zh_instances: {},
+  tw_quests: {},
+  quests: {},
+  zh_quests: {},
+  quests_database_pages: {},
+  tw_fates: {},
+  fates: {},
+  zh_fates: {},
+  fates_database_pages: {},
+  tw_achievements: {},
+  tw_achievement_descriptions: {},
+  achievements: {},
+  tw_places: {},
+  places: {}
 };
 
 /**
@@ -2846,6 +2892,688 @@ export async function getItemSourcesById(itemId, signal = null) {
   })();
 
   targetedQueryPromises.extracts[itemIdNum] = promise;
+  return promise;
+}
+
+// ============================================================================
+// ObtainMethods Data Services - Batch Query Functions
+// ============================================================================
+
+/**
+ * Generic batch query function for any table
+ * @param {string} tableName - Table name
+ * @param {Array<number>} ids - Array of IDs to query
+ * @param {string} idColumn - ID column name (default: 'id')
+ * @param {AbortSignal} signal - Optional abort signal
+ * @param {string} cacheKey - Cache key for this query type
+ * @returns {Promise<Object>} - {id: rowData}
+ */
+async function batchQueryByIds(tableName, ids, idColumn = 'id', signal = null, cacheKey = null) {
+  if (!ids || ids.length === 0) {
+    return {};
+  }
+
+  const uniqueIds = [...new Set(ids.filter(id => id && id > 0))];
+  if (uniqueIds.length === 0) {
+    return {};
+  }
+
+  const sortedIds = uniqueIds.sort((a, b) => a - b);
+  const cacheKeyStr = cacheKey || `${tableName}_${sortedIds.join(',')}`;
+
+  // Check cache
+  if (targetedQueryCache[cacheKey] && targetedQueryCache[cacheKey][cacheKeyStr]) {
+    return targetedQueryCache[cacheKey][cacheKeyStr];
+  }
+
+  // Check pending promises
+  if (targetedQueryPromises[cacheKey] && targetedQueryPromises[cacheKey][cacheKeyStr]) {
+    return targetedQueryPromises[cacheKey][cacheKeyStr];
+  }
+
+  // Initialize cache if needed
+  if (!targetedQueryCache[cacheKey]) {
+    targetedQueryCache[cacheKey] = {};
+  }
+  if (!targetedQueryPromises[cacheKey]) {
+    targetedQueryPromises[cacheKey] = {};
+  }
+
+  const loadStartTime = performance.now();
+  console.log(`[Supabase] 📥 Loading ${tableName} for ${uniqueIds.length} IDs...`);
+
+  const promise = (async () => {
+    try {
+      const result = {};
+      const batchSize = 1000;
+
+      for (let i = 0; i < sortedIds.length; i += batchSize) {
+        if (signal && signal.aborted) {
+          throw new DOMException('Request aborted', 'AbortError');
+        }
+
+        const batch = sortedIds.slice(i, i + batchSize);
+        const { data, error } = await supabase
+          .from(tableName)
+          .select('*')
+          .in(idColumn, batch);
+
+        if (signal && signal.aborted) {
+          throw new DOMException('Request aborted', 'AbortError');
+        }
+
+        if (error) {
+          console.error(`Error loading ${tableName} batch:`, error);
+          continue; // Continue with next batch
+        }
+
+        if (data) {
+          data.forEach(row => {
+            const id = row[idColumn];
+            if (id !== undefined && id !== null) {
+              result[id] = row;
+            }
+          });
+        }
+      }
+
+      const loadDuration = performance.now() - loadStartTime;
+      console.log(`[Supabase] ✅ Loaded ${tableName} for ${Object.keys(result).length} IDs in ${loadDuration.toFixed(2)}ms`);
+
+      targetedQueryCache[cacheKey][cacheKeyStr] = result;
+      return result;
+    } catch (error) {
+      if (error.name === 'AbortError' || (signal && signal.aborted)) {
+        throw error;
+      }
+      console.error(`Error loading ${tableName} by IDs:`, error);
+      return {};
+    } finally {
+      delete targetedQueryPromises[cacheKey][cacheKeyStr];
+    }
+  })();
+
+  targetedQueryPromises[cacheKey][cacheKeyStr] = promise;
+  return promise;
+}
+
+// ============================================================================
+// NPC Data Services
+// ============================================================================
+
+/**
+ * Get Traditional Chinese NPC names for specific NPC IDs
+ * @param {Array<number>} npcIds - Array of NPC IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {npcId: {tw: "name"}}
+ */
+export async function getTwNpcsByIds(npcIds, signal = null) {
+  const result = await batchQueryByIds('tw_npcs', npcIds, 'id', signal, 'tw_npcs');
+  // Transform to expected format
+  const transformed = {};
+  Object.entries(result).forEach(([id, row]) => {
+    transformed[id] = { tw: row.tw };
+  });
+  return transformed;
+}
+
+/**
+ * Get NPC data for specific NPC IDs
+ * @param {Array<number>} npcIds - Array of NPC IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {npcId: {en, ja, title, position, ...}}
+ */
+export async function getNpcsByIds(npcIds, signal = null) {
+  return batchQueryByIds('npcs', npcIds, 'id', signal, 'npcs');
+}
+
+/**
+ * Get NPC database pages for specific NPC IDs
+ * @param {Array<number>} npcIds - Array of NPC IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {npcId: {title, position, ...}}
+ */
+export async function getNpcsDatabasePagesByIds(npcIds, signal = null) {
+  return batchQueryByIds('npcs_database_pages', npcIds, 'id', signal, 'npcs_database_pages');
+}
+
+// ============================================================================
+// Shop Data Services
+// ============================================================================
+
+/**
+ * Get Traditional Chinese shop names for specific shop IDs
+ * @param {Array<number>} shopIds - Array of shop IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {shopId: {tw: "name"}}
+ */
+export async function getTwShopsByIds(shopIds, signal = null) {
+  const result = await batchQueryByIds('tw_shops', shopIds, 'id', signal, 'tw_shops');
+  const transformed = {};
+  Object.entries(result).forEach(([id, row]) => {
+    transformed[id] = { tw: row.tw };
+  });
+  return transformed;
+}
+
+/**
+ * Get shop data for specific shop IDs
+ * @param {Array<number>} shopIds - Array of shop IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {shopId: {type, npcs, trades, ...}}
+ */
+export async function getShopsByIds(shopIds, signal = null) {
+  return batchQueryByIds('shops', shopIds, 'id', signal, 'shops');
+}
+
+/**
+ * Get shops by NPC IDs
+ * @param {Array<number>} npcIds - Array of NPC IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {npcId: {shopId: {...}, ...}}
+ */
+export async function getShopsByNpcIds(npcIds, signal = null) {
+  if (!npcIds || npcIds.length === 0) {
+    return {};
+  }
+
+  const uniqueIds = [...new Set(npcIds.filter(id => id && id > 0))];
+  if (uniqueIds.length === 0) {
+    return {};
+  }
+
+  const sortedIds = uniqueIds.sort((a, b) => a - b);
+  const cacheKeyStr = `shops_by_npc_${sortedIds.join(',')}`;
+
+  if (targetedQueryCache.shops_by_npc && targetedQueryCache.shops_by_npc[cacheKeyStr]) {
+    return targetedQueryCache.shops_by_npc[cacheKeyStr];
+  }
+
+  if (!targetedQueryCache.shops_by_npc) {
+    targetedQueryCache.shops_by_npc = {};
+  }
+  if (!targetedQueryPromises.shops_by_npc) {
+    targetedQueryPromises.shops_by_npc = {};
+  }
+
+  const loadStartTime = performance.now();
+  console.log(`[Supabase] 📥 Loading shops_by_npc for ${uniqueIds.length} NPC IDs...`);
+
+  const promise = (async () => {
+    try {
+      const result = {};
+      const batchSize = 1000;
+
+      for (let i = 0; i < sortedIds.length; i += batchSize) {
+        if (signal && signal.aborted) {
+          throw new DOMException('Request aborted', 'AbortError');
+        }
+
+        const batch = sortedIds.slice(i, i + batchSize);
+        const { data, error } = await supabase
+          .from('shops_by_npc')
+          .select('*')
+          .in('id', batch); // shops_by_npc uses 'id' column for NPC ID
+
+        if (signal && signal.aborted) {
+          throw new DOMException('Request aborted', 'AbortError');
+        }
+
+        if (error) {
+          console.error(`Error loading shops_by_npc batch:`, error);
+          continue;
+        }
+
+        if (data) {
+          data.forEach(row => {
+            const npcId = row.id;
+            if (npcId !== undefined && npcId !== null) {
+              // Parse shops data if it's JSON string
+              let shops = row.shops || row;
+              if (typeof shops === 'string') {
+                try {
+                  shops = JSON.parse(shops);
+                } catch (e) {
+                  shops = {};
+                }
+              }
+              result[npcId] = shops;
+            }
+          });
+        }
+      }
+
+      const loadDuration = performance.now() - loadStartTime;
+      console.log(`[Supabase] ✅ Loaded shops_by_npc for ${Object.keys(result).length} NPCs in ${loadDuration.toFixed(2)}ms`);
+
+      targetedQueryCache.shops_by_npc[cacheKeyStr] = result;
+      return result;
+    } catch (error) {
+      if (error.name === 'AbortError' || (signal && signal.aborted)) {
+        throw error;
+      }
+      console.error(`Error loading shops_by_npc by NPC IDs:`, error);
+      return {};
+    } finally {
+      delete targetedQueryPromises.shops_by_npc[cacheKeyStr];
+    }
+  })();
+
+  targetedQueryPromises.shops_by_npc[cacheKeyStr] = promise;
+  return promise;
+}
+
+// ============================================================================
+// Instance Data Services
+// ============================================================================
+
+/**
+ * Get Traditional Chinese instance names for specific instance IDs
+ * @param {Array<number>} instanceIds - Array of instance IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {instanceId: {tw: "name"}}
+ */
+export async function getTwInstancesByIds(instanceIds, signal = null) {
+  const result = await batchQueryByIds('tw_instances', instanceIds, 'id', signal, 'tw_instances');
+  const transformed = {};
+  Object.entries(result).forEach(([id, row]) => {
+    transformed[id] = { tw: row.tw };
+  });
+  return transformed;
+}
+
+/**
+ * Get instance data for specific instance IDs
+ * @param {Array<number>} instanceIds - Array of instance IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {instanceId: {en, ja, icon, ...}}
+ */
+export async function getInstancesByIds(instanceIds, signal = null) {
+  return batchQueryByIds('instances', instanceIds, 'id', signal, 'instances');
+}
+
+/**
+ * Get Simplified Chinese instance names for specific instance IDs
+ * @param {Array<number>} instanceIds - Array of instance IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {instanceId: {zh: "name"}}
+ */
+export async function getZhInstancesByIds(instanceIds, signal = null) {
+  const result = await batchQueryByIds('zh_instances', instanceIds, 'id', signal, 'zh_instances');
+  const transformed = {};
+  Object.entries(result).forEach(([id, row]) => {
+    transformed[id] = { zh: row.zh };
+  });
+  return transformed;
+}
+
+// ============================================================================
+// Quest Data Services
+// ============================================================================
+
+/**
+ * Get Traditional Chinese quest names for specific quest IDs
+ * @param {Array<number>} questIds - Array of quest IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {questId: {tw: "name"}}
+ */
+export async function getTwQuestsByIds(questIds, signal = null) {
+  const result = await batchQueryByIds('tw_quests', questIds, 'id', signal, 'tw_quests');
+  const transformed = {};
+  Object.entries(result).forEach(([id, row]) => {
+    transformed[id] = { tw: row.tw };
+  });
+  return transformed;
+}
+
+/**
+ * Get quest data for specific quest IDs
+ * @param {Array<number>} questIds - Array of quest IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {questId: {name, icon, rewards, ...}}
+ */
+export async function getQuestsByIds(questIds, signal = null) {
+  return batchQueryByIds('quests', questIds, 'id', signal, 'quests');
+}
+
+/**
+ * Get Simplified Chinese quest names for specific quest IDs
+ * @param {Array<number>} questIds - Array of quest IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {questId: {zh: "name"}}
+ */
+export async function getZhQuestsByIds(questIds, signal = null) {
+  const result = await batchQueryByIds('zh_quests', questIds, 'id', signal, 'zh_quests');
+  const transformed = {};
+  Object.entries(result).forEach(([id, row]) => {
+    transformed[id] = { zh: row.zh };
+  });
+  return transformed;
+}
+
+/**
+ * Get quest database pages for specific quest IDs
+ * @param {Array<number>} questIds - Array of quest IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {questId: {title, ...}}
+ */
+export async function getQuestsDatabasePagesByIds(questIds, signal = null) {
+  return batchQueryByIds('quests_database_pages', questIds, 'id', signal, 'quests_database_pages');
+}
+
+// ============================================================================
+// FATE Data Services
+// ============================================================================
+
+/**
+ * Get Traditional Chinese FATE names for specific FATE IDs
+ * @param {Array<number>} fateIds - Array of FATE IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {fateId: {name: {tw: "name"}, description: {tw: "..."}, icon}}
+ */
+export async function getTwFatesByIds(fateIds, signal = null) {
+  return batchQueryByIds('tw_fates', fateIds, 'id', signal, 'tw_fates');
+}
+
+/**
+ * Get FATE data for specific FATE IDs
+ * @param {Array<number>} fateIds - Array of FATE IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {fateId: {name, description, level, location, ...}}
+ */
+export async function getFatesByIds(fateIds, signal = null) {
+  return batchQueryByIds('fates', fateIds, 'id', signal, 'fates');
+}
+
+/**
+ * Get Simplified Chinese FATE names for specific FATE IDs
+ * @param {Array<number>} fateIds - Array of FATE IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {fateId: {zh: "name"}}
+ */
+export async function getZhFatesByIds(fateIds, signal = null) {
+  const result = await batchQueryByIds('zh_fates', fateIds, 'id', signal, 'zh_fates');
+  const transformed = {};
+  Object.entries(result).forEach(([id, row]) => {
+    // zh_fates table structure: { name: { zh: "..." } }
+    transformed[id] = { 
+      zh: row.name?.zh || row.zh || null,
+      name: row.name || { zh: row.zh || null }
+    };
+  });
+  return transformed;
+}
+
+/**
+ * Get FATE database pages for specific FATE IDs
+ * @param {Array<number>} fateIds - Array of FATE IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {fateId: {lvl, zoneid, x, y, map, ...}}
+ */
+export async function getFatesDatabasePagesByIds(fateIds, signal = null) {
+  return batchQueryByIds('fates_database_pages', fateIds, 'id', signal, 'fates_database_pages');
+}
+
+// ============================================================================
+// Achievement Data Services
+// ============================================================================
+
+/**
+ * Get Traditional Chinese achievement names for specific achievement IDs
+ * @param {Array<number>} achievementIds - Array of achievement IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {achievementId: {tw: "name"}}
+ */
+export async function getTwAchievementsByIds(achievementIds, signal = null) {
+  const result = await batchQueryByIds('tw_achievements', achievementIds, 'id', signal, 'tw_achievements');
+  const transformed = {};
+  Object.entries(result).forEach(([id, row]) => {
+    transformed[id] = { tw: row.tw };
+  });
+  return transformed;
+}
+
+/**
+ * Get Traditional Chinese achievement descriptions for specific achievement IDs
+ * @param {Array<number>} achievementIds - Array of achievement IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {achievementId: {tw: "description"}}
+ */
+export async function getTwAchievementDescriptionsByIds(achievementIds, signal = null) {
+  const result = await batchQueryByIds('tw_achievement_descriptions', achievementIds, 'id', signal, 'tw_achievement_descriptions');
+  const transformed = {};
+  Object.entries(result).forEach(([id, row]) => {
+    transformed[id] = { tw: row.tw };
+  });
+  return transformed;
+}
+
+/**
+ * Get achievement data for specific achievement IDs
+ * @param {Array<number>} achievementIds - Array of achievement IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {achievementId: {en, ja, icon, itemReward, ...}}
+ */
+export async function getAchievementsByIds(achievementIds, signal = null) {
+  return batchQueryByIds('achievements', achievementIds, 'id', signal, 'achievements');
+}
+
+// ============================================================================
+// Place/Zone Data Services
+// ============================================================================
+
+/**
+ * Get Traditional Chinese place/zone names for specific zone IDs
+ * @param {Array<number>} zoneIds - Array of zone IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {zoneId: {tw: "name"}}
+ */
+export async function getTwPlacesByIds(zoneIds, signal = null) {
+  const result = await batchQueryByIds('tw_places', zoneIds, 'id', signal, 'tw_places');
+  const transformed = {};
+  Object.entries(result).forEach(([id, row]) => {
+    transformed[id] = { tw: row.tw };
+  });
+  return transformed;
+}
+
+/**
+ * Get place/zone data for specific zone IDs
+ * @param {Array<number>} zoneIds - Array of zone IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {zoneId: {en, ja, ...}}
+ */
+export async function getPlacesByIds(zoneIds, signal = null) {
+  return batchQueryByIds('places', zoneIds, 'id', signal, 'places');
+}
+
+// ============================================================================
+// Special Sources Data Services
+// ============================================================================
+
+/**
+ * Get FATE sources for a specific item ID
+ * @param {number|string} itemId - Item ID
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Array<number>>} - Array of FATE IDs
+ */
+export async function getFateSourcesByItemId(itemId, signal = null) {
+  if (!itemId || itemId <= 0) {
+    return [];
+  }
+
+  const itemIdNum = parseInt(itemId, 10);
+  if (isNaN(itemIdNum)) {
+    return [];
+  }
+
+  const cacheKey = `fate_sources_${itemIdNum}`;
+  if (targetedQueryCache.fate_sources && targetedQueryCache.fate_sources[cacheKey]) {
+    console.log(`[Supabase] 📦 Using cached fate_sources for item ${itemIdNum}:`, targetedQueryCache.fate_sources[cacheKey]);
+    return targetedQueryCache.fate_sources[cacheKey];
+  }
+
+  if (!targetedQueryCache.fate_sources) {
+    targetedQueryCache.fate_sources = {};
+  }
+  if (!targetedQueryPromises.fate_sources) {
+    targetedQueryPromises.fate_sources = {};
+  }
+
+  const promise = (async () => {
+    try {
+      const { data, error } = await supabase
+        .from('fate_sources')
+        .select('*')
+        .eq('id', itemIdNum)
+        .maybeSingle();
+
+      if (signal && signal.aborted) {
+        throw new DOMException('Request aborted', 'AbortError');
+      }
+
+      if (error) {
+        console.error(`[Supabase] Error loading fate_sources for item ${itemIdNum}:`, error);
+        return [];
+      }
+
+      if (!data) {
+        console.log(`[Supabase] No fate_sources data found for item ${itemIdNum}`);
+        return [];
+      }
+
+      console.log(`[Supabase] Raw fate_sources data for item ${itemIdNum}:`, data);
+      console.log(`[Supabase] Data keys:`, Object.keys(data));
+
+      // Parse sources - fate_sources table structure: { '0': fateId1, '1': fateId2, ..., id: itemId }
+      let sources = [];
+      
+      // Try to get from sources or fates field first
+      if (data.sources) {
+        sources = data.sources;
+        console.log(`[Supabase] Found sources field:`, sources);
+      } else if (data.fates) {
+        sources = data.fates;
+        console.log(`[Supabase] Found fates field:`, sources);
+      } else {
+        // Extract FATE IDs from object keys (excluding 'id' key)
+        const numericKeys = Object.keys(data).filter(key => key !== 'id' && !isNaN(parseInt(key, 10)));
+        console.log(`[Supabase] Extracting from numeric keys:`, numericKeys);
+        sources = numericKeys.map(key => {
+          const fateId = data[key];
+          const parsedId = typeof fateId === 'number' ? fateId : parseInt(fateId, 10);
+          console.log(`[Supabase] Key ${key} -> FATE ID:`, fateId, 'parsed:', parsedId);
+          return parsedId;
+        }).filter(id => !isNaN(id) && id > 0);
+        console.log(`[Supabase] Extracted FATE IDs:`, sources);
+      }
+      
+      // Handle string format
+      if (typeof sources === 'string') {
+        try {
+          sources = JSON.parse(sources);
+        } catch (e) {
+          console.error(`[Supabase] Failed to parse sources string:`, e);
+          sources = [];
+        }
+      }
+
+      // Ensure it's an array
+      if (!Array.isArray(sources)) {
+        console.warn(`[Supabase] Sources is not an array:`, typeof sources, sources);
+        sources = [];
+      }
+
+      console.log(`[Supabase] Final FATE sources for item ${itemIdNum}:`, sources);
+      targetedQueryCache.fate_sources[cacheKey] = sources;
+      return sources;
+    } catch (error) {
+      if (error.name === 'AbortError' || (signal && signal.aborted)) {
+        throw error;
+      }
+      console.error(`Error loading fate_sources for item ${itemIdNum}:`, error);
+      return [];
+    } finally {
+      delete targetedQueryPromises.fate_sources[cacheKey];
+    }
+  })();
+
+  targetedQueryPromises.fate_sources[cacheKey] = promise;
+  return promise;
+}
+
+/**
+ * Get loot sources for a specific item ID
+ * @param {number|string} itemId - Item ID
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Array<number>>} - Array of container/item IDs
+ */
+export async function getLootSourcesByItemId(itemId, signal = null) {
+  if (!itemId || itemId <= 0) {
+    return [];
+  }
+
+  const itemIdNum = parseInt(itemId, 10);
+  if (isNaN(itemIdNum)) {
+    return [];
+  }
+
+  const cacheKey = `loot_sources_${itemIdNum}`;
+  if (targetedQueryCache.loot_sources && targetedQueryCache.loot_sources[cacheKey]) {
+    return targetedQueryCache.loot_sources[cacheKey];
+  }
+
+  if (!targetedQueryCache.loot_sources) {
+    targetedQueryCache.loot_sources = {};
+  }
+  if (!targetedQueryPromises.loot_sources) {
+    targetedQueryPromises.loot_sources = {};
+  }
+
+  const promise = (async () => {
+    try {
+      const { data, error } = await supabase
+        .from('loot_sources')
+        .select('*')
+        .eq('id', itemIdNum)
+        .maybeSingle();
+
+      if (signal && signal.aborted) {
+        throw new DOMException('Request aborted', 'AbortError');
+      }
+
+      if (error || !data) {
+        return [];
+      }
+
+      // Parse sources if it's JSON string
+      let sources = data.sources || data.items || [];
+      if (typeof sources === 'string') {
+        try {
+          sources = JSON.parse(sources);
+        } catch (e) {
+          sources = [];
+        }
+      }
+
+      if (!Array.isArray(sources)) {
+        sources = [];
+      }
+
+      targetedQueryCache.loot_sources[cacheKey] = sources;
+      return sources;
+    } catch (error) {
+      if (error.name === 'AbortError' || (signal && signal.aborted)) {
+        throw error;
+      }
+      console.error(`Error loading loot_sources for item ${itemIdNum}:`, error);
+      return [];
+    } finally {
+      delete targetedQueryPromises.loot_sources[cacheKey];
+    }
+  })();
+
+  targetedQueryPromises.loot_sources[cacheKey] = promise;
   return promise;
 }
 

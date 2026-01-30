@@ -35,6 +35,7 @@ const CraftingTree = lazy(() => import('./components/CraftingTree.jsx'));
 const RelatedItems = lazy(() => import('./components/RelatedItems.jsx'));
 const HistorySection = lazy(() => import('./components/HistorySection.jsx'));
 const RecentUpdatesSection = lazy(() => import('./components/RecentUpdatesSection.jsx'));
+const ObtainMethods = lazy(() => import('./components/ObtainMethods.jsx'));
 
 function App() {
   const navigate = useNavigate();
@@ -91,6 +92,16 @@ function App() {
   const [hasRelatedItems, setHasRelatedItems] = useState(false);
   const [isRelatedItemsExpanded, setIsRelatedItemsExpanded] = useState(false);
   const [isLoadingRelatedItems, setIsLoadingRelatedItems] = useState(false);
+  
+  // Obtain methods states
+  const [isObtainMethodsExpanded, setIsObtainMethodsExpanded] = useState(false);
+  
+  // Button order tracking - tracks which button was clicked last (higher number = more recent)
+  const [buttonOrder, setButtonOrder] = useState({
+    obtainMethods: 0,
+    craftingTree: 0,
+    relatedItems: 0
+  });
   
   // Marketable items and velocity states
   const [marketableItems, setMarketableItems] = useState(null);
@@ -2813,6 +2824,8 @@ function App() {
       setIsCraftingTreeExpanded(false);
       setHasRelatedItems(false);
       setIsRelatedItemsExpanded(false);
+      setIsObtainMethodsExpanded(false);
+      setButtonOrder({ obtainMethods: 0, craftingTree: 0, relatedItems: 0 });
       return;
     }
 
@@ -3433,9 +3446,44 @@ function App() {
                     </label>
                   )}
                   
+                  {/* Obtain Methods Button */}
+                  <button
+                    onClick={() => {
+                      setIsObtainMethodsExpanded(!isObtainMethodsExpanded);
+                      setButtonOrder(prev => ({ ...prev, obtainMethods: Math.max(...Object.values(prev)) + 1 }));
+                    }}
+                    className={`
+                      relative flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 overflow-hidden
+                      ${isObtainMethodsExpanded
+                        ? 'bg-gradient-to-r from-blue-900/60 via-cyan-800/50 to-blue-900/60 border border-blue-400/60 text-blue-300 shadow-[0_0_20px_rgba(59,130,246,0.4)]'
+                        : 'bg-gradient-to-r from-blue-900/50 via-indigo-900/40 to-blue-900/50 border border-blue-400/40 text-blue-200 hover:text-blue-300 hover:border-blue-400/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]'
+                      }
+                    `}
+                    title={isObtainMethodsExpanded ? '收起取得方式' : '展開取得方式'}
+                  >
+                    {/* Shimmer effect for active button */}
+                    {!isObtainMethodsExpanded && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
+                    )}
+                    
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isObtainMethodsExpanded ? 'rotate-90' : ''}`}
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                    <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">取得方式</span>
+                  </button>
+
                   {/* Crafting Price Tree Button */}
                   <button
-                    onClick={() => setIsCraftingTreeExpanded(!isCraftingTreeExpanded)}
+                    onClick={() => {
+                      setIsCraftingTreeExpanded(!isCraftingTreeExpanded);
+                      setButtonOrder(prev => ({ ...prev, craftingTree: Math.max(...Object.values(prev)) + 1 }));
+                    }}
                     disabled={!hasCraftingRecipe || isLoadingCraftingTree}
                     className={`
                       relative flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 overflow-hidden
@@ -3477,7 +3525,10 @@ function App() {
 
                   {/* Related Items Button */}
                   <button
-                    onClick={() => setIsRelatedItemsExpanded(!isRelatedItemsExpanded)}
+                    onClick={() => {
+                      setIsRelatedItemsExpanded(!isRelatedItemsExpanded);
+                      setButtonOrder(prev => ({ ...prev, relatedItems: Math.max(...Object.values(prev)) + 1 }));
+                    }}
                     disabled={!hasRelatedItems || isLoadingRelatedItems}
                     className={`
                       flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300
@@ -3514,40 +3565,93 @@ function App() {
                 </div>
               </div>
 
-              {/* Crafting Price Tree - Expandable */}
-              {isCraftingTreeExpanded && craftingTree && (
-                <Suspense fallback={
-                  <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
-                    <p className="mt-4 text-sm text-gray-400">載入製作價格樹...</p>
-                  </div>
-                }>
-                  <CraftingTree
-                    tree={craftingTree}
-                    selectedServerOption={selectedServerOption}
-                    selectedWorld={selectedWorld}
-                    worlds={worlds}
-                    onItemSelect={handleItemSelect}
-                    excludeCrystals={excludeCrystals}
-                    onExcludeCrystalsChange={handleExcludeCrystalsChange}
-                  />
-                </Suspense>
-              )}
-
-              {/* Related Items - Expandable */}
-              {isRelatedItemsExpanded && hasRelatedItems && (
-                <Suspense fallback={
-                  <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
-                    <p className="mt-4 text-sm text-gray-400">載入相關物品...</p>
-                  </div>
-                }>
-                  <RelatedItems
-                    itemId={selectedItem?.id}
-                    onItemClick={handleItemSelect}
-                  />
-                </Suspense>
-              )}
+              {/* Expandable sections - dynamically ordered by last click */}
+              {(() => {
+                const sections = [];
+                
+                // Crafting Price Tree
+                if (isCraftingTreeExpanded && craftingTree) {
+                  sections.push({
+                    key: 'craftingTree',
+                    order: buttonOrder.craftingTree,
+                    component: (
+                      <Suspense key="craftingTree" fallback={
+                        <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
+                          <p className="mt-4 text-sm text-gray-400">載入製作價格樹...</p>
+                        </div>
+                      }>
+                        <CraftingTree
+                          tree={craftingTree}
+                          selectedServerOption={selectedServerOption}
+                          selectedWorld={selectedWorld}
+                          worlds={worlds}
+                          onItemSelect={handleItemSelect}
+                          excludeCrystals={excludeCrystals}
+                          onExcludeCrystalsChange={handleExcludeCrystalsChange}
+                        />
+                      </Suspense>
+                    )
+                  });
+                }
+                
+                // Related Items
+                if (isRelatedItemsExpanded && hasRelatedItems) {
+                  sections.push({
+                    key: 'relatedItems',
+                    order: buttonOrder.relatedItems,
+                    component: (
+                      <Suspense key="relatedItems" fallback={
+                        <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
+                          <p className="mt-4 text-sm text-gray-400">載入相關物品...</p>
+                        </div>
+                      }>
+                        <RelatedItems
+                          itemId={selectedItem?.id}
+                          onItemClick={handleItemSelect}
+                        />
+                      </Suspense>
+                    )
+                  });
+                }
+                
+                // Obtain Methods
+                if (isObtainMethodsExpanded && selectedItem) {
+                  sections.push({
+                    key: 'obtainMethods',
+                    order: buttonOrder.obtainMethods,
+                    component: (
+                      <div key="obtainMethods" className="relative bg-gradient-to-br from-slate-900/95 via-indigo-950/20 to-slate-900/95 rounded-xl border border-indigo-600/20 shadow-[0_0_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(99,102,241,0.1)] p-4 sm:p-6 mt-4 overflow-hidden backdrop-blur-sm">
+                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2/3 h-2/3 bg-indigo-500 rounded-full blur-3xl"></div>
+                        </div>
+                        <div className="absolute inset-0 rounded-xl border border-indigo-500/10 pointer-events-none"></div>
+                        <div className="relative z-10">
+                          <Suspense fallback={
+                            <div className="p-8 text-center">
+                              <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-400/30 border-t-indigo-400 mx-auto"></div>
+                              <p className="mt-4 text-sm text-gray-400">載入取得方式...</p>
+                            </div>
+                          }>
+                            <ObtainMethods
+                              itemId={selectedItem.id}
+                              onItemClick={handleItemSelect}
+                              onExpandCraftingTree={() => setIsCraftingTreeExpanded(true)}
+                              isCraftingTreeExpanded={isCraftingTreeExpanded}
+                            />
+                          </Suspense>
+                        </div>
+                      </div>
+                    )
+                  });
+                }
+                
+                // Sort by order (descending - highest order first, meaning last clicked appears on top)
+                sections.sort((a, b) => b.order - a.order);
+                
+                return sections.map(section => section.component);
+              })()}
 
               {/* Server Upload Times - Show when DC is selected */}
               {selectedWorld && selectedServerOption === selectedWorld.section && marketInfo && (
