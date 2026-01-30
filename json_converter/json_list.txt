@@ -31,3 +31,6 @@ teamcraft_git/libs/data/src/lib/json/equip-slot-categories.json|equip_slot_categ
 
 # Job Data Files
 teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json|tw_job_abbr|object_nested|Traditional Chinese job abbreviations - { "jobId": { "tw": "abbr" } }
+
+# Extracts Data (Item Acquisition Methods)
+teamcraft_git/libs/data/src/lib/extracts/extracts.json|extracts|object_complex|Item acquisition sources - { "itemId": { "id": itemId, "sources": [...] } }

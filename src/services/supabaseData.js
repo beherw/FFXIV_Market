@@ -39,7 +39,8 @@ const targetedQueryCache = {
   tw_item_descriptions: {},
   equipment: {},
   ui_categories: {},
-  itemIdsByCategories: {}
+  itemIdsByCategories: {},
+  extracts: {}
 };
 const targetedQueryPromises = {
   ilvls: {},
@@ -52,7 +53,8 @@ const targetedQueryPromises = {
   tw_recipes_by_result: {},
   tw_recipes_by_ingredient: {},
   tw_recipes_by_job_level: {},
-  itemIdsByCategories: {}
+  itemIdsByCategories: {},
+  extracts: {}
 };
 
 /**
@@ -2729,6 +2731,122 @@ export async function getTwJobAbbr() {
     });
     return result;
   });
+}
+
+// ============================================================================
+// Extracts Data Services (Item Acquisition Methods)
+// ============================================================================
+
+/**
+ * Get item sources (acquisition methods) for a specific item ID from Supabase
+ * This is the optimized version - only queries for the specific item, never loads all data
+ * @param {number|string} itemId - Item ID
+ * @param {AbortSignal} signal - Optional abort signal to cancel the request
+ * @returns {Promise<Array>} Array of source objects with type and data, or empty array if not found
+ */
+export async function getItemSourcesById(itemId, signal = null) {
+  if (!itemId || itemId <= 0) {
+    return [];
+  }
+
+  const itemIdNum = parseInt(itemId, 10);
+  if (isNaN(itemIdNum)) {
+    return [];
+  }
+
+  // Check if already aborted
+  if (signal && signal.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+
+  // Check cache first
+  if (targetedQueryCache.extracts && targetedQueryCache.extracts[itemIdNum]) {
+    console.log(`[Supabase] 📦 Using cached extracts for item ${itemIdNum}`);
+    return targetedQueryCache.extracts[itemIdNum];
+  }
+
+  // Check if there's already a pending request for this item
+  if (targetedQueryPromises.extracts && targetedQueryPromises.extracts[itemIdNum]) {
+    console.log(`[Supabase] ⏳ Extracts for item ${itemIdNum} already loading, waiting...`);
+    return targetedQueryPromises.extracts[itemIdNum];
+  }
+
+  // Initialize cache if needed
+  if (!targetedQueryCache.extracts) {
+    targetedQueryCache.extracts = {};
+  }
+  if (!targetedQueryPromises.extracts) {
+    targetedQueryPromises.extracts = {};
+  }
+
+  const loadStartTime = performance.now();
+  console.log(`[Supabase] 📥 Loading extracts for item ${itemIdNum} from Supabase...`);
+
+  // Create promise and store it
+  const promise = (async () => {
+    try {
+      // Query Supabase for this specific item ID only
+      const { data, error } = await supabase
+        .from('extracts')
+        .select('id, sources')
+        .eq('id', itemIdNum)
+        .maybeSingle(); // Use maybeSingle() to handle cases where item doesn't exist
+
+      // Check if aborted after request
+      if (signal && signal.aborted) {
+        throw new DOMException('Request aborted', 'AbortError');
+      }
+
+      if (error) {
+        // Log error but don't throw - return empty array for missing items
+        if (error.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
+          console.error(`Error fetching extracts for item ${itemIdNum} from Supabase:`, error);
+        }
+        return [];
+      }
+
+      if (!data || !data.sources) {
+        return [];
+      }
+
+      // Parse sources if it's a JSON string (from CSV import)
+      let sources = data.sources;
+      if (typeof sources === 'string') {
+        try {
+          sources = JSON.parse(sources);
+        } catch (parseError) {
+          console.error(`Error parsing sources JSON for item ${itemIdNum}:`, parseError);
+          return [];
+        }
+      }
+
+      // Ensure sources is an array
+      if (!Array.isArray(sources)) {
+        console.warn(`[Supabase] Sources for item ${itemIdNum} is not an array:`, typeof sources);
+        return [];
+      }
+
+      const loadDuration = performance.now() - loadStartTime;
+      console.log(`[Supabase] ✅ Loaded extracts for item ${itemIdNum} (${sources.length} sources) in ${loadDuration.toFixed(2)}ms`);
+
+      // Cache the result
+      targetedQueryCache.extracts[itemIdNum] = sources;
+
+      return sources;
+    } catch (error) {
+      if (error.name === 'AbortError' || (signal && signal.aborted)) {
+        throw error;
+      }
+      console.error(`Error loading extracts for item ${itemIdNum}:`, error);
+      return [];
+    } finally {
+      // Remove promise from cache
+      delete targetedQueryPromises.extracts[itemIdNum];
+    }
+  })();
+
+  targetedQueryPromises.extracts[itemIdNum] = promise;
+  return promise;
 }
 
 // ============================================================================

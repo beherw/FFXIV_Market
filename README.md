@@ -151,7 +151,7 @@ src/
 
 - **感謝 [Universalis API](https://universalis.app/)** - 提供完整的市場看板數據
 - **感謝 [XIVAPI](https://xivapi.com/)** - 提供物品圖片與遊戲數據
-- **感謝 [thewakingsands/ffxiv-datamining-cn](https://github.com/thewakingsands/ffxiv-datamining-cn)** - 提供簡體中文物品數據
+- **感謝 [Garland Tools](https://garlandtools.org/)** - 提供職業等ico
 
 ---
 

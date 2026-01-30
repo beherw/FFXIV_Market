@@ -11,6 +11,7 @@ import { getMarketableItemsByIds } from '../services/universalis';
 import { getItemById, getSimplifiedChineseName } from '../services/itemDatabase';
 import axios from 'axios';
 import { getEquipSlotCategories, getEquipmentByIds, getItemIdsByIlvl } from '../services/supabaseData';
+import { APP_VERSION } from '../constants/version';
 // Lazy load large data files:
 // - ilvlsData (748KB) - loaded when user inputs ilvl
 // - equipmentData (6.2MB) - loaded when searching
@@ -893,6 +894,13 @@ export default function MSQPriceChecker({
             />
           )}
 
+        </div>
+        
+        {/* Version Info */}
+        <div className="mt-6 pt-4 border-t border-slate-600/30">
+          <p className="text-xs text-slate-500 text-center">
+            版本號: <span className="text-ffxiv-gold font-semibold">{APP_VERSION}</span>
+          </p>
         </div>
       </div>
 

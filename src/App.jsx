@@ -25,6 +25,7 @@ import { getIlvls, getItemPatch, getPatchNames } from './services/supabaseData';
 import { initializeSupabaseConnection } from './services/supabaseClient';
 import TopBar from './components/TopBar';
 import NotFound from './components/NotFound';
+import { APP_VERSION } from './constants/version';
 
 // Lazy load route-based components
 const CraftingJobPriceChecker = lazy(() => import('./components/CraftingInspiration.jsx'));
@@ -4048,7 +4049,7 @@ function App() {
                   </a>
 
                   <a 
-                    href="https://github.com/thewakingsands/ffxiv-datamining-cn" 
+                    href="https://garlandtools.org/" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-700/30 hover:bg-slate-700/50 rounded-lg border border-slate-600/30 hover:border-slate-500/50 transition-all duration-200 group"
@@ -4071,13 +4072,19 @@ function App() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-xs sm:text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">
-                        thewakingsands/ffxiv-datamining-cn
+                        Garland Tools
                       </div>
                       <div className="text-xs text-slate-400 mt-0.5">
-                        提供簡體中文物品數據
+                        提供職業等ico
                       </div>
                     </div>
                   </a>
+                </div>
+                {/* Version Info */}
+                <div className="mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-slate-600/30">
+                  <p className="text-xs text-slate-500 text-center">
+                    版本號: <span className="text-ffxiv-gold font-semibold">{APP_VERSION}</span>
+                  </p>
                 </div>
               </div>
             </div>

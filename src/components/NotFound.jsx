@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { APP_VERSION } from '../constants/version';
 
 function NotFound() {
   const navigate = useNavigate();
@@ -67,6 +68,13 @@ function NotFound() {
         >
           立即返回首頁
         </button>
+        
+        {/* Version Info */}
+        <div className="mt-8 pt-4 border-t border-slate-600/30">
+          <p className="text-xs text-slate-500">
+            版本號: <span className="text-ffxiv-gold font-semibold">{APP_VERSION}</span>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ import { getItemById, getSimplifiedChineseName } from '../services/itemDatabase'
 import { getInternalUrl } from '../utils/internalUrl.js';
 import axios from 'axios';
 import { getTwJobAbbr, getIlvlsByIds } from '../services/supabaseData';
+import { APP_VERSION } from '../constants/version';
 
 export default function CraftingJobPriceChecker({ 
   addToast, 
@@ -1144,6 +1145,13 @@ export default function CraftingJobPriceChecker({
           </div>
         )}
 
+        </div>
+        
+        {/* Version Info */}
+        <div className="mt-6 pt-4 border-t border-slate-600/30">
+          <p className="text-xs text-slate-500 text-center">
+            版本號: <span className="text-ffxiv-gold font-semibold">{APP_VERSION}</span>
+          </p>
         </div>
       </div>
 

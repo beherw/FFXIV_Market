@@ -12,6 +12,7 @@ import { getMarketableItems, getMarketableItemsByIds } from '../services/univers
 import { searchItems, getSimplifiedChineseName, getItemById } from '../services/itemDatabase';
 import { loadRecipeDatabase, loadRecipesByJobAndLevel } from '../services/recipeDatabase';
 import { getTwJobAbbr, getTwItemUICategories, getTwItems, getIlvlsByIds, getRaritiesByIds, getEquipmentByIds, getEquipmentByJobs, getUICategoriesByIds, getTwItemById, getTwItemsByIds, getItemIdsByCategories, getItemIdsByIlvlRange } from '../services/supabaseData';
+import { APP_VERSION } from '../constants/version';
 
 export default function AdvancedSearch({
   addToast,
@@ -4317,6 +4318,13 @@ export default function AdvancedSearch({
               </div>
             );
           })()}
+        </div>
+        
+        {/* Version Info */}
+        <div className="mt-6 pt-4 border-t border-slate-600/30">
+          <p className="text-xs text-slate-500 text-center">
+            版本號: <span className="text-ffxiv-gold font-semibold">{APP_VERSION}</span>
+          </p>
         </div>
       </div>
 
