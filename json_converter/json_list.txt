@@ -34,3 +34,45 @@ teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json|tw_job_abbr|object_nest
 
 # Extracts Data (Item Acquisition Methods)
 teamcraft_git/libs/data/src/lib/extracts/extracts.json|extracts|object_complex|Item acquisition sources - { "itemId": { "id": itemId, "sources": [...] } }
+
+# NPC Data Files (for ObtainMethods)
+teamcraft_git/libs/data/src/lib/json/tw/tw-npc-titles.json|tw_npc_titles|object_nested|Traditional Chinese NPC titles - { "npcId": { "tw": "title" } }
+teamcraft_git/libs/data/src/lib/json/tw/tw-npcs.json|tw_npcs|object_nested|Traditional Chinese NPC names - { "npcId": { "tw": "name" } }
+teamcraft_git/libs/data/src/lib/json/npcs.json|npcs|object_complex|NPC data with locations - { "npcId": { "en": "name", "position": {...}, ... } }
+teamcraft_git/libs/data/src/lib/json/db/npcs-database-pages.json|npcs_database_pages|object_complex|NPC database pages with detailed info - { "npcId": { "title": {...}, "position": {...}, ... } }
+
+# Shop Data Files (for ObtainMethods)
+teamcraft_git/libs/data/src/lib/json/tw/tw-shops.json|tw_shops|object_nested|Traditional Chinese shop names - { "shopId": { "tw": "name" } }
+teamcraft_git/libs/data/src/lib/json/shops.json|shops|object_complex|Shop data - { "shopId": { "npcId": ..., "requiredQuest": ..., ... } }
+teamcraft_git/libs/data/src/lib/json/shops-by-npc.json|shops_by_npc|object_complex|Shops organized by NPC - { "npcId": { "shopId": {...}, ... } }
+teamcraft_git/libs/data/src/lib/json/gil-shop-names.json|gil_shop_names|object_nested|Gil shop names - { "shopId": { "en": "name", ... } }
+
+# Instance Data Files (for ObtainMethods)
+teamcraft_git/libs/data/src/lib/json/tw/tw-instances.json|tw_instances|object_nested|Traditional Chinese instance names - { "instanceId": { "tw": "name" } }
+teamcraft_git/libs/data/src/lib/json/instances.json|instances|object_complex|Instance data - { "instanceId": { "en": "name", "icon": ..., ... } }
+teamcraft_git/libs/data/src/lib/json/zh/zh-instances.json|zh_instances|object_nested|Simplified Chinese instance names - { "instanceId": { "zh": "name" } }
+
+# Quest Data Files (for ObtainMethods)
+teamcraft_git/libs/data/src/lib/json/tw/tw-quests.json|tw_quests|object_nested|Traditional Chinese quest names - { "questId": { "tw": "name" } }
+teamcraft_git/libs/data/src/lib/json/quests.json|quests|object_complex|Quest data with rewards - { "questId": { "en": "name", "rewards": [...], ... } }
+teamcraft_git/libs/data/src/lib/json/zh/zh-quests.json|zh_quests|object_nested|Simplified Chinese quest names - { "questId": { "zh": "name" } }
+teamcraft_git/libs/data/src/lib/json/db/quests-database-pages.json|quests_database_pages|object_complex|Quest database pages with detailed info - { "questId": { "title": {...}, ... } }
+
+# FATE Data Files (for ObtainMethods)
+teamcraft_git/libs/data/src/lib/json/tw/tw-fates.json|tw_fates|object_nested|Traditional Chinese FATE names - { "fateId": { "tw": "name" } }
+teamcraft_git/libs/data/src/lib/json/fates.json|fates|object_complex|FATE data - { "fateId": { "en": "name", "level": ..., ... } }
+teamcraft_git/libs/data/src/lib/json/zh/zh-fates.json|zh_fates|object_nested|Simplified Chinese FATE names - { "fateId": { "zh": "name" } }
+teamcraft_git/libs/data/src/lib/json/db/fates-database-pages.json|fates_database_pages|object_complex|FATE database pages with locations - { "fateId": { "lvl": ..., "zoneid": ..., "x": ..., "y": ..., ... } }
+teamcraft_git/libs/data/src/lib/json/fate-sources.json|fate_sources|object_nested|FATE sources by item - { "itemId": [fateId1, fateId2, ...] }
+
+# Achievement Data Files (for ObtainMethods)
+teamcraft_git/libs/data/src/lib/json/tw/tw-achievements.json|tw_achievements|object_nested|Traditional Chinese achievement names - { "achievementId": { "tw": "name" } }
+teamcraft_git/libs/data/src/lib/json/tw/tw-achievement-descriptions.json|tw_achievement_descriptions|object_nested|Traditional Chinese achievement descriptions - { "achievementId": { "tw": "description" } }
+teamcraft_git/libs/data/src/lib/json/achievements.json|achievements|object_complex|Achievement data - { "achievementId": { "en": "name", "icon": ..., ... } }
+
+# Place/Zone Data Files (for ObtainMethods)
+teamcraft_git/libs/data/src/lib/json/tw/tw-places.json|tw_places|object_nested|Traditional Chinese place/zone names - { "zoneId": { "tw": "name" } }
+teamcraft_git/libs/data/src/lib/json/places.json|places|object_nested|Place/zone data - { "zoneId": { "en": "name", ... } }
+
+# Loot Sources (for ObtainMethods)
+teamcraft_git/libs/data/src/lib/json/loot-sources.json|loot_sources|object_nested|Loot sources (coffers/containers) - { "itemId": [containerItemId1, containerItemId2, ...] }
