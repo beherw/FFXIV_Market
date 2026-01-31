@@ -3,8 +3,9 @@ import { useHistory } from '../hooks/useHistory';
 import { getSearchHistory, removeSearchFromHistory } from '../utils/searchHistory';
 import { removeItemFromHistory } from '../utils/itemHistory';
 import ItemImage from './ItemImage';
+import OCRButton from './OCRButton';
 
-export default function SearchBar({ onSearch, isLoading, value, onChange, disabled, disabledTooltip, selectedDcName, onItemSelect, searchResults = [], marketableItems = null }) {
+export default function SearchBar({ onSearch, isLoading, value, onChange, disabled, disabledTooltip, selectedDcName, onItemSelect, searchResults = [], marketableItems = null, showOCRButton = true }) {
   const [searchTerm, setSearchTerm] = useState(value || '');
   const [isComposing, setIsComposing] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -461,6 +462,20 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
     }
   };
 
+  // Handle OCR text recognition - use OCR-specific search
+  const handleOCRTextRecognized = (text) => {
+    if (text) {
+      setSearchTerm(text);
+      if (onChange) {
+        onChange(text);
+      }
+      if (onSearch) {
+        // Pass isOCR=true to indicate this is an OCR search
+        onSearch(text, false, true);
+      }
+    }
+  };
+
   const isDisabled = disabled || isLoading;
 
   return (
@@ -482,16 +497,28 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
           onCompositionStart={() => setIsComposing(true)}
           onCompositionEnd={() => setIsComposing(false)}
           placeholder="多關鍵詞用空格分隔（例：豹 褲）"
-          className={`w-full h-full pl-9 mid:pl-10 ${searchTerm.trim() && !isLoading ? 'pr-20 mid:pr-24' : 'pr-9 mid:pr-10'} bg-slate-900/80 backdrop-blur-sm border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 transition-all text-xs mid:text-sm shadow-lg ${
+          className={`w-full h-full pl-9 mid:pl-10 ${
+            showOCRButton
+              ? searchTerm.trim() && !isLoading && isFocused 
+                ? 'pr-32 mid:pr-40' 
+                : 'pr-20 mid:pr-24'
+              : searchTerm.trim() && !isLoading && isFocused
+                ? 'pr-28 mid:pr-36'
+                : 'pr-3'
+          } bg-slate-900/80 backdrop-blur-sm border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 transition-all text-xs mid:text-sm shadow-lg ${
             isDisabled 
               ? 'border-slate-700/30 cursor-not-allowed opacity-60' 
               : 'border-purple-500/30 focus:border-ffxiv-gold focus:ring-ffxiv-gold/50'
           }`}
           disabled={isDisabled}
         />
-        {isLoading && (
-          <div className="absolute right-2.5 mid:right-3 top-1/2 transform -translate-y-1/2">
-            <div className="animate-spin rounded-full h-3.5 w-3.5 mid:h-4 mid:w-4 border-b-2 border-ffxiv-gold"></div>
+        {/* OCR Button and Loading Indicator */}
+        {showOCRButton && (
+          <div className="absolute right-2.5 mid:right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2 z-10">
+            {isLoading && (
+              <div className="animate-spin rounded-full h-3.5 w-3.5 mid:h-4 mid:w-4 border-b-2 border-ffxiv-gold"></div>
+            )}
+            <OCRButton onTextRecognized={handleOCRTextRecognized} disabled={isDisabled} />
           </div>
         )}
         {/* Prompt to press Enter when there's input and focused */}
@@ -509,7 +536,9 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
                 onSearchRef.current('');
               }
             }}
-            className="absolute right-2.5 mid:right-3 top-1/2 transform -translate-y-1/2 text-xs mid:text-sm flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+            className={`absolute top-1/2 transform -translate-y-1/2 text-xs mid:text-sm flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity ${
+              showOCRButton ? 'right-20 mid:right-28' : 'right-12 mid:right-16'
+            }`}
           >
             <span className="hidden mid:inline search-prompt-flow" data-text="按 Enter 搜索">按 Enter 搜索</span>
             <span className="mid:hidden search-prompt-flow" data-text="Enter">Enter</span>

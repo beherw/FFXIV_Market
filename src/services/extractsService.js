@@ -144,5 +144,6 @@ export const DataType = {
   REQUIREMENTS: 17,
   MASTERBOOKS: 18,
   ALARMS: 19,
+  DROPS: 20, // 怪物掉落 (Monster Drops)
   ACHIEVEMENTS: 22,
 };

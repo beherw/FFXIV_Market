@@ -155,16 +155,23 @@ function convertObjectNestedExtractFieldToCSV(data, tableName, fieldToExtract) {
 function convertObjectComplexToCSV(data, tableName) {
   const rows = [];
   const headers = ['id'];
-  const firstEntry = Object.values(data)[0];
+  const allKeys = new Set();
   
-  // Extract all keys from nested objects (skip 'id' since we already have it from object key)
-  if (firstEntry && typeof firstEntry === 'object') {
-    Object.keys(firstEntry).forEach(key => {
-      if (key !== 'id') {  // Skip 'id' to avoid duplicate column
-        headers.push(key);
-      }
-    });
-  }
+  // Collect all possible keys from ALL entries (not just the first one)
+  // This ensures fields like 'position' are included even if the first entry doesn't have them
+  Object.values(data).forEach(entry => {
+    if (entry && typeof entry === 'object') {
+      Object.keys(entry).forEach(key => {
+        if (key !== 'id') {  // Skip 'id' to avoid duplicate column
+          allKeys.add(key);
+        }
+      });
+    }
+  });
+  
+  // Convert Set to sorted array for consistent column order
+  const sortedKeys = Array.from(allKeys).sort();
+  headers.push(...sortedKeys);
   
   rows.push(headers.join(','));
   

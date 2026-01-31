@@ -10,7 +10,7 @@ import MarketHistory from './components/MarketHistory';
 import ServerUploadTimes from './components/ServerUploadTimes';
 import Toast from './components/Toast';
 import { formatRelativeTime, formatLocalTime } from './utils/timeFormat';
-import { searchItems, getItemById, getSimplifiedChineseName, cancelSimplifiedNameFetch } from './services/itemDatabase';
+import { searchItems, searchItemsOCR, getItemById, getSimplifiedChineseName, cancelSimplifiedNameFetch } from './services/itemDatabase';
 import { getMarketData, getMarketableItems, getItemsVelocity, getTaxRates } from './services/universalis';
 // Removed containsChinese import - no longer restricting to Chinese input
 import { getAssetPath } from './utils/assetPath.js';
@@ -2494,7 +2494,7 @@ function App() {
   }, [navigate]);
 
   // Handle search
-  const handleSearch = useCallback(async (searchTerm, skipNavigation = false) => {
+  const handleSearch = useCallback(async (searchTerm, skipNavigation = false, isOCR = false) => {
     const trimmedTerm = searchTerm ? searchTerm.trim() : '';
     // Prevent concurrent searches - only check if a search is already in progress
     if (searchInProgressRef.current) {
@@ -2585,7 +2585,10 @@ function App() {
       setSearchingItemsCount(0); // Reset count when starting new search
       setIsSearching(true);
       
-      const searchResult = await searchItems(trimmedTerm, false, searchSignal);
+      // Use OCR search if isOCR flag is set, otherwise use regular search
+      const searchResult = isOCR 
+        ? await searchItemsOCR(trimmedTerm, searchSignal)
+        : await searchItems(trimmedTerm, false, searchSignal);
       const { results, converted, originalText, convertedText, searchedSimplified } = searchResult;
       
       // Update searching items count for display
@@ -4171,6 +4174,7 @@ function App() {
                       disabledTooltip={!isServerDataLoaded ? '請等待伺服器資料載入完成' : undefined}
                       selectedDcName={selectedWorld?.section}
                       onItemSelect={handleItemSelect}
+                      showOCRButton={false}
                     />
                   </div>
                 </div>

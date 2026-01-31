@@ -1210,3 +1210,458 @@ export async function getItemById(itemId) {
     return null;
   }
 }
+
+// ==================== OCR Fuzzy Search Functions ====================
+
+/**
+ * Generate n-grams from text (character-level for Chinese)
+ * @param {string} text - Input text
+ * @param {number} n - N-gram size (default: 2)
+ * @returns {string[]} - Array of n-grams
+ */
+function toNgrams(text, n = 2) {
+  const chars = [...text]; // Correctly handle Unicode
+  const res = [];
+  for (let i = 0; i <= chars.length - n; i++) {
+    res.push(chars.slice(i, i + n).join(''));
+  }
+  return res;
+}
+
+/**
+ * Normalize OCR text: remove noise, convert simplified to traditional, etc.
+ * @param {string} text - OCR text
+ * @returns {string} - Normalized text
+ */
+function normalizeOCRText(text) {
+  if (!text) return '';
+  
+  // Remove noise characters (dots, commas, dashes, etc.)
+  let normalized = text.replace(/[.,\-_]/g, '');
+  
+  // Remove extra whitespace
+  normalized = normalized.replace(/\s+/g, ' ').trim();
+  
+  // Convert simplified Chinese to traditional (if needed)
+  // The text from OCR is already filtered to traditional Chinese only,
+  // but we can still normalize variations
+  if (containsChinese(normalized)) {
+    // If it looks like simplified, convert to traditional
+    if (!isTraditionalChinese(normalized)) {
+      normalized = convertSimplifiedToTraditional(normalized);
+    }
+  }
+  
+  return normalized;
+}
+
+/**
+ * Calculate Levenshtein distance between two strings (character-level)
+ * @param {string} str1 - First string
+ * @param {string} str2 - Second string
+ * @returns {number} - Edit distance
+ */
+function levenshteinDistance(str1, str2) {
+  const len1 = str1.length;
+  const len2 = str2.length;
+  
+  if (len1 === 0) return len2;
+  if (len2 === 0) return len1;
+  
+  const matrix = [];
+  
+  // Initialize matrix
+  for (let i = 0; i <= len1; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= len2; j++) {
+    matrix[0][j] = j;
+  }
+  
+  // Fill matrix
+  for (let i = 1; i <= len1; i++) {
+    for (let j = 1; j <= len2; j++) {
+      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,      // deletion
+        matrix[i][j - 1] + 1,      // insertion
+        matrix[i - 1][j - 1] + cost // substitution
+      );
+    }
+  }
+  
+  return matrix[len1][len2];
+}
+
+/**
+ * Calculate position similarity score (how many characters match at same positions)
+ * @param {string} query - Query text
+ * @param {string} name - Item name
+ * @returns {number} - Position similarity score (0-1)
+ */
+function positionMatchScore(query, name) {
+  const minLen = Math.min(query.length, name.length);
+  if (minLen === 0) return 0;
+  
+  let matches = 0;
+  for (let i = 0; i < minLen; i++) {
+    if (query[i] === name[i]) {
+      matches++;
+    }
+  }
+  
+  return matches / Math.max(query.length, name.length);
+}
+
+/**
+ * Calculate n-gram overlap score
+ * @param {string} query - Query text
+ * @param {string} name - Item name
+ * @param {number} n - N-gram size (default: 2)
+ * @returns {number} - Overlap score (0-1)
+ */
+function ngramOverlapScore(query, name, n = 2) {
+  const queryNgrams = new Set(toNgrams(query, n));
+  const nameNgrams = new Set(toNgrams(name, n));
+  
+  if (queryNgrams.size === 0 && nameNgrams.size === 0) return 1;
+  if (queryNgrams.size === 0 || nameNgrams.size === 0) return 0;
+  
+  let overlap = 0;
+  for (const ng of queryNgrams) {
+    if (nameNgrams.has(ng)) {
+      overlap++;
+    }
+  }
+  
+  return overlap / Math.max(queryNgrams.size, nameNgrams.size);
+}
+
+/**
+ * Calculate OCR-friendly similarity score
+ * @param {string} query - OCR query text
+ * @param {string} name - Item name
+ * @returns {number} - Similarity score (0-1)
+ */
+function calcOcrFriendlySimilarity(query, name) {
+  if (!query || !name) return 0;
+  
+  // Calculate component scores
+  const overlapScore = ngramOverlapScore(query, name, 2);
+  const maxLen = Math.max(query.length, name.length);
+  const editDist = levenshteinDistance(query, name);
+  const edScore = maxLen > 0 ? 1 - (editDist / maxLen) : 0;
+  const posScore = positionMatchScore(query, name);
+  
+  // Weighted combination
+  // w1: ngram overlap (0.4) - captures partial matches
+  // w2: edit distance (0.4) - captures overall similarity
+  // w3: position match (0.2) - captures order preservation
+  const w1 = 0.4;
+  const w2 = 0.4;
+  const w3 = 0.2;
+  
+  const score = w1 * overlapScore + w2 * edScore + w3 * posScore;
+  return Math.max(0, Math.min(1, score)); // Clamp to [0, 1]
+}
+
+/**
+ * Build n-gram index from items (lazy initialization)
+ * @param {Array} items - Items array
+ * @param {number} n - N-gram size (default: 2)
+ * @returns {Map<string, Set<string>>} - N-gram index (ngram -> Set<itemId>)
+ */
+function buildNgramIndex(items, n = 2) {
+  const index = new Map();
+  
+  for (const item of items) {
+    const itemId = item['key: #'] || '';
+    if (!itemId) continue;
+    
+    // Get item name
+    let rawName = item['9: Name'] || '';
+    if (!rawName || rawName.trim() === '') {
+      rawName = item['0: Singular'] || '';
+    }
+    
+    if (!rawName || rawName.trim() === '') continue;
+    
+    // Clean name
+    const cleanName = rawName.replace(/^["']+|["']+$/g, '').trim();
+    if (!cleanName) continue;
+    
+    // Generate n-grams
+    const ngrams = toNgrams(cleanName, n);
+    for (const ng of ngrams) {
+      if (!index.has(ng)) {
+        index.set(ng, new Set());
+      }
+      index.get(ng).add(itemId);
+    }
+  }
+  
+  return index;
+}
+
+/**
+ * OCR fuzzy search - uses n-gram indexing and OCR-friendly similarity scoring
+ * @param {string} query - OCR query text
+ * @param {Array} items - Items array (must be loaded)
+ * @param {Map<string, Set<string>>} ngramIndex - Pre-built n-gram index (optional, will build if not provided)
+ * @param {number} topK - Number of top results to return (default: 50)
+ * @param {number} minScore - Minimum similarity score threshold (default: 0.4)
+ * @returns {Array} - Array of { item, score } objects, sorted by score descending
+ */
+function ocrFuzzySearch(query, items, ngramIndex = null, topK = 50, minScore = 0.4) {
+  if (!query || !query.trim()) {
+    return [];
+  }
+  
+  const normalizedQuery = normalizeOCRText(query.trim());
+  if (!normalizedQuery) {
+    return [];
+  }
+  
+  // Build n-gram index if not provided
+  if (!ngramIndex) {
+    ngramIndex = buildNgramIndex(items, 2);
+  }
+  
+  // Step 1: Use n-gram index to find candidate items
+  const queryNgrams = toNgrams(normalizedQuery, 2);
+  const candidateScore = new Map(); // itemId -> ngram overlap count
+  
+  for (const ng of queryNgrams) {
+    const itemIds = ngramIndex.get(ng);
+    if (!itemIds) continue;
+    
+    for (const itemId of itemIds) {
+      candidateScore.set(itemId, (candidateScore.get(itemId) || 0) + 1);
+    }
+  }
+  
+  // Step 2: Filter candidates (at least 1 n-gram match)
+  const candidates = Array.from(candidateScore.entries())
+    .filter(([itemId, count]) => count >= 1)
+    .map(([itemId]) => itemId);
+  
+  if (candidates.length === 0) {
+    return [];
+  }
+  
+  // Step 3: Calculate OCR-friendly similarity for each candidate
+  const scored = [];
+  
+  for (const itemId of candidates) {
+    const item = items.find(i => (i['key: #'] || '') === itemId);
+    if (!item) continue;
+    
+    // Get item name
+    let rawName = item['9: Name'] || '';
+    if (!rawName || rawName.trim() === '') {
+      rawName = item['0: Singular'] || '';
+    }
+    
+    if (!rawName || rawName.trim() === '') continue;
+    
+    // Clean name
+    const cleanName = rawName.replace(/^["']+|["']+$/g, '').trim();
+    if (!cleanName) continue;
+    
+    // Calculate similarity score
+    const score = calcOcrFriendlySimilarity(normalizedQuery, cleanName);
+    
+    if (score >= minScore) {
+      scored.push({ item, score });
+    }
+  }
+  
+  // Step 4: Sort by score descending and return top K
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, topK);
+}
+
+/**
+ * Search items with OCR-friendly fuzzy matching
+ * This function is specifically designed for OCR text recognition results.
+ * It first tries exact/substring matching, then falls back to OCR fuzzy search.
+ * 
+ * @param {string} searchText - OCR recognized text
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - Search results with OCR-specific metadata
+ */
+export async function searchItemsOCR(searchText, signal = null) {
+  if (!searchText || searchText.trim() === '') {
+    return {
+      results: [],
+      converted: false,
+      originalText: '',
+      convertedText: null,
+      searchedSimplified: false,
+      isOCRSearch: true
+    };
+  }
+
+  const trimmedSearchText = searchText.trim();
+  let results = [];
+  let converted = false;
+  let originalText = trimmedSearchText;
+  let convertedText = null;
+  let searchedSimplified = false;
+
+  // Normalize OCR text
+  const normalizedQuery = normalizeOCRText(trimmedSearchText);
+
+  // Step 1: Try exact/substring match first (same as regular search)
+  try {
+    if (signal && signal.aborted) {
+      throw new DOMException('Request aborted', 'AbortError');
+    }
+    
+    // Try exact match with normalized query
+    const searchResults = await searchTwItems(normalizedQuery, false, signal);
+    if (signal && signal.aborted) {
+      throw new DOMException('Request aborted', 'AbortError');
+    }
+    
+    const shopItems = [];
+    const shopItemIds = new Set();
+    const items = transformSearchResultsToItems(searchResults, shopItems, shopItemIds, null);
+    
+    // Check marketability
+    let marketItems = null;
+    if (items.length > 0) {
+      const itemIds = items.map(item => parseInt(item['key: #'], 10)).filter(id => !isNaN(id));
+      if (itemIds.length > 0) {
+        try {
+          const { getMarketItemsByIds } = await import('./supabaseData');
+          marketItems = await getMarketItemsByIds(itemIds, signal);
+        } catch (error) {
+          console.warn(`[ItemDB] ⚠️ Failed to check marketability:`, error);
+          marketItems = null;
+        }
+      }
+    }
+    
+    // Return ALL items (both marketable and non-marketable) for proper separation
+    results = performSearch(items, shopItems, shopItemIds, normalizedQuery, false, marketItems, true);
+    
+    // Load ilvl and version data
+    if (results.length > 0) {
+      await loadIlvlAndVersionForResults(results, signal);
+    }
+  } catch (error) {
+    if (error.name === 'AbortError' || (signal && signal.aborted)) {
+      throw error;
+    }
+    console.error('Error in OCR exact search:', error);
+  }
+
+  // Step 2: If no results, try OCR fuzzy search
+  if (results.length === 0) {
+    try {
+      // Load full database for fuzzy search (required for n-gram indexing)
+      const { items } = await loadItemDatabase();
+      
+      if (signal && signal.aborted) {
+        throw new DOMException('Request aborted', 'AbortError');
+      }
+      
+      // Build n-gram index
+      const ngramIndex = buildNgramIndex(items, 2);
+      
+      // Perform OCR fuzzy search
+      const ocrResults = ocrFuzzySearch(normalizedQuery, items, ngramIndex, 50, 0.4);
+      
+      if (ocrResults.length > 0) {
+        // Transform OCR fuzzy results to standard format
+        const shopItems = [];
+        const shopItemIds = new Set();
+        
+        // Check marketability for OCR results
+        let marketItems = null;
+        const itemIds = ocrResults.map(({ item }) => parseInt(item['key: #'], 10)).filter(id => !isNaN(id));
+        if (itemIds.length > 0) {
+          try {
+            const { getMarketItemsByIds } = await import('./supabaseData');
+            marketItems = await getMarketItemsByIds(itemIds, signal);
+          } catch (error) {
+            console.warn(`[ItemDB] ⚠️ Failed to check marketability for OCR results:`, error);
+            marketItems = null;
+          }
+        }
+        
+        // Transform to result format
+        results = ocrResults.map(({ item, score }) => {
+          const id = item['key: #'];
+          let name = item['9: Name'] || '';
+          if (!name || name.trim() === '') {
+            name = item['0: Singular'] || '';
+          }
+          const itemLevel = item['11: Level{Item}'] || '';
+          const shopPrice = item['25: Price{Mid}'] || '';
+          const canBeHQ = item['27: CanBeHq'] !== 'False';
+          const inShop = shopItemIds.has(id);
+          
+          // Check if item is tradable
+          let isTradable;
+          if (marketItems !== null) {
+            const itemIdNum = parseInt(id, 10);
+            isTradable = marketItems.has(itemIdNum);
+          } else {
+            const untradableValue = (item['22: IsUntradable'] || '').toString().trim();
+            const isUntradable = untradableValue === 'True' || 
+                                untradableValue === 'true' || 
+                                untradableValue === 'TRUE' ||
+                                untradableValue === '1';
+            isTradable = !isUntradable;
+          }
+          
+          const cleanName = name.replace(/^["']|["']$/g, '').trim();
+          
+          return {
+            id: parseInt(id, 10) || 0,
+            name: cleanName,
+            nameTW: cleanName,
+            nameSimplified: cleanName,
+            itemLevel: itemLevel,
+            shopPrice: shopPrice,
+            inShop: inShop,
+            canBeHQ: canBeHQ,
+            isTradable: isTradable,
+            ocrScore: score, // Add OCR similarity score
+          };
+        }).filter(item => item.id > 0);
+        
+        // Sort by OCR score descending, then by tradability
+        results.sort((a, b) => {
+          const scoreDiff = (b.ocrScore || 0) - (a.ocrScore || 0);
+          if (scoreDiff !== 0) return scoreDiff;
+          const tradableDiff = (b.isTradable ? 1 : 0) - (a.isTradable ? 1 : 0);
+          if (tradableDiff !== 0) return tradableDiff;
+          return a.id - b.id;
+        });
+        
+        // Load ilvl and version data
+        if (results.length > 0) {
+          await loadIlvlAndVersionForResults(results, signal);
+        }
+      }
+    } catch (error) {
+      if (error.name === 'AbortError' || (signal && signal.aborted)) {
+        throw error;
+      }
+      console.error('Error in OCR fuzzy search:', error);
+    }
+  }
+
+  // Return results with OCR-specific metadata
+  return {
+    results,
+    converted,
+    originalText,
+    convertedText,
+    searchedSimplified,
+    isOCRSearch: true
+  };
+}

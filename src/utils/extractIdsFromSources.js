@@ -113,15 +113,19 @@ export function extractIdsFromSources(sources) {
       });
     }
 
-    // QUESTS (type 10)
+    // QUESTS (type 10) - data can be array of quest IDs or objects with {id, mapid, zoneid, position}
     if (type === 10 && Array.isArray(data)) {
-      data.forEach(questId => {
-        const id = typeof questId === 'object' ? questId.id : questId;
+      data.forEach(questItem => {
+        const id = typeof questItem === 'object' && questItem !== null ? questItem.id : questItem;
         if (id) {
           ids.questIds.add(id);
         }
-        if (typeof questId === 'object' && questId.zoneId) {
-          ids.zoneIds.add(questId.zoneId);
+        // Extract zoneId from object (could be zoneId or zoneid)
+        if (typeof questItem === 'object' && questItem !== null) {
+          const zoneId = questItem.zoneId || questItem.zoneid;
+          if (zoneId) {
+            ids.zoneIds.add(zoneId);
+          }
         }
       });
     }
@@ -195,6 +199,31 @@ export function extractIdsFromSources(sources) {
           const bookId = typeof book === 'string' ? parseInt(book, 10) : book;
           if (bookId) {
             ids.itemIds.add(bookId);
+          }
+        }
+      });
+    }
+
+    // ISLAND_CROP (type 15) - data can be array of item IDs or levequest objects
+    if (type === 15 && Array.isArray(data)) {
+      data.forEach(item => {
+        if (typeof item === 'object' && item !== null) {
+          // Check if it's levequest format (has 'item' property)
+          if ('item' in item && typeof item.item === 'number') {
+            // Levequest format: extract the item ID from 'item' property
+            ids.itemIds.add(item.item);
+          } else if ('id' in item) {
+            // Could be item ID or leve ID - try to extract as item ID
+            const id = typeof item.id === 'number' ? item.id : parseInt(item.id, 10);
+            if (id && !isNaN(id)) {
+              ids.itemIds.add(id);
+            }
+          }
+        } else {
+          // Direct item ID
+          const id = typeof item === 'number' ? item : parseInt(item, 10);
+          if (id && !isNaN(id)) {
+            ids.itemIds.add(id);
           }
         }
       });

@@ -40,6 +40,166 @@ import {
 // Small static files - keep as imports (small size)
 import twNpcTitlesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-npc-titles.json';
 import twJobAbbrData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json';
+import twMobsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-mobs.json';
+// tw-quests.json (256KB) - lazy loaded only when quests are needed
+import dropSourcesData from '../../teamcraft_git/libs/data/src/lib/json/drop-sources.json';
+import monstersData from '../../teamcraft_git/libs/data/src/lib/json/monsters.json';
+
+// Cache for lazy-loaded quest data
+let twQuestsDataCache = null;
+let twQuestsDataLoading = false;
+let twLevesDataCache = null;
+let twLevesDataLoading = false;
+let levesDatabasePagesCache = null;
+let levesDatabasePagesLoading = false;
+let npcsDatabasePagesJsonCache = null;
+let npcsDatabasePagesJsonLoading = false;
+
+/**
+ * Lazy load tw-quests.json - only loads when quests are actually needed
+ * Uses cache to avoid reloading
+ */
+async function loadTwQuestsData() {
+  if (twQuestsDataCache) {
+    console.log('[ObtainMethods] Using cached tw-quests.json');
+    return twQuestsDataCache;
+  }
+  
+  if (twQuestsDataLoading) {
+    console.log('[ObtainMethods] Waiting for ongoing tw-quests.json load...');
+    // Wait for ongoing load
+    while (twQuestsDataLoading) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return twQuestsDataCache;
+  }
+  
+  twQuestsDataLoading = true;
+  try {
+    console.log('[ObtainMethods] Starting to load tw-quests.json...');
+    const module = await import('../../teamcraft_git/libs/data/src/lib/json/tw/tw-quests.json');
+    twQuestsDataCache = module.default || module;
+    console.log('[ObtainMethods] Successfully loaded tw-quests.json, module keys:', Object.keys(module).join(', '));
+    console.log('[ObtainMethods] Cache keys count:', twQuestsDataCache ? Object.keys(twQuestsDataCache).length : 0);
+    if (twQuestsDataCache && twQuestsDataCache[795]) {
+      console.log('[ObtainMethods] Quest 795 found in tw-quests.json:', twQuestsDataCache[795]);
+    } else {
+      console.log('[ObtainMethods] Quest 795 NOT found in tw-quests.json');
+    }
+    return twQuestsDataCache;
+  } catch (error) {
+    console.error('[ObtainMethods] Failed to load tw-quests.json:', error);
+    return {};
+  } finally {
+    twQuestsDataLoading = false;
+  }
+}
+
+/**
+ * Lazy load npcs-database-pages.json - only loads when NPC position data is needed as fallback
+ * Uses cache to avoid reloading
+ */
+async function loadNpcsDatabasePagesJson() {
+  if (npcsDatabasePagesJsonCache) {
+    return npcsDatabasePagesJsonCache;
+  }
+  
+  if (npcsDatabasePagesJsonLoading) {
+    // Wait for ongoing load
+    while (npcsDatabasePagesJsonLoading) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return npcsDatabasePagesJsonCache;
+  }
+  
+  npcsDatabasePagesJsonLoading = true;
+  try {
+    console.log('[ObtainMethods] Starting to load npcs-database-pages.json for position fallback...');
+    const module = await import('../../teamcraft_git/libs/data/src/lib/json/db/npcs-database-pages.json');
+    npcsDatabasePagesJsonCache = module.default || module;
+    console.log('[ObtainMethods] ✅ Loaded npcs-database-pages.json (', Object.keys(npcsDatabasePagesJsonCache).length, 'NPCs)');
+    return npcsDatabasePagesJsonCache;
+  } catch (error) {
+    console.error('[ObtainMethods] Failed to load npcs-database-pages.json:', error);
+    return {};
+  } finally {
+    npcsDatabasePagesJsonLoading = false;
+  }
+}
+
+/**
+ * Lazy load tw-leves.json - only loads when levequests are actually needed
+ * Uses cache to avoid reloading
+ */
+async function loadTwLevesData() {
+  if (twLevesDataCache) {
+    console.log('[ObtainMethods] Using cached tw-leves.json');
+    return twLevesDataCache;
+  }
+  
+  if (twLevesDataLoading) {
+    console.log('[ObtainMethods] Waiting for ongoing tw-leves.json load...');
+    // Wait for ongoing load
+    while (twLevesDataLoading) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return twLevesDataCache;
+  }
+  
+  twLevesDataLoading = true;
+  try {
+    console.log('[ObtainMethods] Starting to load tw-leves.json...');
+    const module = await import('../../teamcraft_git/libs/data/src/lib/json/tw/tw-leves.json');
+    twLevesDataCache = module.default || module;
+    console.log('[ObtainMethods] Successfully loaded tw-leves.json, module keys:', Object.keys(module).join(', '));
+    console.log('[ObtainMethods] Cache keys count:', twLevesDataCache ? Object.keys(twLevesDataCache).length : 0);
+    if (twLevesDataCache && (twLevesDataCache[795] || twLevesDataCache['795'])) {
+      console.log('[ObtainMethods] Leve 795 found in tw-leves.json:', twLevesDataCache[795] || twLevesDataCache['795']);
+    } else {
+      console.log('[ObtainMethods] Leve 795 NOT found in tw-leves.json');
+    }
+    return twLevesDataCache;
+  } catch (error) {
+    console.error('[ObtainMethods] Failed to load tw-leves.json:', error);
+    return {};
+  } finally {
+    twLevesDataLoading = false;
+  }
+}
+
+/**
+ * Lazy load leves-database-pages.json - only loads when detailed levequest info is needed
+ * Uses cache to avoid reloading
+ */
+async function loadLevesDatabasePages() {
+  if (levesDatabasePagesCache) {
+    console.log('[ObtainMethods] Using cached leves-database-pages.json');
+    return levesDatabasePagesCache;
+  }
+  
+  if (levesDatabasePagesLoading) {
+    console.log('[ObtainMethods] Waiting for ongoing leves-database-pages.json load...');
+    // Wait for ongoing load
+    while (levesDatabasePagesLoading) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return levesDatabasePagesCache;
+  }
+  
+  levesDatabasePagesLoading = true;
+  try {
+    console.log('[ObtainMethods] Starting to load leves-database-pages.json...');
+    const module = await import('../../teamcraft_git/libs/data/src/lib/json/db/leves-database-pages.json');
+    levesDatabasePagesCache = module.default || module;
+    console.log('[ObtainMethods] Successfully loaded leves-database-pages.json');
+    return levesDatabasePagesCache;
+  } catch (error) {
+    console.error('[ObtainMethods] Failed to load leves-database-pages.json:', error);
+    return {};
+  } finally {
+    levesDatabasePagesLoading = false;
+  }
+}
 
 // All data loading now uses Supabase batch queries - no JSON file loading needed
 
@@ -252,6 +412,548 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   
   const [dataLoaded, setDataLoaded] = useState(false);
   const [wikiUrl, setWikiUrl] = useState(null); // Store Wiki URL for activity content notice
+  const [twQuestsStaticData, setTwQuestsStaticData] = useState(null); // Lazy-loaded tw-quests.json data
+  const [twLevesStaticData, setTwLevesStaticData] = useState(null); // Lazy-loaded tw-leves.json data
+  const [levesDatabasePagesData, setLevesDatabasePagesData] = useState(null); // Lazy-loaded leves-database-pages.json data
+  const [npcsDatabasePagesJsonData, setNpcsDatabasePagesJsonData] = useState(null); // Lazy-loaded npcs-database-pages.json data for position fallback
+  const [isLoadingQuestsData, setIsLoadingQuestsData] = useState(false); // Track loading state for React
+  const [isLoadingLevesData, setIsLoadingLevesData] = useState(false); // Track loading state for React
+  const [isLoadingLevesDatabasePages, setIsLoadingLevesDatabasePages] = useState(false); // Track loading state for React
+  const [leveNpcsLoaded, setLeveNpcsLoaded] = useState(false); // Track if NPC data for leves has been loaded
+  
+  // Lazy load tw-quests.json and tw-leves.json when quests are present but names are missing
+  useEffect(() => {
+    if (!sources || sources.length === 0 || !dataLoaded) {
+      return;
+    }
+    
+    // Check if we have any quest sources that need static data
+    const questSources = sources.filter(s => s.type === DataType.QUESTS);
+    if (questSources.length === 0) {
+      return;
+    }
+    
+    // Extract all quest IDs
+    const questIds = [];
+    questSources.forEach(source => {
+      if (Array.isArray(source.data)) {
+        source.data.forEach(item => {
+          const questId = typeof item === 'object' && item !== null && 'id' in item ? item.id : item;
+          if (questId !== null && questId !== undefined) {
+            questIds.push(questId);
+          }
+        });
+      }
+    });
+    
+    if (questIds.length === 0) {
+      return;
+    }
+    
+    // Check if any quests are missing names in Supabase data
+    const needsQuestData = questIds.some(questId => {
+      const questData = loadedData.twQuests[questId] || loadedData.twQuests[String(questId)];
+      return !questData || !questData.tw;
+    });
+    
+    // Load tw-quests.json if needed
+    if (needsQuestData && !twQuestsStaticData && !isLoadingQuestsData) {
+      console.log(`[ObtainMethods] 📥 Lazy loading tw-quests.json for quest IDs: ${questIds.join(', ')}`);
+      setIsLoadingQuestsData(true);
+      loadTwQuestsData().then(data => {
+        console.log(`[ObtainMethods] ✅ Loaded tw-quests.json (${Object.keys(data).length} quests)`);
+        setTwQuestsStaticData(data);
+        setIsLoadingQuestsData(false);
+        // Update loadedData with static data
+        setLoadedData(prev => {
+          const updated = {
+            ...prev,
+            twQuests: { ...prev.twQuests }
+          };
+          Object.keys(data).forEach(id => {
+            if (!updated.twQuests[id] && !updated.twQuests[String(id)]) {
+              updated.twQuests[id] = data[id];
+              updated.twQuests[String(id)] = data[id];
+            }
+          });
+          return updated;
+        });
+        // Also update ref
+        Object.keys(data).forEach(id => {
+          if (!loadedDataRef.current.twQuests[id] && !loadedDataRef.current.twQuests[String(id)]) {
+            loadedDataRef.current.twQuests[id] = data[id];
+            loadedDataRef.current.twQuests[String(id)] = data[id];
+          }
+        });
+        
+        // After loading quest data, check if we still need levequest data
+        const stillMissingNames = questIds.some(questId => {
+          const questData = loadedDataRef.current.twQuests[questId] || loadedDataRef.current.twQuests[String(questId)];
+          const hasName = questData && questData.tw;
+          if (!hasName) {
+            console.log(`[ObtainMethods] Quest ${questId} still missing name after loading tw-quests.json`);
+          }
+          return !hasName;
+        });
+        
+        console.log(`[ObtainMethods] After loading tw-quests.json, stillMissingNames: ${stillMissingNames}, twLevesStaticData: ${!!twLevesStaticData}, isLoadingLevesData: ${isLoadingLevesData}`);
+        
+        // Load tw-leves.json if quest names are still missing (might be levequests)
+        if (stillMissingNames && !twLevesStaticData && !isLoadingLevesData) {
+          console.log(`[ObtainMethods] 📥 Lazy loading tw-leves.json for quest IDs (might be leve IDs): ${questIds.join(', ')}`);
+          setIsLoadingLevesData(true);
+          loadTwLevesData().then(levesData => {
+            console.log(`[ObtainMethods] ✅ Loaded tw-leves.json (${Object.keys(levesData).length} leves)`);
+            // Check if quest 795 is in the data
+            if (levesData[795] || levesData['795']) {
+              console.log(`[ObtainMethods] Found quest 795 in tw-leves.json:`, levesData[795] || levesData['795']);
+            }
+            setTwLevesStaticData(levesData);
+            setIsLoadingLevesData(false);
+          }).catch(err => {
+            console.warn('[ObtainMethods] Failed to load tw-leves.json:', err);
+            setIsLoadingLevesData(false);
+          });
+        }
+      }).catch(err => {
+        console.warn('[ObtainMethods] Failed to load tw-quests.json:', err);
+        setIsLoadingQuestsData(false);
+      });
+    } else if (twQuestsStaticData && !isLoadingLevesData) {
+      // If quest data is already loaded, check if we need levequest data
+      const stillMissingNames = questIds.some(questId => {
+        const questData = loadedData.twQuests[questId] || loadedData.twQuests[String(questId)];
+        const staticQuestData = twQuestsStaticData[questId] || twQuestsStaticData[String(questId)];
+        return (!questData || !questData.tw) && (!staticQuestData || !staticQuestData.tw);
+      });
+      
+      // Load tw-leves.json if quest names are still missing (might be levequests)
+      if (stillMissingNames && !twLevesStaticData) {
+        console.log(`[ObtainMethods] 📥 Lazy loading tw-leves.json for quest IDs (might be leve IDs): ${questIds.join(', ')}`);
+        setIsLoadingLevesData(true);
+        loadTwLevesData().then(data => {
+          console.log(`[ObtainMethods] ✅ Loaded tw-leves.json (${Object.keys(data).length} leves)`);
+          setTwLevesStaticData(data);
+          setIsLoadingLevesData(false);
+        }).catch(err => {
+          console.warn('[ObtainMethods] Failed to load tw-leves.json:', err);
+          setIsLoadingLevesData(false);
+        });
+      }
+    }
+  }, [sources, loadedData.twQuests, twQuestsStaticData, twLevesStaticData, dataLoaded, isLoadingQuestsData, isLoadingLevesData]);
+
+  // Lazy load leves-database-pages.json when levequests are present
+  useEffect(() => {
+    if (!sources || sources.length === 0 || !dataLoaded) {
+      return;
+    }
+    
+    // Check if we have any levequest sources (ISLAND_CROP with levequest format)
+    const levequestSources = sources.filter(s => {
+      if (s.type === DataType.ISLAND_CROP && Array.isArray(s.data) && s.data.length > 0) {
+        const firstItem = s.data[0];
+        return firstItem && typeof firstItem === 'object' && 'id' in firstItem && 'lvl' in firstItem && 'item' in firstItem;
+      }
+      return false;
+    });
+    
+    if (levequestSources.length === 0) {
+      return;
+    }
+    
+    // Extract all leve IDs from ISLAND_CROP sources
+    const leveIds = [];
+    levequestSources.forEach(source => {
+      if (Array.isArray(source.data)) {
+        source.data.forEach(leve => {
+          if (leve && typeof leve === 'object' && 'id' in leve) {
+            leveIds.push(leve.id);
+          }
+        });
+      }
+    });
+    
+    // Also check QUESTS sources for levequests (they might be converted to levequest format in render)
+    // We need to load tw-leves.json first to identify which quests are actually levequests
+    const checkQuestsForLeves = async () => {
+      // Check if we have QUESTS sources that might be levequests
+      const questSources = sources.filter(s => s.type === DataType.QUESTS && Array.isArray(s.data) && s.data.length > 0);
+      if (questSources.length > 0) {
+        // Load tw-leves.json if not already loaded
+        let twLevesData = twLevesStaticData;
+        if (!twLevesData) {
+          twLevesData = await loadTwLevesData();
+          setTwLevesStaticData(twLevesData);
+        }
+        
+        // Find quest IDs that are actually levequests
+        questSources.forEach(source => {
+          if (Array.isArray(source.data)) {
+            source.data.forEach(questItem => {
+              const questId = typeof questItem === 'object' && questItem !== null && 'id' in questItem ? questItem.id : questItem;
+              if (questId && twLevesData && (twLevesData[questId] || twLevesData[String(questId)])) {
+                // This is a levequest, add to leveIds
+                if (!leveIds.includes(questId)) {
+                  leveIds.push(questId);
+                }
+              }
+            });
+          }
+        });
+      }
+      
+      return leveIds;
+    };
+    
+    // Load leves-database-pages.json if needed
+    if (!levesDatabasePagesData && !isLoadingLevesDatabasePages) {
+      console.log(`[ObtainMethods] 📥 Lazy loading leves-database-pages.json for leve IDs: ${leveIds.join(', ')}`);
+      setIsLoadingLevesDatabasePages(true);
+      
+      // First check for levequests in QUESTS sources, then load database pages
+      checkQuestsForLeves().then(allLeveIds => {
+        if (allLeveIds.length === 0) {
+          setIsLoadingLevesDatabasePages(false);
+          return;
+        }
+        
+        loadLevesDatabasePages().then(pagesData => {
+          console.log(`[ObtainMethods] ✅ Loaded leves-database-pages.json (${Object.keys(pagesData).length} leves)`);
+          setLevesDatabasePagesData(pagesData);
+          setIsLoadingLevesDatabasePages(false);
+          
+          // Extract NPC IDs and item IDs from leve data and load them
+          const npcIdsToLoad = new Set();
+          const itemIdsToLoad = new Set();
+          
+          allLeveIds.forEach(leveId => {
+            const leveData = pagesData[leveId] || pagesData[String(leveId)];
+            if (leveData) {
+              // Extract NPC IDs
+              if (Array.isArray(leveData.npcs)) {
+                leveData.npcs.forEach(npc => {
+                  if (npc && npc.id) {
+                    npcIdsToLoad.add(npc.id);
+                  }
+                });
+              }
+              // Extract item IDs from items array
+              if (Array.isArray(leveData.items)) {
+                leveData.items.forEach(item => {
+                  if (item && item.id) {
+                    itemIdsToLoad.add(item.id);
+                  }
+                });
+              }
+              // Extract item IDs from rewards array
+              if (Array.isArray(leveData.rewards)) {
+                leveData.rewards.forEach(reward => {
+                  if (reward && reward.id) {
+                    itemIdsToLoad.add(reward.id);
+                  }
+                });
+              }
+            }
+          });
+          
+          // Load NPC and item data if needed
+        if (npcIdsToLoad.size > 0) {
+          const npcIdsArray = Array.from(npcIdsToLoad);
+          console.log(`[ObtainMethods] 📥 Loading NPC data for ${npcIdsArray.length} NPCs from leve data:`, npcIdsArray);
+          Promise.all([
+            getTwNpcsByIds(npcIdsArray).then(data => {
+              console.log(`[ObtainMethods] ✅ Loaded twNpcs data:`, Object.keys(data));
+              setLoadedData(prev => ({
+                ...prev,
+                twNpcs: { ...prev.twNpcs, ...data }
+              }));
+              Object.keys(data).forEach(id => {
+                loadedDataRef.current.twNpcs[id] = data[id];
+                loadedDataRef.current.twNpcs[String(id)] = data[id];
+              });
+              return data;
+            }),
+            getNpcsByIds(npcIdsArray).then(data => {
+              console.log(`[ObtainMethods] ✅ Loaded npcs data:`, Object.keys(data));
+              setLoadedData(prev => ({
+                ...prev,
+                npcs: { ...prev.npcs, ...data }
+              }));
+              Object.keys(data).forEach(id => {
+                loadedDataRef.current.npcs[id] = data[id];
+                loadedDataRef.current.npcs[String(id)] = data[id];
+              });
+              return data;
+            }),
+            getNpcsDatabasePagesByIds(npcIdsArray).then(data => {
+              console.log(`[ObtainMethods] ✅ Loaded npcsDatabasePages data:`, Object.keys(data));
+              setLoadedData(prev => ({
+                ...prev,
+                npcsDatabasePages: { ...prev.npcsDatabasePages, ...data }
+              }));
+              Object.keys(data).forEach(id => {
+                loadedDataRef.current.npcsDatabasePages[id] = data[id];
+                loadedDataRef.current.npcsDatabasePages[String(id)] = data[id];
+              });
+              
+              // Check if any NPCs are missing position data, and load JSON fallback if needed
+              const missingPositions = npcIdsArray.filter(npcId => {
+                const npcData = data[npcId] || data[String(npcId)];
+                return !npcData || !npcData.position;
+              });
+              
+              if (missingPositions.length > 0 && !npcsDatabasePagesJsonData && !npcsDatabasePagesJsonLoading) {
+                console.log(`[ObtainMethods] 📥 ${missingPositions.length} NPCs missing position data, loading JSON fallback...`);
+                loadNpcsDatabasePagesJson().then(jsonData => {
+                  if (jsonData) {
+                    setNpcsDatabasePagesJsonData(jsonData);
+                    
+                    // Extract zone IDs from JSON fallback NPC positions and load place names
+                    const zoneIdsFromJson = new Set();
+                    Object.values(jsonData).forEach(npcData => {
+                      if (npcData?.position?.zoneid) {
+                        const zoneId = npcData.position.zoneid;
+                        const currentLoadedData = loadedDataRef.current;
+                        const hasTwPlace = currentLoadedData.twPlaces[zoneId] || currentLoadedData.twPlaces[String(zoneId)];
+                        const hasPlace = currentLoadedData.places[zoneId] || currentLoadedData.places[String(zoneId)];
+                        if (!hasTwPlace && !hasPlace) {
+                          zoneIdsFromJson.add(zoneId);
+                        }
+                      }
+                    });
+                    
+                    // Load place names from JSON fallback if needed
+                    if (zoneIdsFromJson.size > 0) {
+                      const zoneIdsArray = Array.from(zoneIdsFromJson);
+                      console.log(`[ObtainMethods] 📥 Loading place names for ${zoneIdsArray.length} zones from JSON fallback NPCs`);
+                      Promise.all([
+                        getTwPlacesByIds(zoneIdsArray),
+                        getPlacesByIds(zoneIdsArray)
+                      ]).then(([twPlaces, places]) => {
+                        setLoadedData(prev => ({
+                          ...prev,
+                          twPlaces: { ...prev.twPlaces, ...twPlaces },
+                          places: { ...prev.places, ...places }
+                        }));
+                        Object.keys(twPlaces).forEach(id => {
+                          loadedDataRef.current.twPlaces[id] = twPlaces[id];
+                          loadedDataRef.current.twPlaces[String(id)] = twPlaces[id];
+                        });
+                        Object.keys(places).forEach(id => {
+                          loadedDataRef.current.places[id] = places[id];
+                          loadedDataRef.current.places[String(id)] = places[id];
+                        });
+                      });
+                    }
+                  }
+                });
+              }
+              
+              // Extract zone IDs from NPC positions and load place names
+              const zoneIdsToLoad = new Set();
+              Object.values(data).forEach(npcData => {
+                if (npcData?.position?.zoneid) {
+                  const zoneId = npcData.position.zoneid;
+                  // Check if place name is already loaded
+                  const currentLoadedData = loadedDataRef.current;
+                  const hasTwPlace = currentLoadedData.twPlaces[zoneId] || currentLoadedData.twPlaces[String(zoneId)];
+                  const hasPlace = currentLoadedData.places[zoneId] || currentLoadedData.places[String(zoneId)];
+                  if (!hasTwPlace && !hasPlace) {
+                    zoneIdsToLoad.add(zoneId);
+                  }
+                }
+              });
+              
+              // Also check JSON fallback data for zone IDs
+              if (npcsDatabasePagesJsonData) {
+                Object.values(npcsDatabasePagesJsonData).forEach(npcData => {
+                  if (npcData?.position?.zoneid) {
+                    const zoneId = npcData.position.zoneid;
+                    const currentLoadedData = loadedDataRef.current;
+                    const hasTwPlace = currentLoadedData.twPlaces[zoneId] || currentLoadedData.twPlaces[String(zoneId)];
+                    const hasPlace = currentLoadedData.places[zoneId] || currentLoadedData.places[String(zoneId)];
+                    if (!hasTwPlace && !hasPlace) {
+                      zoneIdsToLoad.add(zoneId);
+                    }
+                  }
+                });
+              }
+              
+              // Load place names if needed
+              if (zoneIdsToLoad.size > 0) {
+                const zoneIdsArray = Array.from(zoneIdsToLoad);
+                console.log(`[ObtainMethods] 📥 Loading place names for ${zoneIdsArray.length} zones from NPC positions`);
+                Promise.all([
+                  getTwPlacesByIds(zoneIdsArray),
+                  getPlacesByIds(zoneIdsArray)
+                ]).then(([twPlaces, places]) => {
+                  setLoadedData(prev => ({
+                    ...prev,
+                    twPlaces: { ...prev.twPlaces, ...twPlaces },
+                    places: { ...prev.places, ...places }
+                  }));
+                  Object.keys(twPlaces).forEach(id => {
+                    loadedDataRef.current.twPlaces[id] = twPlaces[id];
+                    loadedDataRef.current.twPlaces[String(id)] = twPlaces[id];
+                  });
+                  Object.keys(places).forEach(id => {
+                    loadedDataRef.current.places[id] = places[id];
+                    loadedDataRef.current.places[String(id)] = places[id];
+                  });
+                });
+              }
+              
+              return data;
+            })
+          ]).then(([twNpcsData, npcsData, npcsDbData]) => {
+            console.log(`[ObtainMethods] ✅ All NPC data loaded. twNpcs:`, Object.keys(twNpcsData || {}), `npcs:`, Object.keys(npcsData || {}), `npcsDatabasePages:`, Object.keys(npcsDbData || {}));
+            // Force re-render by updating state
+            setLeveNpcsLoaded(true);
+          }).catch(err => {
+            console.warn('[ObtainMethods] Failed to load NPC data:', err);
+          });
+        }
+        
+        if (itemIdsToLoad.size > 0) {
+          const itemIdsArray = Array.from(itemIdsToLoad);
+          console.log(`[ObtainMethods] 📥 Loading item data for ${itemIdsArray.length} items from leve data`);
+          getTwItemsByIds(itemIdsArray).then(data => {
+            setLoadedData(prev => ({
+              ...prev,
+              twItems: { ...prev.twItems, ...data }
+            }));
+            Object.keys(data).forEach(id => {
+              loadedDataRef.current.twItems[id] = data[id];
+              loadedDataRef.current.twItems[String(id)] = data[id];
+            });
+          }).catch(err => {
+            console.warn('[ObtainMethods] Failed to load item data:', err);
+          });
+        }
+        }).catch(err => {
+          console.warn('[ObtainMethods] Failed to load leves-database-pages.json:', err);
+          setIsLoadingLevesDatabasePages(false);
+        });
+      }).catch(err => {
+        console.warn('[ObtainMethods] Failed to check quests for leves:', err);
+        setIsLoadingLevesDatabasePages(false);
+      });
+    } else if (levesDatabasePagesData) {
+      // levesDatabasePagesData is already loaded, but we might have new QUESTS sources
+      // Check if we need to load NPCs for levequests from QUESTS sources
+      checkQuestsForLeves().then(allLeveIds => {
+        if (allLeveIds.length === 0) {
+          return;
+        }
+        
+        // Extract NPC IDs from leve data and load them
+        const npcIdsToLoad = new Set();
+        allLeveIds.forEach(leveId => {
+          const leveData = levesDatabasePagesData[leveId] || levesDatabasePagesData[String(leveId)];
+          if (leveData && Array.isArray(leveData.npcs)) {
+            leveData.npcs.forEach(npc => {
+              if (npc && npc.id) {
+                // Check if NPC data is already loaded
+                const currentLoadedData = loadedDataRef.current;
+                const hasNpcData = currentLoadedData.twNpcs[npc.id] || currentLoadedData.twNpcs[String(npc.id)] ||
+                                  currentLoadedData.npcs[npc.id] || currentLoadedData.npcs[String(npc.id)] ||
+                                  currentLoadedData.npcsDatabasePages[npc.id] || currentLoadedData.npcsDatabasePages[String(npc.id)];
+                if (!hasNpcData) {
+                  npcIdsToLoad.add(npc.id);
+                }
+              }
+            });
+          }
+        });
+        
+        // Load NPC data if needed
+        if (npcIdsToLoad.size > 0) {
+          const npcIdsArray = Array.from(npcIdsToLoad);
+          console.log(`[ObtainMethods] 📥 Loading NPC data for ${npcIdsArray.length} additional NPCs from QUESTS levequests:`, npcIdsArray);
+          Promise.all([
+            getTwNpcsByIds(npcIdsArray).then(data => {
+              setLoadedData(prev => ({
+                ...prev,
+                twNpcs: { ...prev.twNpcs, ...data }
+              }));
+              Object.keys(data).forEach(id => {
+                loadedDataRef.current.twNpcs[id] = data[id];
+                loadedDataRef.current.twNpcs[String(id)] = data[id];
+              });
+              return data;
+            }),
+            getNpcsByIds(npcIdsArray).then(data => {
+              setLoadedData(prev => ({
+                ...prev,
+                npcs: { ...prev.npcs, ...data }
+              }));
+              Object.keys(data).forEach(id => {
+                loadedDataRef.current.npcs[id] = data[id];
+                loadedDataRef.current.npcs[String(id)] = data[id];
+              });
+              return data;
+            }),
+            getNpcsDatabasePagesByIds(npcIdsArray).then(data => {
+              setLoadedData(prev => ({
+                ...prev,
+                npcsDatabasePages: { ...prev.npcsDatabasePages, ...data }
+              }));
+              Object.keys(data).forEach(id => {
+                loadedDataRef.current.npcsDatabasePages[id] = data[id];
+                loadedDataRef.current.npcsDatabasePages[String(id)] = data[id];
+              });
+              
+              // Extract zone IDs from NPC positions and load place names
+              const zoneIdsToLoad = new Set();
+              Object.values(data).forEach(npcData => {
+                if (npcData?.position?.zoneid) {
+                  const zoneId = npcData.position.zoneid;
+                  // Check if place name is already loaded
+                  const currentLoadedData = loadedDataRef.current;
+                  const hasTwPlace = currentLoadedData.twPlaces[zoneId] || currentLoadedData.twPlaces[String(zoneId)];
+                  const hasPlace = currentLoadedData.places[zoneId] || currentLoadedData.places[String(zoneId)];
+                  if (!hasTwPlace && !hasPlace) {
+                    zoneIdsToLoad.add(zoneId);
+                  }
+                }
+              });
+              
+              // Load place names if needed
+              if (zoneIdsToLoad.size > 0) {
+                const zoneIdsArray = Array.from(zoneIdsToLoad);
+                console.log(`[ObtainMethods] 📥 Loading place names for ${zoneIdsArray.length} zones from QUESTS levequest NPCs`);
+                Promise.all([
+                  getTwPlacesByIds(zoneIdsArray),
+                  getPlacesByIds(zoneIdsArray)
+                ]).then(([twPlaces, places]) => {
+                  setLoadedData(prev => ({
+                    ...prev,
+                    twPlaces: { ...prev.twPlaces, ...twPlaces },
+                    places: { ...prev.places, ...places }
+                  }));
+                  Object.keys(twPlaces).forEach(id => {
+                    loadedDataRef.current.twPlaces[id] = twPlaces[id];
+                    loadedDataRef.current.twPlaces[String(id)] = twPlaces[id];
+                  });
+                  Object.keys(places).forEach(id => {
+                    loadedDataRef.current.places[id] = places[id];
+                    loadedDataRef.current.places[String(id)] = places[id];
+                  });
+                });
+              }
+              
+              return data;
+            })
+          ]).then(() => {
+            setLeveNpcsLoaded(true);
+          }).catch(err => {
+            console.warn('[ObtainMethods] Failed to load additional NPC data:', err);
+          });
+        }
+      });
+    }
+  }, [sources, dataLoaded, levesDatabasePagesData, isLoadingLevesDatabasePages, twLevesStaticData]);
 
   // Load Wiki URL when itemId changes (for activity content notice)
   useEffect(() => {
@@ -365,6 +1067,27 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           console.warn(`[ObtainMethods] ⚠️ No sources found for item ${currentItemId}`);
         }
         
+        // Debug: Log sources structure
+        console.log(`[ObtainMethods] 📋 Loaded ${sourcesData.length} sources for item ${currentItemId}`);
+        const islandCropSources = sourcesData.filter(s => s.type === DataType.ISLAND_CROP);
+        const questSources = sourcesData.filter(s => s.type === DataType.QUESTS);
+        console.log(`[ObtainMethods] 📋 ISLAND_CROP sources: ${islandCropSources.length}`);
+        islandCropSources.forEach((source, idx) => {
+          console.log(`[ObtainMethods] 📋 ISLAND_CROP source ${idx}:`, {
+            type: source.type,
+            dataLength: Array.isArray(source.data) ? source.data.length : 'not array',
+            data: source.data
+          });
+        });
+        console.log(`[ObtainMethods] 📋 QUESTS sources: ${questSources.length}`);
+        questSources.forEach((source, idx) => {
+          console.log(`[ObtainMethods] 📋 QUESTS source ${idx}:`, {
+            type: source.type,
+            dataLength: Array.isArray(source.data) ? source.data.length : 'not array',
+            data: source.data
+          });
+        });
+        
         const requiredIds = extractIdsFromSources(sourcesData);
         
         // Step 2.5: Get FATE IDs from fate_sources table and add to requiredIds
@@ -377,6 +1100,22 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           });
           // Also need to query fatesDatabasePages to get zoneIds for these FATEs
           // We'll add zoneIds after we get the FATE data, but we need to ensure we query fatesDatabasePages
+        }
+        
+        // Step 2.6: Get monster drop zone IDs from drop-sources.json and add to requiredIds
+        const dropSourceMonsterIds = dropSourcesData[currentItemId] || dropSourcesData[String(currentItemId)];
+        if (Array.isArray(dropSourceMonsterIds) && dropSourceMonsterIds.length > 0) {
+          dropSourceMonsterIds.forEach(monsterId => {
+            const monster = monstersData[monsterId] || monstersData[String(monsterId)];
+            if (monster && Array.isArray(monster.positions) && monster.positions.length > 0) {
+              // Collect all zone IDs from monster positions
+              monster.positions.forEach(position => {
+                if (position.zoneid && !requiredIds.zoneIds.includes(position.zoneid)) {
+                  requiredIds.zoneIds.push(position.zoneid);
+                }
+              });
+            }
+          });
         }
         
         // Check again if request was cancelled
@@ -569,6 +1308,106 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           }
           
           let processedSources = [...sourcesData];
+          
+          // Query drop-sources.json for monster drops
+          const dropSourceMonsterIds = dropSourcesData[currentItemId] || dropSourcesData[String(currentItemId)];
+          if (Array.isArray(dropSourceMonsterIds) && dropSourceMonsterIds.length > 0) {
+            // Convert monster IDs to Drop objects with full position data from monsters.json
+            const dropObjects = [];
+            
+            dropSourceMonsterIds.forEach(monsterId => {
+              const monster = monstersData[monsterId] || monstersData[String(monsterId)];
+              if (monster && Array.isArray(monster.positions) && monster.positions.length > 0) {
+                // Group positions by zone
+                const positionsByZone = {};
+                monster.positions.forEach(position => {
+                  const zoneid = position.zoneid;
+                  if (!positionsByZone[zoneid]) {
+                    positionsByZone[zoneid] = [];
+                  }
+                  positionsByZone[zoneid].push(position);
+                });
+                
+                // Create a drop object for each zone this monster appears in
+                Object.keys(positionsByZone).forEach(zoneid => {
+                  const zonePositions = positionsByZone[zoneid];
+                  const firstPosition = zonePositions[0];
+                  const mapid = firstPosition.map;
+                  
+                  // Calculate average position
+                  let avgX = 0, avgY = 0;
+                  zonePositions.forEach(p => {
+                    avgX += p.x;
+                    avgY += p.y;
+                  });
+                  avgX /= zonePositions.length;
+                  avgY /= zonePositions.length;
+                  
+                  // Calculate radius based on spread
+                  const spreadX = Math.max(...zonePositions.map(p => p.x)) - Math.min(...zonePositions.map(p => p.x));
+                  const spreadY = Math.max(...zonePositions.map(p => p.y)) - Math.min(...zonePositions.map(p => p.y));
+                  const maxRadius = Math.max(spreadX, spreadY) * 41 || 100;
+                  
+                  // Get level range
+                  const levels = zonePositions.map(p => p.level).filter(l => l > 0);
+                  const minLevel = levels.length > 0 ? Math.min(...levels) : null;
+                  const maxLevel = levels.length > 0 ? Math.max(...levels) : null;
+                  
+                  dropObjects.push({
+                    id: monsterId,
+                    mapid: mapid,
+                    zoneid: parseInt(zoneid, 10),
+                    lvl: minLevel, // Store min level, we'll calculate range in render
+                    minLevel: minLevel,
+                    maxLevel: maxLevel,
+                    zonePositions: zonePositions, // Store all positions for this zone
+                    position: {
+                      x: avgX,
+                      y: avgY,
+                      radius: maxRadius,
+                      zoneid: parseInt(zoneid, 10)
+                    }
+                  });
+                });
+              } else {
+                // No position data, but still add the monster (will show without location info)
+                console.warn(`[ObtainMethods] Monster ${monsterId} has no position data`);
+                dropObjects.push({
+                  id: monsterId,
+                  zoneid: null,
+                  mapid: null,
+                  minLevel: null,
+                  maxLevel: null,
+                  zonePositions: []
+                });
+              }
+            });
+            
+            // Add DROPS source if we have valid drop data
+            if (dropObjects.length > 0) {
+              processedSources.push({
+                type: DataType.DROPS,
+                data: dropObjects
+              });
+            }
+          }
+          
+          // Convert type 13 (Teamcraft's DROPS) to type 20 (our DROPS) if data looks like drops
+          // Check if type 13 has drop-like data structure (array of objects with 'id' field)
+          processedSources = processedSources.map(source => {
+            if (source.type === 13 && Array.isArray(source.data) && source.data.length > 0) {
+              // Check if data looks like drops (objects with 'id' field or numbers)
+              const firstItem = source.data[0];
+              const looksLikeDrops = typeof firstItem === 'object' && firstItem !== null && 'id' in firstItem;
+              
+              if (looksLikeDrops) {
+                // Convert to DROPS type (20)
+                return { ...source, type: DataType.DROPS };
+              }
+              // Otherwise keep as MOGSTATION (13)
+            }
+            return source;
+          });
           
           // Collect zoneIds from FATEs - we'll do this after processing sources
           const fateZoneIds = new Set();
@@ -1191,15 +2030,78 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     return 0;
   }, []); // No dependencies - pure function
 
+  // Helper function to check if a QUESTS source only contains levequests (would render empty)
+  // This checks the same logic as renderSource does for QUESTS type
+  const isQuestsSourceEmpty = useCallback((source) => {
+    if (source.type !== DataType.QUESTS || !Array.isArray(source.data)) {
+      return false;
+    }
+    
+    const currentLoadedData = loadedDataRef.current;
+    const questIds = source.data.map(item => {
+      if (typeof item === 'object' && item !== null && 'id' in item) {
+        return item.id;
+      }
+      return item;
+    }).filter(questId => questId !== null && questId !== undefined);
+    
+    if (questIds.length === 0) {
+      return true; // Empty source
+    }
+    
+    // Check if all quests are levequests (same logic as in renderSource)
+    const allAreLevequests = questIds.every(questId => {
+      // Check if this is a regular quest (has name in tw_quests or quests)
+      const questData = currentLoadedData.twQuests[questId] || currentLoadedData.twQuests[String(questId)] 
+        || (twQuestsStaticData && (twQuestsStaticData[questId] || twQuestsStaticData[String(questId)]));
+      const questNameRaw = questData?.tw;
+      // Simple check: remove invisible characters and trim (same as cleanQuestName logic)
+      const questName = questNameRaw ? questNameRaw.replace(/[\uE000-\uF8FF\u200B-\u200D\uFEFF]/g, '').trim() : null;
+      
+      // If no quest name found, check if it's a levequest
+      if (!questName) {
+        const leveData = twLevesStaticData && (twLevesStaticData[questId] || twLevesStaticData[String(questId)]);
+        const leveNameRaw = leveData?.tw;
+        // Simple check: remove invisible characters and trim
+        const leveName = leveNameRaw ? leveNameRaw.replace(/[\uE000-\uF8FF\u200B-\u200D\uFEFF]/g, '').trim() : null;
+        
+        // If it's a levequest, this source would be empty
+        return !!leveName;
+      }
+      
+      return false; // Has quest name, so it's a regular quest
+    });
+    
+    return allAreLevequests;
+  }, [twQuestsStaticData, twLevesStaticData]); // Dependencies for static data
+
   // Sort sources by item count (descending) - more items appear first (on the left)
+  // Filter out QUESTS sources that only contain levequests (they will be shown in 理符任務 instead)
   // OPTIMIZED: Memoized to prevent recalculation on every render
   const sortedSources = useMemo(() => {
-    return [...sources].sort((a, b) => {
+    // Filter out empty QUESTS sources (only contain levequests)
+    const filteredSources = sources.filter(source => {
+      if (source.type === DataType.QUESTS) {
+        return !isQuestsSourceEmpty(source);
+      }
+      return true;
+    });
+    
+    return filteredSources.sort((a, b) => {
+      // DROPS (怪物掉落) always comes first
+      if (a.type === DataType.DROPS && b.type !== DataType.DROPS) {
+        return -1;
+      }
+      if (a.type !== DataType.DROPS && b.type === DataType.DROPS) {
+        return 1;
+      }
+      
+      // For other types, sort by item count (descending)
       const countA = getSourceItemCount(a);
       const countB = getSourceItemCount(b);
-      return countB - countA; // Descending order
+      return countB - countA;
     });
-  }, [sources, getSourceItemCount]); // getSourceItemCount is stable (useCallback with no deps)
+  }, [sources, getSourceItemCount, isQuestsSourceEmpty]); // Added isQuestsSourceEmpty dependency
 
   // Filter sources by selected method type
   // OPTIMIZED: Memoized to prevent recalculation on every render
@@ -1220,7 +2122,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   // This hook must be before any early returns to maintain hooks order
   const validSources = useMemo(() => {
     return filteredSources; // Just return filtered sources, rendering happens in JSX
-  }, [filteredSources]);
+  }, [filteredSources, loadedData.twNpcs, loadedData.npcsDatabasePages, leveNpcsLoaded, npcsDatabasePagesJsonData]); // Re-render when NPC data is loaded
 
   // Show loading state if data is still loading or sources are being fetched
   // Also show loading if itemId is undefined/null to prevent showing empty state during redirects
@@ -1293,11 +2195,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       [DataType.VENTURES]: '遠征獲得',
       [DataType.GARDENING]: '園藝獲得',
       [DataType.MOGSTATION]: '商城購買',
-      [DataType.ISLAND_CROP]: '島嶼作物',
+      [DataType.ISLAND_CROP]: '理符任務',
       [DataType.VOYAGES]: '遠征',
       [DataType.REQUIREMENTS]: '需求',
       [DataType.MASTERBOOKS]: '製作書',
       [DataType.ALARMS]: '鬧鐘提醒',
+      [DataType.DROPS]: '怪物掉落',
       [DataType.ACHIEVEMENTS]: '成就獎勵',
     };
     return methodTypeNames[type] || '未知';
@@ -1446,6 +2349,17 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     }
   });
 
+  // Get mob/monster name by mob ID
+  const getMobName = (mobId) => {
+    if (!mobId) return null;
+    const mobIdStr = String(mobId);
+    const mob = twMobsData[mobIdStr] || twMobsData[mobId];
+    if (mob?.tw) {
+      return mob.tw;
+    }
+    return null;
+  };
+
   const getInstanceName = (instanceId) => {
     // Use ref to access latest loadedData immediately, avoiding stale state issues
     const currentLoadedData = loadedDataRef.current;
@@ -1559,7 +2473,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
   const renderSource = (source, index, useFlex1 = true) => {
     const { type, data } = source;
-    const flexClass = useFlex1 ? 'flex-1' : '';
+    // Remove flexClass since we're using grid layout now
+    const flexClass = '';
     // Use ref to access latest loadedData immediately, avoiding stale state issues
     // This is critical because renderSource is now called during render (not in useMemo)
     const currentLoadedData = loadedDataRef.current;
@@ -1571,7 +2486,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
 
       return (
-        <div key={`crafted-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`crafted-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/000000/000501.png" alt="Craft" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">製作</span>
@@ -1770,25 +2685,43 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         return null;
       }
       
-      // Render single container with all trade entries
+      // Group entries by shop name, currency item, amount, and HQ requirement
+      // This groups NPCs that offer the same trade at the same shop
+      const groupedEntries = {};
+      validTradeEntries.forEach((entry) => {
+        // Create a unique key for grouping: shopName + currencyItemId + currencyAmount + requiresHQ
+        const groupKey = `${entry.shopName || 'unknown'}_${entry.currencyItemId}_${entry.currencyAmount}_${entry.requiresHQ ? 'hq' : 'nq'}`;
+        if (!groupedEntries[groupKey]) {
+          groupedEntries[groupKey] = {
+            shopName: entry.shopName,
+            currencyItemId: entry.currencyItemId,
+            currencyName: entry.currencyName,
+            currencyAmount: entry.currencyAmount,
+            requiresHQ: entry.requiresHQ,
+            hasCurrencyItem: entry.hasCurrencyItem,
+            shopId: entry.shopId,
+            tradeSource: entry.tradeSource,
+            npcs: []
+          };
+        }
+        groupedEntries[groupKey].npcs.push(entry.npc);
+      });
+      
+      // Convert grouped entries to array
+      const tradeGroups = Object.values(groupedEntries);
+      
+      // Render single container with all trade entries grouped
       return (
-        <div key={`trade-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`trade-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-ffxiv-gold font-medium">兌換</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            {validTradeEntries.map((entry, entryIndex) => {
-              const npc = entry.npc;
-              const npcId = typeof npc === 'object' ? npc.id : npc;
-              const npcName = getNpcName(npcId);
-              const npcZoneId = typeof npc === 'object' ? npc.zoneId : null;
-              const npcCoords = typeof npc === 'object' ? npc.coords : null;
-              const npcMapId = typeof npc === 'object' ? npc.mapId : null;
-              const zoneName = npcZoneId ? getPlaceNameCN(npcZoneId) : '';
-              const hasLocation = npcCoords && npcCoords.x !== undefined && npcCoords.y !== undefined;
-              
-              // Get quest requirement for this shop/NPC combination
-              const requiredQuestId = getShopQuestRequirement(entry.shopId, npcId, entry.tradeSource);
+            {tradeGroups.map((group, groupIndex) => {
+              // Get quest requirement (check first NPC as they should all have same shop)
+              const firstNpc = group.npcs[0];
+              const firstNpcId = typeof firstNpc === 'object' ? firstNpc.id : firstNpc;
+              const requiredQuestId = getShopQuestRequirement(group.shopId, firstNpcId, group.tradeSource);
               // Use ref to access latest loadedData immediately, avoiding stale state issues
               const currentLoadedData = loadedDataRef.current;
               const questData = currentLoadedData.twQuests[requiredQuestId] || currentLoadedData.twQuests[String(requiredQuestId)];
@@ -1796,37 +2729,38 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const questName = questData?.tw || questEnData?.name?.en || questEnData?.en || null;
               
               return (
-                <div key={`npc-${entryIndex}`} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
-                  <div className="flex items-center justify-between mb-1">
-                    {entry.hasCurrencyItem ? (
+                <div key={`group-${groupIndex}`} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 flex flex-col">
+                  {/* Currency header - shown once per group */}
+                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-700/50">
+                    {group.hasCurrencyItem ? (
                       <button
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           if (onItemClick) {
                             // Get item data and call onItemClick with flag indicating it's from obtainable
-                            getItemById(entry.currencyItemId).then(item => {
+                            getItemById(group.currencyItemId).then(item => {
                               if (item) {
                                 onItemClick(item, { fromObtainable: true });
                               } else {
-                                const itemUrl = generateItemUrl(entry.currencyItemId, 'item');
+                                const itemUrl = generateItemUrl(group.currencyItemId, 'item');
                                 navigate(itemUrl);
                               }
                             });
                           } else {
-                            const itemUrl = generateItemUrl(entry.currencyItemId, 'item');
+                            const itemUrl = generateItemUrl(group.currencyItemId, 'item');
                             navigate(itemUrl);
                           }
                         }}
                         className="flex items-center gap-1.5 font-medium text-blue-400 hover:text-ffxiv-gold transition-colors"
                       >
                         <ItemImage
-                          itemId={entry.currencyItemId}
-                          alt={entry.currencyName}
+                          itemId={group.currencyItemId}
+                          alt={group.currencyName}
                           className="w-7 h-7 object-contain"
                         />
-                        <span className="hover:underline">{entry.currencyName}</span>
-                        {entry.requiresHQ && (
+                        <span className="hover:underline">{group.currencyName}</span>
+                        {group.requiresHQ && (
                           <span 
                             className="inline-flex items-center justify-center px-1.5 py-0.5 bg-yellow-500/20 border border-yellow-500/50 rounded text-[10px] font-bold text-yellow-400"
                             title="需要高品質版本"
@@ -1837,8 +2771,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       </button>
                     ) : (
                       <span className="font-medium text-white flex items-center gap-1.5">
-                        {entry.currencyName}
-                        {entry.requiresHQ && (
+                        {group.currencyName}
+                        {group.requiresHQ && (
                           <span 
                             className="inline-flex items-center justify-center px-1.5 py-0.5 bg-yellow-500/20 border border-yellow-500/50 rounded text-[10px] font-bold text-yellow-400"
                             title="需要高品質版本"
@@ -1848,14 +2782,17 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         )}
                       </span>
                     )}
-                    <span className="text-yellow-400 text-sm">x{entry.currencyAmount}</span>
+                    <span className="text-yellow-400 text-sm">x{group.currencyAmount}</span>
                   </div>
-                  <div className="text-sm text-gray-300">{npcName}</div>
-                  {entry.shopName && (
-                    <div className="text-xs text-gray-400 mt-1">{entry.shopName}</div>
+                  
+                  {/* Shop name */}
+                  {group.shopName && (
+                    <div className="text-xs text-gray-400 mb-2">{group.shopName}</div>
                   )}
+                  
+                  {/* Quest requirement */}
                   {requiredQuestId && questName && (
-                    <div className="text-xs text-pink-400/90 mt-1 flex items-center gap-1">
+                    <div className="text-xs text-pink-400/90 mb-2 flex items-center gap-1">
                       <span>需要完成任務：</span>
                       <button
                         onClick={(e) => {
@@ -1873,32 +2810,55 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       </button>
                     </div>
                   )}
-                  {zoneName && hasLocation && (
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setMapModal({
-                          isOpen: true,
-                          zoneName,
-                          x: npcCoords.x,
-                          y: npcCoords.y,
-                          npcName,
-                          mapId: npcMapId,
-                        });
-                      }}
-                      className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-700/50 text-xs text-blue-400 hover:bg-slate-800/50 hover:text-blue-300 rounded px-1 py-0.5 transition-all w-full text-left"
-                    >
-                      <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                      </svg>
-                      <span>
-                        {zoneName}
-                        <span className="ml-2">
-                          X: {npcCoords.x.toFixed(1)} - Y: {npcCoords.y.toFixed(1)}
-                        </span>
-                      </span>
-                    </button>
+                  
+                  {/* NPCs list - compact display */}
+                  <div className="space-y-1.5">
+                    {group.npcs.map((npc, npcIndex) => {
+                      const npcId = typeof npc === 'object' ? npc.id : npc;
+                      const npcName = getNpcName(npcId);
+                      const npcZoneId = typeof npc === 'object' ? npc.zoneId : null;
+                      const npcCoords = typeof npc === 'object' ? npc.coords : null;
+                      const npcMapId = typeof npc === 'object' ? npc.mapId : null;
+                      const zoneName = npcZoneId ? getPlaceNameCN(npcZoneId) : '';
+                      const hasLocation = npcCoords && npcCoords.x !== undefined && npcCoords.y !== undefined;
+                      
+                      return (
+                        <div key={`npc-${npcIndex}`} className="text-xs">
+                          <div className="text-gray-300 font-medium">{npcName}</div>
+                          {zoneName && hasLocation && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setMapModal({
+                                  isOpen: true,
+                                  zoneName,
+                                  x: npcCoords.x,
+                                  y: npcCoords.y,
+                                  npcName,
+                                  mapId: npcMapId,
+                                });
+                              }}
+                              className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors mt-0.5"
+                            >
+                              <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                              </svg>
+                              <span className="text-gray-400">
+                                {zoneName} ({npcCoords.x.toFixed(1)}, {npcCoords.y.toFixed(1)})
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Show count if multiple NPCs */}
+                  {group.npcs.length > 1 && (
+                    <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-slate-700/30">
+                      {group.npcs.length} 個位置
+                    </div>
                   )}
                 </div>
               );
@@ -1925,7 +2885,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       });
 
       return (
-        <div key={`vendor-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`vendor-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/065000/065002.png" alt="Gil" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">NPC商店</span>
@@ -2090,7 +3050,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Treasures (藏寶圖/寶箱) - includes both treasure maps and loot sources (coffers/containers)
     if (type === DataType.TREASURES) {
       return (
-        <div key={`treasure-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`treasure-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/061000/061808.png" alt="Treasure" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">寶箱/容器</span>
@@ -2144,7 +3104,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Instances (副本) - data is an array of instance IDs
     if (type === DataType.INSTANCES) {
       return (
-        <div key={`instance-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`instance-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/061000/061801.png" alt="Instance" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">副本掉落</span>
@@ -2214,6 +3174,152 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       );
     }
 
+    // DROPS (怪物掉落) - data is an array of Drop objects with {id, mapid?, zoneid?, lvl?, position?}
+    // Also check for type 13 (Teamcraft's original DROPS value) if data looks like drops
+    const isDropsType = type === DataType.DROPS || 
+      (type === 13 && Array.isArray(data) && data.length > 0 && 
+       (typeof data[0] === 'object' && 'id' in data[0]) || typeof data[0] === 'number');
+    
+    if (isDropsType) {
+      if (!data || data.length === 0) {
+        return null;
+      }
+
+      // Group monsters by zone and process data
+      const monstersByZone = {};
+      
+      data.forEach((drop) => {
+        const mobId = typeof drop === 'object' ? drop.id : drop;
+        const mobName = getMobName(mobId);
+        
+        // Skip if no lookup available
+        if (!mobName) {
+          return;
+        }
+
+        // Get zone and level info from drop object (already processed from monsters.json)
+        const zoneId = typeof drop === 'object' ? drop.zoneid : null;
+        const mapId = typeof drop === 'object' ? drop.mapid : null;
+        const minLevel = typeof drop === 'object' ? drop.minLevel : null;
+        const maxLevel = typeof drop === 'object' ? drop.maxLevel : null;
+        const zonePositions = typeof drop === 'object' ? drop.zonePositions : [];
+        
+        // Handle monsters without zone data - still show them
+        if (!zoneId) {
+          // Still show the monster, but without zone info
+          if (!monstersByZone['unknown']) {
+            monstersByZone['unknown'] = {
+              zoneId: 'unknown',
+              zoneName: '未知區域',
+              monsters: []
+            };
+          }
+          monstersByZone['unknown'].monsters.push({
+            mobId,
+            mobName,
+            levelRange: minLevel ? `等級${minLevel}` : null,
+            mapId: null,
+            positions: []
+          });
+          return;
+        }
+
+        // Get zone name using the existing function
+        const zoneName = getPlaceNameCN(zoneId);
+        // Use zoneId as fallback if zone name not found
+        const displayZoneName = zoneName && zoneName !== `區域 ${zoneId}` ? zoneName : `區域 ${zoneId}`;
+
+        // Calculate level range
+        const levelRange = minLevel && maxLevel 
+          ? (minLevel === maxLevel ? `等級${minLevel}` : `等級${minLevel}～${maxLevel}`)
+          : (minLevel ? `等級${minLevel}` : null);
+
+        if (!monstersByZone[zoneId]) {
+          monstersByZone[zoneId] = {
+            zoneId,
+            zoneName: displayZoneName,
+            monsters: []
+          };
+        }
+
+        monstersByZone[zoneId].monsters.push({
+          mobId,
+          mobName,
+          levelRange,
+          mapId,
+          positions: zonePositions
+        });
+      });
+
+      const zoneEntries = Object.values(monstersByZone);
+      if (zoneEntries.length === 0) {
+        return null;
+      }
+
+      return (
+        <div key={`drops-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+          <div className="flex items-center gap-2 mb-3">
+            <img src="https://xivapi.com/c/BNpcName.png" alt="Monster" className="w-6 h-6" />
+            <span className="text-ffxiv-gold font-medium">怪物掉落</span>
+          </div>
+          
+          {/* Table-like display */}
+          <div className="space-y-4">
+            {zoneEntries.map((zone, zoneIndex) => (
+              <div key={zoneIndex} className="bg-slate-900/50 rounded p-3">
+                <div className="text-sm font-semibold text-white mb-2 border-b border-slate-700/50 pb-1">
+                  {zone.zoneName}
+                </div>
+                <div className="space-y-2">
+                  {zone.monsters.map((monster, monsterIndex) => {
+                    // Get first position for map display
+                    const firstPosition = monster.positions && monster.positions.length > 0 
+                      ? monster.positions[0] 
+                      : null;
+                    const hasLocation = firstPosition && firstPosition.x !== undefined && firstPosition.y !== undefined && monster.mapId;
+                    
+                    return (
+                      <div key={monsterIndex} className="flex items-start gap-2 text-sm">
+                        <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white">{monster.mobName}</span>
+                        </div>
+                          {monster.levelRange && (
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              {monster.levelRange}
+                            </div>
+                          )}
+                          {hasLocation && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setMapModal({
+                                  isOpen: true,
+                                  zoneName: zone.zoneName,
+                                  x: firstPosition.x,
+                                  y: firstPosition.y,
+                                  npcName: monster.mobName,
+                                  mapId: monster.mapId || null,
+                                });
+                              }}
+                              className="text-xs text-blue-400 hover:text-ffxiv-gold transition-colors text-left mt-1"
+                            >
+                              位置: ({Math.round(firstPosition.x * 10) / 10}, {Math.round(firstPosition.y * 10) / 10})
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     // Desynths (精製獲得)
     if (type === DataType.DESYNTHS) {
       // data is an array of item IDs that can be desynthed to get this item
@@ -2227,7 +3333,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`desynth-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`desynth-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/000000/000120.png" alt="Desynth" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">精製獲得</span>
@@ -2277,32 +3383,91 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       );
     }
 
-    // Quests (任務) - data is an array of quest IDs
+    // Quests (任務) - data is an array of quest IDs or quest objects with {id, mapid, zoneid, position}
     if (type === DataType.QUESTS) {
       // Use ref to access latest loadedData immediately, avoiding stale state issues
       const currentLoadedData = loadedDataRef.current;
-      const validQuests = data.filter(questId => {
-        const questData = currentLoadedData.twQuests[questId] || currentLoadedData.twQuests[String(questId)];
-        return questData && questData.tw;
-      });
       
-      if (validQuests.length === 0) {
+      // Extract quest IDs from data (handle both ID numbers and objects with 'id' property)
+      const questIds = data.map(item => {
+        if (typeof item === 'object' && item !== null && 'id' in item) {
+          return item.id; // Extract ID from object
+        }
+        return item; // Already an ID
+      }).filter(questId => questId !== null && questId !== undefined);
+      
+      console.log(`[ObtainMethods] 🔍 QUESTS source ${index}, questIds:`, questIds);
+      console.log(`[ObtainMethods] 🔍 QUESTS source ${index}, raw data:`, data);
+      
+      if (questIds.length === 0) {
         return null; // Skip if no valid quests
       }
       
+      // Filter out levequests first - they should be displayed in "理符任務" container
+      const validQuestIds = questIds.filter(questId => {
+        // Check if this is a regular quest (has name in tw_quests or quests)
+        const questData = currentLoadedData.twQuests[questId] || currentLoadedData.twQuests[String(questId)] 
+          || (twQuestsStaticData && (twQuestsStaticData[questId] || twQuestsStaticData[String(questId)]));
+        const questNameRaw = questData?.tw;
+        const questName = cleanQuestName(questNameRaw);
+        
+        // If no quest name found, check if it's a levequest
+        if (!questName) {
+          const leveData = twLevesStaticData && (twLevesStaticData[questId] || twLevesStaticData[String(questId)]);
+          const leveNameRaw = leveData?.tw;
+          const leveName = cleanQuestName(leveNameRaw);
+          
+          // If it's a levequest, filter it out (will be displayed in "理符任務" container)
+          if (leveName) {
+            return false; // Filter out levequests
+          }
+        }
+        
+        return true; // Keep regular quests
+      });
+      
+      // If all quests were filtered out (all were levequests), don't render the container
+      if (validQuestIds.length === 0) {
+        return null; // Skip container if all quests were levequests
+      }
+      
       return (
-        <div key={`quest-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`quest-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/060000/060453.png" alt="Quest" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">任務獎勵</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            {validQuests.map((questId, questIndex) => {
-              const questData = currentLoadedData.twQuests[questId] || currentLoadedData.twQuests[String(questId)];
+            {validQuestIds.map((questId, questIndex) => {
+              // Try Supabase data first, then static JSON fallback
+              const questData = currentLoadedData.twQuests[questId] || currentLoadedData.twQuests[String(questId)] 
+                || (twQuestsStaticData && (twQuestsStaticData[questId] || twQuestsStaticData[String(questId)]));
               const questNameRaw = questData?.tw;
               const questName = cleanQuestName(questNameRaw);
               
-              if (!questName) return null;
+              // If still no quest name found, try to get from quests.json or questsDatabasePages
+              if (!questName) {
+                
+                // Try to get quest name from quests.json or questsDatabasePages
+                const quest = currentLoadedData.quests[questId] || currentLoadedData.quests[String(questId)];
+                const questDb = currentLoadedData.questsDatabasePages[questId] || currentLoadedData.questsDatabasePages[String(questId)];
+                const fallbackName = quest?.en || questDb?.en || `任務 ${questId}`;
+                
+                // Still render even without Traditional Chinese name
+                return (
+                  <div key={questIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col">
+                    <div className="flex items-center gap-2 mb-1">
+                      <img src="https://xivapi.com/i/060000/060453.png" alt="Quest" className="w-7 h-7 object-contain flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-gray-300">{fallbackName}</span>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      任務 ID: {questId}
+                    </div>
+                  </div>
+                );
+              }
               
               // Get quest icon from quests.json
               const quest = currentLoadedData.quests[questId] || currentLoadedData.quests[String(questId)];
@@ -2511,7 +3676,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`fate-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`fate-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/060000/060502.png" alt="FATE" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">危命任務</span>
@@ -2864,7 +4029,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       const nodeTypeName = nodeTypeNames[nodeType] || '採集';
 
       return (
-        <div key={`gathered-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`gathered-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src={nodeIcon} alt={nodeTypeName} className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">採集獲得</span>
@@ -2953,7 +4118,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`reduced-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`reduced-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/061000/061808.png" alt="Reduction" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">分解獲得</span>
@@ -3019,7 +4184,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`venture-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`venture-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/021000/021267.png" alt="Venture" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">遠征獲得</span>
@@ -3084,7 +4249,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`gardening-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`gardening-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/061000/061808.png" alt="Gardening" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">園藝獲得</span>
@@ -3140,7 +4305,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
 
       return (
-        <div key={`mogstation-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`mogstation-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/065000/065002.png" alt="Mogstation" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">商城購買</span>
@@ -3156,14 +4321,323 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       );
     }
 
-    // Island Crop (島嶼作物) - data is an array of item IDs
+    // Island Crop (島嶼作物) / Levequest (理符任務) - data can be array of item IDs or levequest objects
     if (type === DataType.ISLAND_CROP) {
       if (!data || !Array.isArray(data) || data.length === 0) {
         return null;
       }
 
+      // Use ref to access latest loadedData immediately, avoiding stale state issues
+      const currentLoadedData = loadedDataRef.current;
+      
+      // Check if data is levequest format (has 'id', 'lvl', 'item' properties)
+      const firstItem = data[0];
+      const isLevequestFormat = firstItem && typeof firstItem === 'object' && 'id' in firstItem && 'lvl' in firstItem && 'item' in firstItem;
+      
+      if (isLevequestFormat) {
+        // This is actually levequest data, display as levequests (理符任務)
+        // Also collect levequests from QUESTS sources to display together
+        console.log(`[ObtainMethods] 🔍 ISLAND_CROP source ${index} is levequest format, data length: ${data.length}`);
+        console.log(`[ObtainMethods] 🔍 Levequest data:`, data);
+        
+        // Collect all levequests from QUESTS sources
+        const questLevequests = [];
+        sources.forEach(s => {
+          if (s.type === DataType.QUESTS && Array.isArray(s.data)) {
+            s.data.forEach(questItem => {
+              const questId = typeof questItem === 'object' && questItem !== null && 'id' in questItem ? questItem.id : questItem;
+              if (questId) {
+                // Check if this is a levequest (not a regular quest)
+                const leveData = twLevesStaticData && (twLevesStaticData[questId] || twLevesStaticData[String(questId)]);
+                if (leveData && leveData.tw) {
+                  // Convert to levequest format for display
+                  // Use the current itemId from component props (the item we're showing sources for)
+                  questLevequests.push({
+                    id: questId,
+                    lvl: null, // Will get from leves-database-pages.json
+                    level: null,
+                    item: itemId, // Use current itemId from component props
+                    cost: null,
+                    exp: null,
+                    gil: null,
+                    fromQuests: true // Mark as from QUESTS source
+                  });
+                }
+              }
+            });
+          }
+        });
+        
+        // Combine ISLAND_CROP levequests with QUESTS levequests
+        const allLevequests = [...data, ...questLevequests];
+        console.log(`[ObtainMethods] 🔍 Combined levequests: ${allLevequests.length} (${data.length} from ISLAND_CROP, ${questLevequests.length} from QUESTS)`);
+        
+        return (
+          <div key={`levequest-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+            <div className="flex items-center gap-2 mb-2">
+              <img src="https://xivapi.com/i/060000/060454.png" alt="Levequest" className="w-6 h-6" />
+              <span className="text-ffxiv-gold font-medium">理符任務</span>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {allLevequests.map((leve, leveIndex) => {
+                if (!leve || typeof leve !== 'object') return null;
+                
+                const leveId = leve.id;
+                const leveLevel = leve.lvl || leve.level;
+                const itemId = leve.item;
+                
+                // Get detailed leve data from leves-database-pages.json
+                const leveDbData = levesDatabasePagesData && (levesDatabasePagesData[leveId] || levesDatabasePagesData[String(leveId)]);
+                
+                // Get leve name from tw-leves.json or database pages
+                const leveNameData = twLevesStaticData && (twLevesStaticData[leveId] || twLevesStaticData[String(leveId)]);
+                const leveName = leveNameData?.tw || leveDbData?.zh || leveDbData?.en || `理符任務 ${leveId}`;
+                
+                // Get item name
+                const itemData = currentLoadedData.twItems[itemId] || currentLoadedData.twItems[String(itemId)];
+                const itemName = itemData?.tw || `物品 ${itemId}`;
+                
+                // Get NPC info
+                const npcs = leveDbData?.npcs || [];
+                const npcIds = npcs.map(npc => npc.id).filter(Boolean);
+                const npcNames = npcIds.map(npcId => {
+                  const npcData = currentLoadedData.twNpcs[npcId] || currentLoadedData.twNpcs[String(npcId)];
+                  const npcDb = currentLoadedData.npcsDatabasePages[npcId] || currentLoadedData.npcsDatabasePages[String(npcId)];
+                  const name = npcData?.tw || npcDb?.zh || npcDb?.en || null;
+                  // If name is still null, the data might not be loaded yet - return a placeholder that will update when data loads
+                  if (!name) {
+                    console.warn(`[ObtainMethods] ⚠️ NPC ${npcId} name not found. twNpcs has:`, Object.keys(currentLoadedData.twNpcs).slice(0, 5), `npcsDatabasePages has:`, Object.keys(currentLoadedData.npcsDatabasePages).slice(0, 5));
+                    return `NPC ${npcId}`;
+                  }
+                  return name;
+                });
+                
+                // Get NPC positions (keep null values to maintain index alignment with npcNames)
+                // Try npcsDatabasePages first, then fallback to npcs.json, then JSON file
+                // Also check loadedData state in addition to currentLoadedData ref to ensure we get latest data
+                const npcPositions = npcIds.map(npcId => {
+                  // First try npcsDatabasePages (from both ref and state)
+                  const npcDbRef = currentLoadedData.npcsDatabasePages[npcId] || currentLoadedData.npcsDatabasePages[String(npcId)];
+                  const npcDbState = loadedData.npcsDatabasePages[npcId] || loadedData.npcsDatabasePages[String(npcId)];
+                  const npcDb = npcDbRef || npcDbState;
+                  if (npcDb?.position) {
+                    console.log(`[ObtainMethods] ✅ Found NPC ${npcId} position in npcsDatabasePages:`, npcDb.position);
+                    return npcDb.position;
+                  }
+                  // Fallback to npcs.json (from getNpcsByIds) - check both ref and state
+                  const npcDataRef = currentLoadedData.npcs[npcId] || currentLoadedData.npcs[String(npcId)];
+                  const npcDataState = loadedData.npcs[npcId] || loadedData.npcs[String(npcId)];
+                  const npcData = npcDataRef || npcDataState;
+                  if (npcData?.position) {
+                    console.log(`[ObtainMethods] ✅ Found NPC ${npcId} position in npcs:`, npcData.position);
+                    return npcData.position;
+                  }
+                  // Final fallback: try JSON file (npcs-database-pages.json) if Supabase data doesn't have position
+                  if (npcsDatabasePagesJsonData) {
+                    const npcJsonData = npcsDatabasePagesJsonData[npcId] || npcsDatabasePagesJsonData[String(npcId)];
+                    if (npcJsonData?.position) {
+                      console.log(`[ObtainMethods] ✅ Found NPC ${npcId} position in JSON fallback:`, npcJsonData.position);
+                      return npcJsonData.position;
+                    }
+                  }
+                  // Debug: log what data we have for this NPC
+                  if (npcId) {
+                    console.log(`[ObtainMethods] ⚠️ NPC ${npcId} has no position data. npcDb:`, !!npcDb, 'npcData:', !!npcData);
+                    if (npcDb && !npcDb.position) {
+                      console.log(`[ObtainMethods] ⚠️ NPC ${npcId} npcDb exists but no position field. Loading JSON fallback...`);
+                      // Trigger JSON load if not already loaded
+                      if (!npcsDatabasePagesJsonData && !npcsDatabasePagesJsonLoading) {
+                        loadNpcsDatabasePagesJson().then(jsonData => {
+                          if (jsonData) {
+                            setNpcsDatabasePagesJsonData(jsonData);
+                            // Force re-render by updating a state
+                            setLeveNpcsLoaded(prev => !prev);
+                          }
+                        });
+                      }
+                    }
+                  }
+                  return null;
+                });
+                
+                // Get required items (items array from leve data)
+                const requiredItems = leveDbData?.items || [];
+                
+                // Get rewards with probabilities
+                const rewards = leveDbData?.rewards || [];
+                
+                // Get cost (allowance cost)
+                const cost = leveDbData?.cost || leve.cost || null;
+                
+                // Get Simplified Chinese name for wiki link (lazy load on click)
+                const leveNameZh = leveDbData?.zh || null;
+                
+                // Create wiki URL using Simplified Chinese name with "任务:" prefix
+                const wikiUrl = leveNameZh ? `https://ff14.huijiwiki.com/wiki/任务:${encodeURIComponent(leveNameZh)}` : null;
+                
+                return (
+                  <div key={leveIndex} className="w-[320px] flex-grow-0 bg-slate-900/50 rounded p-3 min-h-[100px] flex flex-col gap-2">
+                    {/* Leve name with wiki link - same style as FATE */}
+                    <div className="flex items-center gap-2 mb-1">
+                      <img src="https://xivapi.com/i/060000/060454.png" alt="Levequest" className="w-7 h-7 object-contain flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        {wikiUrl ? (
+                          <a
+                            href={wikiUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                            className="text-sm font-medium text-blue-400 hover:text-ffxiv-gold hover:underline transition-colors cursor-pointer"
+                          >
+                            {leveName}
+                          </a>
+                        ) : (
+                          <span className="text-sm font-medium text-gray-300">{leveName}</span>
+                        )}
+                        {(leveLevel || cost !== null) && (
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            {leveLevel && <span>等級 {leveLevel}</span>}
+                            {leveLevel && cost !== null && <span> • </span>}
+                            {cost !== null && <span>理符點數: {cost}</span>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Required items from items array */}
+                    {requiredItems.length > 0 && (
+                      <div className="text-xs text-gray-400">
+                        <div className="mb-1">需要物品:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {requiredItems.map((reqItem, reqIndex) => {
+                            const reqItemData = currentLoadedData.twItems[reqItem.id] || currentLoadedData.twItems[String(reqItem.id)];
+                            const reqItemName = reqItemData?.tw || `物品 ${reqItem.id}`;
+                            return (
+                              <button
+                                key={reqIndex}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (onItemClick) {
+                                    getItemById(reqItem.id).then(item => {
+                                      if (item) {
+                                        onItemClick(item, { fromObtainable: true });
+                                      } else {
+                                        const itemUrl = generateItemUrl(reqItem.id, 'item');
+                                        navigate(itemUrl);
+                                      }
+                                    });
+                                  } else {
+                                    const itemUrl = generateItemUrl(reqItem.id, 'item');
+                                    navigate(itemUrl);
+                                  }
+                                }}
+                                className="flex items-center gap-1 text-blue-400 hover:text-ffxiv-gold hover:underline transition-colors"
+                              >
+                                <ItemImage
+                                  itemId={reqItem.id}
+                                  alt={reqItemName}
+                                  className="w-4 h-4 object-contain flex-shrink-0"
+                                />
+                                <span>{reqItemName} x{reqItem.amount || 1}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Rewards with probabilities */}
+                    {rewards.length > 0 && (
+                      <div className="text-xs text-gray-400">
+                        <div className="mb-1">獎勵:</div>
+                        <div className="space-y-1">
+                          {rewards.map((reward, rewardIndex) => {
+                            const rewardItemData = currentLoadedData.twItems[reward.id] || currentLoadedData.twItems[String(reward.id)];
+                            const rewardItemName = rewardItemData?.tw || `物品 ${reward.id}`;
+                            return (
+                              <div key={rewardIndex} className="flex items-center gap-2">
+                                <ItemImage
+                                  itemId={reward.id}
+                                  alt={rewardItemName}
+                                  className="w-5 h-5 object-contain flex-shrink-0"
+                                />
+                                <span className="text-gray-300">
+                                  {rewardItemName} x{reward.amount || 1}
+                                </span>
+                                {reward.chances !== undefined && (
+                                  <span className="text-yellow-400">
+                                    ({reward.chances}%)
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* NPC locations - same style as TRADE_SOURCES */}
+                    {npcNames.length > 0 && (
+                      <div className="text-xs space-y-1.5">
+                        {npcNames.map((npcName, npcIndex) => {
+                          const npcPosition = npcPositions[npcIndex];
+                          const npcId = npcIds[npcIndex];
+                          // Check if NPC has position data (x, y, and map or zoneid)
+                          const hasLocation = npcPosition && 
+                            npcPosition.x !== undefined && 
+                            npcPosition.y !== undefined && 
+                            (npcPosition.map || npcPosition.zoneid);
+                          
+                          const zoneId = npcPosition?.zoneid;
+                          const mapId = npcPosition?.map;
+                          const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
+                          
+                          return (
+                            <div key={`npc-${npcIndex}`} className="text-xs">
+                              <div className="text-gray-300 font-medium">{npcName}</div>
+                              {zoneName && hasLocation && (
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setMapModal({
+                                      isOpen: true,
+                                      zoneName,
+                                      x: npcPosition.x,
+                                      y: npcPosition.y,
+                                      npcName: npcName,
+                                      mapId: mapId || null,
+                                    });
+                                  }}
+                                  className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors mt-0.5"
+                                >
+                                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                  </svg>
+                                  <span className="text-gray-400">
+                                    {zoneName} ({npcPosition.x.toFixed(1)}, {npcPosition.y.toFixed(1)})
+                                  </span>
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }).filter(Boolean)}
+            </div>
+          </div>
+        );
+      }
+      
+      // Original island crop format - array of item IDs
       const validCrops = data.filter(cropId => {
-        const cropData = loadedData.twItems[cropId] || loadedData.twItems[String(cropId)];
+        const cropData = currentLoadedData.twItems[cropId] || currentLoadedData.twItems[String(cropId)];
         return cropData && cropData.tw;
       });
       
@@ -3172,14 +4646,14 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`island-crop-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`island-crop-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/063000/063950_hr1.png" alt="Island Crop" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">島嶼作物</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
             {validCrops.map((cropId, cropIndex) => {
-              const cropData = loadedData.twItems[cropId] || loadedData.twItems[String(cropId)];
+              const cropData = currentLoadedData.twItems[cropId] || currentLoadedData.twItems[String(cropId)];
               const cropName = cropData?.tw;
               
               if (!cropName) return null;
@@ -3227,7 +4701,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
 
       return (
-        <div key={`voyage-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`voyage-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/021000/021267.png" alt="Voyage" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">遠征</span>
@@ -3255,7 +4729,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         const seedData = currentLoadedData.twItems[seedId] || currentLoadedData.twItems[String(seedId)];
         const seedName = seedData?.tw;
         return (
-          <div key={`island-crop-requirement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+          <div key={`island-crop-requirement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
             <div className="flex items-center gap-2 mb-2">
               <img src="https://xivapi.com/i/063000/063950_hr1.png" alt="Island Crop" className="w-6 h-6" />
               <span className="text-ffxiv-gold font-medium">島嶼作物</span>
@@ -3324,7 +4798,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`requirement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`requirement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/060000/060453.png" alt="Requirement" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">需求</span>
@@ -3412,7 +4886,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         const huijiUrl = `https://ff14.huijiwiki.com/wiki/物品:${encodeURIComponent(itemId)}`;
         
         return (
-          <div key={`masterbook-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+          <div key={`masterbook-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
             <div className="flex items-center gap-2 mb-2">
               <img src="https://xivapi.com/i/065000/065002.png" alt="Masterbook" className="w-6 h-6" />
               <span className="text-ffxiv-gold font-medium">製作書</span>
@@ -3463,7 +4937,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       // If all masterbooks are missing, show activity content notice
       if (allMissing) {
         return (
-          <div key={`masterbook-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+          <div key={`masterbook-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
             <div className="flex items-center gap-2 mb-2">
               <img src="https://xivapi.com/i/065000/065002.png" alt="Masterbook" className="w-6 h-6" />
               <span className="text-ffxiv-gold font-medium">製作書</span>
@@ -3531,7 +5005,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       };
 
       return (
-        <div key={`alarm-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`alarm-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/060000/060502.png" alt="Alarm" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">鬧鐘提醒</span>
@@ -3620,7 +5094,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`achievement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+        <div key={`achievement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/060000/060453.png" alt="Achievement" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">成就獎勵</span>
@@ -3726,8 +5200,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         )}
       </div>
 
-      <div className="flex flex-wrap gap-3 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 items-start">
         {validSources.map((source, index) => renderSource(source, index, false)).filter(Boolean)}
+        {/* Force re-render when NPC data is loaded */}
+        {leveNpcsLoaded && <span className="hidden" />}
       </div>
 
       {/* Achievement Tooltip */}

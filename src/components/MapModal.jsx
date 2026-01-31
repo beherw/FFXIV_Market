@@ -192,9 +192,83 @@ export default function MapModal({ isOpen, onClose, zoneName, x, y, npcName, map
           
           <div className="space-y-2 text-gray-300">
             {zoneName && (
-              <div>
+              <div className="flex items-center gap-2">
                 <span className="text-gray-400">區域：</span>
                 <span className="text-white">{zoneName}</span>
+                <button
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const textToCopy = `${zoneName} FF14`;
+                    const button = e.currentTarget;
+                    const svg = button?.querySelector('svg');
+                    
+                    if (!button || !svg) {
+                      console.error('Button or SVG element not found');
+                      return;
+                    }
+                    
+                    const originalPath = svg.innerHTML;
+                    const originalClassName = button.className;
+                    
+                    try {
+                      await navigator.clipboard.writeText(textToCopy);
+                      // Visual feedback - show checkmark
+                      svg.innerHTML = '<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />';
+                      button.className = 'text-green-400';
+                      setTimeout(() => {
+                        if (button && svg) {
+                          svg.innerHTML = originalPath;
+                          button.className = originalClassName;
+                        }
+                      }, 1500);
+                    } catch (err) {
+                      console.error('Failed to copy:', err);
+                      // Fallback for older browsers
+                      const textArea = document.createElement('textarea');
+                      textArea.value = textToCopy;
+                      textArea.style.position = 'fixed';
+                      textArea.style.opacity = '0';
+                      document.body.appendChild(textArea);
+                      textArea.select();
+                      try {
+                        document.execCommand('copy');
+                        svg.innerHTML = '<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />';
+                        button.className = 'text-green-400';
+                        setTimeout(() => {
+                          if (button && svg) {
+                            svg.innerHTML = originalPath;
+                            button.className = originalClassName;
+                          }
+                        }, 1500);
+                      } catch (fallbackErr) {
+                        console.error('Fallback copy failed:', fallbackErr);
+                      }
+                      document.body.removeChild(textArea);
+                    }
+                  }}
+                  className="text-gray-400 hover:text-gray-300 transition-colors p-0.5 rounded hover:bg-gray-700/30"
+                  style={{ 
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="複製區域名稱（會自動添加 FF14）"
+                >
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-4 w-4" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
               </div>
             )}
             {(x !== undefined && y !== undefined) && (
@@ -352,6 +426,82 @@ export default function MapModal({ isOpen, onClose, zoneName, x, y, npcName, map
                     <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                   </svg>
                   <span className="font-medium" style={{ textShadow: '0 1px 2px rgba(255, 255, 255, 0.6)' }}>{zoneName}</span>
+                  <button
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const textToCopy = `${zoneName} FF14`;
+                      const button = e.currentTarget;
+                      const svg = button?.querySelector('svg');
+                      
+                      if (!button || !svg) {
+                        console.error('Button or SVG element not found');
+                        return;
+                      }
+                      
+                      const originalPath = svg.innerHTML;
+                      const originalColor = button.style.color;
+                      
+                      try {
+                        await navigator.clipboard.writeText(textToCopy);
+                        // Visual feedback - show checkmark
+                        svg.innerHTML = '<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />';
+                        button.style.color = '#059669';
+                        setTimeout(() => {
+                          if (button && svg) {
+                            svg.innerHTML = originalPath;
+                            button.style.color = originalColor;
+                          }
+                        }, 1500);
+                      } catch (err) {
+                        console.error('Failed to copy:', err);
+                        // Fallback for older browsers
+                        const textArea = document.createElement('textarea');
+                        textArea.value = textToCopy;
+                        textArea.style.position = 'fixed';
+                        textArea.style.opacity = '0';
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        try {
+                          document.execCommand('copy');
+                          svg.innerHTML = '<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />';
+                          button.style.color = '#059669';
+                          setTimeout(() => {
+                            if (button && svg) {
+                              svg.innerHTML = originalPath;
+                              button.style.color = originalColor;
+                            }
+                          }, 1500);
+                        } catch (fallbackErr) {
+                          console.error('Fallback copy failed:', fallbackErr);
+                        }
+                        document.body.removeChild(textArea);
+                      }
+                    }}
+                    className="flex-shrink-0 p-0.5 hover:bg-amber-200/50 rounded transition-colors"
+                    style={{ 
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#2d1b0a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="複製區域名稱（會自動添加 FF14）"
+                  >
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-3.5 w-3.5" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      style={{ filter: 'drop-shadow(0 1px 1px rgba(255, 255, 255, 0.5))' }}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
                 </div>
               )}
               {(x !== undefined && y !== undefined) && (
