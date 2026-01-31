@@ -36,7 +36,7 @@ teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json|tw_job_abbr|object_nest
 teamcraft_git/libs/data/src/lib/extracts/extracts.json|extracts|object_complex|Item acquisition sources - { "itemId": { "id": itemId, "sources": [...] } }
 
 # NPC Data Files (for ObtainMethods)
-teamcraft_git/libs/data/src/lib/json/tw/tw-npc-titles.json|tw_npc_titles|object_nested|Traditional Chinese NPC titles - { "npcId": { "tw": "title" } }
+# Note: tw-npc-titles.json is loaded directly from JSON file, not synced to Supabase
 teamcraft_git/libs/data/src/lib/json/tw/tw-npcs.json|tw_npcs|object_nested|Traditional Chinese NPC names - { "npcId": { "tw": "name" } }
 teamcraft_git/libs/data/src/lib/json/npcs.json|npcs|object_complex|NPC data with locations - { "npcId": { "en": "name", "position": {...}, ... } }
 teamcraft_git/libs/data/src/lib/json/db/npcs-database-pages.json|npcs_database_pages|object_complex|NPC database pages with detailed info - { "npcId": { "title": {...}, "position": {...}, ... } }
@@ -45,7 +45,7 @@ teamcraft_git/libs/data/src/lib/json/db/npcs-database-pages.json|npcs_database_p
 teamcraft_git/libs/data/src/lib/json/tw/tw-shops.json|tw_shops|object_nested|Traditional Chinese shop names - { "shopId": { "tw": "name" } }
 teamcraft_git/libs/data/src/lib/json/shops.json|shops|object_complex|Shop data - { "shopId": { "npcId": ..., "requiredQuest": ..., ... } }
 teamcraft_git/libs/data/src/lib/json/shops-by-npc.json|shops_by_npc|object_complex|Shops organized by NPC - { "npcId": { "shopId": {...}, ... } }
-teamcraft_git/libs/data/src/lib/json/gil-shop-names.json|gil_shop_names|object_nested|Gil shop names - { "shopId": { "en": "name", ... } }
+# Note: gil-shop-names.json is not currently used - removed from sync list
 
 # Instance Data Files (for ObtainMethods)
 teamcraft_git/libs/data/src/lib/json/tw/tw-instances.json|tw_instances|object_nested|Traditional Chinese instance names - { "instanceId": { "tw": "name" } }
