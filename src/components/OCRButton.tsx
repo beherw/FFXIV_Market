@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 // Tesseract.js v5 類型聲明（從 CDN 載入）
@@ -777,6 +777,13 @@ interface OCRButtonProps {
 /**
  * OCR 按鈕組件
  */
+interface CropArea {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export default function OCRButton({
   onTextRecognized,
   disabled,
@@ -786,18 +793,96 @@ export default function OCRButton({
   const [progress, setProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [needsCrop, setNeedsCrop] = useState(false);
+  const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
+  const [originalImageSize, setOriginalImageSize] = useState<{ width: number; height: number } | null>(null);
+  const [cropArea, setCropArea] = useState<CropArea | null>(null);
+  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
+  const [cropStartPos, setCropStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [cropPreview, setCropPreview] = useState<string | null>(null);
+  const [isDraggingPreview, setIsDraggingPreview] = useState(false);
+  const [previewDragStart, setPreviewDragStart] = useState<{ x: number; y: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const cropContainerRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  // 裁剪圖片
+  const cropImage = useCallback(async (file: File, cropArea: CropArea): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        if (!imageRef.current || !cropContainerRef.current) {
+          reject(new Error('圖片元素不存在'));
+          return;
+        }
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d')!;
+        
+        // 獲取容器和圖片的實際尺寸
+        const containerRect = cropContainerRef.current.getBoundingClientRect();
+        const imgRect = imageRef.current.getBoundingClientRect();
+        
+        // 計算圖片在容器中的實際顯示位置和尺寸
+        const displayX = imgRect.left - containerRect.left;
+        const displayY = imgRect.top - containerRect.top;
+        const displayWidth = imgRect.width;
+        const displayHeight = imgRect.height;
+        
+        // 計算縮放比例
+        const scaleX = img.width / displayWidth;
+        const scaleY = img.height / displayHeight;
+        
+        // 將裁剪區域坐標轉換為相對於圖片的坐標
+        const relativeX = cropArea.x - displayX;
+        const relativeY = cropArea.y - displayY;
+        
+        // 計算實際裁剪區域（轉換為原始圖片坐標）
+        const actualX = Math.max(0, Math.min(img.width, relativeX * scaleX));
+        const actualY = Math.max(0, Math.min(img.height, relativeY * scaleY));
+        const actualWidth = Math.max(0, Math.min(img.width - actualX, cropArea.width * scaleX));
+        const actualHeight = Math.max(0, Math.min(img.height - actualY, cropArea.height * scaleY));
+        
+        if (actualWidth <= 0 || actualHeight <= 0) {
+          reject(new Error('裁剪區域無效'));
+          return;
+        }
+        
+        canvas.width = actualWidth;
+        canvas.height = actualHeight;
+        
+        ctx.drawImage(
+          img,
+          actualX, actualY, actualWidth, actualHeight,
+          0, 0, actualWidth, actualHeight
+        );
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const croppedFile = new File([blob], file.name, { type: file.type });
+            resolve(croppedFile);
+          } else {
+            reject(new Error('裁剪失敗'));
+          }
+        }, file.type);
+      };
+      img.onerror = () => reject(new Error('圖片載入失敗'));
+      img.src = URL.createObjectURL(file);
+    });
+  }, []);
 
   // 處理圖片識別
   const handleImageProcess = useCallback(
-    async (file: File) => {
+    async (file: File, skipCropCheck = false) => {
       console.log('[OCR DEBUG] handleImageProcess: 開始處理', {
         fileName: file?.name,
         fileSize: file?.size,
         fileType: file?.type,
         isImage: file?.type.startsWith('image/'),
+        skipCropCheck,
         timestamp: new Date().toISOString(),
       });
 
@@ -807,6 +892,21 @@ export default function OCRButton({
           timestamp: new Date().toISOString(),
         });
         alert('請選擇圖片檔案！');
+        return;
+      }
+
+      // 如果不是跳過裁剪檢查，直接進入裁剪模式
+      if (!skipCropCheck) {
+        // 所有圖片都進入裁剪模式
+        setNeedsCrop(true);
+        setOriginalImageFile(file);
+        // 載入圖片以獲取尺寸
+        const img = new Image();
+        img.onload = () => {
+          setOriginalImageSize({ width: img.width, height: img.height });
+          URL.revokeObjectURL(img.src);
+        };
+        img.src = URL.createObjectURL(file);
         return;
       }
 
@@ -844,6 +944,11 @@ export default function OCRButton({
           onTextRecognized(recognizedText);
           setIsModalOpen(false);
           setPreviewImage(null);
+          setNeedsCrop(false);
+          setOriginalImageFile(null);
+          setOriginalImageSize(null);
+          setCropArea(null);
+          setCropPreview(null);
           console.log('[OCR DEBUG] handleImageProcess: 關閉模態框並清除預覽', {
             timestamp: new Date().toISOString(),
           });
@@ -907,11 +1012,299 @@ export default function OCRButton({
       setIsModalOpen(false);
       setPreviewImage(null);
       setIsDragging(false);
+      setNeedsCrop(false);
+      setOriginalImageFile(null);
+      setOriginalImageSize(null);
+      setCropArea(null);
+      setCropPreview(null);
       console.log('[OCR DEBUG] handleCloseModal: 模態框已關閉', {
         timestamp: new Date().toISOString(),
       });
     }
   };
+
+  // 生成裁剪預覽
+  const generateCropPreview = useCallback(async (area: CropArea) => {
+    if (!previewImage || !imageRef.current || !cropContainerRef.current) return;
+    
+    try {
+      const img = new Image();
+      img.src = previewImage;
+      
+      await new Promise((resolve) => {
+        if (img.complete) {
+          resolve(null);
+        } else {
+          img.onload = () => resolve(null);
+        }
+      });
+
+      const containerRect = cropContainerRef.current.getBoundingClientRect();
+      const imgRect = imageRef.current.getBoundingClientRect();
+      
+      const displayX = imgRect.left - containerRect.left;
+      const displayY = imgRect.top - containerRect.top;
+      const displayWidth = imgRect.width;
+      const displayHeight = imgRect.height;
+      
+      const scaleX = img.width / displayWidth;
+      const scaleY = img.height / displayHeight;
+      
+      const relativeX = area.x - displayX;
+      const relativeY = area.y - displayY;
+      
+      const actualX = Math.max(0, Math.min(img.width, relativeX * scaleX));
+      const actualY = Math.max(0, Math.min(img.height, relativeY * scaleY));
+      const actualWidth = Math.max(0, Math.min(img.width - actualX, area.width * scaleX));
+      const actualHeight = Math.max(0, Math.min(img.height - actualY, area.height * scaleY));
+      
+      if (actualWidth <= 0 || actualHeight <= 0) {
+        setCropPreview(null);
+        return;
+      }
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      
+      // 放大倍數（2-3倍）
+      const zoomFactor = 2.5;
+      canvas.width = actualWidth * zoomFactor;
+      canvas.height = actualHeight * zoomFactor;
+      
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(
+        img,
+        actualX, actualY, actualWidth, actualHeight,
+        0, 0, canvas.width, canvas.height
+      );
+      
+      setCropPreview(canvas.toDataURL('image/png'));
+    } catch (error) {
+      console.error('[OCR DEBUG] generateCropPreview: 生成預覽失敗', error);
+      setCropPreview(null);
+    }
+  }, [previewImage]);
+
+  // 裁剪相關處理函數
+  const handleCropMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!imageRef.current || !cropContainerRef.current) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const rect = cropContainerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    setIsDraggingCrop(true);
+    setCropStartPos({ x, y });
+    setCropArea({ x, y, width: 0, height: 0 });
+    setCropPreview(null);
+  };
+
+  const handleCropMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDraggingCrop || !cropStartPos || !cropContainerRef.current) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const rect = cropContainerRef.current.getBoundingClientRect();
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+    
+    const x = Math.min(cropStartPos.x, currentX);
+    const y = Math.min(cropStartPos.y, currentY);
+    const width = Math.abs(currentX - cropStartPos.x);
+    const height = Math.abs(currentY - cropStartPos.y);
+    
+    const newArea = { x, y, width, height };
+    setCropArea(newArea);
+    
+    // 當有有效區域時生成預覽
+    if (width > 10 && height > 10) {
+      generateCropPreview(newArea);
+    } else {
+      setCropPreview(null);
+    }
+  };
+
+  const handleCropMouseUp = () => {
+    setIsDraggingCrop(false);
+    setCropStartPos(null);
+    // 確保最終預覽已生成
+    if (cropArea && cropArea.width > 10 && cropArea.height > 10) {
+      generateCropPreview(cropArea);
+    }
+  };
+
+  // 預覽區域拖曳處理
+  const handlePreviewMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cropArea || !previewRef.current || !cropContainerRef.current || !imageRef.current) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsDraggingPreview(true);
+    setPreviewDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handlePreviewMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDraggingPreview || !previewDragStart || !cropArea || !previewRef.current || !cropContainerRef.current || !imageRef.current) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // 計算拖曳距離
+    const deltaX = e.clientX - previewDragStart.x;
+    const deltaY = e.clientY - previewDragStart.y;
+    
+    // 計算預覽圖片和原始圖片的比例
+    // 預覽是2.5倍放大，所以需要除以2.5來還原到原始尺寸
+    const zoomFactor = 2.5;
+    const scaleX = deltaX / zoomFactor;
+    const scaleY = deltaY / zoomFactor;
+    
+    // 使用函數式更新確保使用最新的cropArea值
+    setCropArea((prevArea) => {
+      if (!prevArea || !cropContainerRef.current || !imageRef.current) return prevArea;
+      
+      // 計算原始圖片在容器中的顯示位置和尺寸
+      const containerRect = cropContainerRef.current.getBoundingClientRect();
+      const imgRect = imageRef.current.getBoundingClientRect();
+      
+      const displayX = imgRect.left - containerRect.left;
+      const displayY = imgRect.top - containerRect.top;
+      
+      // 更新裁剪區域位置（反向移動，因為預覽中往左拖，裁剪區域也往左）
+      const newX = prevArea.x - scaleX;
+      const newY = prevArea.y - scaleY;
+      
+      // 確保裁剪區域不會超出圖片範圍
+      const constrainedX = Math.max(displayX, Math.min(newX, displayX + imgRect.width - prevArea.width));
+      const constrainedY = Math.max(displayY, Math.min(newY, displayY + imgRect.height - prevArea.height));
+      
+      return {
+        ...prevArea,
+        x: constrainedX,
+        y: constrainedY,
+      };
+    });
+    
+    // 更新拖曳起始位置
+    setPreviewDragStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handlePreviewMouseUp = () => {
+    setIsDraggingPreview(false);
+    setPreviewDragStart(null);
+    // 更新預覽
+    if (cropArea && cropArea.width > 10 && cropArea.height > 10) {
+      generateCropPreview(cropArea);
+    }
+  };
+
+  // 當裁剪區域改變且不在拖動時，更新預覽
+  useEffect(() => {
+    if (!isDraggingCrop && cropArea && cropArea.width > 10 && cropArea.height > 10 && needsCrop) {
+      const timer = setTimeout(() => {
+        generateCropPreview(cropArea);
+      }, 100); // 防抖，避免頻繁更新
+      return () => clearTimeout(timer);
+    }
+  }, [cropArea, isDraggingCrop, needsCrop, generateCropPreview]);
+
+  // 確認裁剪（或使用原圖）
+  const handleConfirmCrop = useCallback(async () => {
+    if (!originalImageFile) {
+      alert('請先上傳圖片');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      
+      // 如果有選擇裁剪區域，使用裁剪後的圖片；否則使用原圖
+      if (cropArea && cropArea.width > 0 && cropArea.height > 0) {
+        const croppedFile = await cropImage(originalImageFile, cropArea);
+        setNeedsCrop(false);
+        setCropArea(null);
+        setCropPreview(null);
+        await handleImageProcess(croppedFile, true);
+      } else {
+        // 沒有選擇裁剪區域，直接使用原圖
+        setNeedsCrop(false);
+        setCropArea(null);
+        setCropPreview(null);
+        await handleImageProcess(originalImageFile, true);
+      }
+    } catch (error) {
+      console.error('[OCR DEBUG] handleConfirmCrop: 處理失敗', {
+        error,
+        timestamp: new Date().toISOString(),
+      });
+      alert('處理失敗，請重試');
+      setIsProcessing(false);
+    }
+  }, [originalImageFile, cropArea, cropImage, handleImageProcess]);
+
+  // 二度裁剪：將當前裁剪區域作為新圖片進行再次裁剪
+  const handleRecrop = useCallback(async () => {
+    if (!originalImageFile || !cropArea || cropArea.width === 0 || cropArea.height === 0) {
+      alert('請先選擇要裁剪的區域');
+      return;
+    }
+
+    try {
+      // 裁剪當前選擇的區域
+      const croppedFile = await cropImage(originalImageFile, cropArea);
+      
+      // 將裁剪後的圖片作為新的原始圖片
+      setOriginalImageFile(croppedFile);
+      
+      // 更新預覽圖片
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const newPreviewImage = e.target?.result as string;
+        setPreviewImage(newPreviewImage);
+        
+        // 重置裁剪區域，讓用戶可以重新選擇
+        setCropArea(null);
+        setCropPreview(null);
+        
+        // 獲取新圖片的尺寸
+        const img = new Image();
+        img.onload = () => {
+          // 無論圖片大小，都保持裁剪模式，讓用戶可以再次選擇裁剪區域
+          setOriginalImageSize({ width: img.width, height: img.height });
+          setNeedsCrop(true);
+          
+          // 確保圖片已載入到imageRef
+          setTimeout(() => {
+            if (imageRef.current) {
+              imageRef.current.src = newPreviewImage;
+            }
+          }, 100);
+        };
+        img.onerror = () => {
+          console.error('[OCR DEBUG] handleRecrop: 圖片載入失敗');
+          alert('圖片載入失敗，請重試');
+        };
+        img.src = newPreviewImage;
+      };
+      reader.onerror = () => {
+        console.error('[OCR DEBUG] handleRecrop: FileReader 失敗');
+        alert('讀取圖片失敗，請重試');
+      };
+      reader.readAsDataURL(croppedFile);
+    } catch (error) {
+      console.error('[OCR DEBUG] handleRecrop: 二度裁剪失敗', {
+        error,
+        timestamp: new Date().toISOString(),
+      });
+      alert('二度裁剪失敗，請重試');
+    }
+  }, [originalImageFile, cropArea, cropImage]);
 
   // 處理文件選擇
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1135,6 +1528,48 @@ export default function OCRButton({
     }
   };
 
+  // 注入簡單的邊框特效樣式
+  useEffect(() => {
+    const styleId = 'ocr-crop-border-style';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        .ocr-crop-container {
+          position: relative;
+          border: 2px solid #fbbf24 !important;
+          box-shadow: 0 0 10px rgba(251, 191, 36, 0.5),
+                      0 0 20px rgba(251, 191, 36, 0.3),
+                      inset 0 0 10px rgba(251, 191, 36, 0.1);
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
+
+  // 監聽 Enter 鍵觸發開始搜尋
+  useEffect(() => {
+    if (!isModalOpen || !needsCrop || isProcessing) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 如果用戶正在輸入框中輸入，不觸發
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        handleConfirmCrop();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isModalOpen, needsCrop, isProcessing, handleConfirmCrop]);
+
   // 當模態框打開/關閉時，鎖定/解鎖背景滾動
   useEffect(() => {
     if (isModalOpen) {
@@ -1155,11 +1590,142 @@ export default function OCRButton({
     }
   }, [isModalOpen]);
 
+  // 全局預覽拖曳處理（確保鼠標移出預覽區域時也能繼續拖曳）
+  useEffect(() => {
+    if (isDraggingPreview && previewDragStart) {
+      const handleGlobalMouseMove = (e: MouseEvent) => {
+        if (!cropContainerRef.current || !imageRef.current) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // 計算拖曳距離
+        const deltaX = e.clientX - previewDragStart.x;
+        const deltaY = e.clientY - previewDragStart.y;
+        
+        // 計算預覽圖片和原始圖片的比例
+        const zoomFactor = 2.5;
+        const scaleX = deltaX / zoomFactor;
+        const scaleY = deltaY / zoomFactor;
+        
+        // 使用函數式更新確保使用最新的cropArea值
+        setCropArea((prevArea) => {
+          if (!prevArea || !cropContainerRef.current || !imageRef.current) return prevArea;
+          
+          // 計算原始圖片在容器中的顯示位置和尺寸
+          const containerRect = cropContainerRef.current.getBoundingClientRect();
+          const imgRect = imageRef.current.getBoundingClientRect();
+          
+          const displayX = imgRect.left - containerRect.left;
+          const displayY = imgRect.top - containerRect.top;
+          
+          // 更新裁剪區域位置（反向移動）
+          const newX = prevArea.x - scaleX;
+          const newY = prevArea.y - scaleY;
+          
+          // 確保裁剪區域不會超出圖片範圍
+          const constrainedX = Math.max(displayX, Math.min(newX, displayX + imgRect.width - prevArea.width));
+          const constrainedY = Math.max(displayY, Math.min(newY, displayY + imgRect.height - prevArea.height));
+          
+          return {
+            ...prevArea,
+            x: constrainedX,
+            y: constrainedY,
+          };
+        });
+        
+        // 更新拖曳起始位置
+        setPreviewDragStart({ x: e.clientX, y: e.clientY });
+      };
+
+      const handleGlobalMouseUp = () => {
+        setIsDraggingPreview(false);
+        setPreviewDragStart(null);
+        // 更新預覽
+        setCropArea((prevArea) => {
+          if (prevArea && prevArea.width > 10 && prevArea.height > 10) {
+            generateCropPreview(prevArea);
+          }
+          return prevArea;
+        });
+      };
+
+      window.addEventListener('mousemove', handleGlobalMouseMove, { passive: false });
+      window.addEventListener('mouseup', handleGlobalMouseUp);
+
+      return () => {
+        window.removeEventListener('mousemove', handleGlobalMouseMove);
+        window.removeEventListener('mouseup', handleGlobalMouseUp);
+      };
+    }
+  }, [isDraggingPreview, previewDragStart, generateCropPreview]);
+
+  // 在裁剪模式下禁用拖曳滾動（但保留滾輪滾動）
+  useEffect(() => {
+    if (needsCrop && isModalOpen) {
+      const handleMouseDown = (e: MouseEvent) => {
+        // 只在非裁剪容器區域和非預覽區域禁用拖曳滾動
+        const target = e.target as HTMLElement;
+        if (cropContainerRef.current && !cropContainerRef.current.contains(target) &&
+            previewRef.current && !previewRef.current.contains(target)) {
+          // 禁用拖曳滾動
+          if (e.button === 0) {
+            e.preventDefault();
+          }
+        }
+      };
+
+      const handleTouchMove = (e: TouchEvent) => {
+        // 只在拖動裁剪時禁用觸摸移動
+        if (isDraggingCrop) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      };
+
+      const handleDragStart = (e: DragEvent) => {
+        // 禁用拖曳開始（防止拖動圖片等）
+        if (isDraggingCrop || (e.target as HTMLElement)?.tagName === 'IMG') {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      };
+
+      // 禁用拖曳滾動（按住滑鼠拖動）
+      document.addEventListener('mousedown', handleMouseDown, { passive: false });
+      // 禁用觸摸移動（防止移動端拖動）
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      // 禁用拖曳開始
+      window.addEventListener('dragstart', handleDragStart, { passive: false });
+      document.addEventListener('dragstart', handleDragStart, { passive: false });
+
+      return () => {
+        document.removeEventListener('mousedown', handleMouseDown);
+        window.removeEventListener('touchmove', handleTouchMove);
+        window.removeEventListener('dragstart', handleDragStart);
+        document.removeEventListener('dragstart', handleDragStart);
+      };
+    }
+  }, [needsCrop, isModalOpen, isDraggingCrop]);
+
   // 模態框內容
   const modalContent = isModalOpen ? (
     <div
       ref={modalRef}
       onClick={handleBackdropClick}
+      onMouseDown={(e) => {
+        // 禁用背景拖曳滾動
+        if (needsCrop && e.button === 0 && e.target === e.currentTarget) {
+          e.preventDefault();
+        }
+      }}
+      onTouchMove={(e) => {
+        // 只在拖動裁剪時禁用觸摸移動
+        if (needsCrop && isDraggingCrop) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
       style={{
         position: 'fixed',
         top: 0,
@@ -1176,12 +1742,24 @@ export default function OCRButton({
         justifyContent: 'center',
         padding: '1rem',
         animation: 'fadeIn 0.2s ease-out',
+        overflow: 'auto',
+        // 只在拖動裁剪時禁用觸摸操作
+        touchAction: needsCrop && isDraggingCrop ? 'none' : 'auto',
       }}
     >
       {/* 模態框主容器 */}
       <div
         className="bg-gradient-to-br from-slate-900 via-purple-900/30 to-slate-900 rounded-lg border-2 border-purple-500/50 shadow-2xl overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => {
+          // 禁用拖曳滾動
+          if (needsCrop && e.button === 0) {
+            const target = e.target as HTMLElement;
+            if (!cropContainerRef.current?.contains(target)) {
+              e.preventDefault();
+            }
+          }
+        }}
         style={{
           width: 'min(calc(100% - 2rem), 42rem)',
           minWidth: '20rem',
@@ -1190,9 +1768,9 @@ export default function OCRButton({
         }}
       >
         {/* 標題欄 */}
-        <div className="flex flex-col p-4 sm:p-6 border-b border-purple-500/30 flex-shrink-0">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg sm:text-xl font-semibold text-white">OCR 圖片識別</h2>
+        <div className="flex flex-col p-2 sm:p-3 border-b border-purple-500/30 flex-shrink-0">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-base sm:text-lg font-semibold text-white">OCR 圖片識別</h2>
             <button
               onClick={handleCloseModal}
               disabled={isProcessing}
@@ -1205,50 +1783,289 @@ export default function OCRButton({
             </button>
           </div>
           {/* 說明文字 */}
-          <div className="bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-lg p-3 text-center">
-            <p className="text-sm text-white font-medium mb-1">
-              <span className="text-purple-300">光之戰士</span>，懶得打字？
-            </p>
-            <p className="text-xs text-gray-300">
-              直接截圖物品名稱，讓 OCR 幫你識別！
-            </p>
-          </div>
+          {needsCrop ? (
+            <div className="bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-lg px-3 py-1.5">
+              <div className="flex items-center gap-3 text-center sm:text-left">
+                <p className="text-sm text-white font-medium whitespace-nowrap">請選擇要識別的區域</p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-lg px-3 py-1.5">
+              <div className="flex items-center gap-3 text-center sm:text-left">
+                <p className="text-sm text-white font-medium whitespace-nowrap">
+                  <span className="text-purple-300">光之戰士</span>，懶得打字？
+                </p>
+                <p className="text-xs text-gray-300 whitespace-nowrap">
+                  直接截圖物品名稱，讓 OCR 幫你識別！
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 內容區域（可滾動） */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0">
+        <div 
+          className={`flex-1 overflow-y-auto min-h-0 ${needsCrop ? 'p-2 sm:p-3' : 'p-4 sm:p-6'}`}
+          onMouseDown={(e) => {
+            // 禁用拖曳滾動（按住滑鼠拖動滾動）
+            if (needsCrop && e.button === 0) {
+              // 只在非裁剪容器區域禁用拖曳滾動
+              const target = e.target as HTMLElement;
+              if (!cropContainerRef.current?.contains(target)) {
+                e.preventDefault();
+              }
+            }
+          }}
+          style={{
+            // 禁用拖曳滾動，但保留滾輪滾動
+            userSelect: needsCrop ? 'none' : 'auto',
+          }}
+        >
           {/* 拖放區域 */}
           <div
             ref={dropZoneRef}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => !isProcessing && fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-lg p-6 sm:p-8 text-center cursor-pointer transition-all w-full box-border ${
-              isDragging
-                ? 'border-purple-400 bg-purple-900/20'
-                : 'border-purple-500/50 hover:border-purple-400 hover:bg-purple-900/10'
-            } ${isProcessing ? 'cursor-not-allowed opacity-50' : ''}`}
+            onClick={() => !isProcessing && !needsCrop && fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-lg text-center transition-all w-full box-border ${
+              needsCrop
+                ? 'border-transparent cursor-default p-0'
+                : `cursor-pointer p-6 sm:p-8 ${
+                    isDragging
+                      ? 'border-purple-400 bg-purple-900/20'
+                      : 'border-purple-500/50 hover:border-purple-400 hover:bg-purple-900/10'
+                  } ${isProcessing ? 'cursor-not-allowed opacity-50' : ''}`
+            }`}
           >
             {previewImage ? (
               /* 預覽圖片狀態 */
-              <div className="space-y-4 w-full">
-                <img
-                  src={previewImage}
-                  alt="預覽"
-                  className="max-w-full max-h-64 mx-auto rounded-lg shadow-lg object-contain"
-                />
-                {isProcessing && (
-                  /* 進度條 */
-                  <div className="space-y-2 w-full">
-                    <div className="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                      <div
-                        className="bg-purple-500 h-2.5 rounded-full transition-all duration-300"
-                        style={{ width: `${progress * 100}%` }}
-                      />
+              <div className={`w-full ${needsCrop ? 'space-y-2' : 'space-y-4'}`}>
+                {needsCrop ? (
+                  /* 裁剪模式 */
+                  <div className="w-full">
+                    <p className="text-xs text-gray-400 mb-1 text-center">原圖 - 拖動滑鼠選擇區域</p>
+                    <div
+                      ref={cropContainerRef}
+                      className="ocr-crop-container relative mx-auto rounded-lg bg-black/20"
+                      style={{ 
+                        maxWidth: '100%', 
+                        maxHeight: '60vh', 
+                        cursor: 'crosshair', 
+                        touchAction: 'none',
+                        overflow: 'hidden',
+                      }}
+                      onMouseDown={(e) => {
+                        // 允許裁剪區域的滑鼠操作
+                        handleCropMouseDown(e);
+                      }}
+                      onMouseMove={handleCropMouseMove}
+                      onMouseUp={handleCropMouseUp}
+                      onMouseLeave={handleCropMouseUp}
+                      onTouchStart={(e) => {
+                        if (e.touches.length === 1 && cropContainerRef.current) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const touch = e.touches[0];
+                          const rect = cropContainerRef.current.getBoundingClientRect();
+                          const syntheticEvent = {
+                            clientX: touch.clientX,
+                            clientY: touch.clientY,
+                            preventDefault: () => {},
+                            stopPropagation: () => {},
+                            currentTarget: cropContainerRef.current,
+                          } as React.MouseEvent<HTMLDivElement>;
+                          handleCropMouseDown(syntheticEvent);
+                        }
+                      }}
+                      onTouchMove={(e) => {
+                        if (isDraggingCrop && e.touches.length === 1 && cropContainerRef.current) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const touch = e.touches[0];
+                          const syntheticEvent = {
+                            clientX: touch.clientX,
+                            clientY: touch.clientY,
+                            preventDefault: () => {},
+                            stopPropagation: () => {},
+                            currentTarget: cropContainerRef.current,
+                          } as React.MouseEvent<HTMLDivElement>;
+                          handleCropMouseMove(syntheticEvent);
+                        }
+                      }}
+                      onTouchEnd={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleCropMouseUp();
+                      }}
+                    >
+                      <div className="relative overflow-hidden rounded-lg">
+                        <img
+                          ref={imageRef}
+                          src={previewImage}
+                          alt="預覽"
+                          className="max-w-full max-h-[60vh] mx-auto block object-contain select-none"
+                          draggable={false}
+                          style={{ userSelect: 'none', pointerEvents: 'none' }}
+                        />
+                      </div>
+                      {cropArea && cropArea.width > 0 && cropArea.height > 0 && (
+                        <>
+                          {/* 遮罩層 - 使用四個div來實現遮罩效果 */}
+                          <div
+                            className="absolute bg-black/60 pointer-events-none"
+                            style={{
+                              left: 0,
+                              top: 0,
+                              width: `${cropArea.x}px`,
+                              height: '100%',
+                            }}
+                          />
+                          <div
+                            className="absolute bg-black/60 pointer-events-none"
+                            style={{
+                              left: `${cropArea.x + cropArea.width}px`,
+                              top: 0,
+                              right: 0,
+                              height: '100%',
+                            }}
+                          />
+                          <div
+                            className="absolute bg-black/60 pointer-events-none"
+                            style={{
+                              left: `${cropArea.x}px`,
+                              top: 0,
+                              width: `${cropArea.width}px`,
+                              height: `${cropArea.y}px`,
+                            }}
+                          />
+                          <div
+                            className="absolute bg-black/60 pointer-events-none"
+                            style={{
+                              left: `${cropArea.x}px`,
+                              top: `${cropArea.y + cropArea.height}px`,
+                              width: `${cropArea.width}px`,
+                              bottom: 0,
+                            }}
+                          />
+                          {/* 裁剪選擇框 */}
+                          <div
+                            className="absolute border-2 border-ffxiv-gold/60 bg-ffxiv-gold/10 pointer-events-none"
+                            style={{
+                              left: `${cropArea.x}px`,
+                              top: `${cropArea.y}px`,
+                              width: `${cropArea.width}px`,
+                              height: `${cropArea.height}px`,
+                              boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+                            }}
+                          />
+                        </>
+                      )}
                     </div>
-                    <p className="text-sm text-gray-400">辨識中... {Math.round(progress * 100)}%</p>
+                    {/* 預覽和按鈕布局 */}
+                    {needsCrop && (
+                      <div className="mt-2 grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-4">
+                        {/* 中間：預覽框容器 - 獨立居中 */}
+                        <div className="flex-shrink-0 min-w-0 justify-self-center sm:col-start-2 sm:col-end-3">
+                          <div className="space-y-2">
+                            <p className="text-xs text-gray-400 text-center">
+                              {cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10
+                                ? '放大預覽（2.5x）- 可拖曳調整位置'
+                                : '放大預覽（2.5x）'}
+                            </p>
+                            <div className="flex justify-center">
+                              <div
+                                ref={previewRef}
+                                className="relative border-2 border-purple-400/50 rounded-lg overflow-hidden bg-black/30"
+                                onMouseDown={cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10 ? handlePreviewMouseDown : undefined}
+                                onMouseMove={cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10 ? handlePreviewMouseMove : undefined}
+                                onMouseUp={cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10 ? handlePreviewMouseUp : undefined}
+                                onMouseLeave={cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10 ? handlePreviewMouseUp : undefined}
+                                style={{
+                                  cursor: cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10
+                                    ? (isDraggingPreview ? 'grabbing' : 'grab')
+                                    : 'default',
+                                  userSelect: 'none',
+                                  minHeight: '192px', // 約 max-h-48 的高度
+                                  minWidth: '200px',
+                                  maxWidth: '100%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                {cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10 ? (
+                                  <img
+                                    src={cropPreview}
+                                    alt="裁剪預覽"
+                                    className="max-w-full max-h-48 block pointer-events-none select-none"
+                                    draggable={false}
+                                  />
+                                ) : (
+                                  <p className="text-xs text-gray-500 text-center px-4">請選擇要裁剪的區域</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        {/* 右側：按鈕 */}
+                        <div className="flex flex-col gap-2 flex-shrink-0 justify-center w-full sm:w-auto sm:col-start-3 sm:col-end-4 justify-self-center sm:justify-self-start">
+                          <button
+                            onClick={handleConfirmCrop}
+                            disabled={isProcessing}
+                            className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium whitespace-nowrap w-full sm:w-auto flex items-center gap-2 justify-center"
+                          >
+                            <span>開始搜尋</span>
+                            <kbd className="px-1 py-0.5 bg-white/20 rounded text-[10px] border border-white/30 font-mono leading-none">
+                              ⏎
+                            </kbd>
+                          </button>
+                          <button
+                            onClick={handleRecrop}
+                            disabled={!cropArea || cropArea.width === 0 || cropArea.height === 0 || isProcessing}
+                            className="px-4 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium whitespace-nowrap w-full sm:w-auto flex items-center gap-1.5 justify-center"
+                          >
+                            <span>二度裁剪</span>
+                            <kbd className="px-1 py-0.5 bg-white/20 rounded text-[10px] border border-white/30 leading-none flex items-center justify-center">
+                              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                                {/* 左上角：兩個重疊的 L 形 */}
+                                <path d="M2 2h6v6H2V2z" />
+                                <path d="M2 2h8M2 2v8" />
+                                {/* 右上角：L 形 */}
+                                <path d="M22 2h-6v6h6V2z" />
+                                {/* 左下角：L 形 */}
+                                <path d="M2 22h6v-6H2v6z" />
+                                {/* 右下角：兩個重疊的 L 形 */}
+                                <path d="M22 22h-6v-6h6v6z" />
+                                <path d="M22 22h-8M22 22v-8" />
+                              </svg>
+                            </kbd>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  /* 正常預覽 */
+                  <>
+                    <img
+                      src={previewImage}
+                      alt="預覽"
+                      className="max-w-full max-h-64 mx-auto rounded-lg shadow-lg object-contain"
+                    />
+                    {isProcessing && (
+                      /* 進度條 */
+                      <div className="space-y-2 w-full">
+                        <div className="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                          <div
+                            className="bg-purple-500 h-2.5 rounded-full transition-all duration-300"
+                            style={{ width: `${progress * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-sm text-gray-400">辨識中... {Math.round(progress * 100)}%</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             ) : (
@@ -1280,7 +2097,7 @@ export default function OCRButton({
                   </p>
                   <p className="text-xs text-gray-500 mb-2">支援 JPG、PNG、GIF 等圖片格式</p>
                   <p className="text-xs text-purple-300 font-medium">
-                    💡 懶得打字？截圖物品名稱試試吧！
+                    💡 截圖範圍越精確，效果越好
                   </p>
                 </div>
               </div>
@@ -1329,7 +2146,7 @@ export default function OCRButton({
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
-            <span className="hidden mid:inline whitespace-nowrap">OCR</span>
+            <span className="hidden mid:inline whitespace-nowrap">截圖搜尋</span>
           </>
         )}
       </button>

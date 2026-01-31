@@ -2811,8 +2811,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     </div>
                   )}
                   
-                  {/* NPCs list - compact display */}
-                  <div className="space-y-1.5">
+                  {/* NPCs list - horizontal compact display */}
+                  <div className="flex flex-wrap gap-1.5">
                     {group.npcs.map((npc, npcIndex) => {
                       const npcId = typeof npc === 'object' ? npc.id : npc;
                       const npcName = getNpcName(npcId);
@@ -2823,8 +2823,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       const hasLocation = npcCoords && npcCoords.x !== undefined && npcCoords.y !== undefined;
                       
                       return (
-                        <div key={`npc-${npcIndex}`} className="text-xs">
-                          <div className="text-gray-300 font-medium">{npcName}</div>
+                        <div key={`npc-${npcIndex}`} className="text-xs bg-slate-800/40 rounded px-2 py-1.5 border border-slate-700/30 flex-shrink-0 max-w-full">
+                          <div className="text-gray-300 font-medium whitespace-nowrap overflow-hidden text-ellipsis">{npcName}</div>
                           {zoneName && hasLocation && (
                             <button
                               onClick={(e) => {
@@ -2839,13 +2839,14 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                   mapId: npcMapId,
                                 });
                               }}
-                              className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors mt-0.5"
+                              className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors mt-0.5 text-[10px]"
+                              title={`${zoneName} (${npcCoords.x.toFixed(1)}, ${npcCoords.y.toFixed(1)})`}
                             >
-                              <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                               </svg>
-                              <span className="text-gray-400">
-                                {zoneName} ({npcCoords.x.toFixed(1)}, {npcCoords.y.toFixed(1)})
+                              <span className="text-gray-400 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">
+                                {zoneName}
                               </span>
                             </button>
                           )}
