@@ -51,14 +51,18 @@ declare global {
 }
 
 // OCR 配置 - 針對繁體中文優化，最大化識別度
+// 特別針對深色紋理背景+淺色文字的場景進行優化
 const CONFIG = {
   tesseractLang: 'chi_tra', // 只支援繁體中文
-  imageScale: 3.0, // 提高放大倍數以提升識別度
+  imageScale: 4.0, // 提高放大倍數以提升識別度（針對紋理背景場景，更大的尺寸有助於識別）
   threshold: 128,
   maxImageDimension: 2000,
   enableAdvancedProcessing: true, // 啟用進階處理以提升識別度
   enableAutoThreshold: true, // 啟用自動閾值
-  minConfidence: 5, // 最低信心度閾值（0-100），低於此值的單詞會被過濾掉（設為 5 以保留幾乎所有識別結果，只過濾極低把握度的結果）
+  minConfidence: 0, // 最低信心度閾值（0-100），低於此值的單詞會被過濾掉（設為 5 以保留幾乎所有識別結果，只過濾極低把握度的結果）
+  // 是否在 Tesseract 識別階段直接排除數字和符號（true=識別時排除，false=識別後過濾）
+  // 注意：設置為 true 可能會略微影響中文識別準確度（因為符號可能有助於斷句），但可以提高效率
+  excludeSymbolsAndNumbersAtRecognition: false, // 預設為 false（識別後過濾），推薦保持此設定以獲得最佳識別準確度
 };
 
 /**
@@ -246,7 +250,170 @@ function applyMedianFilter(imageData: ImageData, radius = 1): ImageData {
 }
 
 /**
+ * 高斯模糊（用於背景平滑）
+ */
+function applyGaussianBlur(imageData: ImageData, radius = 1): ImageData {
+  const { data, width, height } = imageData;
+  const newData = new Uint8ClampedArray(data);
+  
+  // 簡化的高斯核（3x3）
+  const kernel = [
+    [1, 2, 1],
+    [2, 4, 2],
+    [1, 2, 1]
+  ];
+  const kernelSum = 16;
+
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      let sum = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const idx = ((y + dy) * width + (x + dx)) * 4;
+          const weight = kernel[dy + 1][dx + 1];
+          sum += data[idx] * weight;
+        }
+      }
+      const idx = (y * width + x) * 4;
+      const value = Math.round(sum / kernelSum);
+      newData[idx] = value;
+      newData[idx + 1] = value;
+      newData[idx + 2] = value;
+    }
+  }
+
+  return new ImageData(newData, width, height);
+}
+
+/**
+ * 形態學開運算（去除小噪點）
+ */
+function applyMorphologyOpen(imageData: ImageData, kernelSize = 2): ImageData {
+  const { data, width, height } = imageData;
+  const newData = new Uint8ClampedArray(data);
+  
+  // 先進行腐蝕
+  const eroded = new Uint8ClampedArray(data);
+  for (let y = kernelSize; y < height - kernelSize; y++) {
+    for (let x = kernelSize; x < width - kernelSize; x++) {
+      let minVal = 255;
+      for (let dy = -kernelSize; dy <= kernelSize; dy++) {
+        for (let dx = -kernelSize; dx <= kernelSize; dx++) {
+          const idx = ((y + dy) * width + (x + dx)) * 4;
+          minVal = Math.min(minVal, data[idx]);
+        }
+      }
+      const idx = (y * width + x) * 4;
+      eroded[idx] = minVal;
+      eroded[idx + 1] = minVal;
+      eroded[idx + 2] = minVal;
+    }
+  }
+  
+  // 再進行膨脹
+  for (let y = kernelSize; y < height - kernelSize; y++) {
+    for (let x = kernelSize; x < width - kernelSize; x++) {
+      let maxVal = 0;
+      for (let dy = -kernelSize; dy <= kernelSize; dy++) {
+        for (let dx = -kernelSize; dx <= kernelSize; dx++) {
+          const idx = ((y + dy) * width + (x + dx)) * 4;
+          maxVal = Math.max(maxVal, eroded[idx]);
+        }
+      }
+      const idx = (y * width + x) * 4;
+      newData[idx] = maxVal;
+      newData[idx + 1] = maxVal;
+      newData[idx + 2] = maxVal;
+    }
+  }
+
+  return new ImageData(newData, width, height);
+}
+
+/**
+ * 銳化濾波（增強文字邊緣）
+ */
+function applySharpen(imageData: ImageData): ImageData {
+  const { data, width, height } = imageData;
+  const newData = new Uint8ClampedArray(data);
+  
+  // 銳化核
+  const kernel = [
+    [0, -1, 0],
+    [-1, 5, -1],
+    [0, -1, 0]
+  ];
+
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      let sum = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const idx = ((y + dy) * width + (x + dx)) * 4;
+          const weight = kernel[dy + 1][dx + 1];
+          sum += data[idx] * weight;
+        }
+      }
+      const idx = (y * width + x) * 4;
+      const value = Math.max(0, Math.min(255, sum));
+      newData[idx] = value;
+      newData[idx + 1] = value;
+      newData[idx + 2] = value;
+    }
+  }
+
+  return new ImageData(newData, width, height);
+}
+
+/**
+ * 自適應對比度增強（針對深色背景+淺色文字優化）
+ */
+function enhanceContrastForDarkBackground(imageData: ImageData): ImageData {
+  const { data, width, height } = imageData;
+  const newData = new Uint8ClampedArray(data);
+  
+  // 計算圖像的亮度分佈
+  let sum = 0;
+  let count = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    sum += gray;
+    count++;
+  }
+  const avgBrightness = sum / count;
+  
+  // 如果平均亮度較低（深色背景），使用更激進的對比度增強
+  const isDarkBackground = avgBrightness < 100;
+  const contrastFactor = isDarkBackground ? 2.5 : 1.8; // 深色背景使用更高對比度
+  const brightnessShift = isDarkBackground ? -20 : 0; // 深色背景稍微降低亮度以增強對比
+  
+  console.log('[OCR DEBUG] enhanceContrastForDarkBackground: 對比度增強', {
+    avgBrightness,
+    isDarkBackground,
+    contrastFactor,
+    brightnessShift,
+    timestamp: new Date().toISOString(),
+  });
+
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    
+    // 增強對比度
+    let enhanced = (gray - 128) * contrastFactor + 128 + brightnessShift;
+    enhanced = Math.max(0, Math.min(255, enhanced));
+    
+    newData[i] = enhanced;
+    newData[i + 1] = enhanced;
+    newData[i + 2] = enhanced;
+    newData[i + 3] = data[i + 3]; // 保留 alpha
+  }
+
+  return new ImageData(newData, width, height);
+}
+
+/**
  * 圖片前處理：放大 + 灰階 + 對比度 + 二值化 + 去噪
+ * 針對深色紋理背景+淺色文字進行優化
  */
 function preprocessImage(image: HTMLImageElement): Promise<HTMLImageElement> {
   console.log('[OCR DEBUG] preprocessImage: 開始圖片前處理', {
@@ -290,8 +457,44 @@ function preprocessImage(image: HTMLImageElement): Promise<HTMLImageElement> {
       timestamp: new Date().toISOString(),
     });
 
-    // 啟用進階處理（去噪）
+    // 步驟1: 先進行灰階化
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const gray = Math.round(
+        0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+      );
+      data[i] = gray;
+      data[i + 1] = gray;
+      data[i + 2] = gray;
+    }
+    ctx.putImageData(imageData, 0, 0);
+    imageData = ctx.getImageData(0, 0, width, height);
+
+    // 步驟2: 針對深色背景+淺色文字進行自適應對比度增強
+    console.log('[OCR DEBUG] preprocessImage: 開始自適應對比度增強', {
+      timestamp: new Date().toISOString(),
+    });
+    const beforeContrast = Date.now();
+    imageData = enhanceContrastForDarkBackground(imageData);
+    const afterContrast = Date.now();
+    console.log('[OCR DEBUG] preprocessImage: 對比度增強完成', {
+      duration: afterContrast - beforeContrast,
+      timestamp: new Date().toISOString(),
+    });
+
+    // 步驟3: 啟用進階處理（去噪和背景平滑）
     if (CONFIG.enableAdvancedProcessing) {
+      console.log('[OCR DEBUG] preprocessImage: 開始高斯模糊平滑背景', {
+        timestamp: new Date().toISOString(),
+      });
+      const beforeBlur = Date.now();
+      imageData = applyGaussianBlur(imageData, 1);
+      const afterBlur = Date.now();
+      console.log('[OCR DEBUG] preprocessImage: 高斯模糊完成', {
+        duration: afterBlur - beforeBlur,
+        timestamp: new Date().toISOString(),
+      });
+
       console.log('[OCR DEBUG] preprocessImage: 開始中值濾波去噪', {
         timestamp: new Date().toISOString(),
       });
@@ -304,9 +507,19 @@ function preprocessImage(image: HTMLImageElement): Promise<HTMLImageElement> {
       });
     }
 
-    const data = imageData.data;
+    // 步驟4: 銳化處理（增強文字邊緣）
+    console.log('[OCR DEBUG] preprocessImage: 開始銳化處理', {
+      timestamp: new Date().toISOString(),
+    });
+    const beforeSharpen = Date.now();
+    imageData = applySharpen(imageData);
+    const afterSharpen = Date.now();
+    console.log('[OCR DEBUG] preprocessImage: 銳化完成', {
+      duration: afterSharpen - beforeSharpen,
+      timestamp: new Date().toISOString(),
+    });
 
-    // 自動閾值
+    // 步驟5: 計算自動閾值
     let threshold = CONFIG.threshold;
     if (CONFIG.enableAutoThreshold) {
       console.log('[OCR DEBUG] preprocessImage: 開始計算 Otsu 閾值', {
@@ -327,36 +540,42 @@ function preprocessImage(image: HTMLImageElement): Promise<HTMLImageElement> {
       });
     }
 
-    // 灰階 + 對比度提升 + 二值化
-    const contrast = 1.8; // 提高對比度以提升識別度
-    console.log('[OCR DEBUG] preprocessImage: 開始灰階化、對比度提升、二值化', {
-      contrast,
+    // 步驟6: 二值化
+    console.log('[OCR DEBUG] preprocessImage: 開始二值化', {
       threshold,
-      pixelCount: data.length / 4,
+      pixelCount: imageData.data.length / 4,
       timestamp: new Date().toISOString(),
     });
 
-    const beforeProcessing = Date.now();
-    for (let i = 0; i < data.length; i += 4) {
-      const gray = Math.round(
-        0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-      );
-
-      let enhanced = (gray - 128) * contrast + 128;
-      enhanced = Math.max(0, Math.min(255, enhanced));
-
-      const binary = enhanced > threshold ? 255 : 0;
-
-      data[i] = binary;
-      data[i + 1] = binary;
-      data[i + 2] = binary;
+    const beforeBinarization = Date.now();
+    const processedData = imageData.data;
+    for (let i = 0; i < processedData.length; i += 4) {
+      const gray = processedData[i];
+      const binary = gray > threshold ? 255 : 0;
+      processedData[i] = binary;
+      processedData[i + 1] = binary;
+      processedData[i + 2] = binary;
     }
-    const afterProcessing = Date.now();
+    const afterBinarization = Date.now();
 
-    console.log('[OCR DEBUG] preprocessImage: 像素處理完成', {
-      duration: afterProcessing - beforeProcessing,
+    console.log('[OCR DEBUG] preprocessImage: 二值化完成', {
+      duration: afterBinarization - beforeBinarization,
       timestamp: new Date().toISOString(),
     });
+
+    // 步驟7: 形態學開運算（去除小噪點，連接斷裂的文字）
+    if (CONFIG.enableAdvancedProcessing) {
+      console.log('[OCR DEBUG] preprocessImage: 開始形態學開運算', {
+        timestamp: new Date().toISOString(),
+      });
+      const beforeMorphology = Date.now();
+      imageData = applyMorphologyOpen(imageData, 1);
+      const afterMorphology = Date.now();
+      console.log('[OCR DEBUG] preprocessImage: 形態學開運算完成', {
+        duration: afterMorphology - beforeMorphology,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     ctx.putImageData(imageData, 0, 0);
 
@@ -439,14 +658,67 @@ async function performOCR(
     });
 
     // 設定 OCR 參數以提升繁體中文識別度
+    // 根據配置決定是否在識別階段直接排除數字和符號
+    let chineseCharWhitelist = '';
+    
+    if (CONFIG.excludeSymbolsAndNumbersAtRecognition) {
+      // 方案：在識別階段直接排除數字和符號
+      // 構建繁體中文字符白名單（Unicode範圍：\u3400-\u4DBF 和 \u4E00-\u9FFF）
+      // 注意：由於中文字符數量龐大（數萬個），完整列出所有字符不現實
+      // 這裡我們採用一個實用方案：設置 whitelist 為空字符串，但通過其他參數來減少數字識別
+      // 實際上，Tesseract 在使用中文語言模型時，會優先識別中文字符
+      // 設置 classify_bln_numeric_mode 為 '0' 可以禁用數字模式，減少數字誤識別
+      
+      // 如果確實需要嚴格限制，可以構建一個包含常用中文字符的 whitelist
+      // 但這可能會影響識別準確度，因為完全排除符號可能影響斷句理解
+      // 因此這裡保持為空字符串，主要通過後處理過濾來排除數字和符號
+      
+      // 可選的嚴格模式（如果確實需要，可以取消註釋）：
+      // const commonChineseChars: string[] = [];
+      // // 生成基本漢字範圍（\u4E00-\u9FFF，共20992個字符）
+      // for (let i = 0x4E00; i <= 0x9FFF; i++) {
+      //   commonChineseChars.push(String.fromCharCode(i));
+      // }
+      // // 生成擴展A範圍（\u3400-\u4DBF）
+      // for (let i = 0x3400; i <= 0x4DBF; i++) {
+      //   commonChineseChars.push(String.fromCharCode(i));
+      // }
+      // chineseCharWhitelist = commonChineseChars.join('');
+      
+      // 當前採用折中方案：保持為空字符串，通過 classify_bln_numeric_mode 減少數字識別
+      // 數字和符號會在後處理階段通過 filterChineseOnly 函數過濾
+      chineseCharWhitelist = '';
+      
+      console.log('[OCR DEBUG] performOCR: 啟用識別階段排除模式（通過參數優化）', {
+        whitelistLength: chineseCharWhitelist.length,
+        note: '實際排除將在後處理階段進行',
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      // 方案：識別所有字符，在後處理階段過濾（推薦，準確度更高）
+      chineseCharWhitelist = '';
+      console.log('[OCR DEBUG] performOCR: 使用識別後過濾模式（推薦）', {
+        timestamp: new Date().toISOString(),
+      });
+    }
+    
     const params = {
-      tessedit_char_whitelist: '', // 不限制字符，允許所有繁體中文字符
+      tessedit_char_whitelist: chineseCharWhitelist, // 空字符串 = 不限制字符（讓 Tesseract 使用語言模型的默認字符集）
       tessedit_pageseg_mode: '6', // 統一文本塊
       // 提升識別準確度的參數
       tessedit_ocr_engine_mode: '1', // LSTM OCR Engine（更準確）
-      classify_bln_numeric_mode: '0', // 不限制為數字模式
+      classify_bln_numeric_mode: '0', // 不限制為數字模式（0=禁用數字模式，有助於減少數字誤識別）
       textord_min_linesize: '2.5', // 最小行尺寸
       classify_enable_learning: '0', // 禁用學習模式以保持一致性
+      // 針對深色背景+淺色文字的優化參數
+      tessedit_char_blacklist: '', // 不排除任何字符
+      textord_tabvector_vertical_gap_factor: '0.5', // 減少垂直間隙因子，有助於識別緊密排列的文字
+      textord_min_blob_size_fraction: '0.1', // 降低最小blob尺寸分數，識別更小的文字
+      textord_excess_blob_size: '1.3', // 增加blob尺寸容忍度
+      // 提升文字識別敏感度
+      textord_really_old_xheight: '0.9', // 降低x高度閾值，識別更小的文字
+      classify_adapt_proto_threshold: '0.5', // 降低原型適應閾值，提高識別敏感度
+      classify_adapt_feature_threshold: '0.5', // 降低特徵適應閾值
     };
     console.log('[OCR DEBUG] performOCR: 設定 OCR 參數', {
       params,

@@ -3025,7 +3025,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       <div key={monsterIndex} className="flex items-start gap-2 text-sm">
                         <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <img src="https://xivapi.com/c/BNpcName.png" alt="Monster" className="w-7 h-7" />
                           <span className="text-white">{monster.mobName}</span>
                         </div>
                           {monster.levelRange && (
@@ -4223,7 +4222,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   <div key={leveIndex} className="w-[320px] flex-grow-0 bg-slate-900/50 rounded p-3 min-h-[100px] flex flex-col gap-2">
                     {/* Leve name with wiki link - same style as FATE */}
                     <div className="flex items-center gap-2 mb-1">
-                      <img src="https://xivapi.com/c/Leve.png" alt="Levequest" className="w-9 h-9 object-contain flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         {wikiUrl ? (
                           <a
