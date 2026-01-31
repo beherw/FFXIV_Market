@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://beherw.github.io/FFXIV_Market/sitemap.xml
+
+# 允許所有爬蟲索引
+Disallow: /api/
+Disallow: /_next/
+Disallow: /static/

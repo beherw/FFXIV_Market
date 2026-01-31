@@ -13,6 +13,7 @@ import { searchItems, getSimplifiedChineseName, getItemById } from '../services/
 import { loadRecipeDatabase, loadRecipesByJobAndLevel } from '../services/recipeDatabase';
 import { getTwJobAbbr, getTwItemUICategories, getTwItems, getIlvlsByIds, getRaritiesByIds, getEquipmentByIds, getEquipmentByJobs, getUICategoriesByIds, getTwItemById, getTwItemsByIds, getItemIdsByCategories, getItemIdsByIlvlRange } from '../services/supabaseData';
 import { APP_VERSION } from '../constants/version';
+import { generateItemUrl } from '../utils/urlSlug';
 
 export default function AdvancedSearch({
   addToast,
@@ -4377,7 +4378,8 @@ export default function AdvancedSearch({
                       params.set('server', selectedServerOption);
                     }
                     const queryString = params.toString();
-                    const itemUrl = `/item/${item.id}${queryString ? '?' + queryString : ''}`;
+                    const itemUrlPath = generateItemUrl(item.id, item.nameTW || item.name || 'item');
+                    const itemUrl = `${itemUrlPath}${queryString ? '?' + queryString : ''}`;
                     
                     onItemSelect(item);
                     

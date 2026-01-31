@@ -5,6 +5,7 @@ import { getItemById } from '../services/itemDatabase';
 import { getInternalUrl } from '../utils/internalUrl.js';
 import { getAggregatedMarketData } from '../services/universalis';
 import { getTwItemsByIds } from '../services/supabaseData';
+import { generateItemUrl } from '../utils/urlSlug';
 
 /**
  * Format number with rounding to integer and locale string
@@ -1495,13 +1496,15 @@ export default function CraftingTree({
           onItemSelect(item);
         } else {
           // Open in new tab
-          const url = `${window.location.origin}${getInternalUrl(`/item/${itemId}`)}`;
+          const itemUrl = generateItemUrl(itemId, 'item');
+          const url = `${window.location.origin}${getInternalUrl(itemUrl)}`;
           window.open(url, '_blank', 'noopener,noreferrer');
         }
       });
     } else {
       // Open in new tab
-      const url = `${window.location.origin}${getInternalUrl(`/item/${itemId}`)}`;
+      const itemUrl = generateItemUrl(itemId, 'item');
+      const url = `${window.location.origin}${getInternalUrl(itemUrl)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   }, [onItemSelect]);

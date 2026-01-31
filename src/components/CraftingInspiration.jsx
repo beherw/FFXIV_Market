@@ -17,6 +17,7 @@ import { getInternalUrl } from '../utils/internalUrl.js';
 import axios from 'axios';
 import { getTwJobAbbr, getIlvlsByIds } from '../services/supabaseData';
 import { APP_VERSION } from '../constants/version';
+import { generateItemUrl } from '../utils/urlSlug';
 
 export default function CraftingJobPriceChecker({ 
   addToast, 
@@ -1231,7 +1232,8 @@ export default function CraftingJobPriceChecker({
             }}
             isShowUntradeable={showUntradeable}
             onSelect={(item) => {
-              window.open(`${window.location.origin}${getInternalUrl(`/item/${item.id}`)}`, '_blank', 'noopener,noreferrer');
+              const itemUrl = generateItemUrl(item.id, item.nameTW || item.name || 'item');
+              window.open(`${window.location.origin}${getInternalUrl(itemUrl)}`, '_blank', 'noopener,noreferrer');
             }}
           />
           </div>

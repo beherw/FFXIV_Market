@@ -1,6 +1,7 @@
 // Item table component - replicates ObservableHQ's item selection table
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ItemImage from './ItemImage';
+import { generateItemUrl } from '../utils/urlSlug';
 
 // Lazy load ilvls data
 let ilvlsDataRef = null;
@@ -956,7 +957,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                   if (e.button === 1) {
                     e.preventDefault();
                     // Use relative path to ensure proper routing in SPA
-                    const url = `/item/${item.id}`;
+                    const url = generateItemUrl(item.id, item.nameTW || item.name || 'item');
                     window.open(url, '_blank', 'noopener,noreferrer');
                   }
                 }}

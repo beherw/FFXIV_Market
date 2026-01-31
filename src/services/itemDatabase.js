@@ -1134,8 +1134,9 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
 
 /**
  * Get item by ID using targeted database query (efficient - doesn't load all items)
+ * Tries to get Traditional Chinese name first, falls back to other languages if not available
  * @param {number} itemId - Item ID
- * @returns {Promise<Object|null>} - Item object or null if not found
+ * @returns {Promise<Object|null>} - Item object or null if not found in any language
  */
 export async function getItemById(itemId) {
   if (!itemId || itemId <= 0) {
@@ -1144,28 +1145,63 @@ export async function getItemById(itemId) {
 
   // Use targeted query instead of loading all items
   try {
-    const { getTwItemById } = await import('./supabaseData');
-    const itemData = await getTwItemById(itemId);
+    const { getTwItemById, getLanguageItemById } = await import('./supabaseData');
     
-    if (!itemData) {
-      return null;
+    // Try to get Traditional Chinese name first
+    const twItemData = await getTwItemById(itemId);
+    
+    if (twItemData && twItemData.tw) {
+      // Found Traditional Chinese name
+      const cleanName = twItemData.tw.replace(/^["']|["']$/g, '').trim();
+      return {
+        id: itemId,
+        name: cleanName,
+        nameTW: cleanName,
+        searchLanguageName: null,
+        itemLevel: '',
+        shopPrice: '',
+        inShop: false,
+        canBeHQ: true,
+        isTradable: true,
+      };
     }
     
-    const itemName = itemData.tw || '';
+    // No Traditional Chinese name found, try other languages in order: EN, JA, KO, ZH, DE, FR
+    const languageFallbacks = [
+      { table: 'en_items', column: 'en' },
+      { table: 'ja_items', column: 'ja' },
+      { table: 'ko_items', column: 'ko' },
+      { table: 'cn_items', column: 'zh' },
+      { table: 'de_items', column: 'de' },
+      { table: 'fr_items', column: 'fr' },
+    ];
     
-    // Create item object matching expected format
-    const cleanName = itemName.replace(/^["']|["']$/g, '').trim();
-    return {
-      id: itemId,
-      name: cleanName,
-      nameTW: cleanName, // TW name (same as name for getItemById since it's always TW)
-      searchLanguageName: null, // No search language name for direct ID lookup
-      itemLevel: '',
-      shopPrice: '',
-      inShop: false,
-      canBeHQ: true,
-      isTradable: true,
-    };
+    for (const lang of languageFallbacks) {
+      try {
+        const langItemData = await getLanguageItemById(itemId, lang.table, lang.column);
+        if (langItemData && langItemData[lang.column]) {
+          // Found name in this language
+          const cleanName = langItemData[lang.column].replace(/^["']|["']$/g, '').trim();
+          return {
+            id: itemId,
+            name: cleanName,
+            nameTW: null, // No Traditional Chinese name available
+            searchLanguageName: cleanName, // Store the found language name
+            itemLevel: '',
+            shopPrice: '',
+            inShop: false,
+            canBeHQ: true,
+            isTradable: true,
+          };
+        }
+      } catch (err) {
+        // Continue to next language if this one fails
+        continue;
+      }
+    }
+    
+    // No name found in any language
+    return null;
   } catch (error) {
     console.error(`Error fetching item ${itemId} from Supabase:`, error);
     // Don't fallback to full database load - it's too expensive

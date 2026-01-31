@@ -13,6 +13,7 @@ import { loadRecipeDatabase } from '../services/recipeDatabase';
 import { getMarketableItems } from '../services/universalis';
 import { getItemById, getSimplifiedChineseName } from '../services/itemDatabase';
 import { getInternalUrl } from '../utils/internalUrl.js';
+import { generateItemUrl } from '../utils/urlSlug';
 import axios from 'axios';
 import twJobAbbrData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json';
 
@@ -1109,7 +1110,8 @@ export default function CraftingJobPriceChecker({
               <ItemTable
                 items={searchResults}
                 onSelect={(item) => {
-                  window.open(`${window.location.origin}${getInternalUrl(`/item/${item.id}`)}`, '_blank', 'noopener,noreferrer');
+                  const itemUrl = generateItemUrl(item.id, item.nameTW || item.name || 'item');
+                  window.open(`${window.location.origin}${getInternalUrl(itemUrl)}`, '_blank', 'noopener,noreferrer');
                 }}
                 selectedItem={null}
                 marketableItems={marketableItems}

@@ -27,6 +27,9 @@ import TopBar from './components/TopBar';
 import NotFound from './components/NotFound';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { APP_VERSION } from './constants/version';
+import { generateItemSlug, generateItemUrl } from './utils/urlSlug';
+import { detectLanguage, getItemNameForUrl } from './utils/itemLanguage';
+import ItemSEO from './components/ItemSEO';
 
 // Lazy load route-based components with error handling
 const createLazyComponent = (importFn, componentName) => {
@@ -600,11 +603,13 @@ function App() {
   // Connection is initialized in main.jsx before React renders - no need to duplicate here
 
   // Update document title based on selected item
+  // Note: This will override the fallback title in index.html
   useEffect(() => {
-    if (selectedItem && selectedItem.name) {
-      document.title = `${selectedItem.name}-繁中市場`;
+    if (selectedItem) {
+      const itemName = selectedItem.nameTW || selectedItem.name || '未知物品';
+      document.title = `${itemName} - 繁中XIV市場 - FF14 Market`;
     } else {
-      document.title = 'FFXIV繁中市場小屋';
+      document.title = '繁中XIV市場 - FF14 Market - 貝爾的市場小屋';
     }
   }, [selectedItem]);
 
@@ -1992,20 +1997,35 @@ function App() {
     selectedItemRef.current = item;
     
     addItemToHistory(item.id);
-    navigate(`/item/${item.id}`, { replace: false });
+    // Detect language preference and generate URL with appropriate language name
+    const preferredLang = detectLanguage(searchParams);
+    const itemNameForUrl = getItemNameForUrl(item, preferredLang);
+    const itemUrl = generateItemUrl(item.id, itemNameForUrl);
+    
+    // Preserve server selection in URL if present
+    const serverParam = searchParams.get('server');
+    const worldParam = searchParams.get('world');
+    const finalUrl = serverParam 
+      ? `${itemUrl}${worldParam ? `?server=${encodeURIComponent(serverParam)}&world=${encodeURIComponent(worldParam)}` : `?server=${encodeURIComponent(serverParam)}`}`
+      : itemUrl;
+    
+    navigate(finalUrl, { replace: false });
     
     addToast(`已選擇: ${item.name}`, 'info');
-  }, [addToast, navigate]);
+  }, [addToast, navigate, searchParams]);
 
   // Initialize from URL on mount and when URL changes
   // SIMPLIFIED: History page now uses useHistory hook, no complex protection needed
   useEffect(() => {
     // Extract itemId early to check if we need to wait for server data
+    // Support both /item/{id} and /item/{id}/{slug} formats
     let itemId = params.id;
+    let urlSlug = params.slug;
     if (!itemId && location.pathname.startsWith('/item/')) {
-      const match = location.pathname.match(/^\/item\/(\d+)$/);
+      const match = location.pathname.match(/^\/item\/(\d+)(?:\/(.+))?$/);
       if (match) {
         itemId = match[1];
+        urlSlug = match[2]; // May be undefined for old format
       }
     }
     
@@ -2085,9 +2105,35 @@ function App() {
       const id = parseInt(itemId, 10);
       if (id && !isNaN(id)) {
         const currentSelectedItem = selectedItemRef.current;
+        // Detect language preference for URL generation
+        const preferredLang = detectLanguage(searchParams);
+        
         if (!currentSelectedItem || currentSelectedItem.id !== id) {
           const foundItem = searchResultsRef.current.find(item => item.id === id);
           if (foundItem) {
+            // Generate correct slug using preferred language name
+            const itemNameForUrl = getItemNameForUrl(foundItem, preferredLang);
+            const correctSlug = generateItemSlug(itemNameForUrl);
+            const decodedUrlSlug = urlSlug ? decodeURIComponent(urlSlug) : null;
+            
+            // Always redirect if slug is missing (only ID in URL) or doesn't match
+            // This ensures /item/12345 redirects to /item/12345/物品名稱
+            if (!urlSlug || !decodedUrlSlug || decodedUrlSlug !== correctSlug) {
+              const correctUrl = generateItemUrl(id, itemNameForUrl);
+              // Preserve server selection and other query params in URL
+              const serverParam = searchParams.get('server');
+              const worldParam = searchParams.get('world');
+              const langParam = searchParams.get('lang');
+              const queryParams = new URLSearchParams();
+              if (serverParam) queryParams.set('server', serverParam);
+              if (worldParam) queryParams.set('world', worldParam);
+              if (langParam) queryParams.set('lang', langParam);
+              const queryString = queryParams.toString();
+              const finalUrl = queryString ? `${correctUrl}?${queryString}` : correctUrl;
+              navigate(finalUrl, { replace: true });
+              return; // Exit early after redirect
+            }
+            
             setSelectedItem(foundItem);
             selectedItemRef.current = foundItem;
           } else {
@@ -2100,6 +2146,32 @@ function App() {
                   return;
                 }
                 if (item) {
+                  // Generate correct slug using preferred language name
+                  // Note: getItemById only returns TW name, so we'll use that
+                  // In the future, we can enhance getItemById to fetch other languages
+                  const itemNameForUrl = getItemNameForUrl(item, preferredLang);
+                  const correctSlug = generateItemSlug(itemNameForUrl);
+                  const decodedUrlSlug = urlSlug ? decodeURIComponent(urlSlug) : null;
+                  
+                  // Always redirect if slug is missing (only ID in URL) or doesn't match
+                  // This ensures /item/12345 redirects to /item/12345/物品名稱
+                  if (!urlSlug || !decodedUrlSlug || decodedUrlSlug !== correctSlug) {
+                    const correctUrl = generateItemUrl(id, itemNameForUrl);
+                    // Preserve server selection and other query params in URL
+                    const serverParam = searchParams.get('server');
+                    const worldParam = searchParams.get('world');
+                    const langParam = searchParams.get('lang');
+                    const queryParams = new URLSearchParams();
+                    if (serverParam) queryParams.set('server', serverParam);
+                    if (worldParam) queryParams.set('world', worldParam);
+                    if (langParam) queryParams.set('lang', langParam);
+                    const queryString = queryParams.toString();
+                    const finalUrl = queryString ? `${correctUrl}?${queryString}` : correctUrl;
+                    navigate(finalUrl, { replace: true });
+                    setIsLoadingItemFromURL(false);
+                    return; // Exit early after redirect
+                  }
+                  
                   setSelectedItem(item);
                   selectedItemRef.current = item;
                   setIsLoadingItemFromURL(false);
@@ -2118,6 +2190,28 @@ function App() {
                 addToast('載入物品失敗', 'error');
                 navigate('/');
               });
+          }
+        } else {
+          // Item already loaded, but check if slug needs updating
+          const itemNameForUrl = getItemNameForUrl(currentSelectedItem, preferredLang);
+          const correctSlug = generateItemSlug(itemNameForUrl);
+          const decodedUrlSlug = urlSlug ? decodeURIComponent(urlSlug) : null;
+          
+          // Always redirect if slug is missing (only ID in URL) or doesn't match
+          // This ensures /item/12345 redirects to /item/12345/物品名稱
+          if (!urlSlug || !decodedUrlSlug || decodedUrlSlug !== correctSlug) {
+            const correctUrl = generateItemUrl(id, itemNameForUrl);
+            // Preserve server selection and other query params in URL
+            const serverParam = searchParams.get('server');
+            const worldParam = searchParams.get('world');
+            const langParam = searchParams.get('lang');
+            const queryParams = new URLSearchParams();
+            if (serverParam) queryParams.set('server', serverParam);
+            if (worldParam) queryParams.set('world', worldParam);
+            if (langParam) queryParams.set('lang', langParam);
+            const queryString = queryParams.toString();
+            const finalUrl = queryString ? `${correctUrl}?${queryString}` : correctUrl;
+            navigate(finalUrl, { replace: true });
           }
         }
       }
@@ -2265,7 +2359,17 @@ function App() {
                   setSelectedItem(item);
                   selectedItemRef.current = item;
                   addItemToHistory(item.id);
-                  navigate(`/item/${item.id}`, { replace: true });
+                  // Use preferred language for URL
+                  const preferredLang = detectLanguage(searchParams);
+                  const itemNameForUrl = getItemNameForUrl(item, preferredLang);
+                  const itemUrl = generateItemUrl(item.id, itemNameForUrl);
+                  // Preserve server selection in URL
+                  const serverParam = searchParams.get('server');
+                  const worldParam = searchParams.get('world');
+                  const finalUrl = serverParam 
+                    ? `${itemUrl}${worldParam ? `?server=${encodeURIComponent(serverParam)}&world=${encodeURIComponent(worldParam)}` : `?server=${encodeURIComponent(serverParam)}`}`
+                    : itemUrl;
+                  navigate(finalUrl, { replace: true });
                   addToast(`已選擇: ${item.name}`, 'info');
                 }
               }
@@ -2296,7 +2400,17 @@ function App() {
                   setSelectedItem(item);
                   selectedItemRef.current = item;
                   addItemToHistory(item.id);
-                  navigate(`/item/${item.id}`, { replace: true });
+                  // Use preferred language for URL
+                  const preferredLang = detectLanguage(searchParams);
+                  const itemNameForUrl = getItemNameForUrl(item, preferredLang);
+                  const itemUrl = generateItemUrl(item.id, itemNameForUrl);
+                  // Preserve server selection in URL
+                  const serverParam = searchParams.get('server');
+                  const worldParam = searchParams.get('world');
+                  const finalUrl = serverParam 
+                    ? `${itemUrl}${worldParam ? `?server=${encodeURIComponent(serverParam)}&world=${encodeURIComponent(worldParam)}` : `?server=${encodeURIComponent(serverParam)}`}`
+                    : itemUrl;
+                  navigate(finalUrl, { replace: true });
                   addToast(`已選擇: ${item.name}`, 'info');
                 }
               } else {
@@ -2389,7 +2503,7 @@ function App() {
     
     let currentItemId = params.id;
     if (!currentItemId && location.pathname.startsWith('/item/')) {
-      const match = location.pathname.match(/^\/item\/(\d+)$/);
+      const match = location.pathname.match(/^\/item\/(\d+)(?:\/(.+))?$/);
       if (match) {
         currentItemId = match[1];
       }
@@ -2552,7 +2666,17 @@ function App() {
           setSelectedItem(item);
           selectedItemRef.current = item;
           addItemToHistory(item.id);
-          navigate(`/item/${item.id}`, { replace: true });
+          // Use preferred language for URL
+          const preferredLang = detectLanguage(searchParams);
+          const itemNameForUrl = getItemNameForUrl(item, preferredLang);
+          const itemUrl = generateItemUrl(item.id, itemNameForUrl);
+          // Preserve server selection in URL
+          const serverParam = searchParams.get('server');
+          const worldParam = searchParams.get('world');
+          const finalUrl = serverParam 
+            ? `${itemUrl}${worldParam ? `?server=${encodeURIComponent(serverParam)}&world=${encodeURIComponent(worldParam)}` : `?server=${encodeURIComponent(serverParam)}`}`
+            : itemUrl;
+          navigate(finalUrl, { replace: true });
           addToast(`已選擇: ${item.name}`, 'info');
         }
       }
@@ -3040,9 +3164,9 @@ function App() {
         pathname === '/search') {
       return true;
     }
-    // Check if it's an item page: /item/:id (where id is a number)
+    // Check if it's an item page: /item/:id or /item/:id/:slug (where id is a number)
     if (pathname.startsWith('/item/')) {
-      const match = pathname.match(/^\/item\/(\d+)$/);
+      const match = pathname.match(/^\/item\/(\d+)(?:\/(.+))?$/);
       return match !== null;
     }
     return false;
@@ -3404,7 +3528,9 @@ function App() {
 
           {/* Selected Item & Market Data */}
           {selectedItem && (
-            <div className="space-y-4 sm:space-y-6">
+            <>
+              <ItemSEO item={selectedItem} />
+              <div className="space-y-4 sm:space-y-6">
               {/* Item Info & Controls */}
               <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg border border-slate-700/50 p-3 sm:p-4">
                 {/* First Row: Item Image, Name & Server Selector */}
@@ -3427,7 +3553,7 @@ function App() {
                                   <h2 className="text-lg mid:text-xl font-bold text-ffxiv-gold break-words line-clamp-2">
                                     {selectedItem.searchLanguageName}
                                   </h2>
-                                  <h3 className="text-gray-400 font-normal text-base mid:text-lg break-words line-clamp-2">
+                                  <h3 className="text-slate-300/80 font-medium text-sm mid:text-base break-words line-clamp-2 mt-0.5 italic">
                                     {selectedItem.nameTW}
                                   </h3>
                                 </>
@@ -3438,6 +3564,26 @@ function App() {
                                 </h2>
                               )
                           }
+                          {/* Show tag if item doesn't have Traditional Chinese name */}
+                          {!selectedItem.nameTW && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-900/40 border border-amber-500/50 rounded text-xs font-medium text-amber-300 w-fit mt-1">
+                              <svg 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                className="h-3 w-3" 
+                                fill="none" 
+                                viewBox="0 0 24 24" 
+                                stroke="currentColor"
+                              >
+                                <path 
+                                  strokeLinecap="round" 
+                                  strokeLinejoin="round" 
+                                  strokeWidth={2} 
+                                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
+                                />
+                              </svg>
+                              繁中服數據查無此物
+                            </span>
+                          )}
                         </div>
                         <button
                           onClick={async () => {
@@ -3946,6 +4092,7 @@ function App() {
                 </div>
               </div>
             </div>
+            </>
           )}
 
           {/* Loading Item from URL - Show loading state instead of home page */}

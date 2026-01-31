@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { findRelatedItems } from '../services/recipeDatabase';
 import { getItemById } from '../services/itemDatabase';
 import { getInternalUrl } from '../utils/internalUrl.js';
+import { generateItemUrl } from '../utils/urlSlug';
 import ItemImage from './ItemImage';
 
 export default function RelatedItems({ itemId, onItemClick }) {
@@ -106,7 +107,8 @@ export default function RelatedItems({ itemId, onItemClick }) {
               onClick={(e) => {
                 e.preventDefault();
                 // Open in new tab
-                const url = `${window.location.origin}${getInternalUrl(`/item/${item.id}`)}`;
+                const itemUrl = generateItemUrl(item.id, item.nameTW || item.name || 'item');
+                const url = `${window.location.origin}${getInternalUrl(itemUrl)}`;
                 window.open(url, '_blank', 'noopener,noreferrer');
               }}
               className="flex flex-col items-center gap-2 p-3 rounded-lg bg-slate-800/60 border border-purple-500/30 hover:border-ffxiv-gold/60 hover:bg-slate-700/70 transition-all duration-200 group"

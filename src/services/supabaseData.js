@@ -435,6 +435,56 @@ export async function getTwItemById(itemId) {
 }
 
 /**
+ * Get a single item by ID from Supabase (for non-TW languages)
+ * @param {number} itemId - Item ID
+ * @param {string} tableName - Table name (e.g., 'en_items', 'ja_items', 'ko_items', 'cn_items')
+ * @param {string} columnName - Column name (e.g., 'en', 'ja', 'ko', 'zh')
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object|null>} - {id, [columnName]: "name"} or null if not found
+ */
+export async function getLanguageItemById(itemId, tableName, columnName, signal = null) {
+  if (!itemId || itemId <= 0) {
+    return null;
+  }
+  
+  // Check if already aborted
+  if (signal && signal.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from(tableName)
+      .select(`id, ${columnName}`)
+      .eq('id', itemId)
+      .maybeSingle();
+    
+    if (signal && signal.aborted) {
+      throw new DOMException('Request aborted', 'AbortError');
+    }
+    
+    if (error) {
+      if (error.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
+        console.error(`Error fetching ${tableName} for item ${itemId}:`, error);
+      }
+      return null;
+    }
+    
+    if (!data || !data[columnName]) {
+      return null;
+    }
+    
+    return { id: itemId, [columnName]: data[columnName] };
+  } catch (error) {
+    if (error.name === 'AbortError' || (signal && signal.aborted)) {
+      throw error;
+    }
+    console.error(`Error fetching ${tableName} for item ${itemId}:`, error);
+    return null;
+  }
+}
+
+/**
  * Get Traditional Chinese item names for specific item IDs (in-memory lookup, fast)
  * @param {Array<number>} itemIds - Array of item IDs to fetch names for
  * @param {AbortSignal} signal - Optional abort signal to cancel the request (not used for in-memory lookup)

@@ -35,7 +35,6 @@ export function extractIdsFromSources(sources) {
 
   sources.forEach(source => {
     const { type, data } = source;
-    console.log(`[extractIdsFromSources] Processing source type:`, type, `data:`, data);
 
     // TRADE_SOURCES (type 2)
     if (type === 2 && Array.isArray(data)) {
@@ -184,30 +183,38 @@ export function extractIdsFromSources(sources) {
 
     // MASTERBOOKS (type 18) - extract item IDs from CompactMasterbook objects
     if (type === 18 && Array.isArray(data)) {
-      console.log(`[extractIdsFromSources] Processing MASTERBOOKS (type 18) with data:`, data);
       data.forEach(book => {
-        console.log(`[extractIdsFromSources] Processing book:`, book, `type:`, typeof book);
         // Handle both object format {id: number|string, name?: I18nName} and direct ID format
         if (typeof book === 'object' && book !== null && book.id !== undefined) {
           const bookId = typeof book.id === 'string' ? parseInt(book.id, 10) : book.id;
-          console.log(`[extractIdsFromSources] Extracted bookId from object:`, bookId);
           if (bookId && !isNaN(bookId)) {
             ids.itemIds.add(bookId);
-            console.log(`[extractIdsFromSources] Added bookId to itemIds:`, bookId);
           }
         } else if (typeof book === 'number' || (typeof book === 'string' && !isNaN(parseInt(book, 10)))) {
           // Direct ID format
           const bookId = typeof book === 'string' ? parseInt(book, 10) : book;
-          console.log(`[extractIdsFromSources] Extracted bookId from direct ID:`, bookId);
           if (bookId) {
             ids.itemIds.add(bookId);
-            console.log(`[extractIdsFromSources] Added bookId to itemIds:`, bookId);
           }
-        } else {
-          console.warn(`[extractIdsFromSources] Unknown book format:`, book);
         }
       });
-      console.log(`[extractIdsFromSources] Final itemIds after MASTERBOOKS processing:`, Array.from(ids.itemIds));
+    }
+
+    // REQUIREMENTS (type 23) - can be array of item IDs or island crop format {seed: number}
+    if (type === 23) {
+      // Check if it's island crop format: {seed: number}
+      if (data && typeof data === 'object' && !Array.isArray(data) && 'seed' in data && typeof data.seed === 'number') {
+        // Extract seed ID for island crops
+        ids.itemIds.add(data.seed);
+      } else if (Array.isArray(data)) {
+        // Normal requirements: array of item IDs
+        data.forEach(reqId => {
+          const id = typeof reqId === 'object' ? reqId.id : reqId;
+          if (id) {
+            ids.itemIds.add(id);
+          }
+        });
+      }
     }
   });
 
@@ -222,6 +229,5 @@ export function extractIdsFromSources(sources) {
     zoneIds: Array.from(ids.zoneIds).sort((a, b) => a - b),
     fateIds: Array.from(ids.fateIds).sort((a, b) => a - b),
   };
-  console.log(`[extractIdsFromSources] Final result itemIds:`, result.itemIds, `length:`, result.itemIds.length);
   return result;
 }

@@ -12,6 +12,7 @@ import { getItemById, getSimplifiedChineseName } from '../services/itemDatabase'
 import axios from 'axios';
 import { getEquipSlotCategories, getEquipmentByIds, getItemIdsByIlvl } from '../services/supabaseData';
 import { APP_VERSION } from '../constants/version';
+import { generateItemUrl } from '../utils/urlSlug';
 // Lazy load large data files:
 // - ilvlsData (748KB) - loaded when user inputs ilvl
 // - equipmentData (6.2MB) - loaded when searching
@@ -936,9 +937,10 @@ export default function MSQPriceChecker({
                     params.set('server', selectedServerOption);
                   }
                   const queryString = params.toString();
-                  const itemUrl = `/item/${item.id}${queryString ? '?' + queryString : ''}`;
+                  const itemUrlPath = generateItemUrl(item.id, item.nameTW || item.name || 'item');
+                  const itemUrl = `${itemUrlPath}${queryString ? '?' + queryString : ''}`;
                   
-                  // Call onItemSelect which will navigate to /item/${item.id} (without server param)
+                  // Call onItemSelect which will navigate to item page (without server param)
                   onItemSelect(item);
                   
                   // Immediately replace that navigation with our URL that includes server param

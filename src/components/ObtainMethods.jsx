@@ -8,6 +8,7 @@ import { getItemById } from '../services/itemDatabase';
 import { extractIdsFromSources } from '../utils/extractIdsFromSources';
 import { getHuijiWikiUrlForItem } from '../utils/wikiUtils';
 import { getPlaceName as getPlaceNameUtil, getPlaceNameWithFallback } from '../utils/placeUtils';
+import { generateItemUrl } from '../utils/urlSlug';
 // Supabase batch query functions
 import {
   getTwNpcsByIds,
@@ -1179,6 +1180,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       if (type === DataType.ALARMS && Array.isArray(data)) {
         return data.length;
       }
+      // For REQUIREMENTS (type 23) with island crop format {seed: number}, count as 1
+      if ((type === 23 || type === DataType.REQUIREMENTS) && 'seed' in data) {
+        return 1;
+      }
       // Default to 1 for object sources
       return 1;
     }
@@ -1656,11 +1661,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                       if (item) {
                                         onItemClick(item, { fromObtainable: true });
                                       } else {
-                                        navigate(`/item/${masterbookId}`);
+                                        const itemUrl = generateItemUrl(masterbookId, 'item');
+                                        navigate(itemUrl);
                                       }
                                     });
                                   } else {
-                                    navigate(`/item/${masterbookId}`);
+                                    const itemUrl = generateItemUrl(masterbookId, 'item');
+                                    navigate(itemUrl);
                                   }
                                 }}
                                 className="text-ffxiv-gold hover:text-yellow-400 hover:underline transition-colors cursor-pointer"
@@ -1802,11 +1809,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                               if (item) {
                                 onItemClick(item, { fromObtainable: true });
                               } else {
-                                navigate(`/item/${entry.currencyItemId}`);
+                                const itemUrl = generateItemUrl(entry.currencyItemId, 'item');
+                                navigate(itemUrl);
                               }
                             });
                           } else {
-                            navigate(`/item/${entry.currencyItemId}`);
+                            const itemUrl = generateItemUrl(entry.currencyItemId, 'item');
+                            navigate(itemUrl);
                           }
                         }}
                         className="flex items-center gap-1.5 font-medium text-blue-400 hover:text-ffxiv-gold transition-colors"
@@ -2107,11 +2116,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         if (item) {
                           onItemClick(item, { fromObtainable: true });
                         } else {
-                          navigate(`/item/${treasureId}`);
+                          const itemUrl = generateItemUrl(treasureId, 'item');
+                          navigate(itemUrl);
                         }
                       });
                     } else {
-                      navigate(`/item/${treasureId}`);
+                      const itemUrl = generateItemUrl(treasureId, 'item');
+                      navigate(itemUrl);
                     }
                   }}
                   className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
@@ -2239,11 +2250,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         if (item) {
                           onItemClick(item, { fromObtainable: true });
                         } else {
-                          navigate(`/item/${desynthItemId}`);
+                          const itemUrl = generateItemUrl(desynthItemId, 'item');
+                          navigate(itemUrl);
                         }
                       });
                     } else {
-                      navigate(`/item/${desynthItemId}`);
+                      const itemUrl = generateItemUrl(desynthItemId, 'item');
+                      navigate(itemUrl);
                     }
                   }}
                   className="flex flex-col items-center gap-1.5 p-2 rounded-lg bg-slate-900/50 border border-slate-700/50 hover:border-ffxiv-gold/60 hover:bg-slate-800/70 transition-all duration-200 group"
@@ -2649,11 +2662,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                                 if (item) {
                                                   onItemClick(item, { fromObtainable: true });
                                                 } else {
-                                                  navigate(`/item/${rewardItemId}`);
+                                                  const itemUrl = generateItemUrl(rewardItemId, 'item');
+                                                  navigate(itemUrl);
                                                 }
                                               });
                                             } else {
-                                              navigate(`/item/${rewardItemId}`);
+                                              const itemUrl = generateItemUrl(rewardItemId, 'item');
+                                              navigate(itemUrl);
                                             }
                                           }}
                                           className="flex items-center gap-1.5 text-blue-400 hover:text-ffxiv-gold transition-colors"
@@ -2696,11 +2711,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                                 if (item) {
                                                   onItemClick(item, { fromObtainable: true });
                                                 } else {
-                                                  navigate(`/item/${rewardItemId}`);
+                                                  const itemUrl = generateItemUrl(rewardItemId, 'item');
+                                                  navigate(itemUrl);
                                                 }
                                               });
                                             } else {
-                                              navigate(`/item/${rewardItemId}`);
+                                              const itemUrl = generateItemUrl(rewardItemId, 'item');
+                                              navigate(itemUrl);
                                             }
                                           }}
                                           className="flex items-center gap-1.5 text-blue-400 hover:text-ffxiv-gold transition-colors"
@@ -2740,11 +2757,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                                 if (item) {
                                                   onItemClick(item, { fromObtainable: true });
                                                 } else {
-                                                  navigate(`/item/${rewardItemId}`);
+                                                  const itemUrl = generateItemUrl(rewardItemId, 'item');
+                                                  navigate(itemUrl);
                                                 }
                                               });
                                             } else {
-                                              navigate(`/item/${rewardItemId}`);
+                                              const itemUrl = generateItemUrl(rewardItemId, 'item');
+                                              navigate(itemUrl);
                                             }
                                           }}
                                           className="flex items-center gap-1.5 text-blue-400 hover:text-ffxiv-gold transition-colors"
@@ -2957,11 +2976,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         if (item) {
                           onItemClick(item, { fromObtainable: true });
                         } else {
-                          navigate(`/item/${reductionItemId}`);
+                          const itemUrl = generateItemUrl(reductionItemId, 'item');
+                          navigate(itemUrl);
                         }
                       });
                     } else {
-                      navigate(`/item/${reductionItemId}`);
+                      const itemUrl = generateItemUrl(reductionItemId, 'item');
+                      navigate(itemUrl);
                     }
                   }}
                   className="flex flex-col items-center gap-1.5 p-2 rounded-lg bg-slate-900/50 border border-slate-700/50 hover:border-ffxiv-gold/60 hover:bg-slate-800/70 transition-all duration-200 group"
@@ -3021,11 +3042,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         if (item) {
                           onItemClick(item, { fromObtainable: true });
                         } else {
-                          navigate(`/item/${ventureItemId}`);
+                          const itemUrl = generateItemUrl(ventureItemId, 'item');
+                          navigate(itemUrl);
                         }
                       });
                     } else {
-                      navigate(`/item/${ventureItemId}`);
+                      const itemUrl = generateItemUrl(ventureItemId, 'item');
+                      navigate(itemUrl);
                     }
                   }}
                   className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
@@ -3085,11 +3108,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         if (item) {
                           onItemClick(item, { fromObtainable: true });
                         } else {
-                          navigate(`/item/${seedId}`);
+                          const itemUrl = generateItemUrl(seedId, 'item');
+                          navigate(itemUrl);
                         }
                       });
                     } else {
-                      navigate(`/item/${seedId}`);
+                      const itemUrl = generateItemUrl(seedId, 'item');
+                      navigate(itemUrl);
                     }
                   }}
                   className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
@@ -3170,11 +3195,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         if (item) {
                           onItemClick(item, { fromObtainable: true });
                         } else {
-                          navigate(`/item/${cropId}`);
+                          const itemUrl = generateItemUrl(cropId, 'item');
+                          navigate(itemUrl);
                         }
                       });
                     } else {
-                      navigate(`/item/${cropId}`);
+                      const itemUrl = generateItemUrl(cropId, 'item');
+                      navigate(itemUrl);
                     }
                   }}
                   className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
@@ -3217,7 +3244,69 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     }
 
     // Requirements (需求) - data structure varies, usually item IDs or requirements
-    if (type === DataType.REQUIREMENTS) {
+    // Special case: If data is an object with {seed: ...}, treat it as island crop
+    // Note: In Teamcraft's DataType enum, REQUIREMENTS = 23, but our DataType.REQUIREMENTS = 17
+    // The actual data uses type 23, so we need to check for type 23 specifically
+    if (type === 23 || type === DataType.REQUIREMENTS) {
+      // Check if data is an island crop format: {seed: number}
+      if (data && typeof data === 'object' && !Array.isArray(data) && 'seed' in data && typeof data.seed === 'number') {
+        // This is actually an island crop, display it as such
+        const seedId = data.seed;
+        const seedData = currentLoadedData.twItems[seedId] || currentLoadedData.twItems[String(seedId)];
+        const seedName = seedData?.tw;
+        return (
+          <div key={`island-crop-requirement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 ${flexClass} min-w-[280px]`}>
+            <div className="flex items-center gap-2 mb-2">
+              <img src="https://xivapi.com/i/063000/063950_hr1.png" alt="Island Crop" className="w-6 h-6" />
+              <span className="text-ffxiv-gold font-medium">島嶼作物</span>
+            </div>
+            <div className="text-xs text-gray-400 mb-2">
+              在島嶼聖域種植種子獲得
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <div className="w-full">
+                <div className="text-xs text-gray-400 mb-1">所需種子：</div>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onItemClick) {
+                      getItemById(seedId).then(item => {
+                        if (item) {
+                          onItemClick(item, { fromObtainable: true });
+                        } else {
+                          const itemUrl = generateItemUrl(seedId, 'item');
+                          navigate(itemUrl);
+                        }
+                      });
+                    } else {
+                      const itemUrl = generateItemUrl(seedId, 'item');
+                      navigate(itemUrl);
+                    }
+                  }}
+                  className="w-full flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
+                >
+                  <ItemImage
+                    itemId={seedId}
+                    alt={seedName || `種子 ${seedId}`}
+                    className="w-7 h-7 object-contain flex-shrink-0"
+                  />
+                  <div className="flex flex-col items-start flex-1 min-w-0">
+                    <span className="hover:underline font-medium truncate w-full">
+                      {seedName || `種子 (ID: ${seedId})`}
+                    </span>
+                    {!seedName && (
+                      <span className="text-xs text-gray-500 mt-0.5">資料載入中...</span>
+                    )}
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      // Normal requirements handling (array of item IDs)
       if (!data || !Array.isArray(data) || data.length === 0) {
         return null;
       }
@@ -3258,11 +3347,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         if (item) {
                           onItemClick(item, { fromObtainable: true });
                         } else {
-                          navigate(`/item/${reqId}`);
+                          const itemUrl = generateItemUrl(reqId, 'item');
+                          navigate(itemUrl);
                         }
                       });
                     } else {
-                      navigate(`/item/${reqId}`);
+                      const itemUrl = generateItemUrl(reqId, 'item');
+                      navigate(itemUrl);
                     }
                   }}
                   className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
@@ -3344,11 +3435,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                           if (item) {
                             onItemClick(item, { fromObtainable: true });
                           } else {
-                            navigate(`/item/${bookId}`);
+                            const itemUrl = generateItemUrl(bookId, 'item');
+                            navigate(itemUrl);
                           }
                         });
                       } else {
-                        navigate(`/item/${bookId}`);
+                        const itemUrl = generateItemUrl(bookId, 'item');
+                        navigate(itemUrl);
                       }
                     }}
                     className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
@@ -3689,11 +3782,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                             if (item) {
                               onItemClick(item, { fromObtainable: true });
                             } else {
-                              navigate(`/item/${achievementTooltipInfo.itemReward}`);
+                              const itemUrl = generateItemUrl(achievementTooltipInfo.itemReward, 'item');
+                              navigate(itemUrl);
                             }
                           });
                         } else {
-                          navigate(`/item/${achievementTooltipInfo.itemReward}`);
+                          const itemUrl = generateItemUrl(achievementTooltipInfo.itemReward, 'item');
+                          navigate(itemUrl);
                         }
                         setHoveredAchievement(null);
                       }}
