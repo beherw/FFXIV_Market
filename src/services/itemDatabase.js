@@ -1248,8 +1248,9 @@ function normalizeOCRText(text) {
   // Remove noise characters (dots, commas, dashes, etc.)
   let normalized = text.replace(/[.,\-_]/g, '');
   
-  // Remove extra whitespace
-  normalized = normalized.replace(/\s+/g, ' ').trim();
+  // Remove ALL whitespace so n-gram/similarity use contiguous chars.
+  // e.g. " 廣 折 廣 唱 石 陸 型" → "廣折廣唱石陸型" so 2-grams 石陸、陸型 can match "魔匠魔晶石陸型"
+  normalized = normalized.replace(/\s+/g, '');
   
   // Convert simplified Chinese to traditional (if needed)
   // The text from OCR is already filtered to traditional Chinese only,
@@ -1323,6 +1324,74 @@ function positionMatchScore(query, name) {
 }
 
 /**
+ * Calculate subsequence-in-order score: how much of query appears in name in order.
+ * E.g. query "味智之秘" in name "甜味智力之秘藥" → all 4 chars in order → 1.0.
+ * This helps OCR results that are missing characters (e.g. "甜" "力" "藥" dropped) still match.
+ * @param {string} query - Query text
+ * @param {string} name - Item name
+ * @param {number[]} [charWeights] - Optional per-char weights (e.g. from OCR confidence); length must match query
+ * @returns {number} - Subsequence score (0-1), or weighted score when charWeights provided
+ */
+function subsequenceMatchScore(query, name, charWeights = null) {
+  if (!query || query.length === 0) return 1;
+  if (!name || name.length === 0) return 0;
+  const qChars = [...query];
+  let nameIdx = 0;
+  let matched = 0;
+  let weightedSum = 0;
+  const useWeights = Array.isArray(charWeights) && charWeights.length === query.length;
+  for (let i = 0; i < qChars.length; i++) {
+    const c = qChars[i];
+    const w = useWeights ? charWeights[i] : 1;
+    if (useWeights) weightedSum += w;
+    while (nameIdx < name.length) {
+      if (name[nameIdx] === c) {
+        matched += useWeights ? w : 1;
+        nameIdx++;
+        break;
+      }
+      nameIdx++;
+    }
+  }
+  if (useWeights && weightedSum > 0) return matched / weightedSum;
+  return matched / query.length;
+}
+
+/**
+ * Length similarity: assume "no major insert/delete", so query length ≈ name length.
+ * score = 1 - |len(q) - len(name)| / max(len(q), len(name)); 1 when equal length.
+ * @param {string} query - Query text
+ * @param {string} name - Item name
+ * @returns {number} - Length similarity (0-1)
+ */
+function lengthSimilarityScore(query, name) {
+  const qLen = query.length;
+  const nLen = name.length;
+  if (qLen === 0 && nLen === 0) return 1;
+  const maxLen = Math.max(qLen, nLen, 1);
+  return 1 - Math.abs(qLen - nLen) / maxLen;
+}
+
+/**
+ * Order-first score for whitelist matching: assume text order is correct, minimal缺字/多字.
+ * Combines: (1) recall = query chars in name in order, (2) precision = name chars in query in order,
+ * (3) length similarity. Good when OCR has ~50%+ accuracy and order is preserved.
+ * @param {string} query - OCR query text
+ * @param {string} name - Whitelist item name
+ * @param {number[]} [charWeights] - Optional per-char confidence weights for query
+ * @returns {number} - Order-first score (0-1)
+ */
+function orderFirstScore(query, name, charWeights = null) {
+  if (!query || !name) return 0;
+  const recall = subsequenceMatchScore(query, name, charWeights); // query 在 name 裡依序出現的比例
+  const precision = subsequenceMatchScore(name, query); // name 在 query 裡依序出現的比例（避免 query 過短卻匹配到很長名稱）
+  const lenSim = lengthSimilarityScore(query, name);
+  // 順序對時：recall 高 = 查詢字大多在名稱裡；precision 高 = 名稱沒被「拉長」；長度接近加分
+  const orderScore = 0.5 * recall + 0.3 * precision + 0.2 * lenSim;
+  return Math.max(0, Math.min(1, orderScore));
+}
+
+/**
  * Calculate n-gram overlap score
  * @param {string} query - Query text
  * @param {string} name - Item name
@@ -1347,31 +1416,65 @@ function ngramOverlapScore(query, name, n = 2) {
 }
 
 /**
- * Calculate OCR-friendly similarity score
+ * Calculate OCR-friendly similarity score for whitelist matching.
+ * Designed for: OCR text vs game item names; assume order correct, ~50%+ recognition; low-confidence chars downweighted.
  * @param {string} query - OCR query text
- * @param {string} name - Item name
+ * @param {string} name - Whitelist item name
+ * @param {number[]} [charWeights] - Optional per-char weights (e.g. OCR confidence); length = query.length; low conf = lower weight
  * @returns {number} - Similarity score (0-1)
  */
-function calcOcrFriendlySimilarity(query, name) {
+function calcOcrFriendlySimilarity(query, name, charWeights = null) {
   if (!query || !name) return 0;
   
-  // Calculate component scores
+  // Primary: order-first score (順序對、缺字多字少時效果最好)
+  const orderScore = orderFirstScore(query, name, charWeights);
+  
+  // Secondary: n-gram overlap, edit distance, position (prefix)
   const overlapScore = ngramOverlapScore(query, name, 2);
   const maxLen = Math.max(query.length, name.length);
   const editDist = levenshteinDistance(query, name);
   const edScore = maxLen > 0 ? 1 - (editDist / maxLen) : 0;
   const posScore = positionMatchScore(query, name);
   
-  // Weighted combination
-  // w1: ngram overlap (0.4) - captures partial matches
-  // w2: edit distance (0.4) - captures overall similarity
-  // w3: position match (0.2) - captures order preservation
-  const w1 = 0.4;
-  const w2 = 0.4;
-  const w3 = 0.2;
+  // Weights: order-first dominant (0.5), then ngram (0.2), edit (0.2), position (0.1)
+  const wOrder = 0.5;
+  const wNgram = 0.2;
+  const wEd = 0.2;
+  const wPos = 0.1;
   
-  const score = w1 * overlapScore + w2 * edScore + w3 * posScore;
+  const score = wOrder * orderScore + wNgram * overlapScore + wEd * edScore + wPos * posScore;
   return Math.max(0, Math.min(1, score)); // Clamp to [0, 1]
+}
+
+/**
+ * Build per-character confidence weights from OCR words (for weighted scoring).
+ * Low-confidence words contribute less to the match score.
+ * @param {string} normalizedQuery - Normalized OCR text (same length as desired weights)
+ * @param {Array<{text: string, confidence: number}>} ocrWords - Words with confidence 0-100, in display order
+ * @returns {number[]} - Weights 0-1 per character; spaces get 0.5 (neutral)
+ */
+function buildCharWeightsFromOcrWords(normalizedQuery, ocrWords) {
+  if (!normalizedQuery || !Array.isArray(ocrWords) || ocrWords.length === 0) {
+    return null;
+  }
+  const segments = normalizedQuery.split(/\s+/).filter(Boolean);
+  if (segments.length === 0) return null;
+  const weights = [];
+  let segIdx = 0;
+  let i = 0;
+  while (i < normalizedQuery.length) {
+    if (/\s/.test(normalizedQuery[i])) {
+      weights.push(0.5);
+      i++;
+    } else {
+      const seg = segments[segIdx];
+      const conf = segIdx < ocrWords.length ? Math.max(0.01, ocrWords[segIdx].confidence / 100) : 0.5;
+      for (let k = 0; k < seg.length; k++) weights.push(conf);
+      i += seg.length;
+      segIdx++;
+    }
+  }
+  return weights.length === normalizedQuery.length ? weights : null;
 }
 
 /**
@@ -1413,16 +1516,17 @@ function buildNgramIndex(items, n = 2) {
 }
 
 /**
- * OCR fuzzy search - uses n-gram indexing and OCR-friendly similarity scoring
+ * OCR fuzzy search - uses n-gram indexing and OCR-friendly similarity scoring (order-first + optional confidence weighting)
  * @param {string} query - OCR query text
  * @param {Array} items - Items array (must be loaded)
  * @param {Map<string, Set<string>>} ngramIndex - Pre-built n-gram index (optional, will build if not provided)
  * @param {number} topK - Number of top results to return (default: 50)
  * @param {number} minScore - Minimum similarity score threshold (default: 0.4)
  * @param {number} ocrConfidence - OCR confidence score (0-100, optional, used for adaptive search)
+ * @param {number[]} charWeights - Optional per-char weights (e.g. from ocrWords confidence); length = normalized query length
  * @returns {Array} - Array of { item, score } objects, sorted by score descending
  */
-function ocrFuzzySearch(query, items, ngramIndex = null, topK = 50, minScore = 0.4, ocrConfidence = null) {
+function ocrFuzzySearch(query, items, ngramIndex = null, topK = 50, minScore = 0.4, ocrConfidence = null, charWeights = null) {
   if (!query || !query.trim()) {
     return [];
   }
@@ -1449,12 +1553,15 @@ function ocrFuzzySearch(query, items, ngramIndex = null, topK = 50, minScore = 0
     // 高置信度（>= 70）使用默認參數
   }
   
+  // Use charWeights only if length matches normalized query
+  const useCharWeights = Array.isArray(charWeights) && charWeights.length === normalizedQuery.length ? charWeights : null;
+  
   // Build n-gram index if not provided
   if (!ngramIndex) {
     ngramIndex = buildNgramIndex(items, 2);
   }
   
-  // Step 1: Use n-gram index to find candidate items
+  // Step 1: Use 2-gram index to find candidate items
   const queryNgrams = toNgrams(normalizedQuery, 2);
   const candidateScore = new Map(); // itemId -> ngram overlap count
   
@@ -1467,16 +1574,38 @@ function ocrFuzzySearch(query, items, ngramIndex = null, topK = 50, minScore = 0
     }
   }
   
-  // Step 2: Filter candidates (at least 1 n-gram match)
-  const candidates = Array.from(candidateScore.entries())
-    .filter(([itemId, count]) => count >= 1)
-    .map(([itemId]) => itemId);
+  // Step 1b: 1-gram recall — when 2-gram gives few/no candidates, add items with 2+ matching chars
+  // e.g. OCR "廣折廣唱石陸型" vs "魔匠魔晶石陸型": 石、陸、型 match → should be candidate
+  const twoGramCandidates = Array.from(candidateScore.entries()).filter(([, count]) => count >= 1);
+  if (twoGramCandidates.length < effectiveTopK) {
+    const oneGramIndex = buildNgramIndex(items, 1);
+    const queryChars = [...normalizedQuery];
+    const oneGramCount = new Map(); // itemId -> number of matching query chars
+    for (const ch of queryChars) {
+      const itemIds = oneGramIndex.get(ch);
+      if (!itemIds) continue;
+      for (const itemId of itemIds) {
+        oneGramCount.set(itemId, (oneGramCount.get(itemId) || 0) + 1);
+      }
+    }
+    // Add items with at least 2 matching single chars into candidate score (so they get similarity)
+    for (const [itemId, count] of oneGramCount.entries()) {
+      if (count >= 2 && !candidateScore.has(itemId)) {
+        candidateScore.set(itemId, 0); // 0 from 2-gram but we still want to score them
+      }
+    }
+  }
   
+  // Step 2: Candidates = all itemIds in candidateScore (2-gram match or 1-gram recall added above)
+  const candidates = Array.from(candidateScore.keys());
+  if (typeof window !== 'undefined' && window.__OCR_DEBUG__) {
+    console.log('[OCR] ocrFuzzySearch candidates:', candidates.length, 'minScore:', effectiveMinScore, 'query:', normalizedQuery);
+  }
   if (candidates.length === 0) {
     return [];
   }
   
-  // Step 3: Calculate OCR-friendly similarity for each candidate
+  // Step 3: Calculate OCR-friendly similarity for each candidate (order-first + optional per-char confidence)
   const scored = [];
   
   for (const itemId of candidates) {
@@ -1495,8 +1624,8 @@ function ocrFuzzySearch(query, items, ngramIndex = null, topK = 50, minScore = 0
     const cleanName = rawName.replace(/^["']+|["']+$/g, '').trim();
     if (!cleanName) continue;
     
-    // Calculate similarity score
-    let score = calcOcrFriendlySimilarity(normalizedQuery, cleanName);
+    // Calculate similarity score (with optional char-level confidence weighting)
+    let score = calcOcrFriendlySimilarity(normalizedQuery, cleanName, useCharWeights);
     
     // 置信度加權：低置信度時，對高相似度結果給予額外加分
     if (ocrConfidence !== null && ocrConfidence !== undefined && ocrConfidence < 70) {
@@ -1517,15 +1646,15 @@ function ocrFuzzySearch(query, items, ngramIndex = null, topK = 50, minScore = 0
 }
 
 /**
- * Search items with OCR-friendly fuzzy matching
- * This function is specifically designed for OCR text recognition results.
- * It first tries exact/substring matching, then falls back to OCR fuzzy search.
- * 
+ * Search items with OCR-friendly fuzzy matching (whitelist = game item names).
+ * Order-first scoring: assumes text order correct, ~50%+ recognition; low-confidence chars downweighted when ocrWords provided.
+ *
  * @param {string} searchText - OCR recognized text
  * @param {AbortSignal} signal - Optional abort signal
+ * @param {Object} [options] - Optional: { ocrWords: [{ text, confidence }], ocrConfidence: number (0-100) }
  * @returns {Promise<Object>} - Search results with OCR-specific metadata
  */
-export async function searchItemsOCR(searchText, signal = null) {
+export async function searchItemsOCR(searchText, signal = null, options = null) {
   if (!searchText || searchText.trim() === '') {
     return {
       results: [],
@@ -1544,8 +1673,15 @@ export async function searchItemsOCR(searchText, signal = null) {
   let convertedText = null;
   let searchedSimplified = false;
 
-  // Normalize OCR text
+  // Normalize OCR text (removes all spaces: "廣 折 廣 唱 石 陸 型" → "廣折廣唱石陸型")
   const normalizedQuery = normalizeOCRText(trimmedSearchText);
+  const ocrWords = options && Array.isArray(options.ocrWords) ? options.ocrWords : null;
+  const ocrConfidence = options && (options.ocrConfidence !== undefined && options.ocrConfidence !== null) ? options.ocrConfidence : null;
+  const charWeights = ocrWords && ocrWords.length > 0 ? buildCharWeightsFromOcrWords(normalizedQuery, ocrWords) : null;
+
+  if (typeof window !== 'undefined' && window.__OCR_DEBUG__) {
+    console.log('[OCR] searchItemsOCR:', { raw: trimmedSearchText, normalized: normalizedQuery });
+  }
 
   // Step 1: Try exact/substring match first (same as regular search)
   try {
@@ -1584,6 +1720,9 @@ export async function searchItemsOCR(searchText, signal = null) {
     // Load ilvl and version data
     if (results.length > 0) {
       await loadIlvlAndVersionForResults(results, signal);
+      if (typeof window !== 'undefined' && window.__OCR_DEBUG__) {
+        console.log('[OCR] Step 1 (exact) found', results.length, 'results');
+      }
     }
   } catch (error) {
     if (error.name === 'AbortError' || (signal && signal.aborted)) {
@@ -1592,7 +1731,108 @@ export async function searchItemsOCR(searchText, signal = null) {
     console.error('Error in OCR exact search:', error);
   }
 
-  // Step 2: If no results, try OCR fuzzy search
+  // Step 1.5: If no results, try the same character-order fuzzy as manual search
+  // (Manual: "味智 之秘" → searchTwItems(..., true) finds "甜味智力之秘藥"; OCR should do the same)
+  if (results.length === 0 && trimmedSearchText.includes(' ')) {
+    try {
+      const fuzzySearchResults = await searchTwItems(trimmedSearchText, true, signal);
+      if (signal && signal.aborted) {
+        throw new DOMException('Request aborted', 'AbortError');
+      }
+      const shopItems = [];
+      const shopItemIds = new Set();
+      const items = transformSearchResultsToItems(fuzzySearchResults, shopItems, shopItemIds, null);
+      if (items.length > 0) {
+        let marketItems = null;
+        const itemIds = items.map(item => parseInt(item['key: #'], 10)).filter(id => !isNaN(id));
+        if (itemIds.length > 0) {
+          try {
+            const { getMarketItemsByIds } = await import('./supabaseData');
+            marketItems = await getMarketItemsByIds(itemIds, signal);
+          } catch (err) {
+            marketItems = null;
+          }
+        }
+        results = performSearch(items, shopItems, shopItemIds, trimmedSearchText, true, marketItems, true);
+        if (results.length > 0) {
+          await loadIlvlAndVersionForResults(results, signal);
+        }
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError' && (!signal || !signal.aborted)) {
+        console.error('Error in OCR character-order fuzzy search:', error);
+      }
+    }
+  }
+
+  // Step 1.7: Substring recall — search 3+ char substrings from normalized query (e.g. "石陸型")
+  // Guarantees finding all items containing a correct segment when OCR got wrong chars (e.g. "廣 折 廣 唱 石 陸 型" → "石陸型" matches)
+  if (results.length === 0 && normalizedQuery.length >= 3) {
+    try {
+      const MIN_SUBSTR_LEN = 3;
+      const MAX_SUBSTR_LEN = 5;
+      const seenIds = new Set();
+      const substringResults = [];
+      for (let len = MAX_SUBSTR_LEN; len >= MIN_SUBSTR_LEN; len--) {
+        for (let i = 0; i <= normalizedQuery.length - len; i++) {
+          const substr = normalizedQuery.slice(i, i + len);
+          if (signal && signal.aborted) break;
+          const searchResults = await searchTwItems(substr, false, signal);
+          const itemsFromSubstr = transformSearchResultsToItems(searchResults, [], new Set(), null);
+          for (const item of itemsFromSubstr) {
+            const id = item['key: #'];
+            if (seenIds.has(id)) continue;
+            seenIds.add(id);
+            let name = item['9: Name'] || item['0: Singular'] || '';
+            const cleanName = name.replace(/^["']|["']$/g, '').trim();
+            substringResults.push({
+              id: parseInt(id, 10),
+              name: cleanName,
+              nameTW: cleanName,
+              nameSimplified: cleanName,
+              itemLevel: item['11: Level{Item}'] || '',
+              shopPrice: item['25: Price{Mid}'] || '',
+              inShop: false,
+              canBeHQ: item['27: CanBeHq'] !== 'False',
+              isTradable: true,
+              ocrScore: 0.5,
+              ocrSubstringMatch: substr,
+            });
+          }
+        }
+      }
+      if (substringResults.length > 0) {
+        const itemIds = substringResults.map(r => r.id).filter(id => id > 0);
+        let marketItems = null;
+        if (itemIds.length > 0) {
+          try {
+            const { getMarketItemsByIds } = await import('./supabaseData');
+            marketItems = await getMarketItemsByIds(itemIds, signal);
+          } catch (err) {
+            marketItems = null;
+          }
+        }
+        if (marketItems) {
+          substringResults.forEach(r => {
+            r.isTradable = marketItems.has(r.id);
+          });
+        }
+        results = substringResults.slice(0, 200);
+        if (results.length > 0) {
+          await loadIlvlAndVersionForResults(results, signal);
+        }
+        if (typeof window !== 'undefined' && window.__OCR_DEBUG__) {
+          console.log('[OCR] Substring recall:', normalizedQuery, '→ found', results.length, 'items (e.g. containing 石陸型)');
+        }
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError' && (!signal || !signal.aborted)) {
+        console.error('Error in OCR substring recall:', error);
+      }
+    }
+  }
+
+  // Step 2: If still no results, try OCR n-gram fuzzy search
   if (results.length === 0) {
     try {
       // Load full database for fuzzy search (required for n-gram indexing)
@@ -1606,8 +1846,11 @@ export async function searchItemsOCR(searchText, signal = null) {
       // Build n-gram index
       const ngramIndex = buildNgramIndex(items, 2);
       
-      // Perform OCR fuzzy search
-      const ocrResults = ocrFuzzySearch(normalizedQuery, items, ngramIndex, 50, 0.4);
+      // Perform OCR fuzzy search (minScore 0.35 so partial matches like 石陸型/魔匠魔晶石陸型 pass)
+      const ocrResults = ocrFuzzySearch(normalizedQuery, items, ngramIndex, 50, 0.35, ocrConfidence, charWeights);
+      if (typeof window !== 'undefined' && window.__OCR_DEBUG__) {
+        console.log('[OCR] ocrFuzzySearch returned', ocrResults.length, 'candidates; top 3:', ocrResults.slice(0, 3).map(({ item, score }) => ({ name: item['9: Name'], score })));
+      }
       
       if (ocrResults.length > 0) {
         // Transform OCR fuzzy results to standard format

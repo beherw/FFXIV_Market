@@ -323,42 +323,57 @@ export function applyMorphologyOpen(imageData: ImageData, kernelSize = 2): Image
 }
 
 /**
- * 形態學閉運算
+ * 形態學閉運算（針對高筆畫數繁體字優化）
+ * 使用更智能的連接策略來連接斷裂的筆畫
  */
 export function applyMorphologyClose(imageData: ImageData, kernelSize = 2): ImageData {
   const { data, width, height } = imageData;
   const newData = new Uint8ClampedArray(data);
   
+  // 第一步：膨脹操作 - 連接斷裂的筆畫
+  // 對於二值化圖像：0=黑色（文字），255=白色（背景）
+  // 膨脹：取鄰域內的最小值（最黑的像素）
   const dilated = new Uint8ClampedArray(data);
   for (let y = kernelSize; y < height - kernelSize; y++) {
     for (let x = kernelSize; x < width - kernelSize; x++) {
-      let maxVal = 0;
+      let minVal = 255; // 初始化為白色
+      // 使用圓形核而非方形核，更好地連接筆畫
       for (let dy = -kernelSize; dy <= kernelSize; dy++) {
         for (let dx = -kernelSize; dx <= kernelSize; dx++) {
-          const idx = ((y + dy) * width + (x + dx)) * 4;
-          maxVal = Math.max(maxVal, data[idx]);
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= kernelSize) {
+            const idx = ((y + dy) * width + (x + dx)) * 4;
+            minVal = Math.min(minVal, data[idx]); // 取最小值（最黑）
+          }
         }
       }
       const idx = (y * width + x) * 4;
-      dilated[idx] = maxVal;
-      dilated[idx + 1] = maxVal;
-      dilated[idx + 2] = maxVal;
+      dilated[idx] = minVal;
+      dilated[idx + 1] = minVal;
+      dilated[idx + 2] = minVal;
     }
   }
   
+  // 第二步：腐蝕操作 - 恢復筆畫粗細但保持連接
+  // 腐蝕：取鄰域內的最大值（最白的像素）
   for (let y = kernelSize; y < height - kernelSize; y++) {
     for (let x = kernelSize; x < width - kernelSize; x++) {
-      let minVal = 255;
-      for (let dy = -kernelSize; dy <= kernelSize; dy++) {
-        for (let dx = -kernelSize; dx <= kernelSize; dx++) {
-          const idx = ((y + dy) * width + (x + dx)) * 4;
-          minVal = Math.min(minVal, dilated[idx]);
+      let maxVal = 0; // 初始化為黑色
+      // 使用稍小的核進行腐蝕，保持連接但恢復粗細
+      const erosionSize = Math.max(1, kernelSize - 1);
+      for (let dy = -erosionSize; dy <= erosionSize; dy++) {
+        for (let dx = -erosionSize; dx <= erosionSize; dx++) {
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= erosionSize) {
+            const idx = ((y + dy) * width + (x + dx)) * 4;
+            maxVal = Math.max(maxVal, dilated[idx]); // 取最大值（最白）
+          }
         }
       }
       const idx = (y * width + x) * 4;
-      newData[idx] = minVal;
-      newData[idx + 1] = minVal;
-      newData[idx + 2] = minVal;
+      newData[idx] = maxVal;
+      newData[idx + 1] = maxVal;
+      newData[idx + 2] = maxVal;
     }
   }
 
@@ -552,15 +567,18 @@ export async function preprocessImage(
       }
     }
 
-    // 進階處理
+    // 進階處理（針對高筆畫數繁體字優化）
     if (effectiveOptions.enableAdvancedProcessing) {
+      // 雙邊濾波：保留文字邊緣，平滑背景網格
       imageData = applyBilateralFilter(imageData, 2);
+      // 去除細小網格線
       imageData = removeGridLines(imageData);
-      imageData = applyGaussianBlur(imageData, 2);
+      // 中值濾波去噪（兩次應用以更好地去除噪點）
+      imageData = applyMedianFilter(imageData, 2);
       imageData = applyMedianFilter(imageData, 1);
     }
 
-    // 銳化
+    // 銳化（針對高筆畫數繁體字使用強銳化）
     imageData = applySharpen(imageData, OCR_CONFIG.sharpenStrength);
 
     // 二值化
@@ -578,9 +596,11 @@ export async function preprocessImage(
     ctx.putImageData(imageData, 0, 0);
     imageData = ctx.getImageData(0, 0, width, height);
 
-    // 形態學處理
+    // 形態學處理（針對高筆畫數繁體字優化）
     if (effectiveOptions.enableAdvancedProcessing) {
-      imageData = applyMorphologyOpen(imageData, 1);
+      // 形態學開運算：去除小噪點
+      imageData = applyMorphologyOpen(imageData, 2);
+      // 形態學閉運算：連接斷裂的筆畫（使用更大的核以處理複雜字符）
       if (OCR_CONFIG.enableMorphologyClose) {
         imageData = applyMorphologyClose(imageData, OCR_CONFIG.morphologyCloseKernelSize);
       }
@@ -591,6 +611,117 @@ export async function preprocessImage(
     const processedImg = new Image();
     processedImg.onload = () => resolve(processedImg);
     processedImg.src = canvas.toDataURL('image/png');
+  });
+}
+
+/**
+ * 去除邊緣/角落的黑色區域，只保留「非黑」內容框，便於後續文字偵測更精準。
+ * 從四邊向內掃描，找到第一行/列平均亮度超過閾值的位置，裁切為內側矩形。
+ * @param image 原圖
+ * @param brightnessThreshold 亮度閾值 0–255，低於視為黑色；預設 40
+ * @returns 裁切掉黑邊後的新圖，若無有效內框則回傳原圖
+ */
+export function cropBlackBorders(
+  image: HTMLImageElement,
+  brightnessThreshold: number = 40
+): Promise<HTMLImageElement> {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth || image.width;
+    canvas.height = image.naturalHeight || image.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(image, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const { data, width, height } = imageData;
+
+    const getGray = (i: number) =>
+      Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+
+    let left = 0;
+    let right = width - 1;
+    let top = 0;
+    let bottom = height - 1;
+
+    // 從左邊向內找：第一欄平均亮度 >= 閾值
+    for (let x = 0; x < width; x++) {
+      let sum = 0;
+      let count = 0;
+      for (let y = 0; y < height; y++) {
+        sum += getGray((y * width + x) * 4);
+        count++;
+      }
+      if (count > 0 && sum / count >= brightnessThreshold) {
+        left = x;
+        break;
+      }
+    }
+    // 從右邊向內找
+    for (let x = width - 1; x >= left; x--) {
+      let sum = 0;
+      let count = 0;
+      for (let y = 0; y < height; y++) {
+        sum += getGray((y * width + x) * 4);
+        count++;
+      }
+      if (count > 0 && sum / count >= brightnessThreshold) {
+        right = x;
+        break;
+      }
+    }
+    // 從上邊向內找
+    for (let y = 0; y < height; y++) {
+      let sum = 0;
+      let count = 0;
+      for (let x = left; x <= right; x++) {
+        sum += getGray((y * width + x) * 4);
+        count++;
+      }
+      if (count > 0 && sum / count >= brightnessThreshold) {
+        top = y;
+        break;
+      }
+    }
+    // 從下邊向內找
+    for (let y = height - 1; y >= top; y--) {
+      let sum = 0;
+      let count = 0;
+      for (let x = left; x <= right; x++) {
+        sum += getGray((y * width + x) * 4);
+        count++;
+      }
+      if (count > 0 && sum / count >= brightnessThreshold) {
+        bottom = y;
+        break;
+      }
+    }
+
+    const cropWidth = right - left + 1;
+    const cropHeight = bottom - top + 1;
+    const minSize = 20;
+    if (cropWidth < minSize || cropHeight < minSize) {
+      resolve(image);
+      return;
+    }
+    if (left === 0 && top === 0 && right === width - 1 && bottom === height - 1) {
+      resolve(image);
+      return;
+    }
+
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = cropWidth;
+    cropCanvas.height = cropHeight;
+    const cropCtx = cropCanvas.getContext('2d')!;
+    cropCtx.imageSmoothingEnabled = true;
+    cropCtx.imageSmoothingQuality = 'high';
+    cropCtx.drawImage(
+      image,
+      left, top, cropWidth, cropHeight,
+      0, 0, cropWidth, cropHeight
+    );
+    const out = new Image();
+    out.onload = () => resolve(out);
+    out.onerror = () => resolve(image);
+    out.src = cropCanvas.toDataURL('image/png');
   });
 }
 

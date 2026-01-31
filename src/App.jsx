@@ -2494,7 +2494,7 @@ function App() {
   }, [navigate]);
 
   // Handle search
-  const handleSearch = useCallback(async (searchTerm, skipNavigation = false, isOCR = false) => {
+  const handleSearch = useCallback(async (searchTerm, skipNavigation = false, isOCR = false, ocrOptions = null) => {
     const trimmedTerm = searchTerm ? searchTerm.trim() : '';
     // Prevent concurrent searches - only check if a search is already in progress
     if (searchInProgressRef.current) {
@@ -2587,7 +2587,7 @@ function App() {
       
       // Use OCR search if isOCR flag is set, otherwise use regular search
       const searchResult = isOCR 
-        ? await searchItemsOCR(trimmedTerm, searchSignal)
+        ? await searchItemsOCR(trimmedTerm, searchSignal, ocrOptions || undefined)
         : await searchItems(trimmedTerm, false, searchSignal);
       const { results, converted, originalText, convertedText, searchedSimplified } = searchResult;
       

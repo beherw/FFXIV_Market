@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { getTwItems } from '../services/supabaseData';
+import { cropBlackBorders } from '../utils/ocr/imageUtils';
+import { getTesseractConfig, ocrDebugLog, type TesseractFiltersConfig } from '../utils/ocr/tesseractConfig';
 
 // Tesseract.js v5 類型聲明（從 CDN 載入）
 // v5 API: createWorker(langs?, oem?, options?, config?)
@@ -61,7 +63,7 @@ const CONFIG = {
   maxImageDimension: 2500, // 提高最大尺寸限制以支持更大的放大倍數
   enableAdvancedProcessing: true, // 啟用進階處理以提升識別度
   enableAutoThreshold: true, // 啟用自動閾值
-  minConfidence: 1, // 最低信心度閾值（0-100），低於此值的單詞會被過濾掉（設為 0 以保留幾乎所有識別結果，只過濾極低把握度的結果）
+  minConfidence: 0, // 最低信心度閾值（0-100），低於此值的單詞會被過濾掉（設為 0 以保留幾乎所有識別結果，只過濾極低把握度的結果）
   // 注意：excludeSymbolsAndNumbersAtRecognition 參數已不再使用
   // 現在統一使用後處理階段的 filterChineseOnly 來嚴格過濾，確保只檢索繁體中文
   // 此參數保留僅為向後兼容，實際不會影響識別邏輯
@@ -123,6 +125,8 @@ const CONFIG = {
     enableAutoTextDetection: true,      // 自動檢測文字區域並裁剪（檢測文字區域後自動裁剪，邊距5像素）
   },
 };
+// 使用統一 Tesseract 設定（可透過 window.__TESSERACT_CONFIG__ 覆寫以調試）
+const getConfig = () => getTesseractConfig();
 
 // 緩存 itemtw 字符白名單（首次使用時構建）
 let itemtwCharWhitelist: string | null = null;
@@ -141,7 +145,7 @@ let itemtwWhitelistCache: WhitelistCache | null = null;
  * 讀入圖片檔案為 Image 物件
  */
 function loadImage(file: File): Promise<HTMLImageElement> {
-  console.log('[OCR DEBUG] loadImage: 開始載入圖片', {
+  ocrDebugLog('loadImage: 開始載入圖片', {
     fileName: file.name,
     fileSize: file.size,
     fileType: file.type,
@@ -151,14 +155,14 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      console.log('[OCR DEBUG] loadImage: FileReader onload 成功', {
+      ocrDebugLog('loadImage: FileReader onload 成功', {
         resultLength: (e.target?.result as string)?.length,
         timestamp: new Date().toISOString(),
       });
 
       const img = new Image();
       img.onload = () => {
-        console.log('[OCR DEBUG] loadImage: Image onload 成功', {
+        ocrDebugLog('loadImage: Image onload 成功', {
           width: img.width,
           height: img.height,
           naturalWidth: img.naturalWidth,
@@ -168,7 +172,7 @@ function loadImage(file: File): Promise<HTMLImageElement> {
         resolve(img);
       };
       img.onerror = (error) => {
-        console.error('[OCR DEBUG] loadImage: Image onerror', {
+        ocrDebugLog('loadImage: Image onerror', {
           error,
           timestamp: new Date().toISOString(),
         });
@@ -177,7 +181,7 @@ function loadImage(file: File): Promise<HTMLImageElement> {
       img.src = e.target?.result as string;
     };
     reader.onerror = (error) => {
-      console.error('[OCR DEBUG] loadImage: FileReader onerror', {
+      ocrDebugLog('loadImage: FileReader onerror', {
         error,
         timestamp: new Date().toISOString(),
       });
@@ -191,19 +195,19 @@ function loadImage(file: File): Promise<HTMLImageElement> {
  * 若圖片尺寸過大則縮放
  */
 function resizeImageIfNeeded(image: HTMLImageElement): Promise<HTMLImageElement> {
-  console.log('[OCR DEBUG] resizeImageIfNeeded: 開始檢查圖片尺寸', {
+  ocrDebugLog('resizeImageIfNeeded: 開始檢查圖片尺寸', {
     width: image.width,
     height: image.height,
-    maxDimension: CONFIG.maxImageDimension,
+    maxDimension: getConfig().maxImageDimension,
     timestamp: new Date().toISOString(),
   });
 
   return new Promise((resolve) => {
-    const maxDim = CONFIG.maxImageDimension;
+    const maxDim = getConfig().maxImageDimension;
     const { width, height } = image;
 
     if (width <= maxDim && height <= maxDim) {
-      console.log('[OCR DEBUG] resizeImageIfNeeded: 圖片尺寸符合要求，無需縮放', {
+      ocrDebugLog('resizeImageIfNeeded: 圖片尺寸符合要求，無需縮放', {
         width,
         height,
         timestamp: new Date().toISOString(),
@@ -216,7 +220,7 @@ function resizeImageIfNeeded(image: HTMLImageElement): Promise<HTMLImageElement>
     const newWidth = Math.floor(width * scale);
     const newHeight = Math.floor(height * scale);
 
-    console.log('[OCR DEBUG] resizeImageIfNeeded: 開始縮放圖片', {
+    ocrDebugLog('resizeImageIfNeeded: 開始縮放圖片', {
       originalWidth: width,
       originalHeight: height,
       newWidth,
@@ -231,7 +235,7 @@ function resizeImageIfNeeded(image: HTMLImageElement): Promise<HTMLImageElement>
     canvas.height = newHeight;
 
     // 使用 filter 開關控制圖像平滑
-    if (CONFIG.filters.enableImageSmoothing) {
+    if (getConfig().filters.enableImageSmoothing) {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
     } else {
@@ -241,7 +245,7 @@ function resizeImageIfNeeded(image: HTMLImageElement): Promise<HTMLImageElement>
 
     const resizedImg = new Image();
     resizedImg.onload = () => {
-      console.log('[OCR DEBUG] resizeImageIfNeeded: 縮放完成', {
+      ocrDebugLog('resizeImageIfNeeded: 縮放完成', {
         finalWidth: resizedImg.width,
         finalHeight: resizedImg.height,
         timestamp: new Date().toISOString(),
@@ -668,7 +672,7 @@ function detectLightTextOnDarkBackground(imageData: ImageData): boolean {
   // 平均亮度 < 120 且標準差 > 40 時，認為是淺色文字在深色背景
   const isLightText = avgBrightness < 120 && stdDev > 40;
   
-  console.log('[OCR DEBUG] detectLightTextOnDarkBackground: 檢測結果', {
+  ocrDebugLog('detectLightTextOnDarkBackground: 檢測結果', {
     avgBrightness: Math.round(avgBrightness),
     stdDev: Math.round(stdDev),
     isLightText,
@@ -740,7 +744,7 @@ function enhanceContrastForDarkBackground(imageData: ImageData): ImageData {
     brightnessShift = 0;
   }
   
-  console.log('[OCR DEBUG] enhanceContrastForDarkBackground: 對比度增強', {
+  ocrDebugLog('enhanceContrastForDarkBackground: 對比度增強', {
     avgBrightness: Math.round(avgBrightness),
     stdDev: Math.round(stdDev),
     isLightTextOnDark,
@@ -775,31 +779,31 @@ function preprocessImage(
     enableAdvancedProcessing?: boolean;
     enableAutoThreshold?: boolean;
     invertForLightText?: boolean;
-    filters?: Partial<typeof CONFIG.filters>;
+    filters?: Partial<TesseractFiltersConfig>;
   }
 ): Promise<HTMLImageElement> {
   // 合併 filter 開關配置（允許外部覆蓋）
   const filterSwitches = {
-    enableImageSmoothing: filterOptions?.filters?.enableImageSmoothing ?? CONFIG.filters.enableImageSmoothing,
-    enableImageScale: filterOptions?.filters?.enableImageScale ?? CONFIG.filters.enableImageScale,
-    enableGrayscale: filterOptions?.filters?.enableGrayscale ?? CONFIG.filters.enableGrayscale,
-    enableContrastEnhancement: filterOptions?.filters?.enableContrastEnhancement ?? CONFIG.filters.enableContrastEnhancement,
-    enableInvertForLightText: filterOptions?.filters?.enableInvertForLightText ?? (filterOptions?.invertForLightText ?? CONFIG.invertForLightText),
-    enableBilateralFilter: filterOptions?.filters?.enableBilateralFilter ?? CONFIG.filters.enableBilateralFilter,
-    enableRemoveGridLines: filterOptions?.filters?.enableRemoveGridLines ?? CONFIG.filters.enableRemoveGridLines,
-    enableGaussianBlur: filterOptions?.filters?.enableGaussianBlur ?? CONFIG.filters.enableGaussianBlur,
-    enableMedianFilter: filterOptions?.filters?.enableMedianFilter ?? CONFIG.filters.enableMedianFilter,
-    enableSharpen: filterOptions?.filters?.enableSharpen ?? CONFIG.filters.enableSharpen,
-    enableAutoThreshold: filterOptions?.filters?.enableAutoThreshold ?? (filterOptions?.enableAutoThreshold ?? CONFIG.enableAutoThreshold),
-    enableBinarization: filterOptions?.filters?.enableBinarization ?? CONFIG.filters.enableBinarization,
-    enableMorphologyOpen: filterOptions?.filters?.enableMorphologyOpen ?? CONFIG.filters.enableMorphologyOpen,
-    enableMorphologyClose: filterOptions?.filters?.enableMorphologyClose ?? CONFIG.filters.enableMorphologyClose,
+    enableImageSmoothing: filterOptions?.filters?.enableImageSmoothing ?? getConfig().filters.enableImageSmoothing,
+    enableImageScale: filterOptions?.filters?.enableImageScale ?? getConfig().filters.enableImageScale,
+    enableGrayscale: filterOptions?.filters?.enableGrayscale ?? getConfig().filters.enableGrayscale,
+    enableContrastEnhancement: filterOptions?.filters?.enableContrastEnhancement ?? getConfig().filters.enableContrastEnhancement,
+    enableInvertForLightText: filterOptions?.filters?.enableInvertForLightText ?? (filterOptions?.invertForLightText ?? getConfig().invertForLightText),
+    enableBilateralFilter: filterOptions?.filters?.enableBilateralFilter ?? getConfig().filters.enableBilateralFilter,
+    enableRemoveGridLines: filterOptions?.filters?.enableRemoveGridLines ?? getConfig().filters.enableRemoveGridLines,
+    enableGaussianBlur: filterOptions?.filters?.enableGaussianBlur ?? getConfig().filters.enableGaussianBlur,
+    enableMedianFilter: filterOptions?.filters?.enableMedianFilter ?? getConfig().filters.enableMedianFilter,
+    enableSharpen: filterOptions?.filters?.enableSharpen ?? getConfig().filters.enableSharpen,
+    enableAutoThreshold: filterOptions?.filters?.enableAutoThreshold ?? (filterOptions?.enableAutoThreshold ?? getConfig().enableAutoThreshold),
+    enableBinarization: filterOptions?.filters?.enableBinarization ?? getConfig().filters.enableBinarization,
+    enableMorphologyOpen: filterOptions?.filters?.enableMorphologyOpen ?? getConfig().filters.enableMorphologyOpen,
+    enableMorphologyClose: filterOptions?.filters?.enableMorphologyClose ?? getConfig().filters.enableMorphologyClose,
   };
 
-  console.log('[OCR DEBUG] preprocessImage: 開始圖片前處理', {
+  ocrDebugLog('preprocessImage: 開始圖片前處理', {
     inputWidth: image.width,
     inputHeight: image.height,
-    imageScale: CONFIG.imageScale,
+    imageScale: getConfig().imageScale,
     filterSwitches,
     timestamp: new Date().toISOString(),
   });
@@ -809,11 +813,11 @@ function preprocessImage(
     const ctx = canvas.getContext('2d')!;
 
     // ========== 步驟0: Canvas 設置和圖像縮放 ==========
-    const scale = filterSwitches.enableImageScale ? CONFIG.imageScale : 1.0;
+    const scale = filterSwitches.enableImageScale ? getConfig().imageScale : 1.0;
     const width = Math.floor(image.width * scale);
     const height = Math.floor(image.height * scale);
 
-    console.log('[OCR DEBUG] preprocessImage: [步驟0] 計算放大後尺寸', {
+    ocrDebugLog('preprocessImage: [步驟0] 計算放大後尺寸', {
       originalWidth: image.width,
       originalHeight: image.height,
       scaledWidth: width,
@@ -830,12 +834,12 @@ function preprocessImage(
     if (filterSwitches.enableImageSmoothing) {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      console.log('[OCR DEBUG] preprocessImage: [步驟0] 啟用圖像平滑', {
+      ocrDebugLog('preprocessImage: [步驟0] 啟用圖像平滑', {
         timestamp: new Date().toISOString(),
       });
     } else {
       ctx.imageSmoothingEnabled = false;
-      console.log('[OCR DEBUG] preprocessImage: [步驟0] 禁用圖像平滑', {
+      ocrDebugLog('preprocessImage: [步驟0] 禁用圖像平滑', {
         timestamp: new Date().toISOString(),
       });
     }
@@ -845,7 +849,7 @@ function preprocessImage(
     if (scale === 1.0) {
       // 不需要縮放時，直接繪製原始圖像，確保像素對齊
       ctx.drawImage(image, 0, 0);
-      console.log('[OCR DEBUG] preprocessImage: [步驟0] 繪製圖像（無縮放）', {
+      ocrDebugLog('preprocessImage: [步驟0] 繪製圖像（無縮放）', {
         drawParams: { x: 0, y: 0 },
         imageSize: { width: image.width, height: image.height },
         canvasSize: { width: canvas.width, height: canvas.height },
@@ -854,7 +858,7 @@ function preprocessImage(
     } else {
       // 需要縮放時，使用計算後的尺寸
       ctx.drawImage(image, 0, 0, width, height);
-      console.log('[OCR DEBUG] preprocessImage: [步驟0] 繪製圖像（縮放）', {
+      ocrDebugLog('preprocessImage: [步驟0] 繪製圖像（縮放）', {
         drawParams: { x: 0, y: 0, width, height },
         imageSize: { width: image.width, height: image.height },
         canvasSize: { width: canvas.width, height: canvas.height },
@@ -864,7 +868,7 @@ function preprocessImage(
     }
 
     let imageData = ctx.getImageData(0, 0, width, height);
-    console.log('[OCR DEBUG] preprocessImage: 取得 ImageData', {
+    ocrDebugLog('preprocessImage: 取得 ImageData', {
       dataLength: imageData.data.length,
       width: imageData.width,
       height: imageData.height,
@@ -873,7 +877,7 @@ function preprocessImage(
 
     // ========== 步驟1: 灰階化 ==========
     if (filterSwitches.enableGrayscale) {
-      console.log('[OCR DEBUG] preprocessImage: [步驟1] 開始灰階化', {
+      ocrDebugLog('preprocessImage: [步驟1] 開始灰階化', {
         pixelCount: imageData.data.length / 4,
         timestamp: new Date().toISOString(),
       });
@@ -941,7 +945,7 @@ function preprocessImage(
       // 重新讀取 imageData 以供後續處理使用（確保使用最新的 canvas 數據）
       imageData = ctx.getImageData(0, 0, width, height);
       const afterGrayscale = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: [步驟1] 灰階化完成', {
+      ocrDebugLog('preprocessImage: [步驟1] 灰階化完成', {
         duration: afterGrayscale - beforeGrayscale,
         processedPixelCount: processedCount,
         sampleBefore: sampleBefore.slice(0, 5).map(s => `RGB(${s.r},${s.g},${s.b})${s.isGray ? ' [灰]' : ''}`),
@@ -958,25 +962,25 @@ function preprocessImage(
         timestamp: new Date().toISOString(),
       });
     } else {
-      console.log('[OCR DEBUG] preprocessImage: [步驟1] 跳過灰階化（已禁用）', {
+      ocrDebugLog('preprocessImage: [步驟1] 跳過灰階化（已禁用）', {
         timestamp: new Date().toISOString(),
       });
     }
 
     // ========== 步驟2: 對比度增強 ==========
     if (filterSwitches.enableContrastEnhancement) {
-      console.log('[OCR DEBUG] preprocessImage: [步驟2] 開始自適應對比度增強', {
+      ocrDebugLog('preprocessImage: [步驟2] 開始自適應對比度增強', {
         timestamp: new Date().toISOString(),
       });
       const beforeContrast = Date.now();
       imageData = enhanceContrastForDarkBackground(imageData);
       const afterContrast = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: [步驟2] 對比度增強完成', {
+      ocrDebugLog('preprocessImage: [步驟2] 對比度增強完成', {
         duration: afterContrast - beforeContrast,
         timestamp: new Date().toISOString(),
       });
     } else {
-      console.log('[OCR DEBUG] preprocessImage: [步驟2] 跳過對比度增強（已禁用）', {
+      ocrDebugLog('preprocessImage: [步驟2] 跳過對比度增強（已禁用）', {
         timestamp: new Date().toISOString(),
       });
     }
@@ -985,23 +989,23 @@ function preprocessImage(
     if (filterSwitches.enableInvertForLightText) {
       const isLightText = detectLightTextOnDarkBackground(imageData);
       if (isLightText) {
-        console.log('[OCR DEBUG] preprocessImage: [步驟2.5] 檢測到淺色文字，開始反轉圖像', {
+        ocrDebugLog('preprocessImage: [步驟2.5] 檢測到淺色文字，開始反轉圖像', {
           timestamp: new Date().toISOString(),
         });
         const beforeInvert = Date.now();
         imageData = invertImage(imageData);
         const afterInvert = Date.now();
-        console.log('[OCR DEBUG] preprocessImage: [步驟2.5] 圖像反轉完成', {
+        ocrDebugLog('preprocessImage: [步驟2.5] 圖像反轉完成', {
           duration: afterInvert - beforeInvert,
           timestamp: new Date().toISOString(),
         });
       } else {
-        console.log('[OCR DEBUG] preprocessImage: [步驟2.5] 未檢測到淺色文字，跳過反轉', {
+        ocrDebugLog('preprocessImage: [步驟2.5] 未檢測到淺色文字，跳過反轉', {
           timestamp: new Date().toISOString(),
         });
       }
     } else {
-      console.log('[OCR DEBUG] preprocessImage: [步驟2.5] 跳過圖像反轉檢查（已禁用）', {
+      ocrDebugLog('preprocessImage: [步驟2.5] 跳過圖像反轉檢查（已禁用）', {
         timestamp: new Date().toISOString(),
       });
     }
@@ -1010,61 +1014,61 @@ function preprocessImage(
     
     // 步驟3.1: 雙邊濾波（保留文字邊緣，平滑背景網格）
     if (filterSwitches.enableBilateralFilter) {
-      console.log('[OCR DEBUG] preprocessImage: [步驟3.1] 開始雙邊濾波去除網格', {
+      ocrDebugLog('preprocessImage: [步驟3.1] 開始雙邊濾波去除網格', {
         timestamp: new Date().toISOString(),
       });
       const beforeBilateral = Date.now();
       imageData = applyBilateralFilter(imageData, 2);
       const afterBilateral = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: [步驟3.1] 雙邊濾波完成', {
+      ocrDebugLog('preprocessImage: [步驟3.1] 雙邊濾波完成', {
         duration: afterBilateral - beforeBilateral,
         timestamp: new Date().toISOString(),
       });
     } else {
-      console.log('[OCR DEBUG] preprocessImage: [步驟3.1] 跳過雙邊濾波（已禁用）', {
+      ocrDebugLog('preprocessImage: [步驟3.1] 跳過雙邊濾波（已禁用）', {
         timestamp: new Date().toISOString(),
       });
     }
 
     // 步驟3.2: 去除細小網格線
     if (filterSwitches.enableRemoveGridLines) {
-      console.log('[OCR DEBUG] preprocessImage: [步驟3.2] 開始去除細小網格線', {
+      ocrDebugLog('preprocessImage: [步驟3.2] 開始去除細小網格線', {
         timestamp: new Date().toISOString(),
       });
       const beforeGrid = Date.now();
       imageData = removeGridLines(imageData);
       const afterGrid = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: [步驟3.2] 網格線去除完成', {
+      ocrDebugLog('preprocessImage: [步驟3.2] 網格線去除完成', {
         duration: afterGrid - beforeGrid,
         timestamp: new Date().toISOString(),
       });
     } else {
-      console.log('[OCR DEBUG] preprocessImage: [步驟3.2] 跳過去除網格線（已禁用）', {
+      ocrDebugLog('preprocessImage: [步驟3.2] 跳過去除網格線（已禁用）', {
         timestamp: new Date().toISOString(),
       });
     }
 
     // 步驟3.3: 高斯模糊平滑背景（使用更大的核）
     if (filterSwitches.enableGaussianBlur) {
-      console.log('[OCR DEBUG] preprocessImage: [步驟3.3] 開始增強高斯模糊平滑背景', {
+      ocrDebugLog('preprocessImage: [步驟3.3] 開始增強高斯模糊平滑背景', {
         timestamp: new Date().toISOString(),
       });
       const beforeBlur = Date.now();
       imageData = applyGaussianBlur(imageData, 2); // 使用更大的核（5x5）
       const afterBlur = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: [步驟3.3] 增強高斯模糊完成', {
+      ocrDebugLog('preprocessImage: [步驟3.3] 增強高斯模糊完成', {
         duration: afterBlur - beforeBlur,
         timestamp: new Date().toISOString(),
       });
     } else {
-      console.log('[OCR DEBUG] preprocessImage: [步驟3.3] 跳過高斯模糊（已禁用）', {
+      ocrDebugLog('preprocessImage: [步驟3.3] 跳過高斯模糊（已禁用）', {
         timestamp: new Date().toISOString(),
       });
     }
 
     // 步驟3.4: 中值濾波去噪（多次應用以更好地去除小噪點）
     if (filterSwitches.enableMedianFilter) {
-      console.log('[OCR DEBUG] preprocessImage: [步驟3.4] 開始中值濾波去噪', {
+      ocrDebugLog('preprocessImage: [步驟3.4] 開始中值濾波去噪', {
         timestamp: new Date().toISOString(),
       });
       const beforeFilter = Date.now();
@@ -1072,51 +1076,51 @@ function preprocessImage(
       // 再次應用以更好地去除殘留噪點
       imageData = applyMedianFilter(imageData, 1);
       const afterFilter = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: [步驟3.4] 中值濾波完成', {
+      ocrDebugLog('preprocessImage: [步驟3.4] 中值濾波完成', {
         duration: afterFilter - beforeFilter,
         timestamp: new Date().toISOString(),
       });
     } else {
-      console.log('[OCR DEBUG] preprocessImage: [步驟3.4] 跳過中值濾波（已禁用）', {
+      ocrDebugLog('preprocessImage: [步驟3.4] 跳過中值濾波（已禁用）', {
         timestamp: new Date().toISOString(),
       });
     }
 
     // ========== 步驟4: 銳化處理（增強文字邊緣，針對繁體字筆畫多使用強銳化）==========
     if (filterSwitches.enableSharpen) {
-      console.log('[OCR DEBUG] preprocessImage: [步驟4] 開始銳化處理', {
-        sharpenStrength: CONFIG.sharpenStrength,
+      ocrDebugLog('preprocessImage: [步驟4] 開始銳化處理', {
+        sharpenStrength: getConfig().sharpenStrength,
         timestamp: new Date().toISOString(),
       });
       const beforeSharpen = Date.now();
-      imageData = applySharpen(imageData, CONFIG.sharpenStrength as 'normal' | 'strong');
+      imageData = applySharpen(imageData, getConfig().sharpenStrength as 'normal' | 'strong');
       const afterSharpen = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: [步驟4] 銳化完成', {
+      ocrDebugLog('preprocessImage: [步驟4] 銳化完成', {
         duration: afterSharpen - beforeSharpen,
         timestamp: new Date().toISOString(),
       });
     } else {
-      console.log('[OCR DEBUG] preprocessImage: [步驟4] 跳過銳化處理（已禁用）', {
+      ocrDebugLog('preprocessImage: [步驟4] 跳過銳化處理（已禁用）', {
         timestamp: new Date().toISOString(),
       });
     }
 
     // ========== 步驟5: 計算自動閾值 ==========
-    let threshold = CONFIG.threshold;
+    let threshold = getConfig().threshold;
     if (filterSwitches.enableAutoThreshold) {
-      console.log('[OCR DEBUG] preprocessImage: [步驟5] 開始計算 Otsu 閾值', {
+      ocrDebugLog('preprocessImage: [步驟5] 開始計算 Otsu 閾值', {
         timestamp: new Date().toISOString(),
       });
       const beforeThreshold = Date.now();
       threshold = calculateOtsuThreshold(imageData);
       const afterThreshold = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: [步驟5] Otsu 閾值計算完成', {
+      ocrDebugLog('preprocessImage: [步驟5] Otsu 閾值計算完成', {
         threshold,
         duration: afterThreshold - beforeThreshold,
         timestamp: new Date().toISOString(),
       });
     } else {
-      console.log('[OCR DEBUG] preprocessImage: [步驟5] 使用固定閾值', {
+      ocrDebugLog('preprocessImage: [步驟5] 使用固定閾值', {
         threshold,
         timestamp: new Date().toISOString(),
       });
@@ -1124,7 +1128,7 @@ function preprocessImage(
 
     // ========== 步驟6: 二值化 ==========
     if (filterSwitches.enableBinarization) {
-      console.log('[OCR DEBUG] preprocessImage: [步驟6] 開始二值化', {
+      ocrDebugLog('preprocessImage: [步驟6] 開始二值化', {
         threshold,
         pixelCount: imageData.data.length / 4,
         timestamp: new Date().toISOString(),
@@ -1139,49 +1143,49 @@ function preprocessImage(
         processedData[i + 2] = binary;
       }
       const afterBinarization = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: [步驟6] 二值化完成', {
+      ocrDebugLog('preprocessImage: [步驟6] 二值化完成', {
         duration: afterBinarization - beforeBinarization,
         timestamp: new Date().toISOString(),
       });
     } else {
-      console.log('[OCR DEBUG] preprocessImage: [步驟6] 跳過二值化（已禁用）', {
+      ocrDebugLog('preprocessImage: [步驟6] 跳過二值化（已禁用）', {
         timestamp: new Date().toISOString(),
       });
     }
 
     // ========== 步驟7: 形態學開運算（去除小噪點）==========
     if (filterSwitches.enableMorphologyOpen) {
-      console.log('[OCR DEBUG] preprocessImage: [步驟7] 開始形態學開運算', {
+      ocrDebugLog('preprocessImage: [步驟7] 開始形態學開運算', {
         timestamp: new Date().toISOString(),
       });
       const beforeMorphology = Date.now();
       imageData = applyMorphologyOpen(imageData, 2); // 使用更大的核
       const afterMorphology = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: [步驟7] 形態學開運算完成', {
+      ocrDebugLog('preprocessImage: [步驟7] 形態學開運算完成', {
         duration: afterMorphology - beforeMorphology,
         timestamp: new Date().toISOString(),
       });
     } else {
-      console.log('[OCR DEBUG] preprocessImage: [步驟7] 跳過形態學開運算（已禁用）', {
+      ocrDebugLog('preprocessImage: [步驟7] 跳過形態學開運算（已禁用）', {
         timestamp: new Date().toISOString(),
       });
     }
 
     // ========== 步驟7.5: 形態學閉運算（連接斷裂的筆畫，針對繁體字筆畫多的特點）==========
     if (filterSwitches.enableMorphologyClose) {
-      console.log('[OCR DEBUG] preprocessImage: [步驟7.5] 開始形態學閉運算（連接斷裂筆畫）', {
-        kernelSize: CONFIG.morphologyCloseKernelSize,
+      ocrDebugLog('preprocessImage: [步驟7.5] 開始形態學閉運算（連接斷裂筆畫）', {
+        kernelSize: getConfig().morphologyCloseKernelSize,
         timestamp: new Date().toISOString(),
       });
       const beforeClose = Date.now();
-      imageData = applyMorphologyClose(imageData, CONFIG.morphologyCloseKernelSize);
+      imageData = applyMorphologyClose(imageData, getConfig().morphologyCloseKernelSize);
       const afterClose = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: [步驟7.5] 形態學閉運算完成', {
+      ocrDebugLog('preprocessImage: [步驟7.5] 形態學閉運算完成', {
         duration: afterClose - beforeClose,
         timestamp: new Date().toISOString(),
       });
     } else {
-      console.log('[OCR DEBUG] preprocessImage: [步驟7.5] 跳過形態學閉運算（已禁用）', {
+      ocrDebugLog('preprocessImage: [步驟7.5] 跳過形態學閉運算（已禁用）', {
         timestamp: new Date().toISOString(),
       });
     }
@@ -1189,24 +1193,24 @@ function preprocessImage(
     ctx.putImageData(imageData, 0, 0);
 
     // 記錄 canvas 處理前後的圖像信息，用於調試
-    console.log('[OCR DEBUG] preprocessImage: Canvas 處理完成，準備轉換為 Image', {
+    ocrDebugLog('preprocessImage: Canvas 處理完成，準備轉換為 Image', {
       canvasSize: { width: canvas.width, height: canvas.height },
       imageDataSize: { width: imageData.width, height: imageData.height },
       originalImageSize: { width: image.width, height: image.height },
       hasAnyFilterApplied: Object.values(filterSwitches).some(v => v === true),
-      scale: filterSwitches.enableImageScale ? CONFIG.imageScale : 1.0,
+      scale: filterSwitches.enableImageScale ? getConfig().imageScale : 1.0,
       // 檢查圖像尺寸是否一致，確保沒有偏移
       sizeMatches: canvas.width === imageData.width && canvas.height === imageData.height && 
                    (filterSwitches.enableImageScale ? 
-                     (canvas.width === Math.floor(image.width * CONFIG.imageScale) && 
-                      canvas.height === Math.floor(image.height * CONFIG.imageScale)) :
+                     (canvas.width === Math.floor(image.width * getConfig().imageScale) && 
+                      canvas.height === Math.floor(image.height * getConfig().imageScale)) :
                      (canvas.width === image.width && canvas.height === image.height)),
       timestamp: new Date().toISOString(),
     });
 
     const processedImg = new Image();
     processedImg.onload = () => {
-      console.log('[OCR DEBUG] preprocessImage: 前處理完成', {
+      ocrDebugLog('preprocessImage: 前處理完成', {
         originalImageSize: { width: image.width, height: image.height },
         finalWidth: processedImg.width,
         finalHeight: processedImg.height,
@@ -1237,7 +1241,7 @@ async function buildItemtwCharWhitelist(): Promise<string> {
 
   // 開始構建白名單
   whitelistBuildPromise = (async () => {
-    console.log('[OCR DEBUG] buildItemtwCharWhitelist: 開始構建 itemtw 字符白名單（增強版）', {
+    ocrDebugLog('buildItemtwCharWhitelist: 開始構建 itemtw 字符白名單（增強版）', {
       timestamp: new Date().toISOString(),
     });
 
@@ -1320,7 +1324,7 @@ async function buildItemtwCharWhitelist(): Promise<string> {
       };
 
       const buildDuration = Date.now() - buildStartTime;
-      console.log('[OCR DEBUG] buildItemtwCharWhitelist: 白名單構建完成（增強版）', {
+      ocrDebugLog('buildItemtwCharWhitelist: 白名單構建完成（增強版）', {
         uniqueCharCount: charSet.size,
         uniqueBigramCount: bigramSet.size,
         uniqueTrigramCount: trigramSet.size,
@@ -1331,7 +1335,7 @@ async function buildItemtwCharWhitelist(): Promise<string> {
 
       return itemtwCharWhitelist;
     } catch (error) {
-      console.error('[OCR DEBUG] buildItemtwCharWhitelist: 構建白名單失敗', {
+      ocrDebugLog('buildItemtwCharWhitelist: 構建白名單失敗', {
         error,
         errorMessage: error instanceof Error ? error.message : String(error),
         timestamp: new Date().toISOString(),
@@ -1352,7 +1356,7 @@ async function buildItemtwCharWhitelist(): Promise<string> {
  * @returns 是否符合白名單要求
  */
 function validateAgainstWhitelist(text: string): boolean {
-  if (!CONFIG.useItemtwWhitelist || !itemtwWhitelistCache) {
+  if (!getConfig().useItemtwWhitelist || !itemtwWhitelistCache) {
     return true; // 如果未啟用白名單或緩存未構建，不進行驗證
   }
   
@@ -1386,7 +1390,7 @@ function validateAgainstWhitelist(text: string): boolean {
  * @returns 文字區域邊界框 {x, y, width, height}，如果檢測失敗返回 null
  */
 async function detectTextRegion(image: HTMLImageElement): Promise<{ x: number; y: number; width: number; height: number } | null> {
-  console.log('[OCR DEBUG] detectTextRegion: 開始檢測文字區域', {
+  ocrDebugLog('detectTextRegion: 開始檢測文字區域', {
     imageWidth: image.width,
     imageHeight: image.height,
     timestamp: new Date().toISOString(),
@@ -1402,7 +1406,7 @@ async function detectTextRegion(image: HTMLImageElement): Promise<{ x: number; y
 
     // 創建臨時 Worker 進行快速檢測
     // 使用 Tesseract 原生 CDN 模型
-    const worker = await window.Tesseract.createWorker(CONFIG.tesseractLang, 1);
+    const worker = await window.Tesseract.createWorker(getConfig().tesseractLang, 1);
     
     // 構建參數：使用快速模式
     const detectionParams: Record<string, string> = {
@@ -1411,9 +1415,9 @@ async function detectTextRegion(image: HTMLImageElement): Promise<{ x: number; y
     };
     
     // 如果白名單已構建，使用它來提高檢測準確度
-    if (CONFIG.useItemtwWhitelist && itemtwCharWhitelist !== null) {
+    if (getConfig().useItemtwWhitelist && itemtwCharWhitelist !== null) {
       detectionParams.tessedit_char_whitelist = itemtwCharWhitelist;
-      console.log('[OCR DEBUG] detectTextRegion: 使用 itemtw 白名單進行檢測', {
+      ocrDebugLog('detectTextRegion: 使用 itemtw 白名單進行檢測', {
         whitelistLength: itemtwCharWhitelist.length,
         timestamp: new Date().toISOString(),
       });
@@ -1512,7 +1516,7 @@ async function detectTextRegion(image: HTMLImageElement): Promise<{ x: number; y
     
     // 根據圖片尺寸和文字區域大小動態調整邊距
     // 對於較小的圖片或較小的文字區域，使用更小的邊距以更貼近文字
-    const basePadding = CONFIG.autoCropPadding;
+    const basePadding = getConfig().autoCropPadding;
     const imageArea = image.width * image.height;
     const textArea = textWidth * textHeight;
     const textRatio = textArea / imageArea;
@@ -1547,7 +1551,7 @@ async function detectTextRegion(image: HTMLImageElement): Promise<{ x: number; y
     // 計算優化後節省的高度（相對於使用最大邊界）
     const savedHeight = maxBottomEdge - maxY;
     
-    console.log('[OCR DEBUG] detectTextRegion: 文字區域檢測完成', {
+    ocrDebugLog('detectTextRegion: 文字區域檢測完成', {
       detectedRegion: { x, y, width, height },
       originalSize: { width: image.width, height: image.height },
       textRegion: { x: minX, y: minY, width: textWidth, height: textHeight },
@@ -1565,7 +1569,7 @@ async function detectTextRegion(image: HTMLImageElement): Promise<{ x: number; y
 
     return { x, y, width, height };
   } catch (error) {
-    console.error('[OCR DEBUG] detectTextRegion: 檢測失敗', {
+    ocrDebugLog('detectTextRegion: 檢測失敗', {
       error,
       errorMessage: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString(),
@@ -1581,7 +1585,7 @@ async function detectTextRegion(image: HTMLImageElement): Promise<{ x: number; y
  * @returns 裁剪後的圖片元素
  */
 function autoCropImage(image: HTMLImageElement, region: { x: number; y: number; width: number; height: number }): Promise<HTMLImageElement> {
-  console.log('[OCR DEBUG] autoCropImage: 開始自動裁剪', {
+  ocrDebugLog('autoCropImage: 開始自動裁剪', {
     originalSize: { width: image.width, height: image.height },
     cropRegion: region,
     timestamp: new Date().toISOString(),
@@ -1595,7 +1599,7 @@ function autoCropImage(image: HTMLImageElement, region: { x: number; y: number; 
     canvas.height = region.height;
 
     // 使用 filter 開關控制圖像平滑
-    if (CONFIG.filters.enableImageSmoothing) {
+    if (getConfig().filters.enableImageSmoothing) {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
     } else {
@@ -1611,14 +1615,14 @@ function autoCropImage(image: HTMLImageElement, region: { x: number; y: number; 
 
     const croppedImg = new Image();
     croppedImg.onload = () => {
-      console.log('[OCR DEBUG] autoCropImage: 裁剪完成', {
+      ocrDebugLog('autoCropImage: 裁剪完成', {
         croppedSize: { width: croppedImg.width, height: croppedImg.height },
         timestamp: new Date().toISOString(),
       });
       resolve(croppedImg);
     };
     croppedImg.onerror = (error) => {
-      console.error('[OCR DEBUG] autoCropImage: 裁剪失敗', {
+      ocrDebugLog('autoCropImage: 裁剪失敗', {
         error,
         timestamp: new Date().toISOString(),
       });
@@ -1641,7 +1645,7 @@ async function detectAndCropTextRegion(
   enableAutoTextDetection: boolean,
   onProgress?: (progress: number) => void
 ): Promise<{ image: HTMLImageElement; region: { x: number; y: number; width: number; height: number } | null }> {
-  console.log('[OCR DEBUG] detectAndCropTextRegion: 開始處理', {
+  ocrDebugLog('detectAndCropTextRegion: 開始處理', {
     enableAutoTextDetection,
     imageSize: { width: image.width, height: image.height },
     timestamp: new Date().toISOString(),
@@ -1649,20 +1653,21 @@ async function detectAndCropTextRegion(
 
   // 如果未啟用自動檢測，直接返回原圖
   if (!enableAutoTextDetection) {
-    console.log('[OCR DEBUG] detectAndCropTextRegion: 自動檢測已禁用，返回原圖', {
+    ocrDebugLog('detectAndCropTextRegion: 自動檢測已禁用，返回原圖', {
       timestamp: new Date().toISOString(),
     });
     return { image, region: null };
   }
 
-  // 執行檢測和裁剪
+  // 執行檢測和裁剪（必要時：白區過多則先去角落黑邊再重做一次偵測+裁切）
+  const TEXT_AREA_RATIO_THRESHOLD = 0.25; // 文字區域佔比低於此視為「白區過多」
   try {
     const detectionStartTime = Date.now();
-    const textRegion = await detectTextRegion(image);
+    let textRegion = await detectTextRegion(image);
     const detectionDuration = Date.now() - detectionStartTime;
 
     if (textRegion) {
-      console.log('[OCR DEBUG] detectAndCropTextRegion: 檢測到文字區域，開始自動裁剪', {
+      ocrDebugLog('detectAndCropTextRegion: 檢測到文字區域，開始自動裁剪', {
         region: textRegion,
         detectionDuration,
         timestamp: new Date().toISOString(),
@@ -1670,10 +1675,44 @@ async function detectAndCropTextRegion(
 
       try {
         const cropStartTime = Date.now();
-        const croppedImage = await autoCropImage(image, textRegion);
+        let croppedImage = await autoCropImage(image, textRegion);
         const cropDuration = Date.now() - cropStartTime;
 
-        console.log('[OCR DEBUG] detectAndCropTextRegion: 自動裁剪完成', {
+        const imageArea = image.width * image.height;
+        const textArea = textRegion.width * textRegion.height;
+        const textAreaRatio = imageArea > 0 ? textArea / imageArea : 0;
+        const whiteAreaTooMuch = textAreaRatio < TEXT_AREA_RATIO_THRESHOLD;
+
+        if (whiteAreaTooMuch) {
+          ocrDebugLog('detectAndCropTextRegion: 白區過多，先去角落黑邊再重做文字偵測與裁切', {
+            textAreaRatio: textAreaRatio.toFixed(2),
+            threshold: TEXT_AREA_RATIO_THRESHOLD,
+            timestamp: new Date().toISOString(),
+          });
+          try {
+            const trimmedImage = await cropBlackBorders(image);
+            if (trimmedImage !== image) {
+              const textRegion2 = await detectTextRegion(trimmedImage);
+              if (textRegion2) {
+                const croppedImage2 = await autoCropImage(trimmedImage, textRegion2);
+                croppedImage = croppedImage2;
+                textRegion = textRegion2;
+                ocrDebugLog('detectAndCropTextRegion: 去黑邊後再次裁切完成', {
+                  trimmedSize: { width: trimmedImage.width, height: trimmedImage.height },
+                  finalCroppedSize: { width: croppedImage.width, height: croppedImage.height },
+                  timestamp: new Date().toISOString(),
+                });
+              }
+            }
+          } catch (retryError) {
+            console.warn('[OCR DEBUG] detectAndCropTextRegion: 去黑邊重試失敗，使用第一次裁切結果', {
+              error: retryError,
+              timestamp: new Date().toISOString(),
+            });
+          }
+        }
+
+        ocrDebugLog('detectAndCropTextRegion: 自動裁剪完成', {
           originalSize: { width: image.width, height: image.height },
           croppedSize: { width: croppedImage.width, height: croppedImage.height },
           cropDuration,
@@ -1696,14 +1735,31 @@ async function detectAndCropTextRegion(
         return { image, region: null };
       }
     } else {
-      console.log('[OCR DEBUG] detectAndCropTextRegion: 未檢測到文字區域，使用原圖', {
+      // 第一次未檢測到文字時，也嘗試先去黑邊再偵測一次
+      ocrDebugLog('detectAndCropTextRegion: 未檢測到文字區域，嘗試去角落黑邊後再偵測一次', {
         detectionDuration,
         timestamp: new Date().toISOString(),
       });
+      try {
+        const trimmedImage = await cropBlackBorders(image);
+        if (trimmedImage !== image) {
+          const textRegion2 = await detectTextRegion(trimmedImage);
+          if (textRegion2) {
+            const croppedImage2 = await autoCropImage(trimmedImage, textRegion2);
+            if (onProgress) onProgress(0.2);
+            return { image: croppedImage2, region: textRegion2 };
+          }
+        }
+      } catch (retryError) {
+        console.warn('[OCR DEBUG] detectAndCropTextRegion: 去黑邊重試失敗', {
+          error: retryError,
+          timestamp: new Date().toISOString(),
+        });
+      }
       return { image, region: null };
     }
   } catch (error) {
-    console.error('[OCR DEBUG] detectAndCropTextRegion: 處理過程發生錯誤，使用原圖', {
+    ocrDebugLog('detectAndCropTextRegion: 處理過程發生錯誤，使用原圖', {
       error,
       errorMessage: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString(),
@@ -1751,7 +1807,7 @@ function imageToDataURL(image: HTMLImageElement): string {
   const height = image.naturalHeight || image.height;
 
   if (width <= 0 || height <= 0) {
-    console.error('[OCR DEBUG] imageToDataURL: 圖片尺寸無效', {
+    ocrDebugLog('imageToDataURL: 圖片尺寸無效', {
       width,
       height,
       naturalWidth: image.naturalWidth,
@@ -1770,7 +1826,7 @@ function imageToDataURL(image: HTMLImageElement): string {
   canvas.height = height;
   
   // 使用 filter 開關控制圖像平滑
-  if (CONFIG.enableDebugImageSmoothing) {
+  if (getConfig().enableDebugImageSmoothing) {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
   } else {
@@ -1781,7 +1837,7 @@ function imageToDataURL(image: HTMLImageElement): string {
   
   const dataURL = canvas.toDataURL('image/png');
   
-  console.log('[OCR DEBUG] imageToDataURL: 轉換完成', {
+  ocrDebugLog('imageToDataURL: 轉換完成', {
     originalSize: { width: image.width, height: image.height },
     naturalSize: { width: image.naturalWidth, height: image.naturalHeight },
     canvasSize: { width, height },
@@ -1806,15 +1862,15 @@ async function performOCR(
   },
   onProgress?: (p: number) => void,
   debugConfirmCallback?: (imageDataUrl: string) => Promise<boolean>
-): Promise<string> {
+): Promise<{ text: string; ocrWords?: Array<{ text: string; confidence: number }>; ocrConfidence?: number }> {
   const startTime = Date.now();
   const effectiveOptions = {
-    enableAutoTextDetection: filterOptions?.enableAutoTextDetection ?? CONFIG.filters.enableAutoTextDetection,
-    useItemtwWhitelist: filterOptions?.useItemtwWhitelist ?? CONFIG.useItemtwWhitelist,
-    excludeSymbolsAndNumbers: filterOptions?.excludeSymbolsAndNumbers ?? CONFIG.excludeSymbolsAndNumbersAtRecognition,
+    enableAutoTextDetection: filterOptions?.enableAutoTextDetection ?? getConfig().filters.enableAutoTextDetection,
+    useItemtwWhitelist: filterOptions?.useItemtwWhitelist ?? getConfig().useItemtwWhitelist,
+    excludeSymbolsAndNumbers: filterOptions?.excludeSymbolsAndNumbers ?? getConfig().excludeSymbolsAndNumbersAtRecognition,
   };
 
-  console.log('[OCR DEBUG] performOCR: 開始 OCR 識別', {
+  ocrDebugLog('performOCR: 開始 OCR 識別', {
     imageWidth: image.width,
     imageHeight: image.height,
     imageSrc: image.src.substring(0, 50) + '...',
@@ -1827,7 +1883,7 @@ async function performOCR(
 
   // ========== 統一的文字區域檢測和裁剪邏輯 ==========
   // 使用統一的函數處理，確保所有檢測和裁剪邏輯都受到 enableAutoTextDetection 控制
-  console.log('[OCR DEBUG] performOCR: 開始統一的檢測和裁剪處理', {
+  ocrDebugLog('performOCR: 開始統一的檢測和裁剪處理', {
     enableAutoTextDetection: effectiveOptions.enableAutoTextDetection,
     inputImageSize: { width: image.width, height: image.height },
     timestamp: new Date().toISOString(),
@@ -1839,7 +1895,7 @@ async function performOCR(
     onProgress
   );
   
-  console.log('[OCR DEBUG] performOCR: 檢測和裁剪處理完成', {
+  ocrDebugLog('performOCR: 檢測和裁剪處理完成', {
     finalImageSize: { width: finalImage.width, height: finalImage.height },
     isSameAsInput: finalImage === image,
     hasDetectedRegion: detectedRegion !== null,
@@ -1849,14 +1905,14 @@ async function performOCR(
 
   try {
     // 檢查 Tesseract 是否已載入
-    console.log('[OCR DEBUG] performOCR: 檢查 Tesseract.js 是否載入', {
+    ocrDebugLog('performOCR: 檢查 Tesseract.js 是否載入', {
       isDefined: typeof window.Tesseract !== 'undefined',
       tesseractType: typeof window.Tesseract,
       timestamp: new Date().toISOString(),
     });
 
     if (typeof window.Tesseract === 'undefined') {
-      console.error('[OCR DEBUG] performOCR: Tesseract.js 未載入', {
+      ocrDebugLog('performOCR: Tesseract.js 未載入', {
         timestamp: new Date().toISOString(),
       });
       throw new Error('Tesseract.js 尚未載入，請稍候再試');
@@ -1865,18 +1921,18 @@ async function performOCR(
     // Tesseract.js v5: 語言需要在 createWorker 時直接指定
     // loadLanguage 和 initialize 已被棄用，不再需要調用
     // 使用 Tesseract 原生 CDN 模型
-    console.log('[OCR DEBUG] performOCR: 開始創建 Worker（指定語言）', {
-      language: CONFIG.tesseractLang,
+    ocrDebugLog('performOCR: 開始創建 Worker（指定語言）', {
+      language: getConfig().tesseractLang,
       modelSource: 'CDN (Tesseract 原生繁體中文模型)',
       timestamp: new Date().toISOString(),
     });
     const workerCreateStart = Date.now();
     // v5 API: createWorker(lang, oem?, options?) - 使用 CDN 原生模型
-    const worker = await window.Tesseract.createWorker(CONFIG.tesseractLang, 1);
+    const worker = await window.Tesseract.createWorker(getConfig().tesseractLang, 1);
     const workerCreateEnd = Date.now();
-    console.log('[OCR DEBUG] performOCR: Worker 創建成功（已預載語言）', {
+    ocrDebugLog('performOCR: Worker 創建成功（已預載語言）', {
       duration: workerCreateEnd - workerCreateStart,
-      language: CONFIG.tesseractLang,
+      language: getConfig().tesseractLang,
       modelSource: 'CDN (Tesseract 原生繁體中文模型)',
       workerType: typeof worker,
       timestamp: new Date().toISOString(),
@@ -1889,14 +1945,14 @@ async function performOCR(
     if (effectiveOptions.useItemtwWhitelist) {
       // 方案1：使用 itemtw 白名單，只識別 itemtw 中存在的繁體中文字符
       // 首次使用時會構建並緩存白名單（白名單已確保只包含繁體中文 Unicode 範圍）
-      console.log('[OCR DEBUG] performOCR: 開始構建/獲取 itemtw 字符白名單', {
+      ocrDebugLog('performOCR: 開始構建/獲取 itemtw 字符白名單', {
         timestamp: new Date().toISOString(),
       });
       const whitelistStartTime = Date.now();
       chineseCharWhitelist = await buildItemtwCharWhitelist();
       const whitelistDuration = Date.now() - whitelistStartTime;
       
-      console.log('[OCR DEBUG] performOCR: itemtw 字符白名單準備完成', {
+      ocrDebugLog('performOCR: itemtw 字符白名單準備完成', {
         whitelistLength: chineseCharWhitelist.length,
         uniqueCharCount: chineseCharWhitelist.length > 0 ? new Set(chineseCharWhitelist).size : 0,
         duration: whitelistDuration,
@@ -1911,7 +1967,7 @@ async function performOCR(
       // 3. 在後處理階段通過 filterChineseOnly 嚴格過濾，只保留繁體中文 Unicode 範圍
       chineseCharWhitelist = '';
       
-      console.log('[OCR DEBUG] performOCR: 使用識別後過濾模式（只檢索繁體中文）', {
+      ocrDebugLog('performOCR: 使用識別後過濾模式（只檢索繁體中文）', {
         note: '識別階段不限制字符，後處理階段將嚴格過濾為繁體中文',
         timestamp: new Date().toISOString(),
       });
@@ -1946,17 +2002,17 @@ async function performOCR(
       classify_misfit_junk_penalty: '0.1', // 降低誤識別懲罰，提高對複雜字符的容忍度
       classify_accept_rating: '0.2', // 降低接受評級閾值，提高識別敏感度
     };
-    console.log('[OCR DEBUG] performOCR: 設定 OCR 參數', {
+    ocrDebugLog('performOCR: 設定 OCR 參數', {
       params,
       timestamp: new Date().toISOString(),
     });
     await worker.setParameters(params);
-    console.log('[OCR DEBUG] performOCR: OCR 參數設定完成', {
+    ocrDebugLog('performOCR: OCR 參數設定完成', {
       timestamp: new Date().toISOString(),
     });
 
     // Debug 模式：在輸入到 tesseract 前顯示確認框
-    if (CONFIG.debugMode && debugConfirmCallback) {
+    if (getConfig().debugMode && debugConfirmCallback) {
       // 確保 finalImage 已完全載入
       if (!finalImage.complete || finalImage.naturalWidth === 0 || finalImage.naturalHeight === 0) {
         // 等待圖片載入完成
@@ -1984,7 +2040,7 @@ async function performOCR(
     // 注意：由於 logger 函數無法透過 postMessage 傳遞給 Worker，
     // 我們暫時移除詳細的進度追蹤以避免 DataCloneError
     // OCR 功能會正常運作，但進度條會在完成時直接跳到 100%
-    console.log('[OCR DEBUG] performOCR: 開始執行 recognize', {
+    ocrDebugLog('performOCR: 開始執行 recognize', {
       imageWidth: finalImage.width,
       imageHeight: finalImage.height,
       isCropped: finalImage !== image,
@@ -1993,7 +2049,7 @@ async function performOCR(
     const recognizeStart = Date.now();
     const result = await worker.recognize(finalImage);
     const recognizeEnd = Date.now();
-    console.log('[OCR DEBUG] performOCR: recognize 完成', {
+    ocrDebugLog('performOCR: recognize 完成', {
       duration: recognizeEnd - recognizeStart,
       resultTextLength: result.data.text?.length || 0,
       resultTextPreview: result.data.text?.substring(0, 100) || '',
@@ -2008,7 +2064,7 @@ async function performOCR(
     
     // 如果提供了 onProgress 回調，在識別完成時更新進度
     if (onProgress) {
-      console.log('[OCR DEBUG] performOCR: 更新進度回調', {
+      ocrDebugLog('performOCR: 更新進度回調', {
         progress: 1.0,
         timestamp: new Date().toISOString(),
       });
@@ -2021,18 +2077,18 @@ async function performOCR(
     if (finalImage !== image && finalImage.src.startsWith('data:')) {
       // 注意：Image 對象的 src 如果是 data URL，不需要手動清理
       // 但我們可以記錄一下
-      console.log('[OCR DEBUG] performOCR: 使用裁剪後的圖片完成識別', {
+      ocrDebugLog('performOCR: 使用裁剪後的圖片完成識別', {
         timestamp: new Date().toISOString(),
       });
     }
 
-    console.log('[OCR DEBUG] performOCR: 開始終止 Worker', {
+    ocrDebugLog('performOCR: 開始終止 Worker', {
       timestamp: new Date().toISOString(),
     });
     const terminateStart = Date.now();
     await worker.terminate();
     const terminateEnd = Date.now();
-    console.log('[OCR DEBUG] performOCR: Worker 終止完成', {
+    ocrDebugLog('performOCR: Worker 終止完成', {
       duration: terminateEnd - terminateStart,
       timestamp: new Date().toISOString(),
     });
@@ -2050,10 +2106,10 @@ async function performOCR(
     
     // 只有在 minConfidence > 0 時才進行 confidence 過濾
     // 當 minConfidence 為 0 時，保留所有識別結果，避免過度過濾導致識別不準確
-    if (CONFIG.minConfidence > 0 && result.data.words && result.data.words.length > 0) {
-      console.log('[OCR DEBUG] performOCR: Step 1 - 開始過濾低 confidence 單詞', {
+    if (getConfig().minConfidence > 0 && result.data.words && result.data.words.length > 0) {
+      ocrDebugLog('performOCR: Step 1 - 開始過濾低 confidence 單詞', {
         totalWords: result.data.words.length,
-        minConfidence: CONFIG.minConfidence,
+        minConfidence: getConfig().minConfidence,
         timestamp: new Date().toISOString(),
       });
 
@@ -2093,7 +2149,7 @@ async function performOCR(
       // 這樣可以保持正確的字符順序，即使某些字符的 confidence 較低
       const filteredParts: string[] = [];
       sortedWords.forEach((word, index) => {
-        if (word.confidence >= CONFIG.minConfidence && word.text.trim().length > 0) {
+        if (word.confidence >= getConfig().minConfidence && word.text.trim().length > 0) {
           // 高 confidence 單詞：保留文字
           filteredParts.push(word.text);
         } else {
@@ -2107,22 +2163,22 @@ async function performOCR(
       filteredText = filteredParts.join('');
 
       const removedCount = sortedWords.filter(
-        (w) => w.confidence < CONFIG.minConfidence || w.text.trim().length === 0
+        (w) => w.confidence < getConfig().minConfidence || w.text.trim().length === 0
       ).length;
 
-      console.log('[OCR DEBUG] performOCR: Step 1 - confidence 過濾完成', {
+      ocrDebugLog('performOCR: Step 1 - confidence 過濾完成', {
         originalWordCount: result.data.words.length,
         filteredWordCount: sortedWords.length - removedCount,
         removedWordCount: removedCount,
         removedWords: sortedWords
-          .filter((w) => w.confidence < CONFIG.minConfidence || w.text.trim().length === 0)
+          .filter((w) => w.confidence < getConfig().minConfidence || w.text.trim().length === 0)
           .map((w) => ({ text: w.text, confidence: w.confidence })),
         filteredTextPreview: filteredText.substring(0, 100),
         timestamp: new Date().toISOString(),
       });
     } else {
-      if (CONFIG.minConfidence === 0) {
-        console.log('[OCR DEBUG] performOCR: Step 1 - minConfidence 為 0，跳過 confidence 過濾，保留所有識別結果', {
+      if (getConfig().minConfidence === 0) {
+        ocrDebugLog('performOCR: Step 1 - minConfidence 為 0，跳過 confidence 過濾，保留所有識別結果', {
           originalTextLength: result.data.text.length,
           timestamp: new Date().toISOString(),
         });
@@ -2140,7 +2196,7 @@ async function performOCR(
       .replace(/\n+/g, ' ')  // 換行符轉為空格
       .trim();
 
-    console.log('[OCR DEBUG] performOCR: Step 2 - 清理後的文字', {
+    ocrDebugLog('performOCR: Step 2 - 清理後的文字', {
       originalLength: result.data.text.length,
       filteredLength: filteredText.length,
       cleanedLength: cleanedText.length,
@@ -2180,7 +2236,7 @@ async function performOCR(
       processedText = result.data.text.trim();
     }
     
-    console.log('[OCR DEBUG] performOCR: Step 3 - 繁體中文過濾完成', {
+    ocrDebugLog('performOCR: Step 3 - 繁體中文過濾完成', {
       beforeFilter: cleanedText,
       afterFilter: processedText,
       removedChars: cleanedText.length - processedText.length,
@@ -2198,7 +2254,7 @@ async function performOCR(
           timestamp: new Date().toISOString(),
         });
       } else {
-        console.log('[OCR DEBUG] performOCR: Step 4 - 白名單驗證通過', {
+        ocrDebugLog('performOCR: Step 4 - 白名單驗證通過', {
           timestamp: new Date().toISOString(),
         });
       }
@@ -2209,13 +2265,13 @@ async function performOCR(
     // 計算平均置信度（如果有 words 數據）
     let avgConfidence = 0;
     if (result.data.words && result.data.words.length > 0) {
-      const validWords = result.data.words.filter(w => w.confidence >= CONFIG.minConfidence);
+      const validWords = result.data.words.filter(w => w.confidence >= getConfig().minConfidence);
       if (validWords.length > 0) {
         avgConfidence = validWords.reduce((sum, w) => sum + w.confidence, 0) / validWords.length;
       }
     }
     
-    console.log('[OCR DEBUG] performOCR: OCR 識別完成', {
+    ocrDebugLog('performOCR: OCR 識別完成', {
       totalDuration,
       originalText: result.data.text,
       cleanedText,
@@ -2225,10 +2281,36 @@ async function performOCR(
       timestamp: new Date().toISOString(),
     });
 
-    return processedText;
+    // 為搜尋評分提供：高信心度單詞列表（依顯示順序）與平均信心度，供 order-first + 字級信心權重使用
+    let ocrWords: Array<{ text: string; confidence: number }> | undefined;
+    let ocrConfidence: number | undefined;
+    if (result.data.words && result.data.words.length > 0) {
+      const wordHeights = result.data.words
+        .map((w) => (w.bbox ? w.bbox.y1 - w.bbox.y0 : 0))
+        .filter((h) => h > 0);
+      const avgHeight = wordHeights.length > 0 ? wordHeights.reduce((s, h) => s + h, 0) / wordHeights.length : 20;
+      const lineThreshold = Math.max(5, avgHeight * 0.3);
+      const sorted = [...result.data.words].sort((a, b) => {
+        const aCenterY = (a.bbox.y0 + a.bbox.y1) / 2;
+        const bCenterY = (b.bbox.y0 + b.bbox.y1) / 2;
+        if (Math.abs(aCenterY - bCenterY) > lineThreshold) return aCenterY - bCenterY;
+        if (Math.abs(a.bbox.x0 - b.bbox.x0) < 1) return a.bbox.x1 - b.bbox.x1;
+        return a.bbox.x0 - b.bbox.x0;
+      });
+      const highConf = sorted.filter((w) => w.confidence >= getConfig().minConfidence && w.text.trim().length > 0);
+      if (highConf.length > 0) {
+        ocrWords = highConf.map((w) => ({ text: w.text.trim(), confidence: w.confidence }));
+        ocrConfidence = highConf.reduce((s, w) => s + w.confidence, 0) / highConf.length;
+      }
+    }
+    return { text: processedText, ocrWords, ocrConfidence };
   } catch (error) {
+    // 使用者按取消為正常行為，不當成辨識失敗
+    if (error instanceof Error && error.message === 'OCR 已取消') {
+      throw error;
+    }
     const totalDuration = Date.now() - startTime;
-    console.error('[OCR DEBUG] performOCR: OCR 識別錯誤', {
+    ocrDebugLog('performOCR: OCR 識別錯誤', {
       error,
       errorMessage: error instanceof Error ? error.message : String(error),
       errorStack: error instanceof Error ? error.stack : undefined,
@@ -2245,7 +2327,7 @@ async function performOCR(
 function loadImageFromClipboard(
   clipboardData: DataTransfer
 ): Promise<HTMLImageElement> {
-  console.log('[OCR DEBUG] loadImageFromClipboard: 開始從剪貼簿讀取圖片', {
+  ocrDebugLog('loadImageFromClipboard: 開始從剪貼簿讀取圖片', {
     itemCount: clipboardData.items.length,
     timestamp: new Date().toISOString(),
   });
@@ -2254,7 +2336,7 @@ function loadImageFromClipboard(
     const items = clipboardData.items;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      console.log('[OCR DEBUG] loadImageFromClipboard: 檢查剪貼簿項目', {
+      ocrDebugLog('loadImageFromClipboard: 檢查剪貼簿項目', {
         index: i,
         type: item.type,
         kind: item.kind,
@@ -2262,14 +2344,14 @@ function loadImageFromClipboard(
       });
 
       if (item.type.indexOf('image') !== -1) {
-        console.log('[OCR DEBUG] loadImageFromClipboard: 找到圖片項目', {
+        ocrDebugLog('loadImageFromClipboard: 找到圖片項目', {
           type: item.type,
           timestamp: new Date().toISOString(),
         });
 
         const blob = item.getAsFile();
         if (!blob) {
-          console.error('[OCR DEBUG] loadImageFromClipboard: 無法取得檔案', {
+          ocrDebugLog('loadImageFromClipboard: 無法取得檔案', {
             itemType: item.type,
             itemKind: item.kind,
             timestamp: new Date().toISOString(),
@@ -2278,7 +2360,7 @@ function loadImageFromClipboard(
           return;
         }
 
-        console.log('[OCR DEBUG] loadImageFromClipboard: 開始讀取 Blob', {
+        ocrDebugLog('loadImageFromClipboard: 開始讀取 Blob', {
           blobSize: blob.size,
           blobType: blob.type,
           timestamp: new Date().toISOString(),
@@ -2286,14 +2368,14 @@ function loadImageFromClipboard(
 
         const reader = new FileReader();
         reader.onload = (e) => {
-          console.log('[OCR DEBUG] loadImageFromClipboard: FileReader onload', {
+          ocrDebugLog('loadImageFromClipboard: FileReader onload', {
             resultLength: (e.target?.result as string)?.length,
             timestamp: new Date().toISOString(),
           });
 
           const img = new Image();
           img.onload = () => {
-            console.log('[OCR DEBUG] loadImageFromClipboard: Image onload 成功', {
+            ocrDebugLog('loadImageFromClipboard: Image onload 成功', {
               width: img.width,
               height: img.height,
               timestamp: new Date().toISOString(),
@@ -2301,7 +2383,7 @@ function loadImageFromClipboard(
             resolve(img);
           };
           img.onerror = (error) => {
-            console.error('[OCR DEBUG] loadImageFromClipboard: Image onerror', {
+            ocrDebugLog('loadImageFromClipboard: Image onerror', {
               error,
               blobType: blob.type,
               blobSize: blob.size,
@@ -2312,7 +2394,7 @@ function loadImageFromClipboard(
           img.src = e.target?.result as string;
         };
         reader.onerror = (error) => {
-          console.error('[OCR DEBUG] loadImageFromClipboard: FileReader onerror', {
+          ocrDebugLog('loadImageFromClipboard: FileReader onerror', {
             error,
             blobType: blob.type,
             blobSize: blob.size,
@@ -2324,7 +2406,7 @@ function loadImageFromClipboard(
         return;
       }
     }
-    console.error('[OCR DEBUG] loadImageFromClipboard: 剪貼簿中沒有圖片', {
+    ocrDebugLog('loadImageFromClipboard: 剪貼簿中沒有圖片', {
       itemCount: items.length,
       itemTypes: Array.from(items).map((item) => item.type),
       itemKinds: Array.from(items).map((item) => item.kind),
@@ -2349,7 +2431,7 @@ async function generateFinalPreview(
     invertForLightText?: boolean;
   }
 ): Promise<string> {
-  console.log('[OCR DEBUG] generateFinalPreview: 開始生成最終預覽', {
+  ocrDebugLog('generateFinalPreview: 開始生成最終預覽', {
     fileName: file.name,
     fileSize: file.size,
     fileType: file.type,
@@ -2359,41 +2441,41 @@ async function generateFinalPreview(
   try {
     // 步驟 1: 載入圖片
     const img = await loadImage(file);
-    console.log('[OCR DEBUG] generateFinalPreview: 圖片載入完成', {
+    ocrDebugLog('generateFinalPreview: 圖片載入完成', {
       loadedImageSize: { width: img.width, height: img.height },
       timestamp: new Date().toISOString(),
     });
 
     // 步驟 2: 檢查並縮放圖片
     const resizedImage = await resizeImageIfNeeded(img);
-    console.log('[OCR DEBUG] generateFinalPreview: 圖片縮放完成', {
+    ocrDebugLog('generateFinalPreview: 圖片縮放完成', {
       resizedImageSize: { width: resizedImage.width, height: resizedImage.height },
       wasResized: resizedImage !== img,
       timestamp: new Date().toISOString(),
     });
 
     // 步驟 3: 應用所有 filter
-    // 確保傳遞完整的 filter 配置，包括 CONFIG.filters 中的所有開關
+    // 確保傳遞完整的 filter 配置，包括 getConfig().filters 中的所有開關
     const fullFilterOptions = {
       ...filterOptions,
-      filters: CONFIG.filters, // 傳遞完整的 filter 配置
+      filters: getConfig().filters, // 傳遞完整的 filter 配置
     };
     const processedImage = await preprocessImage(resizedImage, fullFilterOptions);
-    console.log('[OCR DEBUG] generateFinalPreview: Filter 處理完成', {
+    ocrDebugLog('generateFinalPreview: Filter 處理完成', {
       processedImageSize: { width: processedImage.width, height: processedImage.height },
       timestamp: new Date().toISOString(),
     });
 
     // 步驟 4: 轉換為 data URL
     const dataURL = imageToDataURL(processedImage);
-    console.log('[OCR DEBUG] generateFinalPreview: 預覽生成完成', {
+    ocrDebugLog('generateFinalPreview: 預覽生成完成', {
       dataURLLength: dataURL.length,
       timestamp: new Date().toISOString(),
     });
 
     return dataURL;
   } catch (error) {
-    console.error('[OCR DEBUG] generateFinalPreview: 生成預覽失敗', {
+    ocrDebugLog('generateFinalPreview: 生成預覽失敗', {
       error,
       errorMessage: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString(),
@@ -2423,9 +2505,9 @@ async function processImageForOCR(
   },
   onProgress?: (p: number) => void,
   debugConfirmCallback?: (imageDataUrl: string) => Promise<boolean>
-): Promise<string> {
+): Promise<{ text: string; ocrWords?: Array<{ text: string; confidence: number }>; ocrConfidence?: number }> {
   const startTime = Date.now();
-  console.log('[OCR DEBUG] processImageForOCR: 開始處理圖片', {
+  ocrDebugLog('processImageForOCR: 開始處理圖片', {
     fileName: file.name,
     fileSize: file.size,
     fileType: file.type,
@@ -2434,59 +2516,68 @@ async function processImageForOCR(
   });
 
   try {
-    console.log('[OCR DEBUG] processImageForOCR: 步驟 1/4 - 載入圖片', {
+    ocrDebugLog('processImageForOCR: 步驟 1/4 - 載入圖片', {
       timestamp: new Date().toISOString(),
     });
     const img = await loadImage(file);
-    console.log('[OCR DEBUG] processImageForOCR: 步驟 1/4 完成', {
+    ocrDebugLog('processImageForOCR: 步驟 1/4 完成', {
       loadedImageSize: { width: img.width, height: img.height },
       timestamp: new Date().toISOString(),
     });
 
-    console.log('[OCR DEBUG] processImageForOCR: 步驟 2/4 - 檢查並縮放圖片', {
+    ocrDebugLog('processImageForOCR: 步驟 2/4 - 檢查並縮放圖片', {
       inputSize: { width: img.width, height: img.height },
-      maxDimension: CONFIG.maxImageDimension,
+      maxDimension: getConfig().maxImageDimension,
       timestamp: new Date().toISOString(),
     });
     const resizedImage = await resizeImageIfNeeded(img);
-    console.log('[OCR DEBUG] processImageForOCR: 步驟 2/4 完成', {
+    ocrDebugLog('processImageForOCR: 步驟 2/4 完成', {
       resizedImageSize: { width: resizedImage.width, height: resizedImage.height },
       wasResized: resizedImage !== img,
       timestamp: new Date().toISOString(),
     });
 
-    console.log('[OCR DEBUG] processImageForOCR: 步驟 3/4 - 圖片前處理', {
+    ocrDebugLog('processImageForOCR: 步驟 3/4 - 圖片前處理', {
       inputSize: { width: resizedImage.width, height: resizedImage.height },
       timestamp: new Date().toISOString(),
     });
     const processedImage = await preprocessImage(resizedImage, filterOptions);
-    console.log('[OCR DEBUG] processImageForOCR: 步驟 3/4 完成', {
+    ocrDebugLog('processImageForOCR: 步驟 3/4 完成', {
       processedImageSize: { width: processedImage.width, height: processedImage.height },
       timestamp: new Date().toISOString(),
     });
 
-    console.log('[OCR DEBUG] processImageForOCR: 步驟 4/4 - 執行 OCR', {
+    ocrDebugLog('processImageForOCR: 步驟 4/4 - 執行 OCR', {
       hasDebugCallback: !!debugConfirmCallback,
       timestamp: new Date().toISOString(),
     });
-    const recognizedText = await performOCR(processedImage, filterOptions, onProgress, debugConfirmCallback);
-    console.log('[OCR DEBUG] processImageForOCR: 步驟 4/4 完成', {
+    const ocrResult = await performOCR(processedImage, filterOptions, onProgress, debugConfirmCallback);
+    ocrDebugLog('processImageForOCR: 步驟 4/4 完成', {
       timestamp: new Date().toISOString(),
     });
 
-    const finalText = recognizedText.trim();
+    const text = typeof ocrResult === 'object' && ocrResult !== null && 'text' in ocrResult ? ocrResult.text : String(ocrResult);
+    const finalText = text.trim();
     const totalDuration = Date.now() - startTime;
-    console.log('[OCR DEBUG] processImageForOCR: 所有步驟完成', {
+    ocrDebugLog('processImageForOCR: 所有步驟完成', {
       totalDuration,
       finalTextLength: finalText.length,
       finalText,
+      hasOcrMeta: typeof ocrResult === 'object' && ocrResult !== null && ('ocrWords' in ocrResult || 'ocrConfidence' in ocrResult),
       timestamp: new Date().toISOString(),
     });
 
-    return finalText;
+    if (typeof ocrResult === 'object' && ocrResult !== null) {
+      return { text: finalText, ocrWords: (ocrResult as { ocrWords?: Array<{ text: string; confidence: number }> }).ocrWords, ocrConfidence: (ocrResult as { ocrConfidence?: number }).ocrConfidence };
+    }
+    return { text: finalText };
   } catch (error) {
+    // 使用者按取消為正常行為，不當成錯誤記錄
+    if (error instanceof Error && error.message === 'OCR 已取消') {
+      throw error;
+    }
     const totalDuration = Date.now() - startTime;
-    console.error('[OCR DEBUG] processImageForOCR: 處理過程發生錯誤', {
+    ocrDebugLog('processImageForOCR: 處理過程發生錯誤', {
       error,
       errorMessage: error instanceof Error ? error.message : String(error),
       errorStack: error instanceof Error ? error.stack : undefined,
@@ -2497,8 +2588,14 @@ async function processImageForOCR(
   }
 }
 
+/** 供搜尋評分使用：高信心度單詞（依顯示順序）與平均信心度 */
+export type OCROutputMeta = {
+  ocrWords?: Array<{ text: string; confidence: number }>;
+  ocrConfidence?: number;
+};
+
 interface OCRButtonProps {
-  onTextRecognized?: (text: string) => void;
+  onTextRecognized?: (text: string, meta?: OCROutputMeta) => void;
   disabled?: boolean;
 }
 
@@ -2519,12 +2616,12 @@ export default function OCRButton({
   const [debugConfirmResolve, setDebugConfirmResolve] = useState<((confirmed: boolean) => void) | null>(null);
   // 使用 ref 存储 resolve 函数，避免状态更新延迟问题
   const debugConfirmResolveRef = useRef<((confirmed: boolean) => void) | null>(null);
-  // Filter 選項狀態（使用 CONFIG.filters 中的開關配置）
+  // Filter 選項狀態（使用 getConfig().filters 中的開關配置）
   const filterOptions = {
     enableAdvancedProcessing: true, // 啟用進階處理
-    enableAutoThreshold: CONFIG.filters.enableAutoThreshold, // 使用 filter 開關
-    invertForLightText: CONFIG.filters.enableInvertForLightText, // 使用 filter 開關
-    enableAutoTextDetection: CONFIG.filters.enableAutoTextDetection, // 使用 filter 開關（自動裁剪）
+    enableAutoThreshold: getConfig().filters.enableAutoThreshold, // 使用 filter 開關
+    invertForLightText: getConfig().filters.enableInvertForLightText, // 使用 filter 開關
+    enableAutoTextDetection: getConfig().filters.enableAutoTextDetection, // 使用 filter 開關（自動裁剪）
     useItemtwWhitelist: true, // 白名單模式默認開啟
     excludeSymbolsAndNumbers: false, // 排除符號數字（保持關閉以獲得最佳識別準確度）
   };
@@ -2557,7 +2654,7 @@ export default function OCRButton({
 
   const handleImageProcess = useCallback(
     async (file: File) => {
-      console.log('[OCR DEBUG] handleImageProcess: 開始處理', {
+      ocrDebugLog('handleImageProcess: 開始處理', {
         fileName: file?.name,
         fileSize: file?.size,
         fileType: file?.type,
@@ -2574,25 +2671,25 @@ export default function OCRButton({
         return;
       }
 
-      console.log('[OCR DEBUG] handleImageProcess: 設置處理狀態', {
+      ocrDebugLog('handleImageProcess: 設置處理狀態', {
         timestamp: new Date().toISOString(),
       });
       setIsProcessing(true);
       setProgress(0);
 
       try {
-        const debugCallback = CONFIG.debugMode ? handleDebugConfirm : undefined;
+        const debugCallback = getConfig().debugMode ? handleDebugConfirm : undefined;
         const finalFilterOptions = filterOptions;
-        console.log('[OCR DEBUG] handleImageProcess: 調用 processImageForOCR', {
+        ocrDebugLog('handleImageProcess: 調用 processImageForOCR', {
           filterOptions: finalFilterOptions,
           enableAutoTextDetection: finalFilterOptions.enableAutoTextDetection,
           note: '所有檢測和裁剪邏輯統一由 enableAutoTextDetection 控制',
-          debugMode: CONFIG.debugMode,
+          debugMode: getConfig().debugMode,
           hasDebugCallback: !!debugCallback,
           timestamp: new Date().toISOString(),
         });
-        const recognizedText = await processImageForOCR(file, finalFilterOptions, (prog) => {
-          console.log('[OCR DEBUG] handleImageProcess: 進度更新', {
+        const recognized = await processImageForOCR(file, finalFilterOptions, (prog) => {
+          ocrDebugLog('handleImageProcess: 進度更新', {
             progress: prog,
             progressPercent: Math.round(prog * 100),
             timestamp: new Date().toISOString(),
@@ -2600,25 +2697,33 @@ export default function OCRButton({
           setProgress(prog);
         }, debugCallback);
 
-        console.log('[OCR DEBUG] handleImageProcess: OCR 完成', {
+        const recognizedText = typeof recognized === 'string' ? recognized : recognized?.text ?? '';
+        const ocrMeta: OCROutputMeta | undefined =
+          typeof recognized === 'object' && recognized !== null && ('ocrWords' in recognized || 'ocrConfidence' in recognized)
+            ? { ocrWords: recognized.ocrWords, ocrConfidence: recognized.ocrConfidence }
+            : undefined;
+
+        ocrDebugLog('handleImageProcess: OCR 完成', {
           recognizedTextLength: recognizedText?.length || 0,
-          recognizedText: recognizedText,
+          recognizedText,
+          hasOcrMeta: !!ocrMeta,
           hasOnTextRecognized: !!onTextRecognized,
           timestamp: new Date().toISOString(),
         });
 
         // 檢查識別結果是否有效（非空字符串）
         const hasValidText = recognizedText && recognizedText.trim().length > 0;
-        
+
         if (hasValidText && onTextRecognized) {
-          console.log('[OCR DEBUG] handleImageProcess: 調用 onTextRecognized 回調', {
+          ocrDebugLog('handleImageProcess: 調用 onTextRecognized 回調', {
             text: recognizedText,
+            hasOcrMeta: !!ocrMeta,
             timestamp: new Date().toISOString(),
           });
-          onTextRecognized(recognizedText);
+          onTextRecognized(recognizedText, ocrMeta);
           setIsModalOpen(false);
           setPreviewImage(null);
-          console.log('[OCR DEBUG] handleImageProcess: 關閉模態框並清除預覽', {
+          ocrDebugLog('handleImageProcess: 關閉模態框並清除預覽', {
             timestamp: new Date().toISOString(),
           });
         } else {
@@ -2641,7 +2746,11 @@ export default function OCRButton({
           }
         }
       } catch (error) {
-        console.error('[OCR DEBUG] handleImageProcess: OCR 失敗', {
+        // 使用者按取消時不顯示錯誤訊息
+        if (error instanceof Error && error.message === 'OCR 已取消') {
+          return;
+        }
+        ocrDebugLog('handleImageProcess: OCR 失敗', {
           error,
           errorMessage: error instanceof Error ? error.message : String(error),
           errorStack: error instanceof Error ? error.stack : undefined,
@@ -2649,7 +2758,7 @@ export default function OCRButton({
         });
         alert('OCR 辨識失敗，請稍後再試');
       } finally {
-        console.log('[OCR DEBUG] handleImageProcess: 清理狀態', {
+        ocrDebugLog('handleImageProcess: 清理狀態', {
           timestamp: new Date().toISOString(),
         });
         setIsProcessing(false);
@@ -2664,7 +2773,7 @@ export default function OCRButton({
 
   // 打開模態框
   const handleOCRClick = () => {
-    console.log('[OCR DEBUG] handleOCRClick: OCR 按鈕點擊', {
+    ocrDebugLog('handleOCRClick: OCR 按鈕點擊', {
       disabled,
       isProcessing,
       willOpenModal: !disabled && !isProcessing,
@@ -2673,7 +2782,7 @@ export default function OCRButton({
 
     if (!disabled && !isProcessing) {
       setIsModalOpen(true);
-      console.log('[OCR DEBUG] handleOCRClick: 模態框已打開', {
+      ocrDebugLog('handleOCRClick: 模態框已打開', {
         timestamp: new Date().toISOString(),
       });
     }
@@ -2681,7 +2790,7 @@ export default function OCRButton({
 
   // 關閉模態框
   const handleCloseModal = () => {
-    console.log('[OCR DEBUG] handleCloseModal: 關閉模態框', {
+    ocrDebugLog('handleCloseModal: 關閉模態框', {
       isProcessing,
       willClose: !isProcessing,
       timestamp: new Date().toISOString(),
@@ -2691,7 +2800,7 @@ export default function OCRButton({
       setIsModalOpen(false);
       setPreviewImage(null);
       setIsDragging(false);
-      console.log('[OCR DEBUG] handleCloseModal: 模態框已關閉', {
+      ocrDebugLog('handleCloseModal: 模態框已關閉', {
         timestamp: new Date().toISOString(),
       });
     }
@@ -2699,14 +2808,14 @@ export default function OCRButton({
 
   // 處理文件選擇
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('[OCR DEBUG] handleFileChange: 文件選擇事件觸發', {
+    ocrDebugLog('handleFileChange: 文件選擇事件觸發', {
       fileCount: e.target.files?.length || 0,
       timestamp: new Date().toISOString(),
     });
 
     const file = e.target.files?.[0];
     if (file) {
-      console.log('[OCR DEBUG] handleFileChange: 開始處理選取的檔案', {
+      ocrDebugLog('handleFileChange: 開始處理選取的檔案', {
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
@@ -2740,7 +2849,7 @@ export default function OCRButton({
   };
 
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    console.log('[OCR DEBUG] handleDrop: 拖放事件觸發', {
+    ocrDebugLog('handleDrop: 拖放事件觸發', {
       fileCount: e.dataTransfer.files.length,
       timestamp: new Date().toISOString(),
     });
@@ -2752,7 +2861,7 @@ export default function OCRButton({
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       const file = files[0];
-      console.log('[OCR DEBUG] handleDrop: 處理拖放的檔案', {
+      ocrDebugLog('handleDrop: 處理拖放的檔案', {
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
@@ -2782,7 +2891,7 @@ export default function OCRButton({
     if (!isModalOpen) return;
 
     const handlePaste = async (e: ClipboardEvent) => {
-      console.log('[OCR DEBUG] handlePaste: 剪貼簿貼上事件觸發', {
+      ocrDebugLog('handlePaste: 剪貼簿貼上事件觸發', {
         hasClipboardData: !!e.clipboardData,
         timestamp: new Date().toISOString(),
       });
@@ -2814,11 +2923,11 @@ export default function OCRButton({
       }
 
       try {
-        console.log('[OCR DEBUG] handlePaste: 開始從剪貼簿載入圖片', {
+        ocrDebugLog('handlePaste: 開始從剪貼簿載入圖片', {
           timestamp: new Date().toISOString(),
         });
         const img = await loadImageFromClipboard(clipboardData);
-        console.log('[OCR DEBUG] handlePaste: 圖片載入成功，開始轉換為 File', {
+        ocrDebugLog('handlePaste: 圖片載入成功，開始轉換為 File', {
           width: img.width,
           height: img.height,
           timestamp: new Date().toISOString(),
@@ -2831,7 +2940,7 @@ export default function OCRButton({
         const ctx = canvas.getContext('2d')!;
         
         // 使用 filter 開關控制圖像平滑
-        if (CONFIG.filters.enableClipboardImageSmoothing) {
+        if (getConfig().filters.enableClipboardImageSmoothing) {
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
         } else {
@@ -2840,7 +2949,7 @@ export default function OCRButton({
         
         ctx.drawImage(img, 0, 0);
 
-        console.log('[OCR DEBUG] handlePaste: 開始轉換 Canvas 為 Blob', {
+        ocrDebugLog('handlePaste: 開始轉換 Canvas 為 Blob', {
           canvasWidth: canvas.width,
           canvasHeight: canvas.height,
           timestamp: new Date().toISOString(),
@@ -2849,7 +2958,7 @@ export default function OCRButton({
         canvas.toBlob(
           async (blob) => {
             if (blob) {
-              console.log('[OCR DEBUG] handlePaste: Blob 轉換成功', {
+              ocrDebugLog('handlePaste: Blob 轉換成功', {
                 blobSize: blob.size,
                 blobType: blob.type,
                 timestamp: new Date().toISOString(),
@@ -2861,7 +2970,7 @@ export default function OCRButton({
               // 直接進入 OCR 處理（debug 模式）
               await handleImageProcess(file);
             } else {
-              console.error('[OCR DEBUG] handlePaste: Blob 轉換失敗', {
+              ocrDebugLog('handlePaste: Blob 轉換失敗', {
                 timestamp: new Date().toISOString(),
               });
               alert('無法處理剪貼簿中的圖片，請嘗試其他圖片或使用檔案上傳功能。');
@@ -2872,7 +2981,7 @@ export default function OCRButton({
         );
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error('[OCR DEBUG] handlePaste: 剪貼簿處理失敗', {
+        ocrDebugLog('handlePaste: 剪貼簿處理失敗', {
           error,
           errorMessage,
           errorStack: error instanceof Error ? error.stack : undefined,

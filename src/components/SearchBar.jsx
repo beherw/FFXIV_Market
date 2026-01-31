@@ -462,16 +462,16 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
     }
   };
 
-  // Handle OCR text recognition - use OCR-specific search
-  const handleOCRTextRecognized = (text) => {
+  // Handle OCR text recognition - use OCR-specific search (optionally pass ocrWords/ocrConfidence for scoring)
+  const handleOCRTextRecognized = (text, meta) => {
     if (text) {
       setSearchTerm(text);
       if (onChange) {
         onChange(text);
       }
       if (onSearch) {
-        // Pass isOCR=true to indicate this is an OCR search
-        onSearch(text, false, true);
+        // Pass isOCR=true and optional ocr meta for order-first + confidence-weighted scoring
+        onSearch(text, false, true, meta);
       }
     }
   };

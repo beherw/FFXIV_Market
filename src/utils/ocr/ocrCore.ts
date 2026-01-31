@@ -173,20 +173,24 @@ export async function performOCR(
       tessedit_pageseg_mode: '7',
       tessedit_ocr_engine_mode: '1',
       classify_bln_numeric_mode: '0',
-      textord_min_linesize: '2.5',
+      textord_min_linesize: '2.0', // 降低最小行尺寸，識別更小的字符
       classify_enable_learning: '0',
       tessedit_char_blacklist: '',
-      textord_tabvector_vertical_gap_factor: '0.5',
-      textord_min_blob_size_fraction: '0.08',
-      textord_excess_blob_size: '1.5',
-      textord_really_old_xheight: '0.85',
-      classify_adapt_proto_threshold: '0.4',
-      classify_adapt_feature_threshold: '0.4',
-      textord_min_linesize_fraction: '0.08',
+      textord_tabvector_vertical_gap_factor: '0.3', // 進一步減少垂直間隙因子
+      textord_min_blob_size_fraction: '0.05', // 大幅降低最小blob尺寸分數，識別極細小的筆畫
+      textord_excess_blob_size: '2.0', // 大幅增加blob尺寸容忍度，適應高筆畫數繁體字
+      textord_really_old_xheight: '0.75', // 大幅降低x高度閾值，識別更小的文字和細筆畫
+      classify_adapt_proto_threshold: '0.3', // 進一步降低原型適應閾值，提高對極複雜字符的識別敏感度
+      classify_adapt_feature_threshold: '0.3', // 進一步降低特徵適應閾值，提高對極細小筆畫的識別
+      textord_min_linesize_fraction: '0.05', // 大幅降低最小行尺寸分數，適應高筆畫數繁體字
       textord_debug_pitch_metric: '0',
-      textord_min_blob_size: '2',
-      classify_misfit_junk_penalty: '0.1',
-      classify_accept_rating: '0.2',
+      textord_min_blob_size: '1', // 進一步降低最小blob尺寸，識別極細的筆畫
+      classify_misfit_junk_penalty: '0.05', // 大幅降低誤識別懲罰，提高對極複雜字符的容忍度
+      classify_accept_rating: '0.15', // 進一步降低接受評級閾值，提高識別敏感度
+      textord_heavy_nr: '1', // 啟用重行檢測
+      textord_really_old_xheight_fraction: '0.7', // 降低x高度分數閾值
+      classify_min_norm_scale_x: '0.1', // 降低最小歸一化縮放，識別更小的字符
+      classify_max_rating_ratio: '2.0', // 增加最大評級比率，提高對複雜字符的接受度
     };
     
     await worker.setParameters(params);
