@@ -72,6 +72,7 @@ const targetedQueryCache = {
   fates: {},
   zh_fates: {},
   fates_database_pages: {},
+  leves_database_pages: {},
   tw_achievements: {},
   tw_achievement_descriptions: {},
   achievements: {},
@@ -109,6 +110,7 @@ const targetedQueryPromises = {
   fates: {},
   zh_fates: {},
   fates_database_pages: {},
+  leves_database_pages: {},
   tw_achievements: {},
   tw_achievement_descriptions: {},
   achievements: {},
@@ -2925,6 +2927,16 @@ export async function getZhFatesByIds(fateIds, signal = null) {
  */
 export async function getFatesDatabasePagesByIds(fateIds, signal = null) {
   return batchQueryByIds('fates_database_pages', fateIds, 'id', signal, 'fates_database_pages');
+}
+
+/**
+ * Get leves database pages for specific leve IDs
+ * @param {Array<number>} leveIds - Array of leve IDs
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {leveId: {npcs, rewards, level, ...}}
+ */
+export async function getLevesDatabasePagesByIds(leveIds, signal = null) {
+  return batchQueryByIds('leves_database_pages', leveIds, 'id', signal, 'leves_database_pages');
 }
 
 // ============================================================================

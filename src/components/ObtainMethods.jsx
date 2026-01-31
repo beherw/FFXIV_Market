@@ -28,6 +28,7 @@ import {
   getFatesByIds,
   getZhFatesByIds,
   getFatesDatabasePagesByIds,
+  getLevesDatabasePagesByIds,
   getTwAchievementsByIds,
   getTwAchievementDescriptionsByIds,
   getAchievementsByIds,
@@ -50,10 +51,6 @@ let twQuestsDataCache = null;
 let twQuestsDataLoading = false;
 let twLevesDataCache = null;
 let twLevesDataLoading = false;
-let levesDatabasePagesCache = null;
-let levesDatabasePagesLoading = false;
-let npcsDatabasePagesJsonCache = null;
-let npcsDatabasePagesJsonLoading = false;
 
 /**
  * Lazy load tw-quests.json - only loads when quests are actually needed
@@ -96,38 +93,6 @@ async function loadTwQuestsData() {
 }
 
 /**
- * Lazy load npcs-database-pages.json - only loads when NPC position data is needed as fallback
- * Uses cache to avoid reloading
- */
-async function loadNpcsDatabasePagesJson() {
-  if (npcsDatabasePagesJsonCache) {
-    return npcsDatabasePagesJsonCache;
-  }
-  
-  if (npcsDatabasePagesJsonLoading) {
-    // Wait for ongoing load
-    while (npcsDatabasePagesJsonLoading) {
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    return npcsDatabasePagesJsonCache;
-  }
-  
-  npcsDatabasePagesJsonLoading = true;
-  try {
-    console.log('[ObtainMethods] Starting to load npcs-database-pages.json for position fallback...');
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/db/npcs-database-pages.json');
-    npcsDatabasePagesJsonCache = module.default || module;
-    console.log('[ObtainMethods] ✅ Loaded npcs-database-pages.json (', Object.keys(npcsDatabasePagesJsonCache).length, 'NPCs)');
-    return npcsDatabasePagesJsonCache;
-  } catch (error) {
-    console.error('[ObtainMethods] Failed to load npcs-database-pages.json:', error);
-    return {};
-  } finally {
-    npcsDatabasePagesJsonLoading = false;
-  }
-}
-
-/**
  * Lazy load tw-leves.json - only loads when levequests are actually needed
  * Uses cache to avoid reloading
  */
@@ -164,40 +129,6 @@ async function loadTwLevesData() {
     return {};
   } finally {
     twLevesDataLoading = false;
-  }
-}
-
-/**
- * Lazy load leves-database-pages.json - only loads when detailed levequest info is needed
- * Uses cache to avoid reloading
- */
-async function loadLevesDatabasePages() {
-  if (levesDatabasePagesCache) {
-    console.log('[ObtainMethods] Using cached leves-database-pages.json');
-    return levesDatabasePagesCache;
-  }
-  
-  if (levesDatabasePagesLoading) {
-    console.log('[ObtainMethods] Waiting for ongoing leves-database-pages.json load...');
-    // Wait for ongoing load
-    while (levesDatabasePagesLoading) {
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    return levesDatabasePagesCache;
-  }
-  
-  levesDatabasePagesLoading = true;
-  try {
-    console.log('[ObtainMethods] Starting to load leves-database-pages.json...');
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/db/leves-database-pages.json');
-    levesDatabasePagesCache = module.default || module;
-    console.log('[ObtainMethods] Successfully loaded leves-database-pages.json');
-    return levesDatabasePagesCache;
-  } catch (error) {
-    console.error('[ObtainMethods] Failed to load leves-database-pages.json:', error);
-    return {};
-  } finally {
-    levesDatabasePagesLoading = false;
   }
 }
 
@@ -301,6 +232,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     fates: {},
     zhFates: {},
     fatesDatabasePages: {},
+    levesDatabasePages: {},
     twAchievements: {},
     twAchievementDescriptions: {},
     achievements: {},
@@ -354,6 +286,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         fates: {},
         zhFates: {},
         fatesDatabasePages: {},
+        levesDatabasePages: {},
         twAchievements: {},
         twAchievementDescriptions: {},
         achievements: {},
@@ -396,6 +329,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     fates: {},
     zhFates: {},
     fatesDatabasePages: {},
+    levesDatabasePages: {},
     // Achievement data
     twAchievements: {},
     twAchievementDescriptions: {},
@@ -414,11 +348,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const [wikiUrl, setWikiUrl] = useState(null); // Store Wiki URL for activity content notice
   const [twQuestsStaticData, setTwQuestsStaticData] = useState(null); // Lazy-loaded tw-quests.json data
   const [twLevesStaticData, setTwLevesStaticData] = useState(null); // Lazy-loaded tw-leves.json data
-  const [levesDatabasePagesData, setLevesDatabasePagesData] = useState(null); // Lazy-loaded leves-database-pages.json data
-  const [npcsDatabasePagesJsonData, setNpcsDatabasePagesJsonData] = useState(null); // Lazy-loaded npcs-database-pages.json data for position fallback
   const [isLoadingQuestsData, setIsLoadingQuestsData] = useState(false); // Track loading state for React
   const [isLoadingLevesData, setIsLoadingLevesData] = useState(false); // Track loading state for React
-  const [isLoadingLevesDatabasePages, setIsLoadingLevesDatabasePages] = useState(false); // Track loading state for React
   const [leveNpcsLoaded, setLeveNpcsLoaded] = useState(false); // Track if NPC data for leves has been loaded
   
   // Lazy load tw-quests.json and tw-leves.json when quests are present but names are missing
@@ -503,79 +434,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return;
     }
     
-    // Only trigger if levequest data is missing but we have levequest sources
-    const hasLevequestSources = sources.some(s => {
-      if (s.type === DataType.ISLAND_CROP && Array.isArray(s.data) && s.data.length > 0) {
-        const firstItem = s.data[0];
-        return firstItem && typeof firstItem === 'object' && 'id' in firstItem && 'lvl' in firstItem && 'item' in firstItem;
-      }
-      return false;
-    });
-    
-    // If we have levequest sources but no data loaded, load it as fallback
-    if (hasLevequestSources && !levesDatabasePagesData && !isLoadingLevesDatabasePages) {
-      console.log(`[ObtainMethods] ⚠️ Fallback: Loading levequest data that wasn't loaded upfront`);
-      setIsLoadingLevesDatabasePages(true);
-      
-      // Extract leve IDs from ISLAND_CROP sources
-      const leveIds = [];
-      sources.forEach(s => {
-        if (s.type === DataType.ISLAND_CROP && Array.isArray(s.data)) {
-          s.data.forEach(leve => {
-            if (leve && typeof leve === 'object' && 'id' in leve) {
-              const leveId = leve.id;
-              if (!leveIds.includes(leveId)) {
-                leveIds.push(leveId);
-              }
-            }
-          });
-        }
-      });
-      
-      // Also check QUESTS sources
-      const questSources = sources.filter(s => s.type === DataType.QUESTS && Array.isArray(s.data) && s.data.length > 0);
-      
-      const loadFallbackData = async () => {
-        if (questSources.length > 0) {
-          // Load tw-leves.json if not already loaded
-          let twLevesData = twLevesStaticData;
-          if (!twLevesData) {
-            twLevesData = await loadTwLevesData();
-            setTwLevesStaticData(twLevesData);
-          }
-          
-          if (twLevesData) {
-            questSources.forEach(source => {
-              if (Array.isArray(source.data)) {
-                source.data.forEach(questItem => {
-                  const questId = typeof questItem === 'object' && questItem !== null && 'id' in questItem ? questItem.id : questItem;
-                  if (questId && (twLevesData[questId] || twLevesData[String(questId)])) {
-                    if (!leveIds.includes(questId)) {
-                      leveIds.push(questId);
-                    }
-                  }
-                });
-              }
-            });
-          }
-        }
-        
-        if (leveIds.length > 0) {
-          const pagesData = await loadLevesDatabasePages();
-          console.log(`[ObtainMethods] ✅ Fallback loaded leves-database-pages.json`);
-          setLevesDatabasePagesData(pagesData);
-          setIsLoadingLevesDatabasePages(false);
-        } else {
-          setIsLoadingLevesDatabasePages(false);
-        }
-      };
-      
-      loadFallbackData().catch(err => {
-        console.warn('[ObtainMethods] Failed to load levequest data in fallback:', err);
-        setIsLoadingLevesDatabasePages(false);
-      });
-    }
-  }, [sources, dataLoaded, levesDatabasePagesData, isLoadingLevesDatabasePages, twLevesStaticData]);
+  }, [sources, dataLoaded, twLevesStaticData]);
 
   // Load Wiki URL when itemId changes (for activity content notice)
   useEffect(() => {
@@ -754,67 +613,15 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           }
         }
         
-        // Load leves-database-pages.json if we have any levequests
-        let levesDatabasePagesDataForState = null;
+        // Add levequest IDs to requiredIds for Supabase query
         if (levequestIds.length > 0) {
-          console.log(`[ObtainMethods] 📥 Loading levequest data upfront for ${levequestIds.length} leve IDs: ${levequestIds.join(', ')}`);
-          levesDatabasePagesDataForState = await loadLevesDatabasePages();
-          
-          // Extract NPC IDs and item IDs from levequest data
-          const leveNpcIds = new Set();
-          const leveItemIds = new Set();
-          
-          levequestIds.forEach(leveId => {
-            const leveData = levesDatabasePagesDataForState[leveId] || levesDatabasePagesDataForState[String(leveId)];
-            if (leveData) {
-              // Extract NPC IDs
-              if (Array.isArray(leveData.npcs)) {
-                leveData.npcs.forEach(npc => {
-                  if (npc && npc.id) {
-                    leveNpcIds.add(npc.id);
-                  }
-                });
-              }
-              // Extract item IDs from items array
-              if (Array.isArray(leveData.items)) {
-                leveData.items.forEach(item => {
-                  if (item && item.id) {
-                    leveItemIds.add(item.id);
-                  }
-                });
-              }
-              // Extract item IDs from rewards array
-              if (Array.isArray(leveData.rewards)) {
-                leveData.rewards.forEach(reward => {
-                  if (reward && reward.id) {
-                    leveItemIds.add(reward.id);
-                  }
-                });
-              }
-            }
-          });
-          
-          // Add extracted IDs to requiredIds
-          Array.from(leveNpcIds).forEach(npcId => {
-            if (!requiredIds.npcIds.includes(npcId)) {
-              requiredIds.npcIds.push(npcId);
-            }
-          });
-          Array.from(leveItemIds).forEach(itemId => {
-            if (!requiredIds.itemIds.includes(itemId)) {
-              requiredIds.itemIds.push(itemId);
-            }
-          });
-          
-          console.log(`[ObtainMethods] ✅ Extracted ${leveNpcIds.size} NPC IDs and ${leveItemIds.size} item IDs from levequest data`);
+          console.log(`[ObtainMethods] 📥 Will query levequest data for ${levequestIds.length} leve IDs: ${levequestIds.join(', ')}`);
+          // Note: NPC IDs and item IDs will be extracted after leve data is loaded from Supabase
         }
         
-        // Set levequest data to state immediately so it's available for rendering
+        // Set tw-leves data to state immediately so it's available for rendering
         if (twLevesDataForState) {
           setTwLevesStaticData(twLevesDataForState);
-        }
-        if (levesDatabasePagesDataForState) {
-          setLevesDatabasePagesData(levesDatabasePagesDataForState);
         }
         
         // Step 2.6: Get FATE IDs from fate_sources table and add to requiredIds
@@ -905,6 +712,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           );
         }
         
+        // Leve queries
+        if (levequestIds.length > 0) {
+          queries.push(
+            getLevesDatabasePagesByIds(levequestIds, abortController.signal).then(data => ({ type: 'levesDatabasePages', data }))
+          );
+        }
+        
         // Achievement queries
         if (requiredIds.achievementIds.length > 0) {
           queries.push(
@@ -972,20 +786,21 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             twQuests: {},
             quests: {},
             zhQuests: {},
-            questsDatabasePages: {},
-            twFates: {},
-            fates: {},
-            zhFates: {},
-            fatesDatabasePages: {},
-            twAchievements: {},
-            twAchievementDescriptions: {},
-            achievements: {},
-            twPlaces: {},
-            places: {},
-            twItems: {},
-            fateSources: [],
-            lootSources: []
-          };
+        questsDatabasePages: {},
+        twFates: {},
+        fates: {},
+        zhFates: {},
+        fatesDatabasePages: {},
+        levesDatabasePages: {},
+        twAchievements: {},
+        twAchievementDescriptions: {},
+        achievements: {},
+        twPlaces: {},
+        places: {},
+        twItems: {},
+        fateSources: [],
+        lootSources: []
+      };
           
           results.forEach((result) => {
             // Add error handling for malformed results
@@ -1859,7 +1674,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   // This hook must be before any early returns to maintain hooks order
   const validSources = useMemo(() => {
     return filteredSources; // Just return filtered sources, rendering happens in JSX
-  }, [filteredSources, loadedData.twNpcs, loadedData.npcsDatabasePages, leveNpcsLoaded, npcsDatabasePagesJsonData]); // Re-render when NPC data is loaded
+  }, [filteredSources, loadedData.twNpcs, loadedData.npcsDatabasePages, leveNpcsLoaded]); // Re-render when NPC data is loaded
 
   // Show loading state if data is still loading or sources are being fetched
   // Also show loading if itemId is undefined/null to prevent showing empty state during redirects
@@ -2887,26 +2702,73 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 }
               }
               
+              // Get level information from instance data
+              const levelReq = instance?.levelReq;
+              const ilvlReq = instance?.ilvlReq;
+              const sync = instance?.sync;
+              
               return (
-                <div key={instanceIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
+                <div key={instanceIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded-lg p-3 min-h-[80px] flex flex-col justify-between border border-slate-700/30 hover:border-slate-600/50 transition-colors">
                   {instanceCNName && (
                     <a
                       href={`https://ff14.huijiwiki.com/wiki/${encodeURIComponent(instanceCNName)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 group"
+                      className="flex flex-col gap-2 group"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <img src={contentTypeIcon} alt="Instance" className="w-7 h-7" />
-                      <span className="text-sm text-blue-400 group-hover:text-ffxiv-gold transition-colors flex items-center gap-1">
-                        {instanceName}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <img src={contentTypeIcon} alt="Instance" className="w-7 h-7 flex-shrink-0" />
+                        <span className="text-sm font-medium text-blue-400 group-hover:text-ffxiv-gold transition-colors leading-tight">
+                          {instanceName}
+                        </span>
+                      </div>
+                      {(levelReq || ilvlReq) && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 ml-6 text-xs text-gray-400">
+                          {levelReq && (
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-gray-500">等级:</span>
+                              <span className="text-gray-300 font-medium">Lv.{levelReq}</span>
+                              {sync && sync !== levelReq && (
+                                <span className="text-gray-500 text-[10px] leading-none -ml-0.5">(同步: {sync})</span>
+                              )}
+                            </div>
+                          )}
+                          {ilvlReq && ilvlReq > 0 && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-gray-500">iLvl要求:</span>
+                              <span className="text-gray-300 font-medium">{ilvlReq}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </a>
                   )}
                   {!instanceCNName && (
-                    <div className="flex items-center gap-2">
-                      <img src={contentTypeIcon} alt="Instance" className="w-7 h-7" />
-                      <span className="text-sm text-gray-300">{instanceName}</span>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <img src={contentTypeIcon} alt="Instance" className="w-7 h-7 flex-shrink-0" />
+                        <span className="text-sm font-medium text-gray-300 leading-tight">{instanceName}</span>
+                      </div>
+                      {(levelReq || ilvlReq) && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 ml-6 text-xs text-gray-400">
+                          {levelReq && (
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-gray-500">等级:</span>
+                              <span className="text-gray-300 font-medium">Lv.{levelReq}</span>
+                              {sync && sync !== levelReq && (
+                                <span className="text-gray-500 text-[10px] leading-none -ml-0.5">(同步: {sync})</span>
+                              )}
+                            </div>
+                          )}
+                          {ilvlReq && ilvlReq > 0 && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-gray-500">iLvl要求:</span>
+                              <span className="text-gray-300 font-medium">{ilvlReq}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -3271,7 +3133,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 }
               }
               
-              // Also try npcs-database-pages.json for NPC location (try both string and number keys) (lazy loaded)
+              // Also try npcsDatabasePages from Supabase for NPC location (try both string and number keys)
               if ((!zoneId || !coords || coords.x === undefined || coords.y === undefined) && startingNpcId) {
                 const npcDb = loadedData.npcsDatabasePages[startingNpcId] || loadedData.npcsDatabasePages[String(startingNpcId)];
                 if (npcDb?.position) {
@@ -4097,7 +3959,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   // Use the current itemId from component props (the item we're showing sources for)
                   questLevequests.push({
                     id: questId,
-                    lvl: null, // Will get from leves-database-pages.json
+                    lvl: null, // Will get from Supabase leves_database_pages
                     level: null,
                     item: itemId, // Use current itemId from component props
                     cost: null,
@@ -4129,8 +3991,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 const leveLevel = leve.lvl || leve.level;
                 const itemId = leve.item;
                 
-                // Get detailed leve data from leves-database-pages.json
-                const leveDbData = levesDatabasePagesData && (levesDatabasePagesData[leveId] || levesDatabasePagesData[String(leveId)]);
+                // Get detailed leve data from Supabase
+                const leveDbData = currentLoadedData.levesDatabasePages && (currentLoadedData.levesDatabasePages[leveId] || currentLoadedData.levesDatabasePages[String(leveId)]);
                 
                 // Get leve name from tw-leves.json or database pages
                 const leveNameData = twLevesStaticData && (twLevesStaticData[leveId] || twLevesStaticData[String(leveId)]);
@@ -4175,30 +4037,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     console.log(`[ObtainMethods] ✅ Found NPC ${npcId} position in npcs:`, npcData.position);
                     return npcData.position;
                   }
-                  // Final fallback: try JSON file (npcs-database-pages.json) if Supabase data doesn't have position
-                  if (npcsDatabasePagesJsonData) {
-                    const npcJsonData = npcsDatabasePagesJsonData[npcId] || npcsDatabasePagesJsonData[String(npcId)];
-                    if (npcJsonData?.position) {
-                      console.log(`[ObtainMethods] ✅ Found NPC ${npcId} position in JSON fallback:`, npcJsonData.position);
-                      return npcJsonData.position;
-                    }
-                  }
                   // Debug: log what data we have for this NPC
                   if (npcId) {
                     console.log(`[ObtainMethods] ⚠️ NPC ${npcId} has no position data. npcDb:`, !!npcDb, 'npcData:', !!npcData);
-                    if (npcDb && !npcDb.position) {
-                      console.log(`[ObtainMethods] ⚠️ NPC ${npcId} npcDb exists but no position field. Loading JSON fallback...`);
-                      // Trigger JSON load if not already loaded
-                      if (!npcsDatabasePagesJsonData && !npcsDatabasePagesJsonLoading) {
-                        loadNpcsDatabasePagesJson().then(jsonData => {
-                          if (jsonData) {
-                            setNpcsDatabasePagesJsonData(jsonData);
-                            // Force re-render by updating a state
-                            setLeveNpcsLoaded(prev => !prev);
-                          }
-                        });
-                      }
-                    }
                   }
                   return null;
                 });

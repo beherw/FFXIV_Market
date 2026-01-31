@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "push": "./git-push.sh"
+    "push": "./git-push.sh",
+    "download-tesseract": "node scripts/download_tesseract_files.js",
+    "download-model": "node scripts/download_model.js",
+    "setup-ocr": "npm run download-tesseract && npm run download-model"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.93.3",

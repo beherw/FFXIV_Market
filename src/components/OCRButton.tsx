@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { getTwItems } from '../services/supabaseData';
 
 // Tesseract.js v5 類型聲明（從 CDN 載入）
 // v5 API: createWorker(langs?, oem?, options?, config?)
@@ -52,20 +53,89 @@ declare global {
 
 // OCR 配置 - 針對繁體中文優化，最大化識別度
 // 特別針對深色紋理背景+淺色文字的場景進行優化
+// 針對繁體字筆畫多的特點進行優化
 const CONFIG = {
-  tesseractLang: 'chi_tra', // 只支援繁體中文
-  imageScale: 5.0, // 提高放大倍數以提升識別度（針對紋理背景場景，更大的尺寸有助於識別）
+  tesseractLang: 'chi_tra', // 只支援繁體中文（使用 Tesseract 原生 CDN 模型）
+  imageScale: 4, // 提高放大倍數以提升識別度
   threshold: 128,
-  maxImageDimension: 2000,
+  maxImageDimension: 2500, // 提高最大尺寸限制以支持更大的放大倍數
   enableAdvancedProcessing: true, // 啟用進階處理以提升識別度
   enableAutoThreshold: true, // 啟用自動閾值
-  minConfidence: 0, // 最低信心度閾值（0-100），低於此值的單詞會被過濾掉（設為 5 以保留幾乎所有識別結果，只過濾極低把握度的結果）
-  // 是否在 Tesseract 識別階段直接排除數字和符號（true=識別時排除，false=識別後過濾）
-  // 注意：設置為 true 可能會略微影響中文識別準確度（因為符號可能有助於斷句），但可以提高效率
-  excludeSymbolsAndNumbersAtRecognition: false, // 預設為 false（識別後過濾），推薦保持此設定以獲得最佳識別準確度
+  minConfidence: 1, // 最低信心度閾值（0-100），低於此值的單詞會被過濾掉（設為 0 以保留幾乎所有識別結果，只過濾極低把握度的結果）
+  // 注意：excludeSymbolsAndNumbersAtRecognition 參數已不再使用
+  // 現在統一使用後處理階段的 filterChineseOnly 來嚴格過濾，確保只檢索繁體中文
+  // 此參數保留僅為向後兼容，實際不會影響識別邏輯
+  excludeSymbolsAndNumbersAtRecognition: false, // 已棄用，保留僅為向後兼容
   // 針對淺色文字在深色背景的優化
   invertForLightText: true, // 如果檢測到淺色文字，反轉圖像（Tesseract 默認假設深色文字在淺色背景上）
+  // 是否使用 itemtw 白名單限制識別範圍
+  useItemtwWhitelist: true, // 啟用白名單模式，只識別 itemtw 中存在的字符
+  // 自動文字區域檢測和裁剪
+  enableAutoTextDetection: true, // 啟用自動檢測文字區域並裁剪（提高識別準確度）
+  autoCropPadding: 1, // 自動裁剪時的邊距（像素）- 優化為更貼近文字
+  // 針對繁體字筆畫優化的參數
+  enableMorphologyClose: true, // 啟用形態學閉運算以連接斷裂的筆畫
+  morphologyCloseKernelSize: 2, // 閉運算核大小（針對繁體字筆畫密集的特點）
+  sharpenStrength: 'strong', // 銳化強度：'normal' 或 'strong'（針對繁體字筆畫多，使用強銳化）
+  // Debug 模式：在輸入到 tesseract 前顯示確認框
+  debugMode: true, // 啟用 debug 模式，顯示輸入到 tesseract 前的圖片預覽
+  
+  // ========== UI 預覽相關配置（不影響最終 OCR 處理）==========
+  enableCropPreviewZoom: true,         // 裁剪預覽放大（預覽時放大以便查看細節，僅影響 UI 顯示）
+  cropPreviewZoomFactor: 2.5,          // 裁剪預覽放大倍數（預覽時的放大倍數，僅影響 UI 顯示）
+  enableCropPreviewSmoothing: true,    // 裁剪預覽圖像平滑（預覽放大時使用高品質平滑，僅影響 UI 顯示）
+  enableDebugImageSmoothing: false,    // Debug 模式圖片轉換時的圖像平滑（轉換為 data URL 時，僅影響顯示）
+  
+  // ========== Filter 開關配置（用於詳細測試）==========
+  // 每個 filter 都有獨立的開關，方便逐步測試和調試
+  // 開關按照執行順序排列
+  // 注意：只包含影響最終 OCR 處理結果的配置，UI 預覽相關配置在上方
+  filters: {
+    // ========== 步驟0: 圖片載入和轉換階段 ==========
+    enableImageSmoothing: true,        // Canvas 圖像平滑（高品質平滑，影響縮放時的圖像質量）
+    enableImageScale: true,             // 圖像放大（放大6.5倍，設為false時使用1.0倍不放大）
+    enableClipboardImageSmoothing: true, // 剪貼板圖片載入時的圖像平滑（從剪貼板載入圖片轉換為 File 時，影響最終圖片）
+    enableCropImageSmoothing: true,    // 手動裁剪圖片時的圖像平滑（用戶手動裁剪圖片時，影響最終圖片）
+    
+    // ========== 步驟1: 基礎處理 ==========
+    enableGrayscale: true,              // RGB轉灰階（0.299*R + 0.587*G + 0.114*B）
+    enableContrastEnhancement: true,    // 對比度增強（淺色文字：2.2倍+15亮度，深色背景：2.0倍-15亮度，正常：1.6倍）
+    enableInvertForLightText: true,     // 檢測並反轉淺色文字圖像（自動檢測後反轉，讓Tesseract識別）
+    
+    // ========== 步驟3: 進階去噪處理 ==========
+    enableBilateralFilter: false,        // 雙邊濾波（半徑2，保留文字邊緣，平滑背景網格）
+    enableRemoveGridLines: false,        // 去除細小網格線（檢測並移除網格紋理）
+    enableGaussianBlur: false,           // 高斯模糊（半徑2，5x5核，平滑背景）
+    enableMedianFilter: false,           // 中值濾波（先半徑2，再半徑1，兩次應用去噪）
+    
+    // ========== 步驟4: 銳化 ==========
+    enableSharpen: false,                // 銳化處理（強度：strong，增強文字邊緣清晰度）
+    
+    // ========== 步驟5-6: 二值化準備 ==========
+    enableAutoThreshold: true,           // 自動閾值計算（Otsu算法，自動計算最佳閾值）
+    enableBinarization: false,           // 二值化（閾值128或Otsu計算值，轉為黑白）
+    
+    // ========== 步驟7: 形態學處理 ==========
+    enableMorphologyOpen: false,         // 形態學開運算（核大小2，去除小噪點）
+    enableMorphologyClose: false,        // 形態學閉運算（核大小2，連接斷裂筆畫）
+    
+    // ========== OCR 階段處理 ==========
+    enableAutoTextDetection: true,      // 自動檢測文字區域並裁剪（檢測文字區域後自動裁剪，邊距5像素）
+  },
 };
+
+// 緩存 itemtw 字符白名單（首次使用時構建）
+let itemtwCharWhitelist: string | null = null;
+let whitelistBuildPromise: Promise<string> | null = null;
+
+// 緩存 bigram/trigram 白名單
+interface WhitelistCache {
+  charSet: Set<string>;
+  bigramSet: Set<string>;
+  trigramSet: Set<string>;
+}
+let itemtwWhitelistCache: WhitelistCache | null = null;
+
 
 /**
  * 讀入圖片檔案為 Image 物件
@@ -160,8 +230,13 @@ function resizeImageIfNeeded(image: HTMLImageElement): Promise<HTMLImageElement>
     canvas.width = newWidth;
     canvas.height = newHeight;
 
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
+    // 使用 filter 開關控制圖像平滑
+    if (CONFIG.filters.enableImageSmoothing) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+    } else {
+      ctx.imageSmoothingEnabled = false;
+    }
     ctx.drawImage(image, 0, 0, newWidth, newHeight);
 
     const resizedImg = new Image();
@@ -474,26 +549,86 @@ function applyMorphologyOpen(imageData: ImageData, kernelSize = 2): ImageData {
 }
 
 /**
- * 銳化濾波（增強文字邊緣）
+ * 形態學閉運算（連接斷裂的筆畫）
+ * 針對繁體字筆畫多的特點，閉運算可以連接因噪點或低分辨率而斷裂的筆畫
  */
-function applySharpen(imageData: ImageData): ImageData {
+function applyMorphologyClose(imageData: ImageData, kernelSize = 2): ImageData {
   const { data, width, height } = imageData;
   const newData = new Uint8ClampedArray(data);
   
-  // 銳化核
-  const kernel = [
-    [0, -1, 0],
-    [-1, 5, -1],
-    [0, -1, 0]
-  ];
-
-  for (let y = 1; y < height - 1; y++) {
-    for (let x = 1; x < width - 1; x++) {
-      let sum = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
+  // 先進行膨脹（連接斷裂的筆畫）
+  const dilated = new Uint8ClampedArray(data);
+  for (let y = kernelSize; y < height - kernelSize; y++) {
+    for (let x = kernelSize; x < width - kernelSize; x++) {
+      let maxVal = 0;
+      for (let dy = -kernelSize; dy <= kernelSize; dy++) {
+        for (let dx = -kernelSize; dx <= kernelSize; dx++) {
           const idx = ((y + dy) * width + (x + dx)) * 4;
-          const weight = kernel[dy + 1][dx + 1];
+          maxVal = Math.max(maxVal, data[idx]);
+        }
+      }
+      const idx = (y * width + x) * 4;
+      dilated[idx] = maxVal;
+      dilated[idx + 1] = maxVal;
+      dilated[idx + 2] = maxVal;
+    }
+  }
+  
+  // 再進行腐蝕（恢復筆畫粗細，但保持連接）
+  for (let y = kernelSize; y < height - kernelSize; y++) {
+    for (let x = kernelSize; x < width - kernelSize; x++) {
+      let minVal = 255;
+      for (let dy = -kernelSize; dy <= kernelSize; dy++) {
+        for (let dx = -kernelSize; dx <= kernelSize; dx++) {
+          const idx = ((y + dy) * width + (x + dx)) * 4;
+          minVal = Math.min(minVal, dilated[idx]);
+        }
+      }
+      const idx = (y * width + x) * 4;
+      newData[idx] = minVal;
+      newData[idx + 1] = minVal;
+      newData[idx + 2] = minVal;
+    }
+  }
+
+  return new ImageData(newData, width, height);
+}
+
+/**
+ * 銳化濾波（增強文字邊緣）
+ * 針對繁體字筆畫多的特點，提供兩種強度的銳化
+ */
+function applySharpen(imageData: ImageData, strength: 'normal' | 'strong' = 'normal'): ImageData {
+  const { data, width, height } = imageData;
+  const newData = new Uint8ClampedArray(data);
+  
+  // 根據強度選擇不同的銳化核
+  // 強銳化：更突出筆畫細節，適合繁體字筆畫多的情況
+  const kernel = strength === 'strong' 
+    ? [
+        [0, -1, -1, -1, 0],
+        [-1, -1, -1, -1, -1],
+        [-1, -1, 13, -1, -1],
+        [-1, -1, -1, -1, -1],
+        [0, -1, -1, -1, 0]
+      ]
+    : [
+        [0, -1, 0],
+        [-1, 5, -1],
+        [0, -1, 0]
+      ];
+
+  const kernelRadius = strength === 'strong' ? 2 : 1;
+
+  for (let y = kernelRadius; y < height - kernelRadius; y++) {
+    for (let x = kernelRadius; x < width - kernelRadius; x++) {
+      let sum = 0;
+      for (let dy = -kernelRadius; dy <= kernelRadius; dy++) {
+        for (let dx = -kernelRadius; dx <= kernelRadius; dx++) {
+          const idx = ((y + dy) * width + (x + dx)) * 4;
+          const weight = strength === 'strong' 
+            ? kernel[dy + kernelRadius][dx + kernelRadius]
+            : kernel[dy + 1][dx + 1];
           sum += data[idx] * weight;
         }
       }
@@ -592,16 +727,16 @@ function enhanceContrastForDarkBackground(imageData: ImageData): ImageData {
   let brightnessShift: number;
   
   if (isLightTextOnDark) {
-    // 淺色文字在深色背景：更激進的對比度增強
-    contrastFactor = 3.0;
-    brightnessShift = 30; // 增加亮度以突出淺色文字
+    // 淺色文字在深色背景：適度的對比度增強（降低強度以避免筆畫黏連）
+    contrastFactor = 2.2; // 從 3.0 降低到 2.2，避免過度增強
+    brightnessShift = 15; // 從 30 降低到 15，減少亮度偏移
   } else if (avgBrightness < 100) {
     // 深色背景：中等對比度增強
-    contrastFactor = 2.5;
-    brightnessShift = -20;
+    contrastFactor = 2.0; // 從 2.5 降低到 2.0
+    brightnessShift = -15; // 從 -20 調整到 -15
   } else {
     // 正常場景
-    contrastFactor = 1.8;
+    contrastFactor = 1.6; // 從 1.8 降低到 1.6
     brightnessShift = 0;
   }
   
@@ -634,13 +769,38 @@ function enhanceContrastForDarkBackground(imageData: ImageData): ImageData {
  * 圖片前處理：放大 + 灰階 + 對比度 + 二值化 + 去噪
  * 針對深色紋理背景+淺色文字進行優化
  */
-function preprocessImage(image: HTMLImageElement): Promise<HTMLImageElement> {
+function preprocessImage(
+  image: HTMLImageElement,
+  filterOptions?: {
+    enableAdvancedProcessing?: boolean;
+    enableAutoThreshold?: boolean;
+    invertForLightText?: boolean;
+    filters?: Partial<typeof CONFIG.filters>;
+  }
+): Promise<HTMLImageElement> {
+  // 合併 filter 開關配置（允許外部覆蓋）
+  const filterSwitches = {
+    enableImageSmoothing: filterOptions?.filters?.enableImageSmoothing ?? CONFIG.filters.enableImageSmoothing,
+    enableImageScale: filterOptions?.filters?.enableImageScale ?? CONFIG.filters.enableImageScale,
+    enableGrayscale: filterOptions?.filters?.enableGrayscale ?? CONFIG.filters.enableGrayscale,
+    enableContrastEnhancement: filterOptions?.filters?.enableContrastEnhancement ?? CONFIG.filters.enableContrastEnhancement,
+    enableInvertForLightText: filterOptions?.filters?.enableInvertForLightText ?? (filterOptions?.invertForLightText ?? CONFIG.invertForLightText),
+    enableBilateralFilter: filterOptions?.filters?.enableBilateralFilter ?? CONFIG.filters.enableBilateralFilter,
+    enableRemoveGridLines: filterOptions?.filters?.enableRemoveGridLines ?? CONFIG.filters.enableRemoveGridLines,
+    enableGaussianBlur: filterOptions?.filters?.enableGaussianBlur ?? CONFIG.filters.enableGaussianBlur,
+    enableMedianFilter: filterOptions?.filters?.enableMedianFilter ?? CONFIG.filters.enableMedianFilter,
+    enableSharpen: filterOptions?.filters?.enableSharpen ?? CONFIG.filters.enableSharpen,
+    enableAutoThreshold: filterOptions?.filters?.enableAutoThreshold ?? (filterOptions?.enableAutoThreshold ?? CONFIG.enableAutoThreshold),
+    enableBinarization: filterOptions?.filters?.enableBinarization ?? CONFIG.filters.enableBinarization,
+    enableMorphologyOpen: filterOptions?.filters?.enableMorphologyOpen ?? CONFIG.filters.enableMorphologyOpen,
+    enableMorphologyClose: filterOptions?.filters?.enableMorphologyClose ?? CONFIG.filters.enableMorphologyClose,
+  };
+
   console.log('[OCR DEBUG] preprocessImage: 開始圖片前處理', {
     inputWidth: image.width,
     inputHeight: image.height,
     imageScale: CONFIG.imageScale,
-    enableAdvancedProcessing: CONFIG.enableAdvancedProcessing,
-    enableAutoThreshold: CONFIG.enableAutoThreshold,
+    filterSwitches,
     timestamp: new Date().toISOString(),
   });
 
@@ -648,25 +808,60 @@ function preprocessImage(image: HTMLImageElement): Promise<HTMLImageElement> {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
 
-    const scale = CONFIG.imageScale;
+    // ========== 步驟0: Canvas 設置和圖像縮放 ==========
+    const scale = filterSwitches.enableImageScale ? CONFIG.imageScale : 1.0;
     const width = Math.floor(image.width * scale);
     const height = Math.floor(image.height * scale);
 
-    console.log('[OCR DEBUG] preprocessImage: 計算放大後尺寸', {
+    console.log('[OCR DEBUG] preprocessImage: [步驟0] 計算放大後尺寸', {
       originalWidth: image.width,
       originalHeight: image.height,
       scaledWidth: width,
       scaledHeight: height,
       scale,
+      enableImageScale: filterSwitches.enableImageScale,
       timestamp: new Date().toISOString(),
     });
 
     canvas.width = width;
     canvas.height = height;
 
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(image, 0, 0, width, height);
+    // Canvas 圖像平滑設置
+    if (filterSwitches.enableImageSmoothing) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      console.log('[OCR DEBUG] preprocessImage: [步驟0] 啟用圖像平滑', {
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      ctx.imageSmoothingEnabled = false;
+      console.log('[OCR DEBUG] preprocessImage: [步驟0] 禁用圖像平滑', {
+        timestamp: new Date().toISOString(),
+      });
+    }
+    
+    // 確保從 (0,0) 開始繪製，不進行任何偏移
+    // 如果不需要縮放，使用原始尺寸繪製；如果需要縮放，使用計算後的尺寸
+    if (scale === 1.0) {
+      // 不需要縮放時，直接繪製原始圖像，確保像素對齊
+      ctx.drawImage(image, 0, 0);
+      console.log('[OCR DEBUG] preprocessImage: [步驟0] 繪製圖像（無縮放）', {
+        drawParams: { x: 0, y: 0 },
+        imageSize: { width: image.width, height: image.height },
+        canvasSize: { width: canvas.width, height: canvas.height },
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      // 需要縮放時，使用計算後的尺寸
+      ctx.drawImage(image, 0, 0, width, height);
+      console.log('[OCR DEBUG] preprocessImage: [步驟0] 繪製圖像（縮放）', {
+        drawParams: { x: 0, y: 0, width, height },
+        imageSize: { width: image.width, height: image.height },
+        canvasSize: { width: canvas.width, height: canvas.height },
+        scale,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     let imageData = ctx.getImageData(0, 0, width, height);
     console.log('[OCR DEBUG] preprocessImage: 取得 ImageData', {
@@ -676,92 +871,200 @@ function preprocessImage(image: HTMLImageElement): Promise<HTMLImageElement> {
       timestamp: new Date().toISOString(),
     });
 
-    // 步驟1: 先進行灰階化
-    const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const gray = Math.round(
-        0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-      );
-      data[i] = gray;
-      data[i + 1] = gray;
-      data[i + 2] = gray;
+    // ========== 步驟1: 灰階化 ==========
+    if (filterSwitches.enableGrayscale) {
+      console.log('[OCR DEBUG] preprocessImage: [步驟1] 開始灰階化', {
+        pixelCount: imageData.data.length / 4,
+        timestamp: new Date().toISOString(),
+      });
+      const beforeGrayscale = Date.now();
+      const data = imageData.data;
+      
+      // 採樣檢查處理前的顏色分佈（檢查前10個像素）
+      const sampleBefore: Array<{ r: number; g: number; b: number; isGray: boolean }> = [];
+      for (let i = 0; i < Math.min(40, data.length); i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const isGray = Math.abs(r - g) < 5 && Math.abs(g - b) < 5 && Math.abs(r - b) < 5;
+        sampleBefore.push({ r, g, b, isGray });
+      }
+      
+      let processedCount = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const gray = Math.round(
+          0.299 * r + 0.587 * g + 0.114 * b
+        );
+        data[i] = gray;
+        data[i + 1] = gray;
+        data[i + 2] = gray;
+        // alpha 通道 (data[i + 3]) 保持不變
+        processedCount++;
+      }
+      
+      // 立即將灰階化後的數據寫回 canvas
+      ctx.putImageData(imageData, 0, 0);
+      
+      // 採樣檢查處理後的顏色分佈（從 canvas 重新讀取以驗證）
+      const verifyImageData = ctx.getImageData(0, 0, width, height);
+      const sampleAfter: Array<{ r: number; g: number; b: number; isGray: boolean }> = [];
+      for (let i = 0; i < Math.min(40, verifyImageData.data.length); i += 4) {
+        const r = verifyImageData.data[i];
+        const g = verifyImageData.data[i + 1];
+        const b = verifyImageData.data[i + 2];
+        const isGray = Math.abs(r - g) < 5 && Math.abs(g - b) < 5 && Math.abs(r - b) < 5;
+        sampleAfter.push({ r, g, b, isGray });
+      }
+      
+      // 統計處理前後顏色變化的像素數量
+      let changedPixelCount = 0;
+      let alreadyGrayPixelCount = 0;
+      for (let i = 0; i < Math.min(100, sampleBefore.length); i++) {
+        const before = sampleBefore[i];
+        const after = sampleAfter[i];
+        const beforeWasGray = before.isGray;
+        const afterIsGray = after.isGray;
+        const colorChanged = Math.abs(before.r - after.r) > 1 || 
+                            Math.abs(before.g - after.g) > 1 || 
+                            Math.abs(before.b - after.b) > 1;
+        if (colorChanged) {
+          changedPixelCount++;
+        }
+        if (beforeWasGray) {
+          alreadyGrayPixelCount++;
+        }
+      }
+      
+      // 重新讀取 imageData 以供後續處理使用（確保使用最新的 canvas 數據）
+      imageData = ctx.getImageData(0, 0, width, height);
+      const afterGrayscale = Date.now();
+      console.log('[OCR DEBUG] preprocessImage: [步驟1] 灰階化完成', {
+        duration: afterGrayscale - beforeGrayscale,
+        processedPixelCount: processedCount,
+        sampleBefore: sampleBefore.slice(0, 5).map(s => `RGB(${s.r},${s.g},${s.b})${s.isGray ? ' [灰]' : ''}`),
+        sampleAfter: sampleAfter.slice(0, 5).map(s => `RGB(${s.r},${s.g},${s.b})${s.isGray ? ' [灰]' : ''}`),
+        statistics: {
+          sampledPixels: Math.min(100, sampleBefore.length),
+          changedPixels: changedPixelCount,
+          alreadyGrayPixels: alreadyGrayPixelCount,
+          changeRatio: `${((changedPixelCount / Math.min(100, sampleBefore.length)) * 100).toFixed(1)}%`,
+        },
+        note: changedPixelCount === 0 
+          ? '⚠️ 所有採樣像素在處理前後顏色相同，圖片可能已經是灰階的'
+          : `✅ 灰階化正常工作，${changedPixelCount} 個採樣像素的顏色已轉換`,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      console.log('[OCR DEBUG] preprocessImage: [步驟1] 跳過灰階化（已禁用）', {
+        timestamp: new Date().toISOString(),
+      });
     }
-    ctx.putImageData(imageData, 0, 0);
-    imageData = ctx.getImageData(0, 0, width, height);
 
-    // 步驟2: 針對深色背景+淺色文字進行自適應對比度增強
-    console.log('[OCR DEBUG] preprocessImage: 開始自適應對比度增強', {
-      timestamp: new Date().toISOString(),
-    });
-    const beforeContrast = Date.now();
-    imageData = enhanceContrastForDarkBackground(imageData);
-    const afterContrast = Date.now();
-    console.log('[OCR DEBUG] preprocessImage: 對比度增強完成', {
-      duration: afterContrast - beforeContrast,
-      timestamp: new Date().toISOString(),
-    });
+    // ========== 步驟2: 對比度增強 ==========
+    if (filterSwitches.enableContrastEnhancement) {
+      console.log('[OCR DEBUG] preprocessImage: [步驟2] 開始自適應對比度增強', {
+        timestamp: new Date().toISOString(),
+      });
+      const beforeContrast = Date.now();
+      imageData = enhanceContrastForDarkBackground(imageData);
+      const afterContrast = Date.now();
+      console.log('[OCR DEBUG] preprocessImage: [步驟2] 對比度增強完成', {
+        duration: afterContrast - beforeContrast,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      console.log('[OCR DEBUG] preprocessImage: [步驟2] 跳過對比度增強（已禁用）', {
+        timestamp: new Date().toISOString(),
+      });
+    }
 
-    // 步驟2.5: 檢測並反轉圖像（如果是淺色文字在深色背景上）
-    if (CONFIG.invertForLightText) {
+    // ========== 步驟2.5: 檢測並反轉圖像（如果是淺色文字在深色背景上）==========
+    if (filterSwitches.enableInvertForLightText) {
       const isLightText = detectLightTextOnDarkBackground(imageData);
       if (isLightText) {
-        console.log('[OCR DEBUG] preprocessImage: 檢測到淺色文字，開始反轉圖像', {
+        console.log('[OCR DEBUG] preprocessImage: [步驟2.5] 檢測到淺色文字，開始反轉圖像', {
           timestamp: new Date().toISOString(),
         });
         const beforeInvert = Date.now();
         imageData = invertImage(imageData);
         const afterInvert = Date.now();
-        console.log('[OCR DEBUG] preprocessImage: 圖像反轉完成', {
+        console.log('[OCR DEBUG] preprocessImage: [步驟2.5] 圖像反轉完成', {
           duration: afterInvert - beforeInvert,
           timestamp: new Date().toISOString(),
         });
       } else {
-        console.log('[OCR DEBUG] preprocessImage: 未檢測到淺色文字，跳過反轉', {
+        console.log('[OCR DEBUG] preprocessImage: [步驟2.5] 未檢測到淺色文字，跳過反轉', {
           timestamp: new Date().toISOString(),
         });
       }
+    } else {
+      console.log('[OCR DEBUG] preprocessImage: [步驟2.5] 跳過圖像反轉檢查（已禁用）', {
+        timestamp: new Date().toISOString(),
+      });
     }
 
-    // 步驟3: 啟用進階處理（去噪和背景平滑，特別針對網格紋理）
-    if (CONFIG.enableAdvancedProcessing) {
-      // 3.1: 雙邊濾波（保留文字邊緣，平滑背景網格）
-      console.log('[OCR DEBUG] preprocessImage: 開始雙邊濾波去除網格', {
+    // ========== 步驟3: 進階處理 filters（去噪和背景平滑）==========
+    
+    // 步驟3.1: 雙邊濾波（保留文字邊緣，平滑背景網格）
+    if (filterSwitches.enableBilateralFilter) {
+      console.log('[OCR DEBUG] preprocessImage: [步驟3.1] 開始雙邊濾波去除網格', {
         timestamp: new Date().toISOString(),
       });
       const beforeBilateral = Date.now();
       imageData = applyBilateralFilter(imageData, 2);
       const afterBilateral = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: 雙邊濾波完成', {
+      console.log('[OCR DEBUG] preprocessImage: [步驟3.1] 雙邊濾波完成', {
         duration: afterBilateral - beforeBilateral,
         timestamp: new Date().toISOString(),
       });
+    } else {
+      console.log('[OCR DEBUG] preprocessImage: [步驟3.1] 跳過雙邊濾波（已禁用）', {
+        timestamp: new Date().toISOString(),
+      });
+    }
 
-      // 3.2: 去除細小網格線
-      console.log('[OCR DEBUG] preprocessImage: 開始去除細小網格線', {
+    // 步驟3.2: 去除細小網格線
+    if (filterSwitches.enableRemoveGridLines) {
+      console.log('[OCR DEBUG] preprocessImage: [步驟3.2] 開始去除細小網格線', {
         timestamp: new Date().toISOString(),
       });
       const beforeGrid = Date.now();
       imageData = removeGridLines(imageData);
       const afterGrid = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: 網格線去除完成', {
+      console.log('[OCR DEBUG] preprocessImage: [步驟3.2] 網格線去除完成', {
         duration: afterGrid - beforeGrid,
         timestamp: new Date().toISOString(),
       });
+    } else {
+      console.log('[OCR DEBUG] preprocessImage: [步驟3.2] 跳過去除網格線（已禁用）', {
+        timestamp: new Date().toISOString(),
+      });
+    }
 
-      // 3.3: 增強的高斯模糊平滑背景（使用更大的核）
-      console.log('[OCR DEBUG] preprocessImage: 開始增強高斯模糊平滑背景', {
+    // 步驟3.3: 高斯模糊平滑背景（使用更大的核）
+    if (filterSwitches.enableGaussianBlur) {
+      console.log('[OCR DEBUG] preprocessImage: [步驟3.3] 開始增強高斯模糊平滑背景', {
         timestamp: new Date().toISOString(),
       });
       const beforeBlur = Date.now();
       imageData = applyGaussianBlur(imageData, 2); // 使用更大的核（5x5）
       const afterBlur = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: 增強高斯模糊完成', {
+      console.log('[OCR DEBUG] preprocessImage: [步驟3.3] 增強高斯模糊完成', {
         duration: afterBlur - beforeBlur,
         timestamp: new Date().toISOString(),
       });
+    } else {
+      console.log('[OCR DEBUG] preprocessImage: [步驟3.3] 跳過高斯模糊（已禁用）', {
+        timestamp: new Date().toISOString(),
+      });
+    }
 
-      // 3.4: 中值濾波去噪（多次應用以更好地去除小噪點）
-      console.log('[OCR DEBUG] preprocessImage: 開始中值濾波去噪', {
+    // 步驟3.4: 中值濾波去噪（多次應用以更好地去除小噪點）
+    if (filterSwitches.enableMedianFilter) {
+      console.log('[OCR DEBUG] preprocessImage: [步驟3.4] 開始中值濾波去噪', {
         timestamp: new Date().toISOString(),
       });
       const beforeFilter = Date.now();
@@ -769,96 +1072,644 @@ function preprocessImage(image: HTMLImageElement): Promise<HTMLImageElement> {
       // 再次應用以更好地去除殘留噪點
       imageData = applyMedianFilter(imageData, 1);
       const afterFilter = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: 中值濾波完成', {
+      console.log('[OCR DEBUG] preprocessImage: [步驟3.4] 中值濾波完成', {
         duration: afterFilter - beforeFilter,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      console.log('[OCR DEBUG] preprocessImage: [步驟3.4] 跳過中值濾波（已禁用）', {
         timestamp: new Date().toISOString(),
       });
     }
 
-    // 步驟4: 銳化處理（增強文字邊緣）
-    console.log('[OCR DEBUG] preprocessImage: 開始銳化處理', {
-      timestamp: new Date().toISOString(),
-    });
-    const beforeSharpen = Date.now();
-    imageData = applySharpen(imageData);
-    const afterSharpen = Date.now();
-    console.log('[OCR DEBUG] preprocessImage: 銳化完成', {
-      duration: afterSharpen - beforeSharpen,
-      timestamp: new Date().toISOString(),
-    });
+    // ========== 步驟4: 銳化處理（增強文字邊緣，針對繁體字筆畫多使用強銳化）==========
+    if (filterSwitches.enableSharpen) {
+      console.log('[OCR DEBUG] preprocessImage: [步驟4] 開始銳化處理', {
+        sharpenStrength: CONFIG.sharpenStrength,
+        timestamp: new Date().toISOString(),
+      });
+      const beforeSharpen = Date.now();
+      imageData = applySharpen(imageData, CONFIG.sharpenStrength as 'normal' | 'strong');
+      const afterSharpen = Date.now();
+      console.log('[OCR DEBUG] preprocessImage: [步驟4] 銳化完成', {
+        duration: afterSharpen - beforeSharpen,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      console.log('[OCR DEBUG] preprocessImage: [步驟4] 跳過銳化處理（已禁用）', {
+        timestamp: new Date().toISOString(),
+      });
+    }
 
-    // 步驟5: 計算自動閾值
+    // ========== 步驟5: 計算自動閾值 ==========
     let threshold = CONFIG.threshold;
-    if (CONFIG.enableAutoThreshold) {
-      console.log('[OCR DEBUG] preprocessImage: 開始計算 Otsu 閾值', {
+    if (filterSwitches.enableAutoThreshold) {
+      console.log('[OCR DEBUG] preprocessImage: [步驟5] 開始計算 Otsu 閾值', {
         timestamp: new Date().toISOString(),
       });
       const beforeThreshold = Date.now();
       threshold = calculateOtsuThreshold(imageData);
       const afterThreshold = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: Otsu 閾值計算完成', {
+      console.log('[OCR DEBUG] preprocessImage: [步驟5] Otsu 閾值計算完成', {
         threshold,
         duration: afterThreshold - beforeThreshold,
         timestamp: new Date().toISOString(),
       });
     } else {
-      console.log('[OCR DEBUG] preprocessImage: 使用固定閾值', {
+      console.log('[OCR DEBUG] preprocessImage: [步驟5] 使用固定閾值', {
         threshold,
         timestamp: new Date().toISOString(),
       });
     }
 
-    // 步驟6: 二值化
-    console.log('[OCR DEBUG] preprocessImage: 開始二值化', {
-      threshold,
-      pixelCount: imageData.data.length / 4,
-      timestamp: new Date().toISOString(),
-    });
-
-    const beforeBinarization = Date.now();
-    const processedData = imageData.data;
-    for (let i = 0; i < processedData.length; i += 4) {
-      const gray = processedData[i];
-      const binary = gray > threshold ? 255 : 0;
-      processedData[i] = binary;
-      processedData[i + 1] = binary;
-      processedData[i + 2] = binary;
+    // ========== 步驟6: 二值化 ==========
+    if (filterSwitches.enableBinarization) {
+      console.log('[OCR DEBUG] preprocessImage: [步驟6] 開始二值化', {
+        threshold,
+        pixelCount: imageData.data.length / 4,
+        timestamp: new Date().toISOString(),
+      });
+      const beforeBinarization = Date.now();
+      const processedData = imageData.data;
+      for (let i = 0; i < processedData.length; i += 4) {
+        const gray = processedData[i];
+        const binary = gray > threshold ? 255 : 0;
+        processedData[i] = binary;
+        processedData[i + 1] = binary;
+        processedData[i + 2] = binary;
+      }
+      const afterBinarization = Date.now();
+      console.log('[OCR DEBUG] preprocessImage: [步驟6] 二值化完成', {
+        duration: afterBinarization - beforeBinarization,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      console.log('[OCR DEBUG] preprocessImage: [步驟6] 跳過二值化（已禁用）', {
+        timestamp: new Date().toISOString(),
+      });
     }
-    const afterBinarization = Date.now();
 
-    console.log('[OCR DEBUG] preprocessImage: 二值化完成', {
-      duration: afterBinarization - beforeBinarization,
-      timestamp: new Date().toISOString(),
-    });
-
-    // 步驟7: 形態學開運算（去除小噪點，連接斷裂的文字）
-    // 使用更大的核以更好地去除網格殘留
-    if (CONFIG.enableAdvancedProcessing) {
-      console.log('[OCR DEBUG] preprocessImage: 開始形態學開運算', {
+    // ========== 步驟7: 形態學開運算（去除小噪點）==========
+    if (filterSwitches.enableMorphologyOpen) {
+      console.log('[OCR DEBUG] preprocessImage: [步驟7] 開始形態學開運算', {
         timestamp: new Date().toISOString(),
       });
       const beforeMorphology = Date.now();
       imageData = applyMorphologyOpen(imageData, 2); // 使用更大的核
       const afterMorphology = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: 形態學開運算完成', {
+      console.log('[OCR DEBUG] preprocessImage: [步驟7] 形態學開運算完成', {
         duration: afterMorphology - beforeMorphology,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      console.log('[OCR DEBUG] preprocessImage: [步驟7] 跳過形態學開運算（已禁用）', {
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // ========== 步驟7.5: 形態學閉運算（連接斷裂的筆畫，針對繁體字筆畫多的特點）==========
+    if (filterSwitches.enableMorphologyClose) {
+      console.log('[OCR DEBUG] preprocessImage: [步驟7.5] 開始形態學閉運算（連接斷裂筆畫）', {
+        kernelSize: CONFIG.morphologyCloseKernelSize,
+        timestamp: new Date().toISOString(),
+      });
+      const beforeClose = Date.now();
+      imageData = applyMorphologyClose(imageData, CONFIG.morphologyCloseKernelSize);
+      const afterClose = Date.now();
+      console.log('[OCR DEBUG] preprocessImage: [步驟7.5] 形態學閉運算完成', {
+        duration: afterClose - beforeClose,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      console.log('[OCR DEBUG] preprocessImage: [步驟7.5] 跳過形態學閉運算（已禁用）', {
         timestamp: new Date().toISOString(),
       });
     }
 
     ctx.putImageData(imageData, 0, 0);
 
+    // 記錄 canvas 處理前後的圖像信息，用於調試
+    console.log('[OCR DEBUG] preprocessImage: Canvas 處理完成，準備轉換為 Image', {
+      canvasSize: { width: canvas.width, height: canvas.height },
+      imageDataSize: { width: imageData.width, height: imageData.height },
+      originalImageSize: { width: image.width, height: image.height },
+      hasAnyFilterApplied: Object.values(filterSwitches).some(v => v === true),
+      scale: filterSwitches.enableImageScale ? CONFIG.imageScale : 1.0,
+      // 檢查圖像尺寸是否一致，確保沒有偏移
+      sizeMatches: canvas.width === imageData.width && canvas.height === imageData.height && 
+                   (filterSwitches.enableImageScale ? 
+                     (canvas.width === Math.floor(image.width * CONFIG.imageScale) && 
+                      canvas.height === Math.floor(image.height * CONFIG.imageScale)) :
+                     (canvas.width === image.width && canvas.height === image.height)),
+      timestamp: new Date().toISOString(),
+    });
+
     const processedImg = new Image();
     processedImg.onload = () => {
       console.log('[OCR DEBUG] preprocessImage: 前處理完成', {
+        originalImageSize: { width: image.width, height: image.height },
         finalWidth: processedImg.width,
         finalHeight: processedImg.height,
+        canvasSize: { width: canvas.width, height: canvas.height },
         timestamp: new Date().toISOString(),
       });
       resolve(processedImg);
     };
     processedImg.src = canvas.toDataURL('image/png');
   });
+}
+
+/**
+ * 從 itemtw 數據中構建字符白名單（增強版：包含 bigram/trigram）
+ * 提取所有物品名稱中出現的唯一字符、bigram 和 trigram
+ * @returns {Promise<string>} 字符白名單字符串（用於 Tesseract）
+ */
+async function buildItemtwCharWhitelist(): Promise<string> {
+  // 如果已經構建過，直接返回緩存
+  if (itemtwCharWhitelist !== null) {
+    return itemtwCharWhitelist;
+  }
+
+  // 如果正在構建中，等待構建完成
+  if (whitelistBuildPromise !== null) {
+    return whitelistBuildPromise;
+  }
+
+  // 開始構建白名單
+  whitelistBuildPromise = (async () => {
+    console.log('[OCR DEBUG] buildItemtwCharWhitelist: 開始構建 itemtw 字符白名單（增強版）', {
+      timestamp: new Date().toISOString(),
+    });
+
+    const buildStartTime = Date.now();
+    
+    try {
+      // 從 supabaseData 獲取 itemtw 數據（使用已緩存的數據）
+      const twItemsData = await getTwItems();
+      
+      // 提取所有唯一字符、bigram 和 trigram
+      const charSet = new Set<string>();
+      const bigramSet = new Set<string>();
+      const trigramSet = new Set<string>();
+      
+      Object.values(twItemsData).forEach((item: any) => {
+        if (item && item.tw && typeof item.tw === 'string') {
+          const name = item.tw.trim();
+          if (!name) return;
+          
+          // 提取字符
+          for (const char of name) {
+            // 只保留繁體中文字符（Unicode 範圍：\u3400-\u4DBF 和 \u4E00-\u9FFF）
+            const codePoint = char.codePointAt(0);
+            if (codePoint !== undefined) {
+              if (
+                (codePoint >= 0x3400 && codePoint <= 0x4DBF) || // 擴展A
+                (codePoint >= 0x4E00 && codePoint <= 0x9FFF)    // 基本漢字
+              ) {
+                charSet.add(char);
+              }
+            }
+          }
+          
+          // 提取 bigram（兩個字符的組合）
+          for (let i = 0; i < name.length - 1; i++) {
+            const char1 = name[i];
+            const char2 = name[i + 1];
+            const codePoint1 = char1.codePointAt(0);
+            const codePoint2 = char2.codePointAt(0);
+            if (codePoint1 !== undefined && codePoint2 !== undefined) {
+              if (
+                ((codePoint1 >= 0x3400 && codePoint1 <= 0x4DBF) || (codePoint1 >= 0x4E00 && codePoint1 <= 0x9FFF)) &&
+                ((codePoint2 >= 0x3400 && codePoint2 <= 0x4DBF) || (codePoint2 >= 0x4E00 && codePoint2 <= 0x9FFF))
+              ) {
+                bigramSet.add(char1 + char2);
+              }
+            }
+          }
+          
+          // 提取 trigram（三個字符的組合）
+          for (let i = 0; i < name.length - 2; i++) {
+            const char1 = name[i];
+            const char2 = name[i + 1];
+            const char3 = name[i + 2];
+            const codePoint1 = char1.codePointAt(0);
+            const codePoint2 = char2.codePointAt(0);
+            const codePoint3 = char3.codePointAt(0);
+            if (codePoint1 !== undefined && codePoint2 !== undefined && codePoint3 !== undefined) {
+              if (
+                ((codePoint1 >= 0x3400 && codePoint1 <= 0x4DBF) || (codePoint1 >= 0x4E00 && codePoint1 <= 0x9FFF)) &&
+                ((codePoint2 >= 0x3400 && codePoint2 <= 0x4DBF) || (codePoint2 >= 0x4E00 && codePoint2 <= 0x9FFF)) &&
+                ((codePoint3 >= 0x3400 && codePoint3 <= 0x4DBF) || (codePoint3 >= 0x4E00 && codePoint3 <= 0x9FFF))
+              ) {
+                trigramSet.add(char1 + char2 + char3);
+              }
+            }
+          }
+        }
+      });
+
+      // 將字符集合轉換為排序後的字符串（排序有助於 Tesseract 優化）
+      const sortedChars = Array.from(charSet).sort();
+      itemtwCharWhitelist = sortedChars.join('');
+      
+      // 緩存完整的白名單數據（用於後續驗證）
+      itemtwWhitelistCache = {
+        charSet,
+        bigramSet,
+        trigramSet,
+      };
+
+      const buildDuration = Date.now() - buildStartTime;
+      console.log('[OCR DEBUG] buildItemtwCharWhitelist: 白名單構建完成（增強版）', {
+        uniqueCharCount: charSet.size,
+        uniqueBigramCount: bigramSet.size,
+        uniqueTrigramCount: trigramSet.size,
+        whitelistLength: itemtwCharWhitelist.length,
+        duration: buildDuration,
+        timestamp: new Date().toISOString(),
+      });
+
+      return itemtwCharWhitelist;
+    } catch (error) {
+      console.error('[OCR DEBUG] buildItemtwCharWhitelist: 構建白名單失敗', {
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString(),
+      });
+      
+      // 構建失敗時返回空字符串（不使用白名單限制）
+      whitelistBuildPromise = null;
+      return '';
+    }
+  })();
+
+  return whitelistBuildPromise;
+}
+
+/**
+ * 驗證 OCR 識別結果是否符合白名單（使用 bigram/trigram 增強驗證）
+ * @param text OCR 識別的文字
+ * @returns 是否符合白名單要求
+ */
+function validateAgainstWhitelist(text: string): boolean {
+  if (!CONFIG.useItemtwWhitelist || !itemtwWhitelistCache) {
+    return true; // 如果未啟用白名單或緩存未構建，不進行驗證
+  }
+  
+  const { charSet, bigramSet, trigramSet } = itemtwWhitelistCache;
+  
+  // 檢查所有字符是否在白名單中
+  for (const char of text) {
+    const codePoint = char.codePointAt(0);
+    if (codePoint !== undefined) {
+      if (
+        (codePoint >= 0x3400 && codePoint <= 0x4DBF) || 
+        (codePoint >= 0x4E00 && codePoint <= 0x9FFF)
+      ) {
+        if (!charSet.has(char)) {
+          return false; // 發現不在白名單中的字符
+        }
+      }
+    }
+  }
+  
+  // 可選：檢查 bigram/trigram 匹配度（用於評分，但不強制要求）
+  // 這裡只做字符級別驗證，bigram/trigram 用於搜索階段的相似度計算
+  
+  return true;
+}
+
+/**
+ * 檢測圖片中的文字區域（使用快速OCR）
+ * 返回文字區域的邊界框
+ * @param image 圖片元素
+ * @returns 文字區域邊界框 {x, y, width, height}，如果檢測失敗返回 null
+ */
+async function detectTextRegion(image: HTMLImageElement): Promise<{ x: number; y: number; width: number; height: number } | null> {
+  console.log('[OCR DEBUG] detectTextRegion: 開始檢測文字區域', {
+    imageWidth: image.width,
+    imageHeight: image.height,
+    timestamp: new Date().toISOString(),
+  });
+
+  try {
+    if (typeof window.Tesseract === 'undefined') {
+      console.warn('[OCR DEBUG] detectTextRegion: Tesseract.js 未載入，跳過自動檢測', {
+        timestamp: new Date().toISOString(),
+      });
+      return null;
+    }
+
+    // 創建臨時 Worker 進行快速檢測
+    // 使用 Tesseract 原生 CDN 模型
+    const worker = await window.Tesseract.createWorker(CONFIG.tesseractLang, 1);
+    
+    // 構建參數：使用快速模式
+    const detectionParams: Record<string, string> = {
+      tessedit_pageseg_mode: '7', // 單行文本模式
+      tessedit_ocr_engine_mode: '1', // LSTM OCR Engine
+    };
+    
+    // 如果白名單已構建，使用它來提高檢測準確度
+    if (CONFIG.useItemtwWhitelist && itemtwCharWhitelist !== null) {
+      detectionParams.tessedit_char_whitelist = itemtwCharWhitelist;
+      console.log('[OCR DEBUG] detectTextRegion: 使用 itemtw 白名單進行檢測', {
+        whitelistLength: itemtwCharWhitelist.length,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    
+    await worker.setParameters(detectionParams);
+
+    // 執行快速識別以獲取文字位置
+    const result = await worker.recognize(image);
+    await worker.terminate();
+
+    // 從 words 數據中計算文字區域邊界
+    if (!result.data.words || result.data.words.length === 0) {
+      console.warn('[OCR DEBUG] detectTextRegion: 未檢測到文字', {
+        timestamp: new Date().toISOString(),
+      });
+      return null;
+    }
+
+    // 收集所有有效的文字邊界框
+    const validWords = result.data.words.filter((word) => 
+      word.bbox && word.text.trim().length > 0
+    );
+    
+    if (validWords.length === 0) {
+      console.warn('[OCR DEBUG] detectTextRegion: 沒有有效的文字', {
+        timestamp: new Date().toISOString(),
+      });
+      return null;
+    }
+
+    // 計算所有文字的最小邊界框（X和Y的起始位置）
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    
+    // 收集所有文字的下邊界（y1）和上邊界（y0）
+    const bottomEdges: number[] = [];
+    const topEdges: number[] = [];
+    
+    validWords.forEach((word) => {
+      if (word.bbox) {
+        minX = Math.min(minX, word.bbox.x0);
+        minY = Math.min(minY, word.bbox.y0);
+        maxX = Math.max(maxX, word.bbox.x1);
+        bottomEdges.push(word.bbox.y1);
+        topEdges.push(word.bbox.y0);
+      }
+    });
+    
+    // 對下邊界進行排序，使用更保守的方法來確定實際文字下邊界
+    // 使用第90百分位數而不是最大值，避免包含離群的底部空白
+    bottomEdges.sort((a, b) => a - b);
+    topEdges.sort((a, b) => a - b);
+    
+    // 計算文字行的平均高度，用於判斷離群值
+    const heights = validWords
+      .map((word) => word.bbox ? word.bbox.y1 - word.bbox.y0 : 0)
+      .filter((h) => h > 0);
+    const avgHeight = heights.reduce((sum, h) => sum + h, 0) / heights.length;
+    
+    // 使用更保守的百分位數來確定實際文字下邊界，減少底部空白
+    // 優先使用第80百分位數，如果與最大值差距大則進一步收緊
+    const maxBottomEdge = Math.max(...bottomEdges);
+    const percentile80Index = Math.floor(bottomEdges.length * 0.8);
+    let maxY = bottomEdges[percentile80Index];
+    
+    // 如果第80百分位數和最大值差距太大（超過平均高度的1.5倍），進一步收緊
+    if (maxBottomEdge - maxY > avgHeight * 1.5) {
+      // 使用第75百分位數，更保守
+      const percentile75Index = Math.floor(bottomEdges.length * 0.75);
+      maxY = bottomEdges[percentile75Index];
+      
+      // 如果差距仍然很大，使用第70百分位數
+      if (maxBottomEdge - maxY > avgHeight * 2) {
+        const percentile70Index = Math.floor(bottomEdges.length * 0.7);
+        maxY = bottomEdges[percentile70Index];
+      }
+    }
+    
+    // 確保maxY至少包含大部分文字（至少第65百分位數）
+    const percentile65Index = Math.floor(bottomEdges.length * 0.65);
+    maxY = Math.max(maxY, bottomEdges[percentile65Index]);
+
+    // 如果沒有有效的邊界框，返回 null
+    if (minX === Infinity || minY === Infinity || maxX === -Infinity || maxY === -Infinity) {
+      console.warn('[OCR DEBUG] detectTextRegion: 邊界框無效', {
+        timestamp: new Date().toISOString(),
+      });
+      return null;
+    }
+
+    // 計算文字區域的實際尺寸
+    const textWidth = maxX - minX;
+    const textHeight = maxY - minY;
+    
+    // 根據圖片尺寸和文字區域大小動態調整邊距
+    // 對於較小的圖片或較小的文字區域，使用更小的邊距以更貼近文字
+    const basePadding = CONFIG.autoCropPadding;
+    const imageArea = image.width * image.height;
+    const textArea = textWidth * textHeight;
+    const textRatio = textArea / imageArea;
+    
+    // 動態調整：小圖片或文字佔比大時使用更小邊距，大圖片時稍微增加邊距
+    let padding = basePadding;
+    if (imageArea < 500000) { // 小圖片（約707x707以下）
+      padding = Math.max(2, basePadding * 0.6);
+    } else if (imageArea > 2000000) { // 大圖片（約1414x1414以上）
+      padding = Math.min(8, basePadding * 1.2);
+    } else if (textRatio > 0.3) { // 文字區域佔比大
+      padding = Math.max(2, basePadding * 0.7);
+    }
+    
+    // 確保邊距不會太小（至少2像素）也不會太大（最多8像素）
+    padding = Math.max(2, Math.min(8, padding));
+    
+    const x = Math.max(0, Math.floor(minX - padding));
+    const y = Math.max(0, Math.floor(minY - padding));
+    const width = Math.min(image.width - x, Math.floor(maxX - minX + padding * 2));
+    const height = Math.min(image.height - y, Math.floor(maxY - minY + padding * 2));
+
+    // 確保區域有效
+    if (width <= 0 || height <= 0) {
+      console.warn('[OCR DEBUG] detectTextRegion: 計算出的區域無效', {
+        x, y, width, height,
+        timestamp: new Date().toISOString(),
+      });
+      return null;
+    }
+
+    // 計算優化後節省的高度（相對於使用最大邊界）
+    const savedHeight = maxBottomEdge - maxY;
+    
+    console.log('[OCR DEBUG] detectTextRegion: 文字區域檢測完成', {
+      detectedRegion: { x, y, width, height },
+      originalSize: { width: image.width, height: image.height },
+      textRegion: { x: minX, y: minY, width: textWidth, height: textHeight },
+      boundaryOptimization: {
+        maxBottomEdge: maxBottomEdge.toFixed(1),
+        usedMaxY: maxY.toFixed(1),
+        savedHeight: savedHeight.toFixed(1),
+        avgHeight: avgHeight.toFixed(1),
+        wordCount: validWords.length,
+      },
+      padding: padding.toFixed(1),
+      reductionRatio: ((1 - (width * height) / (image.width * image.height)) * 100).toFixed(1) + '%',
+      timestamp: new Date().toISOString(),
+    });
+
+    return { x, y, width, height };
+  } catch (error) {
+    console.error('[OCR DEBUG] detectTextRegion: 檢測失敗', {
+      error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString(),
+    });
+    return null;
+  }
+}
+
+/**
+ * 根據檢測到的文字區域自動裁剪圖片
+ * @param image 原始圖片
+ * @param region 文字區域 {x, y, width, height}
+ * @returns 裁剪後的圖片元素
+ */
+function autoCropImage(image: HTMLImageElement, region: { x: number; y: number; width: number; height: number }): Promise<HTMLImageElement> {
+  console.log('[OCR DEBUG] autoCropImage: 開始自動裁剪', {
+    originalSize: { width: image.width, height: image.height },
+    cropRegion: region,
+    timestamp: new Date().toISOString(),
+  });
+
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    
+    canvas.width = region.width;
+    canvas.height = region.height;
+
+    // 使用 filter 開關控制圖像平滑
+    if (CONFIG.filters.enableImageSmoothing) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+    } else {
+      ctx.imageSmoothingEnabled = false;
+    }
+    
+    // 裁剪圖片
+    ctx.drawImage(
+      image,
+      region.x, region.y, region.width, region.height, // 源區域
+      0, 0, region.width, region.height // 目標區域
+    );
+
+    const croppedImg = new Image();
+    croppedImg.onload = () => {
+      console.log('[OCR DEBUG] autoCropImage: 裁剪完成', {
+        croppedSize: { width: croppedImg.width, height: croppedImg.height },
+        timestamp: new Date().toISOString(),
+      });
+      resolve(croppedImg);
+    };
+    croppedImg.onerror = (error) => {
+      console.error('[OCR DEBUG] autoCropImage: 裁剪失敗', {
+        error,
+        timestamp: new Date().toISOString(),
+      });
+      reject(new Error('自動裁剪失敗'));
+    };
+    croppedImg.src = canvas.toDataURL('image/png');
+  });
+}
+
+/**
+ * ========== 統一的文字區域檢測和裁剪函數 ==========
+ * 所有檢測和裁剪邏輯都集中在這裡，受到 enableAutoTextDetection 控制
+ * @param image 要處理的圖片
+ * @param enableAutoTextDetection 是否啟用自動檢測和裁剪
+ * @param onProgress 進度回調（可選）
+ * @returns 處理後的圖片（如果啟用且檢測成功則返回裁剪後的圖片，否則返回原圖）和檢測到的區域（如果有的話）
+ */
+async function detectAndCropTextRegion(
+  image: HTMLImageElement,
+  enableAutoTextDetection: boolean,
+  onProgress?: (progress: number) => void
+): Promise<{ image: HTMLImageElement; region: { x: number; y: number; width: number; height: number } | null }> {
+  console.log('[OCR DEBUG] detectAndCropTextRegion: 開始處理', {
+    enableAutoTextDetection,
+    imageSize: { width: image.width, height: image.height },
+    timestamp: new Date().toISOString(),
+  });
+
+  // 如果未啟用自動檢測，直接返回原圖
+  if (!enableAutoTextDetection) {
+    console.log('[OCR DEBUG] detectAndCropTextRegion: 自動檢測已禁用，返回原圖', {
+      timestamp: new Date().toISOString(),
+    });
+    return { image, region: null };
+  }
+
+  // 執行檢測和裁剪
+  try {
+    const detectionStartTime = Date.now();
+    const textRegion = await detectTextRegion(image);
+    const detectionDuration = Date.now() - detectionStartTime;
+
+    if (textRegion) {
+      console.log('[OCR DEBUG] detectAndCropTextRegion: 檢測到文字區域，開始自動裁剪', {
+        region: textRegion,
+        detectionDuration,
+        timestamp: new Date().toISOString(),
+      });
+
+      try {
+        const cropStartTime = Date.now();
+        const croppedImage = await autoCropImage(image, textRegion);
+        const cropDuration = Date.now() - cropStartTime;
+
+        console.log('[OCR DEBUG] detectAndCropTextRegion: 自動裁剪完成', {
+          originalSize: { width: image.width, height: image.height },
+          croppedSize: { width: croppedImage.width, height: croppedImage.height },
+          cropDuration,
+          timestamp: new Date().toISOString(),
+        });
+
+        // 更新進度（如果提供了回調）
+        if (onProgress) {
+          onProgress(0.2); // 檢測和裁剪完成，約20%進度
+        }
+
+        return { image: croppedImage, region: textRegion };
+      } catch (error) {
+        console.warn('[OCR DEBUG] detectAndCropTextRegion: 自動裁剪失敗，使用原圖', {
+          error,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          timestamp: new Date().toISOString(),
+        });
+        // 裁剪失敗時使用原圖
+        return { image, region: null };
+      }
+    } else {
+      console.log('[OCR DEBUG] detectAndCropTextRegion: 未檢測到文字區域，使用原圖', {
+        detectionDuration,
+        timestamp: new Date().toISOString(),
+      });
+      return { image, region: null };
+    }
+  } catch (error) {
+    console.error('[OCR DEBUG] detectAndCropTextRegion: 處理過程發生錯誤，使用原圖', {
+      error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString(),
+    });
+    return { image, region: null };
+  }
 }
 
 /**
@@ -879,18 +1730,120 @@ function filterChineseOnly(text: string): string {
 }
 
 /**
+ * 將 HTMLImageElement 轉換為 data URL
+ * 確保圖片已完全載入，並驗證尺寸
+ */
+function imageToDataURL(image: HTMLImageElement): string {
+  // 確保圖片已完全載入
+  if (!image.complete || image.naturalWidth === 0 || image.naturalHeight === 0) {
+    console.warn('[OCR DEBUG] imageToDataURL: 圖片未完全載入', {
+      complete: image.complete,
+      naturalWidth: image.naturalWidth,
+      naturalHeight: image.naturalHeight,
+      width: image.width,
+      height: image.height,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // 使用 naturalWidth/naturalHeight 確保使用實際圖片尺寸
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+
+  if (width <= 0 || height <= 0) {
+    console.error('[OCR DEBUG] imageToDataURL: 圖片尺寸無效', {
+      width,
+      height,
+      naturalWidth: image.naturalWidth,
+      naturalHeight: image.naturalHeight,
+      imageWidth: image.width,
+      imageHeight: image.height,
+      imageSrc: image.src.substring(0, 100),
+      timestamp: new Date().toISOString(),
+    });
+    throw new Error('圖片尺寸無效，無法轉換為 data URL');
+  }
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d')!;
+  canvas.width = width;
+  canvas.height = height;
+  
+  // 使用 filter 開關控制圖像平滑
+  if (CONFIG.enableDebugImageSmoothing) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+  } else {
+    ctx.imageSmoothingEnabled = false;
+  }
+  
+  ctx.drawImage(image, 0, 0, width, height);
+  
+  const dataURL = canvas.toDataURL('image/png');
+  
+  console.log('[OCR DEBUG] imageToDataURL: 轉換完成', {
+    originalSize: { width: image.width, height: image.height },
+    naturalSize: { width: image.naturalWidth, height: image.naturalHeight },
+    canvasSize: { width, height },
+    dataURLLength: dataURL.length,
+    imageSrc: image.src.substring(0, 100),
+    timestamp: new Date().toISOString(),
+  });
+  
+  return dataURL;
+}
+
+/**
  * 使用 Tesseract.js 執行 OCR
+ * 如果啟用自動檢測，會先檢測文字區域並裁剪，然後再進行識別
  */
 async function performOCR(
   image: HTMLImageElement,
-  onProgress?: (p: number) => void
+  filterOptions?: {
+    enableAutoTextDetection?: boolean;
+    useItemtwWhitelist?: boolean;
+    excludeSymbolsAndNumbers?: boolean;
+  },
+  onProgress?: (p: number) => void,
+  debugConfirmCallback?: (imageDataUrl: string) => Promise<boolean>
 ): Promise<string> {
   const startTime = Date.now();
+  const effectiveOptions = {
+    enableAutoTextDetection: filterOptions?.enableAutoTextDetection ?? CONFIG.filters.enableAutoTextDetection,
+    useItemtwWhitelist: filterOptions?.useItemtwWhitelist ?? CONFIG.useItemtwWhitelist,
+    excludeSymbolsAndNumbers: filterOptions?.excludeSymbolsAndNumbers ?? CONFIG.excludeSymbolsAndNumbersAtRecognition,
+  };
+
   console.log('[OCR DEBUG] performOCR: 開始 OCR 識別', {
     imageWidth: image.width,
     imageHeight: image.height,
     imageSrc: image.src.substring(0, 50) + '...',
     hasProgressCallback: !!onProgress,
+    enableAutoTextDetection: effectiveOptions.enableAutoTextDetection,
+    useItemtwWhitelist: effectiveOptions.useItemtwWhitelist,
+    excludeSymbolsAndNumbers: effectiveOptions.excludeSymbolsAndNumbers,
+    timestamp: new Date().toISOString(),
+  });
+
+  // ========== 統一的文字區域檢測和裁剪邏輯 ==========
+  // 使用統一的函數處理，確保所有檢測和裁剪邏輯都受到 enableAutoTextDetection 控制
+  console.log('[OCR DEBUG] performOCR: 開始統一的檢測和裁剪處理', {
+    enableAutoTextDetection: effectiveOptions.enableAutoTextDetection,
+    inputImageSize: { width: image.width, height: image.height },
+    timestamp: new Date().toISOString(),
+  });
+  
+  const { image: finalImage, region: detectedRegion } = await detectAndCropTextRegion(
+    image,
+    effectiveOptions.enableAutoTextDetection,
+    onProgress
+  );
+  
+  console.log('[OCR DEBUG] performOCR: 檢測和裁剪處理完成', {
+    finalImageSize: { width: finalImage.width, height: finalImage.height },
+    isSameAsInput: finalImage === image,
+    hasDetectedRegion: detectedRegion !== null,
+    detectedRegion,
     timestamp: new Date().toISOString(),
   });
 
@@ -911,68 +1864,61 @@ async function performOCR(
 
     // Tesseract.js v5: 語言需要在 createWorker 時直接指定
     // loadLanguage 和 initialize 已被棄用，不再需要調用
+    // 使用 Tesseract 原生 CDN 模型
     console.log('[OCR DEBUG] performOCR: 開始創建 Worker（指定語言）', {
       language: CONFIG.tesseractLang,
+      modelSource: 'CDN (Tesseract 原生繁體中文模型)',
       timestamp: new Date().toISOString(),
     });
     const workerCreateStart = Date.now();
-    // v5 API: createWorker(lang) - 直接在創建時指定語言
-    const worker = await window.Tesseract.createWorker(CONFIG.tesseractLang);
+    // v5 API: createWorker(lang, oem?, options?) - 使用 CDN 原生模型
+    const worker = await window.Tesseract.createWorker(CONFIG.tesseractLang, 1);
     const workerCreateEnd = Date.now();
     console.log('[OCR DEBUG] performOCR: Worker 創建成功（已預載語言）', {
       duration: workerCreateEnd - workerCreateStart,
       language: CONFIG.tesseractLang,
+      modelSource: 'CDN (Tesseract 原生繁體中文模型)',
       workerType: typeof worker,
       timestamp: new Date().toISOString(),
     });
 
     // 設定 OCR 參數以提升繁體中文識別度
-    // 根據配置決定是否在識別階段直接排除數字和符號
+    // 只檢索繁體中文：在識別階段就嚴格限制字符範圍
     let chineseCharWhitelist = '';
     
-    if (CONFIG.excludeSymbolsAndNumbersAtRecognition) {
-      // 方案：在識別階段直接排除數字和符號
-      // 構建繁體中文字符白名單（Unicode範圍：\u3400-\u4DBF 和 \u4E00-\u9FFF）
-      // 注意：由於中文字符數量龐大（數萬個），完整列出所有字符不現實
-      // 這裡我們採用一個實用方案：設置 whitelist 為空字符串，但通過其他參數來減少數字識別
-      // 實際上，Tesseract 在使用中文語言模型時，會優先識別中文字符
-      // 設置 classify_bln_numeric_mode 為 '0' 可以禁用數字模式，減少數字誤識別
+    if (effectiveOptions.useItemtwWhitelist) {
+      // 方案1：使用 itemtw 白名單，只識別 itemtw 中存在的繁體中文字符
+      // 首次使用時會構建並緩存白名單（白名單已確保只包含繁體中文 Unicode 範圍）
+      console.log('[OCR DEBUG] performOCR: 開始構建/獲取 itemtw 字符白名單', {
+        timestamp: new Date().toISOString(),
+      });
+      const whitelistStartTime = Date.now();
+      chineseCharWhitelist = await buildItemtwCharWhitelist();
+      const whitelistDuration = Date.now() - whitelistStartTime;
       
-      // 如果確實需要嚴格限制，可以構建一個包含常用中文字符的 whitelist
-      // 但這可能會影響識別準確度，因為完全排除符號可能影響斷句理解
-      // 因此這裡保持為空字符串，主要通過後處理過濾來排除數字和符號
-      
-      // 可選的嚴格模式（如果確實需要，可以取消註釋）：
-      // const commonChineseChars: string[] = [];
-      // // 生成基本漢字範圍（\u4E00-\u9FFF，共20992個字符）
-      // for (let i = 0x4E00; i <= 0x9FFF; i++) {
-      //   commonChineseChars.push(String.fromCharCode(i));
-      // }
-      // // 生成擴展A範圍（\u3400-\u4DBF）
-      // for (let i = 0x3400; i <= 0x4DBF; i++) {
-      //   commonChineseChars.push(String.fromCharCode(i));
-      // }
-      // chineseCharWhitelist = commonChineseChars.join('');
-      
-      // 當前採用折中方案：保持為空字符串，通過 classify_bln_numeric_mode 減少數字識別
-      // 數字和符號會在後處理階段通過 filterChineseOnly 函數過濾
-      chineseCharWhitelist = '';
-      
-      console.log('[OCR DEBUG] performOCR: 啟用識別階段排除模式（通過參數優化）', {
+      console.log('[OCR DEBUG] performOCR: itemtw 字符白名單準備完成', {
         whitelistLength: chineseCharWhitelist.length,
-        note: '實際排除將在後處理階段進行',
+        uniqueCharCount: chineseCharWhitelist.length > 0 ? new Set(chineseCharWhitelist).size : 0,
+        duration: whitelistDuration,
         timestamp: new Date().toISOString(),
       });
     } else {
-      // 方案：識別所有字符，在後處理階段過濾（推薦，準確度更高）
+      // 方案2：不使用 itemtw 白名單，但只識別繁體中文
+      // 注意：由於繁體中文字符數量龐大（數萬個），無法在 Tesseract whitelist 中完整列出
+      // 因此採用以下策略：
+      // 1. 不設置 whitelist（讓 Tesseract 使用 chi_tra 模型識別所有字符）
+      // 2. 通過 classify_bln_numeric_mode='0' 禁用數字模式，減少數字誤識別
+      // 3. 在後處理階段通過 filterChineseOnly 嚴格過濾，只保留繁體中文 Unicode 範圍
       chineseCharWhitelist = '';
-      console.log('[OCR DEBUG] performOCR: 使用識別後過濾模式（推薦）', {
+      
+      console.log('[OCR DEBUG] performOCR: 使用識別後過濾模式（只檢索繁體中文）', {
+        note: '識別階段不限制字符，後處理階段將嚴格過濾為繁體中文',
         timestamp: new Date().toISOString(),
       });
     }
     
     const params = {
-      tessedit_char_whitelist: chineseCharWhitelist, // 空字符串 = 不限制字符（讓 Tesseract 使用語言模型的默認字符集）
+      tessedit_char_whitelist: chineseCharWhitelist, // 字符白名單：空字符串 = 不限制字符；非空 = 只識別白名單中的字符（使用 itemtw 白名單時，只識別 itemtw 中存在的字符）
       // 嘗試多種PSM模式以提高識別準確度
       // PSM 7: 單行文本（適合水平排列的文字，避免字符順序混亂）
       // PSM 8: 單詞（如果PSM 7效果不好，可以嘗試這個）
@@ -986,15 +1932,19 @@ async function performOCR(
       // 針對深色背景+淺色文字的優化參數
       tessedit_char_blacklist: '', // 不排除任何字符
       textord_tabvector_vertical_gap_factor: '0.5', // 減少垂直間隙因子，有助於識別緊密排列的文字
-      textord_min_blob_size_fraction: '0.1', // 降低最小blob尺寸分數，識別更小的文字
-      textord_excess_blob_size: '1.3', // 增加blob尺寸容忍度
-      // 提升文字識別敏感度
-      textord_really_old_xheight: '0.9', // 降低x高度閾值，識別更小的文字
-      classify_adapt_proto_threshold: '0.5', // 降低原型適應閾值，提高識別敏感度
-      classify_adapt_feature_threshold: '0.5', // 降低特徵適應閾值
+      textord_min_blob_size_fraction: '0.08', // 進一步降低最小blob尺寸分數（從0.1降到0.08），識別更細小的筆畫
+      textord_excess_blob_size: '1.5', // 增加blob尺寸容忍度（從1.3提升到1.5），適應繁體字筆畫多的特點
+      // 提升文字識別敏感度（針對繁體字筆畫多優化）
+      textord_really_old_xheight: '0.85', // 進一步降低x高度閾值（從0.9降到0.85），識別更小的文字和細筆畫
+      classify_adapt_proto_threshold: '0.4', // 進一步降低原型適應閾值（從0.5降到0.4），提高對複雜字符的識別敏感度
+      classify_adapt_feature_threshold: '0.4', // 進一步降低特徵適應閾值（從0.5降到0.4），提高對細小筆畫的識別
       // 針對單行文本的優化
-      textord_min_linesize_fraction: '0.1', // 降低最小行尺寸分數
+      textord_min_linesize_fraction: '0.08', // 進一步降低最小行尺寸分數（從0.1降到0.08），適應繁體字筆畫密集的特點
       textord_debug_pitch_metric: '0', // 禁用調試模式
+      // 針對繁體字筆畫多的額外優化參數
+      textord_min_blob_size: '2', // 最小blob尺寸（像素），降低以識別更細的筆畫
+      classify_misfit_junk_penalty: '0.1', // 降低誤識別懲罰，提高對複雜字符的容忍度
+      classify_accept_rating: '0.2', // 降低接受評級閾值，提高識別敏感度
     };
     console.log('[OCR DEBUG] performOCR: 設定 OCR 參數', {
       params,
@@ -1005,17 +1955,43 @@ async function performOCR(
       timestamp: new Date().toISOString(),
     });
 
-    // 使用 recognize 方法
+    // Debug 模式：在輸入到 tesseract 前顯示確認框
+    if (CONFIG.debugMode && debugConfirmCallback) {
+      // 確保 finalImage 已完全載入
+      if (!finalImage.complete || finalImage.naturalWidth === 0 || finalImage.naturalHeight === 0) {
+        // 等待圖片載入完成
+        await new Promise((resolve, reject) => {
+          if (finalImage.complete && finalImage.naturalWidth > 0 && finalImage.naturalHeight > 0) {
+            resolve(null);
+          } else {
+            finalImage.onload = () => resolve(null);
+            finalImage.onerror = () => reject(new Error('圖片載入失敗'));
+            setTimeout(() => reject(new Error('圖片載入超時')), 5000);
+          }
+        });
+      }
+      
+      const imageDataUrl = imageToDataURL(finalImage);
+      // 直接 await，Promise 会在用户点击确认或取消按钮时才 resolve
+      const confirmed = await debugConfirmCallback(imageDataUrl);
+      if (!confirmed) {
+        await worker.terminate();
+        throw new Error('OCR 已取消');
+      }
+    }
+
+    // 使用 recognize 方法（使用裁剪後的圖片）
     // 注意：由於 logger 函數無法透過 postMessage 傳遞給 Worker，
     // 我們暫時移除詳細的進度追蹤以避免 DataCloneError
     // OCR 功能會正常運作，但進度條會在完成時直接跳到 100%
     console.log('[OCR DEBUG] performOCR: 開始執行 recognize', {
-      imageWidth: image.width,
-      imageHeight: image.height,
+      imageWidth: finalImage.width,
+      imageHeight: finalImage.height,
+      isCropped: finalImage !== image,
       timestamp: new Date().toISOString(),
     });
     const recognizeStart = Date.now();
-    const result = await worker.recognize(image);
+    const result = await worker.recognize(finalImage);
     const recognizeEnd = Date.now();
     console.log('[OCR DEBUG] performOCR: recognize 完成', {
       duration: recognizeEnd - recognizeStart,
@@ -1041,6 +2017,15 @@ async function performOCR(
       onProgress(1.0);
     }
 
+    // 如果使用了裁剪後的圖片，清理臨時圖片URL（如果有）
+    if (finalImage !== image && finalImage.src.startsWith('data:')) {
+      // 注意：Image 對象的 src 如果是 data URL，不需要手動清理
+      // 但我們可以記錄一下
+      console.log('[OCR DEBUG] performOCR: 使用裁剪後的圖片完成識別', {
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     console.log('[OCR DEBUG] performOCR: 開始終止 Worker', {
       timestamp: new Date().toISOString(),
     });
@@ -1052,27 +2037,60 @@ async function performOCR(
       timestamp: new Date().toISOString(),
     });
 
-    // 如果有 words 資料，先過濾低 confidence 的單詞
-    // 對於被過濾掉的單詞，在對應位置插入空格以保持結構
+    // ===== 後處理階段：嚴格過濾，確保只檢索繁體中文 =====
+    // Filter 順序（不可改變，避免互相干擾）：
+    // 1. Confidence 過濾：過濾低信心度的單詞（基於 words 數據）
+    // 2. 清理空白：合併連續空白，統一換行符
+    // 3. 繁體中文過濾：嚴格過濾，只保留繁體中文 Unicode 範圍
+    // 4. 白名單驗證：如果使用 itemtw 白名單，驗證結果（僅記錄警告）
+    
+    // Step 1: 過濾低 confidence 的單詞
+    // 注意：當 minConfidence 為 0 時，跳過此步驟，直接使用原始文本以避免過度過濾
     let filteredText = result.data.text;
     
-    if (result.data.words && result.data.words.length > 0) {
-      console.log('[OCR DEBUG] performOCR: 開始過濾低 confidence 單詞', {
+    // 只有在 minConfidence > 0 時才進行 confidence 過濾
+    // 當 minConfidence 為 0 時，保留所有識別結果，避免過度過濾導致識別不準確
+    if (CONFIG.minConfidence > 0 && result.data.words && result.data.words.length > 0) {
+      console.log('[OCR DEBUG] performOCR: Step 1 - 開始過濾低 confidence 單詞', {
         totalWords: result.data.words.length,
         minConfidence: CONFIG.minConfidence,
         timestamp: new Date().toISOString(),
       });
 
-      // 按照 bbox 的 x0 位置排序，確保按照從左到右的順序處理
+      // 計算平均字符高度，用於更智能的行檢測
+      const wordHeights = result.data.words
+        .map((w) => w.bbox ? w.bbox.y1 - w.bbox.y0 : 0)
+        .filter((h) => h > 0);
+      const avgHeight = wordHeights.length > 0
+        ? wordHeights.reduce((sum, h) => sum + h, 0) / wordHeights.length
+        : 20; // 默認值
+      
+      // 使用字符高度的 30% 作為行檢測閾值（更寬鬆的行檢測）
+      const lineThreshold = Math.max(5, avgHeight * 0.3);
+      
+      // 先按位置排序所有單詞（包括低 confidence 的），確保按照正確的閱讀順序（從上到下，從左到右）
+      // 這樣即使低 confidence 的字符位置不準確，也能保持相對正確的順序
       const sortedWords = [...result.data.words].sort((a, b) => {
-        // 先按 y0（垂直位置）排序，再按 x0（水平位置）排序
-        if (Math.abs(a.bbox.y0 - b.bbox.y0) > 5) {
-          return a.bbox.y0 - b.bbox.y0;
+        // 計算字符的中心 Y 位置（更穩定，不受字符高度影響）
+        const aCenterY = (a.bbox.y0 + a.bbox.y1) / 2;
+        const bCenterY = (b.bbox.y0 + b.bbox.y1) / 2;
+        
+        // 如果垂直位置差異超過閾值，則認為在不同行，按 Y 排序
+        if (Math.abs(aCenterY - bCenterY) > lineThreshold) {
+          return aCenterY - bCenterY;
+        }
+        
+        // 同一行內，按 X 位置排序（從左到右）
+        // 使用 x0（左邊界）進行排序，確保閱讀順序正確
+        // 如果 x0 相同，則使用 x1（右邊界）作為次要排序條件
+        if (Math.abs(a.bbox.x0 - b.bbox.x0) < 1) {
+          return a.bbox.x1 - b.bbox.x1;
         }
         return a.bbox.x0 - b.bbox.x0;
       });
 
-      // 構建過濾後的文字：低 confidence 的單詞用空格替換
+      // 構建過濾後的文字：按照已排序的順序處理，低 confidence 的單詞用空格替換
+      // 這樣可以保持正確的字符順序，即使某些字符的 confidence 較低
       const filteredParts: string[] = [];
       sortedWords.forEach((word, index) => {
         if (word.confidence >= CONFIG.minConfidence && word.text.trim().length > 0) {
@@ -1080,7 +2098,7 @@ async function performOCR(
           filteredParts.push(word.text);
         } else {
           // 低 confidence 單詞：用空格替換，保持位置
-          // 根據單詞長度插入對應數量的空格
+          // 根據單詞長度插入對應數量的空格，保持相對位置
           const spaceCount = Math.max(1, Math.ceil(word.text.length));
           filteredParts.push(' '.repeat(spaceCount));
         }
@@ -1092,7 +2110,7 @@ async function performOCR(
         (w) => w.confidence < CONFIG.minConfidence || w.text.trim().length === 0
       ).length;
 
-      console.log('[OCR DEBUG] performOCR: confidence 過濾完成', {
+      console.log('[OCR DEBUG] performOCR: Step 1 - confidence 過濾完成', {
         originalWordCount: result.data.words.length,
         filteredWordCount: sortedWords.length - removedCount,
         removedWordCount: removedCount,
@@ -1103,19 +2121,26 @@ async function performOCR(
         timestamp: new Date().toISOString(),
       });
     } else {
-      console.warn('[OCR DEBUG] performOCR: 沒有 words 資料，跳過 confidence 過濾', {
-        timestamp: new Date().toISOString(),
-      });
+      if (CONFIG.minConfidence === 0) {
+        console.log('[OCR DEBUG] performOCR: Step 1 - minConfidence 為 0，跳過 confidence 過濾，保留所有識別結果', {
+          originalTextLength: result.data.text.length,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        console.warn('[OCR DEBUG] performOCR: Step 1 - 沒有 words 資料，跳過 confidence 過濾', {
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
 
-    // 清理多餘空白，但保留單個空格（用於標記缺失字符的位置）
+    // Step 2: 清理多餘空白，但保留單個空格（用於標記缺失字符的位置）
     // 將多個連續空格合併為單個空格
     const cleanedText = filteredText
       .replace(/\s+/g, ' ')  // 多個空白合併為單個空格
       .replace(/\n+/g, ' ')  // 換行符轉為空格
       .trim();
 
-    console.log('[OCR DEBUG] performOCR: 清理後的文字', {
+    console.log('[OCR DEBUG] performOCR: Step 2 - 清理後的文字', {
       originalLength: result.data.text.length,
       filteredLength: filteredText.length,
       cleanedLength: cleanedText.length,
@@ -1123,16 +2148,80 @@ async function performOCR(
       timestamp: new Date().toISOString(),
     });
 
-    // 過濾，只保留繁體中文字
-    const processedText = filterChineseOnly(cleanedText);
+    // Step 3: 過濾非中文字符（但保留數字和常見符號以提高識別準確度）
+    // 優先保留繁體中文字，但如果過濾後文本為空或過短，則保留更多字符
+    let processedText = filterChineseOnly(cleanedText);
+    
+    // 檢查過濾後的文本是否過短（少於原文本的 30%），如果是則可能過度過濾
+    const originalLength = cleanedText.trim().length;
+    const filteredLength = processedText.trim().length;
+    const filterRatio = originalLength > 0 ? filteredLength / originalLength : 0;
+    
+    // 如果過濾後文本為空或過短（少於原文本的 30%），回退到清理後的文本
+    // 這樣可以避免過度過濾導致識別不準確
+    if ((processedText.trim().length === 0 || filterRatio < 0.3) && cleanedText.trim().length > 0) {
+      console.warn('[OCR DEBUG] performOCR: Step 3 - 繁體中文過濾後文本過短，回退到清理後的文本以避免過度過濾', {
+        cleanedText,
+        filteredText: processedText,
+        originalLength,
+        filteredLength,
+        filterRatio: filterRatio.toFixed(2),
+        timestamp: new Date().toISOString(),
+      });
+      processedText = cleanedText;
+    }
+    
+    // 如果清理後的文本也為空，回退到原始 OCR 結果
+    if (processedText.trim().length === 0 && result.data.text.trim().length > 0) {
+      console.warn('[OCR DEBUG] performOCR: Step 3 - 清理後文本也為空，回退到原始 OCR 結果', {
+        originalText: result.data.text,
+        timestamp: new Date().toISOString(),
+      });
+      processedText = result.data.text.trim();
+    }
+    
+    console.log('[OCR DEBUG] performOCR: Step 3 - 繁體中文過濾完成', {
+      beforeFilter: cleanedText,
+      afterFilter: processedText,
+      removedChars: cleanedText.length - processedText.length,
+      timestamp: new Date().toISOString(),
+    });
+    
+    // Step 4: 如果使用 itemtw 白名單，進行額外驗證（僅記錄警告，不強制過濾）
+    // 注意：由於識別階段已設置 whitelist，理論上不應該出現非白名單字符
+    // 但保留此驗證作為安全檢查，確保識別結果符合預期
+    if (effectiveOptions.useItemtwWhitelist) {
+      const isValid = validateAgainstWhitelist(processedText);
+      if (!isValid) {
+        console.warn('[OCR DEBUG] performOCR: Step 4 - 識別結果包含不在白名單中的字符（應不應發生）', {
+          text: processedText,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        console.log('[OCR DEBUG] performOCR: Step 4 - 白名單驗證通過', {
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
 
     const totalDuration = Date.now() - startTime;
+    
+    // 計算平均置信度（如果有 words 數據）
+    let avgConfidence = 0;
+    if (result.data.words && result.data.words.length > 0) {
+      const validWords = result.data.words.filter(w => w.confidence >= CONFIG.minConfidence);
+      if (validWords.length > 0) {
+        avgConfidence = validWords.reduce((sum, w) => sum + w.confidence, 0) / validWords.length;
+      }
+    }
+    
     console.log('[OCR DEBUG] performOCR: OCR 識別完成', {
       totalDuration,
       originalText: result.data.text,
       cleanedText,
       finalTextLength: processedText.length,
       finalText: processedText,
+      avgConfidence: avgConfidence > 0 ? avgConfidence.toFixed(2) : 'N/A',
       timestamp: new Date().toISOString(),
     });
 
@@ -1246,11 +2335,94 @@ function loadImageFromClipboard(
 }
 
 /**
+ * 生成最終預覽圖片（包含所有 filter 處理）
+ * 用於在 UI 中顯示最終會輸入到 OCR 的圖片
+ */
+async function generateFinalPreview(
+  file: File,
+  filterOptions?: {
+    enableAdvancedProcessing?: boolean;
+    enableAutoThreshold?: boolean;
+    enableAutoTextDetection?: boolean;
+    useItemtwWhitelist?: boolean;
+    excludeSymbolsAndNumbers?: boolean;
+    invertForLightText?: boolean;
+  }
+): Promise<string> {
+  console.log('[OCR DEBUG] generateFinalPreview: 開始生成最終預覽', {
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type,
+    timestamp: new Date().toISOString(),
+  });
+
+  try {
+    // 步驟 1: 載入圖片
+    const img = await loadImage(file);
+    console.log('[OCR DEBUG] generateFinalPreview: 圖片載入完成', {
+      loadedImageSize: { width: img.width, height: img.height },
+      timestamp: new Date().toISOString(),
+    });
+
+    // 步驟 2: 檢查並縮放圖片
+    const resizedImage = await resizeImageIfNeeded(img);
+    console.log('[OCR DEBUG] generateFinalPreview: 圖片縮放完成', {
+      resizedImageSize: { width: resizedImage.width, height: resizedImage.height },
+      wasResized: resizedImage !== img,
+      timestamp: new Date().toISOString(),
+    });
+
+    // 步驟 3: 應用所有 filter
+    // 確保傳遞完整的 filter 配置，包括 CONFIG.filters 中的所有開關
+    const fullFilterOptions = {
+      ...filterOptions,
+      filters: CONFIG.filters, // 傳遞完整的 filter 配置
+    };
+    const processedImage = await preprocessImage(resizedImage, fullFilterOptions);
+    console.log('[OCR DEBUG] generateFinalPreview: Filter 處理完成', {
+      processedImageSize: { width: processedImage.width, height: processedImage.height },
+      timestamp: new Date().toISOString(),
+    });
+
+    // 步驟 4: 轉換為 data URL
+    const dataURL = imageToDataURL(processedImage);
+    console.log('[OCR DEBUG] generateFinalPreview: 預覽生成完成', {
+      dataURLLength: dataURL.length,
+      timestamp: new Date().toISOString(),
+    });
+
+    return dataURL;
+  } catch (error) {
+    console.error('[OCR DEBUG] generateFinalPreview: 生成預覽失敗', {
+      error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString(),
+    });
+    // 如果處理失敗，返回原始圖片的 data URL
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = () => reject(error);
+      reader.readAsDataURL(file);
+    });
+  }
+}
+
+/**
  * 處理圖片並執行 OCR
  */
 async function processImageForOCR(
   file: File,
-  onProgress?: (p: number) => void
+  filterOptions?: {
+    enableAdvancedProcessing?: boolean;
+    enableAutoThreshold?: boolean;
+    enableAutoTextDetection?: boolean;
+    useItemtwWhitelist?: boolean;
+    excludeSymbolsAndNumbers?: boolean;
+    invertForLightText?: boolean;
+  },
+  onProgress?: (p: number) => void,
+  debugConfirmCallback?: (imageDataUrl: string) => Promise<boolean>
 ): Promise<string> {
   const startTime = Date.now();
   console.log('[OCR DEBUG] processImageForOCR: 開始處理圖片', {
@@ -1267,29 +2439,37 @@ async function processImageForOCR(
     });
     const img = await loadImage(file);
     console.log('[OCR DEBUG] processImageForOCR: 步驟 1/4 完成', {
+      loadedImageSize: { width: img.width, height: img.height },
       timestamp: new Date().toISOString(),
     });
 
     console.log('[OCR DEBUG] processImageForOCR: 步驟 2/4 - 檢查並縮放圖片', {
+      inputSize: { width: img.width, height: img.height },
+      maxDimension: CONFIG.maxImageDimension,
       timestamp: new Date().toISOString(),
     });
     const resizedImage = await resizeImageIfNeeded(img);
     console.log('[OCR DEBUG] processImageForOCR: 步驟 2/4 完成', {
+      resizedImageSize: { width: resizedImage.width, height: resizedImage.height },
+      wasResized: resizedImage !== img,
       timestamp: new Date().toISOString(),
     });
 
     console.log('[OCR DEBUG] processImageForOCR: 步驟 3/4 - 圖片前處理', {
+      inputSize: { width: resizedImage.width, height: resizedImage.height },
       timestamp: new Date().toISOString(),
     });
-    const processedImage = await preprocessImage(resizedImage);
+    const processedImage = await preprocessImage(resizedImage, filterOptions);
     console.log('[OCR DEBUG] processImageForOCR: 步驟 3/4 完成', {
+      processedImageSize: { width: processedImage.width, height: processedImage.height },
       timestamp: new Date().toISOString(),
     });
 
     console.log('[OCR DEBUG] processImageForOCR: 步驟 4/4 - 執行 OCR', {
+      hasDebugCallback: !!debugConfirmCallback,
       timestamp: new Date().toISOString(),
     });
-    const recognizedText = await performOCR(processedImage, onProgress);
+    const recognizedText = await performOCR(processedImage, filterOptions, onProgress, debugConfirmCallback);
     console.log('[OCR DEBUG] processImageForOCR: 步驟 4/4 完成', {
       timestamp: new Date().toISOString(),
     });
@@ -1325,13 +2505,6 @@ interface OCRButtonProps {
 /**
  * OCR 按鈕組件
  */
-interface CropArea {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 export default function OCRButton({
   onTextRecognized,
   disabled,
@@ -1341,96 +2514,54 @@ export default function OCRButton({
   const [progress, setProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [needsCrop, setNeedsCrop] = useState(false);
-  const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
-  const [originalImageSize, setOriginalImageSize] = useState<{ width: number; height: number } | null>(null);
-  const [cropArea, setCropArea] = useState<CropArea | null>(null);
-  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
-  const [cropStartPos, setCropStartPos] = useState<{ x: number; y: number } | null>(null);
-  const [cropPreview, setCropPreview] = useState<string | null>(null);
-  const [isDraggingPreview, setIsDraggingPreview] = useState(false);
-  const [previewDragStart, setPreviewDragStart] = useState<{ x: number; y: number } | null>(null);
+  // Debug 模式確認框狀態
+  const [debugPreviewImage, setDebugPreviewImage] = useState<string | null>(null);
+  const [debugConfirmResolve, setDebugConfirmResolve] = useState<((confirmed: boolean) => void) | null>(null);
+  // 使用 ref 存储 resolve 函数，避免状态更新延迟问题
+  const debugConfirmResolveRef = useRef<((confirmed: boolean) => void) | null>(null);
+  // Filter 選項狀態（使用 CONFIG.filters 中的開關配置）
+  const filterOptions = {
+    enableAdvancedProcessing: true, // 啟用進階處理
+    enableAutoThreshold: CONFIG.filters.enableAutoThreshold, // 使用 filter 開關
+    invertForLightText: CONFIG.filters.enableInvertForLightText, // 使用 filter 開關
+    enableAutoTextDetection: CONFIG.filters.enableAutoTextDetection, // 使用 filter 開關（自動裁剪）
+    useItemtwWhitelist: true, // 白名單模式默認開啟
+    excludeSymbolsAndNumbers: false, // 排除符號數字（保持關閉以獲得最佳識別準確度）
+  };
+  // 預覽圖不再需要處理後的版本（始終使用原圖）
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
-  const cropContainerRef = useRef<HTMLDivElement>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
 
-  // 裁剪圖片
-  const cropImage = useCallback(async (file: File, cropArea: CropArea): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        if (!imageRef.current || !cropContainerRef.current) {
-          reject(new Error('圖片元素不存在'));
-          return;
-        }
-
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d')!;
-        
-        // 獲取容器和圖片的實際尺寸
-        const containerRect = cropContainerRef.current.getBoundingClientRect();
-        const imgRect = imageRef.current.getBoundingClientRect();
-        
-        // 計算圖片在容器中的實際顯示位置和尺寸
-        const displayX = imgRect.left - containerRect.left;
-        const displayY = imgRect.top - containerRect.top;
-        const displayWidth = imgRect.width;
-        const displayHeight = imgRect.height;
-        
-        // 計算縮放比例
-        const scaleX = img.width / displayWidth;
-        const scaleY = img.height / displayHeight;
-        
-        // 將裁剪區域坐標轉換為相對於圖片的坐標
-        const relativeX = cropArea.x - displayX;
-        const relativeY = cropArea.y - displayY;
-        
-        // 計算實際裁剪區域（轉換為原始圖片坐標）
-        const actualX = Math.max(0, Math.min(img.width, relativeX * scaleX));
-        const actualY = Math.max(0, Math.min(img.height, relativeY * scaleY));
-        const actualWidth = Math.max(0, Math.min(img.width - actualX, cropArea.width * scaleX));
-        const actualHeight = Math.max(0, Math.min(img.height - actualY, cropArea.height * scaleY));
-        
-        if (actualWidth <= 0 || actualHeight <= 0) {
-          reject(new Error('裁剪區域無效'));
-          return;
-        }
-        
-        canvas.width = actualWidth;
-        canvas.height = actualHeight;
-        
-        ctx.drawImage(
-          img,
-          actualX, actualY, actualWidth, actualHeight,
-          0, 0, actualWidth, actualHeight
-        );
-        
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const croppedFile = new File([blob], file.name, { type: file.type });
-            resolve(croppedFile);
-          } else {
-            reject(new Error('裁剪失敗'));
-          }
-        }, file.type);
+  // Debug 模式確認框處理函數
+  const handleDebugConfirm = useCallback((imageDataUrl: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      debugConfirmResolveRef.current = (confirmed: boolean) => {
+        setDebugPreviewImage(null);
+        setDebugConfirmResolve(null);
+        debugConfirmResolveRef.current = null;
+        resolve(confirmed);
       };
-      img.onerror = () => reject(new Error('圖片載入失敗'));
-      img.src = URL.createObjectURL(file);
+      setDebugPreviewImage(imageDataUrl);
+      setDebugConfirmResolve(() => () => {});
     });
   }, []);
 
-  // 處理圖片識別
+  const handleDebugConfirmClick = useCallback((confirmed: boolean) => {
+    const resolveFn = debugConfirmResolveRef.current || debugConfirmResolve;
+    if (resolveFn) {
+      resolveFn(confirmed);
+    }
+  }, [debugConfirmResolve]);
+
+
   const handleImageProcess = useCallback(
-    async (file: File, skipCropCheck = false) => {
+    async (file: File) => {
       console.log('[OCR DEBUG] handleImageProcess: 開始處理', {
         fileName: file?.name,
         fileSize: file?.size,
         fileType: file?.type,
         isImage: file?.type.startsWith('image/'),
-        skipCropCheck,
         timestamp: new Date().toISOString(),
       });
 
@@ -1443,21 +2574,6 @@ export default function OCRButton({
         return;
       }
 
-      // 如果不是跳過裁剪檢查，直接進入裁剪模式
-      if (!skipCropCheck) {
-        // 所有圖片都進入裁剪模式
-        setNeedsCrop(true);
-        setOriginalImageFile(file);
-        // 載入圖片以獲取尺寸
-        const img = new Image();
-        img.onload = () => {
-          setOriginalImageSize({ width: img.width, height: img.height });
-          URL.revokeObjectURL(img.src);
-        };
-        img.src = URL.createObjectURL(file);
-        return;
-      }
-
       console.log('[OCR DEBUG] handleImageProcess: 設置處理狀態', {
         timestamp: new Date().toISOString(),
       });
@@ -1465,17 +2581,24 @@ export default function OCRButton({
       setProgress(0);
 
       try {
+        const debugCallback = CONFIG.debugMode ? handleDebugConfirm : undefined;
+        const finalFilterOptions = filterOptions;
         console.log('[OCR DEBUG] handleImageProcess: 調用 processImageForOCR', {
+          filterOptions: finalFilterOptions,
+          enableAutoTextDetection: finalFilterOptions.enableAutoTextDetection,
+          note: '所有檢測和裁剪邏輯統一由 enableAutoTextDetection 控制',
+          debugMode: CONFIG.debugMode,
+          hasDebugCallback: !!debugCallback,
           timestamp: new Date().toISOString(),
         });
-        const recognizedText = await processImageForOCR(file, (prog) => {
+        const recognizedText = await processImageForOCR(file, finalFilterOptions, (prog) => {
           console.log('[OCR DEBUG] handleImageProcess: 進度更新', {
             progress: prog,
             progressPercent: Math.round(prog * 100),
             timestamp: new Date().toISOString(),
           });
           setProgress(prog);
-        });
+        }, debugCallback);
 
         console.log('[OCR DEBUG] handleImageProcess: OCR 完成', {
           recognizedTextLength: recognizedText?.length || 0,
@@ -1484,7 +2607,10 @@ export default function OCRButton({
           timestamp: new Date().toISOString(),
         });
 
-        if (recognizedText && onTextRecognized) {
+        // 檢查識別結果是否有效（非空字符串）
+        const hasValidText = recognizedText && recognizedText.trim().length > 0;
+        
+        if (hasValidText && onTextRecognized) {
           console.log('[OCR DEBUG] handleImageProcess: 調用 onTextRecognized 回調', {
             text: recognizedText,
             timestamp: new Date().toISOString(),
@@ -1492,22 +2618,27 @@ export default function OCRButton({
           onTextRecognized(recognizedText);
           setIsModalOpen(false);
           setPreviewImage(null);
-          setNeedsCrop(false);
-          setOriginalImageFile(null);
-          setOriginalImageSize(null);
-          setCropArea(null);
-          setCropPreview(null);
           console.log('[OCR DEBUG] handleImageProcess: 關閉模態框並清除預覽', {
             timestamp: new Date().toISOString(),
           });
         } else {
+          const errorReason = !hasValidText 
+            ? '無法辨識文字（識別結果為空）' 
+            : '缺少回調函數';
           console.warn('[OCR DEBUG] handleImageProcess: 無法辨識文字或缺少回調', {
             hasRecognizedText: !!recognizedText,
-            recognizedText,
+            recognizedTextLength: recognizedText?.length || 0,
+            recognizedText: recognizedText,
             hasOnTextRecognized: !!onTextRecognized,
+            errorReason,
             timestamp: new Date().toISOString(),
           });
-          alert('無法辨識圖片中的文字，請嘗試其他圖片。');
+          
+          if (!hasValidText) {
+            alert('無法辨識圖片中的文字。可能原因：\n1. 圖片中沒有文字\n2. 文字區域不清晰\n3. 文字不是繁體中文\n\n請嘗試其他圖片或調整圖片品質。');
+          } else {
+            alert('OCR 回調函數未設置，請聯繫開發者。');
+          }
         }
       } catch (error) {
         console.error('[OCR DEBUG] handleImageProcess: OCR 失敗', {
@@ -1528,7 +2659,7 @@ export default function OCRButton({
         }
       }
     },
-    [onTextRecognized]
+    [onTextRecognized, handleDebugConfirm]
   );
 
   // 打開模態框
@@ -1560,299 +2691,11 @@ export default function OCRButton({
       setIsModalOpen(false);
       setPreviewImage(null);
       setIsDragging(false);
-      setNeedsCrop(false);
-      setOriginalImageFile(null);
-      setOriginalImageSize(null);
-      setCropArea(null);
-      setCropPreview(null);
       console.log('[OCR DEBUG] handleCloseModal: 模態框已關閉', {
         timestamp: new Date().toISOString(),
       });
     }
   };
-
-  // 生成裁剪預覽
-  const generateCropPreview = useCallback(async (area: CropArea) => {
-    if (!previewImage || !imageRef.current || !cropContainerRef.current) return;
-    
-    try {
-      const img = new Image();
-      img.src = previewImage;
-      
-      await new Promise((resolve) => {
-        if (img.complete) {
-          resolve(null);
-        } else {
-          img.onload = () => resolve(null);
-        }
-      });
-
-      const containerRect = cropContainerRef.current.getBoundingClientRect();
-      const imgRect = imageRef.current.getBoundingClientRect();
-      
-      const displayX = imgRect.left - containerRect.left;
-      const displayY = imgRect.top - containerRect.top;
-      const displayWidth = imgRect.width;
-      const displayHeight = imgRect.height;
-      
-      const scaleX = img.width / displayWidth;
-      const scaleY = img.height / displayHeight;
-      
-      const relativeX = area.x - displayX;
-      const relativeY = area.y - displayY;
-      
-      const actualX = Math.max(0, Math.min(img.width, relativeX * scaleX));
-      const actualY = Math.max(0, Math.min(img.height, relativeY * scaleY));
-      const actualWidth = Math.max(0, Math.min(img.width - actualX, area.width * scaleX));
-      const actualHeight = Math.max(0, Math.min(img.height - actualY, area.height * scaleY));
-      
-      if (actualWidth <= 0 || actualHeight <= 0) {
-        setCropPreview(null);
-        return;
-      }
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d')!;
-      
-      // 放大倍數（2-3倍）
-      const zoomFactor = 2.5;
-      canvas.width = actualWidth * zoomFactor;
-      canvas.height = actualHeight * zoomFactor;
-      
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(
-        img,
-        actualX, actualY, actualWidth, actualHeight,
-        0, 0, canvas.width, canvas.height
-      );
-      
-      setCropPreview(canvas.toDataURL('image/png'));
-    } catch (error) {
-      console.error('[OCR DEBUG] generateCropPreview: 生成預覽失敗', error);
-      setCropPreview(null);
-    }
-  }, [previewImage]);
-
-  // 裁剪相關處理函數
-  const handleCropMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!imageRef.current || !cropContainerRef.current) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const rect = cropContainerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    setIsDraggingCrop(true);
-    setCropStartPos({ x, y });
-    setCropArea({ x, y, width: 0, height: 0 });
-    setCropPreview(null);
-  };
-
-  const handleCropMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDraggingCrop || !cropStartPos || !cropContainerRef.current) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const rect = cropContainerRef.current.getBoundingClientRect();
-    const currentX = e.clientX - rect.left;
-    const currentY = e.clientY - rect.top;
-    
-    const x = Math.min(cropStartPos.x, currentX);
-    const y = Math.min(cropStartPos.y, currentY);
-    const width = Math.abs(currentX - cropStartPos.x);
-    const height = Math.abs(currentY - cropStartPos.y);
-    
-    const newArea = { x, y, width, height };
-    setCropArea(newArea);
-    
-    // 當有有效區域時生成預覽
-    if (width > 10 && height > 10) {
-      generateCropPreview(newArea);
-    } else {
-      setCropPreview(null);
-    }
-  };
-
-  const handleCropMouseUp = () => {
-    setIsDraggingCrop(false);
-    setCropStartPos(null);
-    // 確保最終預覽已生成
-    if (cropArea && cropArea.width > 10 && cropArea.height > 10) {
-      generateCropPreview(cropArea);
-    }
-  };
-
-  // 預覽區域拖曳處理
-  const handlePreviewMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cropArea || !previewRef.current || !cropContainerRef.current || !imageRef.current) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    
-    setIsDraggingPreview(true);
-    setPreviewDragStart({ x: e.clientX, y: e.clientY });
-  };
-
-  const handlePreviewMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDraggingPreview || !previewDragStart || !cropArea || !previewRef.current || !cropContainerRef.current || !imageRef.current) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // 計算拖曳距離
-    const deltaX = e.clientX - previewDragStart.x;
-    const deltaY = e.clientY - previewDragStart.y;
-    
-    // 計算預覽圖片和原始圖片的比例
-    // 預覽是2.5倍放大，所以需要除以2.5來還原到原始尺寸
-    const zoomFactor = 2.5;
-    const scaleX = deltaX / zoomFactor;
-    const scaleY = deltaY / zoomFactor;
-    
-    // 使用函數式更新確保使用最新的cropArea值
-    setCropArea((prevArea) => {
-      if (!prevArea || !cropContainerRef.current || !imageRef.current) return prevArea;
-      
-      // 計算原始圖片在容器中的顯示位置和尺寸
-      const containerRect = cropContainerRef.current.getBoundingClientRect();
-      const imgRect = imageRef.current.getBoundingClientRect();
-      
-      const displayX = imgRect.left - containerRect.left;
-      const displayY = imgRect.top - containerRect.top;
-      
-      // 更新裁剪區域位置（反向移動，因為預覽中往左拖，裁剪區域也往左）
-      const newX = prevArea.x - scaleX;
-      const newY = prevArea.y - scaleY;
-      
-      // 確保裁剪區域不會超出圖片範圍
-      const constrainedX = Math.max(displayX, Math.min(newX, displayX + imgRect.width - prevArea.width));
-      const constrainedY = Math.max(displayY, Math.min(newY, displayY + imgRect.height - prevArea.height));
-      
-      return {
-        ...prevArea,
-        x: constrainedX,
-        y: constrainedY,
-      };
-    });
-    
-    // 更新拖曳起始位置
-    setPreviewDragStart({ x: e.clientX, y: e.clientY });
-  };
-
-  const handlePreviewMouseUp = () => {
-    setIsDraggingPreview(false);
-    setPreviewDragStart(null);
-    // 更新預覽
-    if (cropArea && cropArea.width > 10 && cropArea.height > 10) {
-      generateCropPreview(cropArea);
-    }
-  };
-
-  // 當裁剪區域改變且不在拖動時，更新預覽
-  useEffect(() => {
-    if (!isDraggingCrop && cropArea && cropArea.width > 10 && cropArea.height > 10 && needsCrop) {
-      const timer = setTimeout(() => {
-        generateCropPreview(cropArea);
-      }, 100); // 防抖，避免頻繁更新
-      return () => clearTimeout(timer);
-    }
-  }, [cropArea, isDraggingCrop, needsCrop, generateCropPreview]);
-
-  // 確認裁剪（或使用原圖）
-  const handleConfirmCrop = useCallback(async () => {
-    if (!originalImageFile) {
-      alert('請先上傳圖片');
-      return;
-    }
-
-    try {
-      setIsProcessing(true);
-      
-      // 如果有選擇裁剪區域，使用裁剪後的圖片；否則使用原圖
-      if (cropArea && cropArea.width > 0 && cropArea.height > 0) {
-        const croppedFile = await cropImage(originalImageFile, cropArea);
-        setNeedsCrop(false);
-        setCropArea(null);
-        setCropPreview(null);
-        await handleImageProcess(croppedFile, true);
-      } else {
-        // 沒有選擇裁剪區域，直接使用原圖
-        setNeedsCrop(false);
-        setCropArea(null);
-        setCropPreview(null);
-        await handleImageProcess(originalImageFile, true);
-      }
-    } catch (error) {
-      console.error('[OCR DEBUG] handleConfirmCrop: 處理失敗', {
-        error,
-        timestamp: new Date().toISOString(),
-      });
-      alert('處理失敗，請重試');
-      setIsProcessing(false);
-    }
-  }, [originalImageFile, cropArea, cropImage, handleImageProcess]);
-
-  // 二度裁剪：將當前裁剪區域作為新圖片進行再次裁剪
-  const handleRecrop = useCallback(async () => {
-    if (!originalImageFile || !cropArea || cropArea.width === 0 || cropArea.height === 0) {
-      alert('請先選擇要裁剪的區域');
-      return;
-    }
-
-    try {
-      // 裁剪當前選擇的區域
-      const croppedFile = await cropImage(originalImageFile, cropArea);
-      
-      // 將裁剪後的圖片作為新的原始圖片
-      setOriginalImageFile(croppedFile);
-      
-      // 更新預覽圖片
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const newPreviewImage = e.target?.result as string;
-        setPreviewImage(newPreviewImage);
-        
-        // 重置裁剪區域，讓用戶可以重新選擇
-        setCropArea(null);
-        setCropPreview(null);
-        
-        // 獲取新圖片的尺寸
-        const img = new Image();
-        img.onload = () => {
-          // 無論圖片大小，都保持裁剪模式，讓用戶可以再次選擇裁剪區域
-          setOriginalImageSize({ width: img.width, height: img.height });
-          setNeedsCrop(true);
-          
-          // 確保圖片已載入到imageRef
-          setTimeout(() => {
-            if (imageRef.current) {
-              imageRef.current.src = newPreviewImage;
-            }
-          }, 100);
-        };
-        img.onerror = () => {
-          console.error('[OCR DEBUG] handleRecrop: 圖片載入失敗');
-          alert('圖片載入失敗，請重試');
-        };
-        img.src = newPreviewImage;
-      };
-      reader.onerror = () => {
-        console.error('[OCR DEBUG] handleRecrop: FileReader 失敗');
-        alert('讀取圖片失敗，請重試');
-      };
-      reader.readAsDataURL(croppedFile);
-    } catch (error) {
-      console.error('[OCR DEBUG] handleRecrop: 二度裁剪失敗', {
-        error,
-        timestamp: new Date().toISOString(),
-      });
-      alert('二度裁剪失敗，請重試');
-    }
-  }, [originalImageFile, cropArea, cropImage]);
 
   // 處理文件選擇
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1870,22 +2713,7 @@ export default function OCRButton({
         timestamp: new Date().toISOString(),
       });
 
-      // 顯示預覽
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        console.log('[OCR DEBUG] handleFileChange: 預覽圖片載入完成', {
-          resultLength: (e.target?.result as string)?.length,
-          timestamp: new Date().toISOString(),
-        });
-        setPreviewImage(e.target?.result as string);
-      };
-      reader.onerror = (error) => {
-        console.error('[OCR DEBUG] handleFileChange: 預覽圖片載入失敗', {
-          error,
-          timestamp: new Date().toISOString(),
-        });
-      };
-      reader.readAsDataURL(file);
+      // 直接進入 OCR 處理（debug 模式）
       await handleImageProcess(file);
     } else {
       console.warn('[OCR DEBUG] handleFileChange: 沒有選取檔案', {
@@ -1933,16 +2761,7 @@ export default function OCRButton({
       });
 
       if (file.type.startsWith('image/')) {
-        // 顯示預覽
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          console.log('[OCR DEBUG] handleDrop: 預覽圖片載入完成', {
-            resultLength: (e.target?.result as string)?.length,
-            timestamp: new Date().toISOString(),
-          });
-          setPreviewImage(e.target?.result as string);
-        };
-        reader.readAsDataURL(file);
+        // 直接進入 OCR 處理（debug 模式）
         await handleImageProcess(file);
       } else {
         console.warn('[OCR DEBUG] handleDrop: 檔案類型不符合', {
@@ -2010,6 +2829,15 @@ export default function OCRButton({
         canvas.width = img.width;
         canvas.height = img.height;
         const ctx = canvas.getContext('2d')!;
+        
+        // 使用 filter 開關控制圖像平滑
+        if (CONFIG.filters.enableClipboardImageSmoothing) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+        } else {
+          ctx.imageSmoothingEnabled = false;
+        }
+        
         ctx.drawImage(img, 0, 0);
 
         console.log('[OCR DEBUG] handlePaste: 開始轉換 Canvas 為 Blob', {
@@ -2030,7 +2858,7 @@ export default function OCRButton({
               const file = new File([blob], 'pasted-image.png', {
                 type: 'image/png',
               });
-              setPreviewImage(img.src);
+              // 直接進入 OCR 處理（debug 模式）
               await handleImageProcess(file);
             } else {
               console.error('[OCR DEBUG] handlePaste: Blob 轉換失敗', {
@@ -2095,28 +2923,6 @@ export default function OCRButton({
     }
   }, []);
 
-  // 監聽 Enter 鍵觸發開始搜尋
-  useEffect(() => {
-    if (!isModalOpen || !needsCrop || isProcessing) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // 如果用戶正在輸入框中輸入，不觸發
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        return;
-      }
-
-      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        handleConfirmCrop();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isModalOpen, needsCrop, isProcessing, handleConfirmCrop]);
 
   // 當模態框打開/關閉時，鎖定/解鎖背景滾動
   useEffect(() => {
@@ -2138,142 +2944,12 @@ export default function OCRButton({
     }
   }, [isModalOpen]);
 
-  // 全局預覽拖曳處理（確保鼠標移出預覽區域時也能繼續拖曳）
-  useEffect(() => {
-    if (isDraggingPreview && previewDragStart) {
-      const handleGlobalMouseMove = (e: MouseEvent) => {
-        if (!cropContainerRef.current || !imageRef.current) return;
-        
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // 計算拖曳距離
-        const deltaX = e.clientX - previewDragStart.x;
-        const deltaY = e.clientY - previewDragStart.y;
-        
-        // 計算預覽圖片和原始圖片的比例
-        const zoomFactor = 2.5;
-        const scaleX = deltaX / zoomFactor;
-        const scaleY = deltaY / zoomFactor;
-        
-        // 使用函數式更新確保使用最新的cropArea值
-        setCropArea((prevArea) => {
-          if (!prevArea || !cropContainerRef.current || !imageRef.current) return prevArea;
-          
-          // 計算原始圖片在容器中的顯示位置和尺寸
-          const containerRect = cropContainerRef.current.getBoundingClientRect();
-          const imgRect = imageRef.current.getBoundingClientRect();
-          
-          const displayX = imgRect.left - containerRect.left;
-          const displayY = imgRect.top - containerRect.top;
-          
-          // 更新裁剪區域位置（反向移動）
-          const newX = prevArea.x - scaleX;
-          const newY = prevArea.y - scaleY;
-          
-          // 確保裁剪區域不會超出圖片範圍
-          const constrainedX = Math.max(displayX, Math.min(newX, displayX + imgRect.width - prevArea.width));
-          const constrainedY = Math.max(displayY, Math.min(newY, displayY + imgRect.height - prevArea.height));
-          
-          return {
-            ...prevArea,
-            x: constrainedX,
-            y: constrainedY,
-          };
-        });
-        
-        // 更新拖曳起始位置
-        setPreviewDragStart({ x: e.clientX, y: e.clientY });
-      };
-
-      const handleGlobalMouseUp = () => {
-        setIsDraggingPreview(false);
-        setPreviewDragStart(null);
-        // 更新預覽
-        setCropArea((prevArea) => {
-          if (prevArea && prevArea.width > 10 && prevArea.height > 10) {
-            generateCropPreview(prevArea);
-          }
-          return prevArea;
-        });
-      };
-
-      window.addEventListener('mousemove', handleGlobalMouseMove, { passive: false });
-      window.addEventListener('mouseup', handleGlobalMouseUp);
-
-      return () => {
-        window.removeEventListener('mousemove', handleGlobalMouseMove);
-        window.removeEventListener('mouseup', handleGlobalMouseUp);
-      };
-    }
-  }, [isDraggingPreview, previewDragStart, generateCropPreview]);
-
-  // 在裁剪模式下禁用拖曳滾動（但保留滾輪滾動）
-  useEffect(() => {
-    if (needsCrop && isModalOpen) {
-      const handleMouseDown = (e: MouseEvent) => {
-        // 只在非裁剪容器區域和非預覽區域禁用拖曳滾動
-        const target = e.target as HTMLElement;
-        if (cropContainerRef.current && !cropContainerRef.current.contains(target) &&
-            previewRef.current && !previewRef.current.contains(target)) {
-          // 禁用拖曳滾動
-          if (e.button === 0) {
-            e.preventDefault();
-          }
-        }
-      };
-
-      const handleTouchMove = (e: TouchEvent) => {
-        // 只在拖動裁剪時禁用觸摸移動
-        if (isDraggingCrop) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      };
-
-      const handleDragStart = (e: DragEvent) => {
-        // 禁用拖曳開始（防止拖動圖片等）
-        if (isDraggingCrop || (e.target as HTMLElement)?.tagName === 'IMG') {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      };
-
-      // 禁用拖曳滾動（按住滑鼠拖動）
-      document.addEventListener('mousedown', handleMouseDown, { passive: false });
-      // 禁用觸摸移動（防止移動端拖動）
-      window.addEventListener('touchmove', handleTouchMove, { passive: false });
-      // 禁用拖曳開始
-      window.addEventListener('dragstart', handleDragStart, { passive: false });
-      document.addEventListener('dragstart', handleDragStart, { passive: false });
-
-      return () => {
-        document.removeEventListener('mousedown', handleMouseDown);
-        window.removeEventListener('touchmove', handleTouchMove);
-        window.removeEventListener('dragstart', handleDragStart);
-        document.removeEventListener('dragstart', handleDragStart);
-      };
-    }
-  }, [needsCrop, isModalOpen, isDraggingCrop]);
 
   // 模態框內容
   const modalContent = isModalOpen ? (
     <div
       ref={modalRef}
       onClick={handleBackdropClick}
-      onMouseDown={(e) => {
-        // 禁用背景拖曳滾動
-        if (needsCrop && e.button === 0 && e.target === e.currentTarget) {
-          e.preventDefault();
-        }
-      }}
-      onTouchMove={(e) => {
-        // 只在拖動裁剪時禁用觸摸移動
-        if (needsCrop && isDraggingCrop) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      }}
       style={{
         position: 'fixed',
         top: 0,
@@ -2291,23 +2967,12 @@ export default function OCRButton({
         padding: '1rem',
         animation: 'fadeIn 0.2s ease-out',
         overflow: 'auto',
-        // 只在拖動裁剪時禁用觸摸操作
-        touchAction: needsCrop && isDraggingCrop ? 'none' : 'auto',
       }}
     >
       {/* 模態框主容器 */}
       <div
         className="bg-gradient-to-br from-slate-900 via-purple-900/30 to-slate-900 rounded-lg border-2 border-purple-500/50 shadow-2xl overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => {
-          // 禁用拖曳滾動
-          if (needsCrop && e.button === 0) {
-            const target = e.target as HTMLElement;
-            if (!cropContainerRef.current?.contains(target)) {
-              e.preventDefault();
-            }
-          }
-        }}
         style={{
           width: 'min(calc(100% - 2rem), 42rem)',
           minWidth: '20rem',
@@ -2318,7 +2983,9 @@ export default function OCRButton({
         {/* 標題欄 */}
         <div className="flex flex-col p-2 sm:p-3 border-b border-purple-500/30 flex-shrink-0">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-base sm:text-lg font-semibold text-white">OCR 圖片識別</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 drop-shadow-sm tracking-wide">
+              <span className="text-xl sm:text-2xl">希德牌</span>{' '}圖片辨識
+            </h2>
             <button
               onClick={handleCloseModal}
               disabled={isProcessing}
@@ -2331,330 +2998,109 @@ export default function OCRButton({
             </button>
           </div>
           {/* 說明文字 */}
-          {needsCrop ? (
-            <div className="bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-lg px-3 py-1.5">
-              <div className="flex items-center gap-3 text-center sm:text-left">
-                <p className="text-sm text-white font-medium whitespace-nowrap">請選擇要識別的區域</p>
-              </div>
+          <div className="bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-lg px-3 py-1.5 shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 text-center sm:text-left">
+              <p className="text-sm text-white font-semibold whitespace-nowrap drop-shadow-sm">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-300 font-bold drop-shadow-[0_0_8px_rgba(251,191,36,0.6)] [text-shadow:0_0_10px_rgba(251,191,36,0.5)]">光之戰士</span>，懶得打字？
+              </p>
+              <p className="text-xs text-gray-200 whitespace-nowrap font-medium">
+                直接截圖物品名稱，讓 OCR 幫你識別！
+              </p>
             </div>
-          ) : (
-            <div className="bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-lg px-3 py-1.5">
-              <div className="flex items-center gap-3 text-center sm:text-left">
-                <p className="text-sm text-white font-medium whitespace-nowrap">
-                  <span className="text-purple-300">光之戰士</span>，懶得打字？
-                </p>
-                <p className="text-xs text-gray-300 whitespace-nowrap">
-                  直接截圖物品名稱，讓 OCR 幫你識別！
-                </p>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* 內容區域（可滾動） */}
         <div 
-          className={`flex-1 overflow-y-auto min-h-0 ${needsCrop ? 'p-2 sm:p-3' : 'p-4 sm:p-6'}`}
-          onMouseDown={(e) => {
-            // 禁用拖曳滾動（按住滑鼠拖動滾動）
-            if (needsCrop && e.button === 0) {
-              // 只在非裁剪容器區域禁用拖曳滾動
-              const target = e.target as HTMLElement;
-              if (!cropContainerRef.current?.contains(target)) {
-                e.preventDefault();
-              }
-            }
-          }}
-          style={{
-            // 禁用拖曳滾動，但保留滾輪滾動
-            userSelect: needsCrop ? 'none' : 'auto',
-          }}
+          className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-3 p-4 sm:p-6"
         >
           {/* 拖放區域 */}
-          <div
-            ref={dropZoneRef}
+          <div className="flex-1 min-w-0">
+            <div
+              ref={dropZoneRef}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => !isProcessing && !needsCrop && fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-lg text-center transition-all w-full box-border ${
-              needsCrop
-                ? 'border-transparent cursor-default p-0'
-                : `cursor-pointer p-6 sm:p-8 ${
-                    isDragging
-                      ? 'border-purple-400 bg-purple-900/20'
-                      : 'border-purple-500/50 hover:border-purple-400 hover:bg-purple-900/10'
-                  } ${isProcessing ? 'cursor-not-allowed opacity-50' : ''}`
-            }`}
+            onClick={() => !isProcessing && fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-lg text-center transition-all w-full box-border cursor-pointer p-6 sm:p-8 ${
+              isDragging
+                ? 'border-purple-400 bg-purple-900/20'
+                : 'border-purple-500/50 hover:border-purple-400 hover:bg-purple-900/10'
+            } ${isProcessing ? 'cursor-not-allowed opacity-50' : ''}`}
           >
             {previewImage ? (
               /* 預覽圖片狀態 */
-              <div className={`w-full ${needsCrop ? 'space-y-2' : 'space-y-4'}`}>
-                {needsCrop ? (
-                  /* 裁剪模式 */
-                  <div className="w-full">
-                    <p className="text-xs text-gray-400 mb-1 text-center">原圖 - 拖動滑鼠選擇區域</p>
-                    <div
-                      ref={cropContainerRef}
-                      className="ocr-crop-container relative mx-auto rounded-lg bg-black/20"
-                      style={{ 
-                        maxWidth: '100%', 
-                        maxHeight: '60vh', 
-                        cursor: 'crosshair', 
-                        touchAction: 'none',
-                        overflow: 'hidden',
-                      }}
-                      onMouseDown={(e) => {
-                        // 允許裁剪區域的滑鼠操作
-                        handleCropMouseDown(e);
-                      }}
-                      onMouseMove={handleCropMouseMove}
-                      onMouseUp={handleCropMouseUp}
-                      onMouseLeave={handleCropMouseUp}
-                      onTouchStart={(e) => {
-                        if (e.touches.length === 1 && cropContainerRef.current) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const touch = e.touches[0];
-                          const rect = cropContainerRef.current.getBoundingClientRect();
-                          const syntheticEvent = {
-                            clientX: touch.clientX,
-                            clientY: touch.clientY,
-                            preventDefault: () => {},
-                            stopPropagation: () => {},
-                            currentTarget: cropContainerRef.current,
-                          } as React.MouseEvent<HTMLDivElement>;
-                          handleCropMouseDown(syntheticEvent);
-                        }
-                      }}
-                      onTouchMove={(e) => {
-                        if (isDraggingCrop && e.touches.length === 1 && cropContainerRef.current) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const touch = e.touches[0];
-                          const syntheticEvent = {
-                            clientX: touch.clientX,
-                            clientY: touch.clientY,
-                            preventDefault: () => {},
-                            stopPropagation: () => {},
-                            currentTarget: cropContainerRef.current,
-                          } as React.MouseEvent<HTMLDivElement>;
-                          handleCropMouseMove(syntheticEvent);
-                        }
-                      }}
-                      onTouchEnd={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleCropMouseUp();
-                      }}
-                    >
-                      <div className="relative overflow-hidden rounded-lg">
-                        <img
-                          ref={imageRef}
-                          src={previewImage}
-                          alt="預覽"
-                          className="max-w-full max-h-[60vh] mx-auto block object-contain select-none"
-                          draggable={false}
-                          style={{ userSelect: 'none', pointerEvents: 'none' }}
-                        />
-                      </div>
-                      {cropArea && cropArea.width > 0 && cropArea.height > 0 && (
-                        <>
-                          {/* 遮罩層 - 使用四個div來實現遮罩效果 */}
-                          <div
-                            className="absolute bg-black/60 pointer-events-none"
-                            style={{
-                              left: 0,
-                              top: 0,
-                              width: `${cropArea.x}px`,
-                              height: '100%',
-                            }}
-                          />
-                          <div
-                            className="absolute bg-black/60 pointer-events-none"
-                            style={{
-                              left: `${cropArea.x + cropArea.width}px`,
-                              top: 0,
-                              right: 0,
-                              height: '100%',
-                            }}
-                          />
-                          <div
-                            className="absolute bg-black/60 pointer-events-none"
-                            style={{
-                              left: `${cropArea.x}px`,
-                              top: 0,
-                              width: `${cropArea.width}px`,
-                              height: `${cropArea.y}px`,
-                            }}
-                          />
-                          <div
-                            className="absolute bg-black/60 pointer-events-none"
-                            style={{
-                              left: `${cropArea.x}px`,
-                              top: `${cropArea.y + cropArea.height}px`,
-                              width: `${cropArea.width}px`,
-                              bottom: 0,
-                            }}
-                          />
-                          {/* 裁剪選擇框 */}
-                          <div
-                            className="absolute border-2 border-ffxiv-gold/60 bg-ffxiv-gold/10 pointer-events-none"
-                            style={{
-                              left: `${cropArea.x}px`,
-                              top: `${cropArea.y}px`,
-                              width: `${cropArea.width}px`,
-                              height: `${cropArea.height}px`,
-                              boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
-                            }}
-                          />
-                        </>
-                      )}
+              <div className="w-full space-y-4">
+                <img
+                  src={previewImage}
+                  alt="預覽"
+                  className="max-w-full max-h-64 mx-auto rounded-lg shadow-lg object-contain"
+                />
+                {isProcessing && (
+                  /* 進度條 */
+                  <div className="space-y-2 w-full">
+                    <div className="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                      <div
+                        className="bg-purple-500 h-2.5 rounded-full transition-all duration-300"
+                        style={{ width: `${progress * 100}%` }}
+                      />
                     </div>
-                    {/* 預覽和按鈕布局 */}
-                    {needsCrop && (
-                      <div className="mt-2 grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-4">
-                        {/* 中間：預覽框容器 - 獨立居中 */}
-                        <div className="flex-shrink-0 min-w-0 justify-self-center sm:col-start-2 sm:col-end-3">
-                          <div className="space-y-2">
-                            <p className="text-xs text-gray-400 text-center">
-                              {cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10
-                                ? '放大預覽（2.5x）- 可拖曳調整位置'
-                                : '放大預覽（2.5x）'}
-                            </p>
-                            <div className="flex justify-center">
-                              <div
-                                ref={previewRef}
-                                className="relative border-2 border-purple-400/50 rounded-lg overflow-hidden bg-black/30"
-                                onMouseDown={cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10 ? handlePreviewMouseDown : undefined}
-                                onMouseMove={cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10 ? handlePreviewMouseMove : undefined}
-                                onMouseUp={cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10 ? handlePreviewMouseUp : undefined}
-                                onMouseLeave={cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10 ? handlePreviewMouseUp : undefined}
-                                style={{
-                                  cursor: cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10
-                                    ? (isDraggingPreview ? 'grabbing' : 'grab')
-                                    : 'default',
-                                  userSelect: 'none',
-                                  minHeight: '192px', // 約 max-h-48 的高度
-                                  minWidth: '200px',
-                                  maxWidth: '100%',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                {cropPreview && cropArea && cropArea.width > 10 && cropArea.height > 10 ? (
-                                  <img
-                                    src={cropPreview}
-                                    alt="裁剪預覽"
-                                    className="max-w-full max-h-48 block pointer-events-none select-none"
-                                    draggable={false}
-                                  />
-                                ) : (
-                                  <p className="text-xs text-gray-500 text-center px-4">請選擇要裁剪的區域</p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        {/* 右側：按鈕 */}
-                        <div className="flex flex-col gap-2 flex-shrink-0 justify-center w-full sm:w-auto sm:col-start-3 sm:col-end-4 justify-self-center sm:justify-self-start">
-                          <button
-                            onClick={handleConfirmCrop}
-                            disabled={isProcessing}
-                            className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium whitespace-nowrap w-full sm:w-auto flex items-center gap-2 justify-center"
-                          >
-                            <span>開始搜尋</span>
-                            <kbd className="px-1 py-0.5 bg-white/20 rounded text-[10px] border border-white/30 font-mono leading-none">
-                              ⏎
-                            </kbd>
-                          </button>
-                          <button
-                            onClick={handleRecrop}
-                            disabled={!cropArea || cropArea.width === 0 || cropArea.height === 0 || isProcessing}
-                            className="px-4 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium whitespace-nowrap w-full sm:w-auto flex items-center gap-1.5 justify-center"
-                          >
-                            <span>二度裁剪</span>
-                            <kbd className="px-1 py-0.5 bg-white/20 rounded text-[10px] border border-white/30 leading-none flex items-center justify-center">
-                              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                                {/* 左上角：兩個重疊的 L 形 */}
-                                <path d="M2 2h6v6H2V2z" />
-                                <path d="M2 2h8M2 2v8" />
-                                {/* 右上角：L 形 */}
-                                <path d="M22 2h-6v6h6V2z" />
-                                {/* 左下角：L 形 */}
-                                <path d="M2 22h6v-6H2v6z" />
-                                {/* 右下角：兩個重疊的 L 形 */}
-                                <path d="M22 22h-6v-6h6v6z" />
-                                <path d="M22 22h-8M22 22v-8" />
-                              </svg>
-                            </kbd>
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    <p className="text-sm text-gray-400">辨識中... {Math.round(progress * 100)}%</p>
                   </div>
-                ) : (
-                  /* 正常預覽 */
-                  <>
-                    <img
-                      src={previewImage}
-                      alt="預覽"
-                      className="max-w-full max-h-64 mx-auto rounded-lg shadow-lg object-contain"
-                    />
-                    {isProcessing && (
-                      /* 進度條 */
-                      <div className="space-y-2 w-full">
-                        <div className="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                          <div
-                            className="bg-purple-500 h-2.5 rounded-full transition-all duration-300"
-                            style={{ width: `${progress * 100}%` }}
-                          />
-                        </div>
-                        <p className="text-sm text-gray-400">辨識中... {Math.round(progress * 100)}%</p>
-                      </div>
-                    )}
-                  </>
                 )}
               </div>
             ) : (
               /* 空狀態（未選擇圖片） */
               <div className="space-y-4 w-full flex flex-col items-center">
-                <svg
-                  className="w-16 h-16 sm:w-20 sm:h-20 text-purple-400 flex-shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-                <div className="w-full text-center">
-                  <p className="text-white font-medium mb-2 text-sm sm:text-base">點擊或拖放圖片到此處</p>
-                  <p className="text-xs sm:text-sm text-gray-400 mb-2">
-                    或使用{' '}
-                    <kbd className="px-2 py-1 bg-slate-800 rounded text-xs border border-slate-700">Ctrl</kbd>
-                    /
-                    <kbd className="px-2 py-1 bg-slate-800 rounded text-xs border border-slate-700">Cmd</kbd>
-                    {' '}+{' '}
-                    <kbd className="px-2 py-1 bg-slate-800 rounded text-xs border border-slate-700">V</kbd>
-                    {' '}貼上剪貼簿圖片
-                  </p>
-                  <p className="text-xs text-gray-500 mb-2">支援 JPG、PNG、GIF 等圖片格式</p>
-                  <p className="text-xs text-purple-300 font-medium">
-                    💡 截圖範圍越精確，效果越好
-                  </p>
+                {/* 主要方式：貼上 */}
+                <div className="w-full text-center space-y-3">
+                  <div className="flex flex-col items-center gap-2">
+                    <svg
+                      className="w-12 h-12 sm:w-14 sm:h-14 text-purple-400 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                      />
+                    </svg>
+                    <p className="text-white font-semibold text-base sm:text-lg mb-1 flex items-center justify-center gap-1.5 flex-wrap">
+                      <span>使用</span>
+                      <kbd className="px-2.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded text-sm font-bold border border-purple-400 text-white shadow-lg">Ctrl</kbd>
+                      <span className="text-gray-300">+</span>
+                      <kbd className="px-2.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded text-sm font-bold border border-purple-400 text-white shadow-lg">V</kbd>
+                      <span>貼上截圖</span>
+                    </p>
+                    <p className="text-xs text-purple-300 font-medium">
+                      💡 截圖範圍越精確，效果越好
+                    </p>
+                  </div>
+                  
+                  {/* 分隔線 */}
+                  <div className="flex items-center gap-3 my-2">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
+                    <span className="text-xs text-gray-500">或</span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
+                  </div>
+                  
+                  {/* 次要方式：上傳 */}
+                  <div className="space-y-1">
+                    <p className="text-gray-400 text-sm">點擊或拖放圖片到此處</p>
+                    <p className="text-xs text-gray-500">支援 JPG、PNG、GIF 等圖片格式</p>
+                  </div>
                 </div>
               </div>
             )}
+            </div>
           </div>
 
           {/* 提示文字 */}
           {!isProcessing && (
-            <div className="mt-4 text-center">
+            <div className="text-center flex-shrink-0">
               <p className="text-xs text-gray-500">僅支援繁體中文識別</p>
             </div>
           )}
@@ -2701,6 +3147,103 @@ export default function OCRButton({
 
       {/* 使用 Portal 將模態框渲染到 body */}
       {isModalOpen && createPortal(modalContent, document.body)}
+
+      {/* Debug 模式確認框 */}
+      {debugPreviewImage && (debugConfirmResolve || debugConfirmResolveRef.current) && createPortal(
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              handleDebugConfirmClick(false);
+            }
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 10001,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+            animation: 'fadeIn 0.2s ease-out',
+          }}
+        >
+          <div
+            className="bg-gradient-to-br from-slate-900 via-purple-900/30 to-slate-900 rounded-lg border-2 border-purple-500/50 shadow-2xl overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(calc(100% - 2rem), 42rem)',
+              minWidth: '20rem',
+              maxHeight: '90vh',
+              animation: 'slideInScale 0.3s ease-out',
+            }}
+          >
+            {/* 標題欄 */}
+            <div className="flex flex-col p-2 sm:p-3 border-b border-purple-500/30 flex-shrink-0">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-base sm:text-lg font-semibold text-white">Debug Mode - OCR 輸入前預覽</h2>
+                <button
+                  onClick={() => handleDebugConfirmClick(false)}
+                  className="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-800/50"
+                  aria-label="取消"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="bg-gradient-to-r from-yellow-900/40 to-orange-900/40 border border-yellow-500/30 rounded-lg px-3 py-1.5">
+                <p className="text-sm text-white font-medium">
+                  這是即將輸入到 Tesseract OCR 的圖片預覽
+                </p>
+              </div>
+              <div className="bg-gradient-to-r from-purple-900/40 to-indigo-900/40 border border-purple-500/30 rounded-lg px-3 py-1.5 mt-2">
+                <p className="text-xs text-gray-300 font-medium text-center">
+                  作者還在不斷優化測試，可以多多嘗試分享
+                </p>
+              </div>
+            </div>
+
+            {/* 內容區域 */}
+            <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 flex flex-col items-center gap-4">
+              {debugPreviewImage && (
+                <img
+                  src={debugPreviewImage || ''}
+                  alt="Debug 預覽"
+                  className="max-w-full max-h-[60vh] rounded-lg shadow-lg object-contain border-2 border-purple-400/50"
+                />
+              )}
+              <div className="flex gap-3 w-full justify-center">
+                <button
+                  onClick={() => handleDebugConfirmClick(true)}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  確認繼續 OCR
+                </button>
+                <button
+                  onClick={() => handleDebugConfirmClick(false)}
+                  className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* 隱藏的文件輸入 */}
       <input

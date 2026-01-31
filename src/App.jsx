@@ -2656,8 +2656,8 @@ function App() {
         // No results means velocity fetch won't run, so re-enable server selector here
         setIsServerSelectorDisabled(false);
       } else {
-        // Record search keyword to history
-        if (trimmedTerm) {
+        // Record search keyword to history (skip OCR searches)
+        if (trimmedTerm && !isOCR) {
           addSearchToHistory(trimmedTerm);
         }
         

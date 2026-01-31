@@ -301,8 +301,9 @@ async function searchSimplifiedDatabaseByName(searchText) {
 /**
  * Load items database from local tw-items.json
  * Items are already in Traditional Chinese format
+ * @param {boolean} isOCRFuzzySearch - If true, this is a legitimate OCR fuzzy search fallback (less alarming logs)
  */
-export async function loadItemDatabase() {
+export async function loadItemDatabase(isOCRFuzzySearch = false) {
   if (itemsDatabase && shopItemsDatabase) {
     console.log(`[ItemDB] 📦 Using cached item database (${itemsDatabase.length} items)`);
     return { items: itemsDatabase, shopItems: shopItemsDatabase };
@@ -319,10 +320,18 @@ export async function loadItemDatabase() {
 
   isLoading = true;
   const loadStartTime = performance.now();
-  console.error(`[ItemDB] ❌ CRITICAL: Loading FULL item database (all 42,679 items)!`);
-  console.error(`[ItemDB] ❌ This should ONLY happen for fuzzy search or fallback scenarios.`);
-  console.error(`[ItemDB] ❌ For normal operations, use targeted queries: searchTwItems(), getTwItemById(), etc.`);
-  console.trace(`[ItemDB] 🔍 Stack trace - find and replace with targeted query:`);
+  
+  if (isOCRFuzzySearch) {
+    // OCR fuzzy search is a legitimate fallback scenario - use info level logging
+    console.log(`[ItemDB] 🔍 Loading full item database for OCR fuzzy search (all 42,679 items)`);
+    console.log(`[ItemDB] ℹ️ This is expected when OCR text doesn't match exactly - using fuzzy matching fallback`);
+  } else {
+    // Unexpected usage - warn about it
+    console.warn(`[ItemDB] ⚠️ Loading FULL item database (all 42,679 items)!`);
+    console.warn(`[ItemDB] ⚠️ This should ONLY happen for fuzzy search or fallback scenarios.`);
+    console.warn(`[ItemDB] ⚠️ For normal operations, use targeted queries: searchTwItems(), getTwItemById(), etc.`);
+    console.trace(`[ItemDB] 🔍 Stack trace - find and replace with targeted query:`);
+  }
 
   try {
     // Load items from JSON (in-memory, fast)
@@ -1410,9 +1419,10 @@ function buildNgramIndex(items, n = 2) {
  * @param {Map<string, Set<string>>} ngramIndex - Pre-built n-gram index (optional, will build if not provided)
  * @param {number} topK - Number of top results to return (default: 50)
  * @param {number} minScore - Minimum similarity score threshold (default: 0.4)
+ * @param {number} ocrConfidence - OCR confidence score (0-100, optional, used for adaptive search)
  * @returns {Array} - Array of { item, score } objects, sorted by score descending
  */
-function ocrFuzzySearch(query, items, ngramIndex = null, topK = 50, minScore = 0.4) {
+function ocrFuzzySearch(query, items, ngramIndex = null, topK = 50, minScore = 0.4, ocrConfidence = null) {
   if (!query || !query.trim()) {
     return [];
   }
@@ -1420,6 +1430,23 @@ function ocrFuzzySearch(query, items, ngramIndex = null, topK = 50, minScore = 0
   const normalizedQuery = normalizeOCRText(query.trim());
   if (!normalizedQuery) {
     return [];
+  }
+  
+  // 置信度加權：如果置信度低，使用更寬鬆的搜索參數
+  let effectiveTopK = topK;
+  let effectiveMinScore = minScore;
+  
+  if (ocrConfidence !== null && ocrConfidence !== undefined) {
+    // 置信度低於 50，使用更寬鬆的參數
+    if (ocrConfidence < 50) {
+      effectiveTopK = Math.min(100, topK * 2); // 增加候選數量
+      effectiveMinScore = Math.max(0.3, minScore - 0.1); // 降低最低分數閾值
+    } else if (ocrConfidence < 70) {
+      // 中等置信度，適度放寬
+      effectiveTopK = Math.min(75, Math.floor(topK * 1.5));
+      effectiveMinScore = Math.max(0.35, minScore - 0.05);
+    }
+    // 高置信度（>= 70）使用默認參數
   }
   
   // Build n-gram index if not provided
@@ -1469,16 +1496,24 @@ function ocrFuzzySearch(query, items, ngramIndex = null, topK = 50, minScore = 0
     if (!cleanName) continue;
     
     // Calculate similarity score
-    const score = calcOcrFriendlySimilarity(normalizedQuery, cleanName);
+    let score = calcOcrFriendlySimilarity(normalizedQuery, cleanName);
     
-    if (score >= minScore) {
+    // 置信度加權：低置信度時，對高相似度結果給予額外加分
+    if (ocrConfidence !== null && ocrConfidence !== undefined && ocrConfidence < 70) {
+      // 如果相似度已經很高（> 0.7），給予額外加分
+      if (score > 0.7) {
+        score = Math.min(1.0, score + (1 - ocrConfidence / 100) * 0.1);
+      }
+    }
+    
+    if (score >= effectiveMinScore) {
       scored.push({ item, score });
     }
   }
   
   // Step 4: Sort by score descending and return top K
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, topK);
+  return scored.slice(0, effectiveTopK);
 }
 
 /**
@@ -1561,7 +1596,8 @@ export async function searchItemsOCR(searchText, signal = null) {
   if (results.length === 0) {
     try {
       // Load full database for fuzzy search (required for n-gram indexing)
-      const { items } = await loadItemDatabase();
+      // Pass isOCRFuzzySearch=true to indicate this is a legitimate OCR fallback scenario
+      const { items } = await loadItemDatabase(true);
       
       if (signal && signal.aborted) {
         throw new DOMException('Request aborted', 'AbortError');
