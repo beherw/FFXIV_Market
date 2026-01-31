@@ -54,7 +54,7 @@ declare global {
 // 特別針對深色紋理背景+淺色文字的場景進行優化
 const CONFIG = {
   tesseractLang: 'chi_tra', // 只支援繁體中文
-  imageScale: 4.0, // 提高放大倍數以提升識別度（針對紋理背景場景，更大的尺寸有助於識別）
+  imageScale: 5.0, // 提高放大倍數以提升識別度（針對紋理背景場景，更大的尺寸有助於識別）
   threshold: 128,
   maxImageDimension: 2000,
   enableAdvancedProcessing: true, // 啟用進階處理以提升識別度
@@ -63,6 +63,8 @@ const CONFIG = {
   // 是否在 Tesseract 識別階段直接排除數字和符號（true=識別時排除，false=識別後過濾）
   // 注意：設置為 true 可能會略微影響中文識別準確度（因為符號可能有助於斷句），但可以提高效率
   excludeSymbolsAndNumbersAtRecognition: false, // 預設為 false（識別後過濾），推薦保持此設定以獲得最佳識別準確度
+  // 針對淺色文字在深色背景的優化
+  invertForLightText: true, // 如果檢測到淺色文字，反轉圖像（Tesseract 默認假設深色文字在淺色背景上）
 };
 
 /**
@@ -251,26 +253,55 @@ function applyMedianFilter(imageData: ImageData, radius = 1): ImageData {
 
 /**
  * 高斯模糊（用於背景平滑）
+ * 支持更大的核尺寸以更好地平滑背景纹理
  */
 function applyGaussianBlur(imageData: ImageData, radius = 1): ImageData {
   const { data, width, height } = imageData;
   const newData = new Uint8ClampedArray(data);
   
-  // 簡化的高斯核（3x3）
-  const kernel = [
-    [1, 2, 1],
-    [2, 4, 2],
-    [1, 2, 1]
-  ];
-  const kernelSum = 16;
+  // 根據radius選擇不同的高斯核
+  let kernel: number[][];
+  let kernelSum: number;
+  let kernelRadius: number;
+  
+  if (radius === 1) {
+    // 3x3 高斯核
+    kernel = [
+      [1, 2, 1],
+      [2, 4, 2],
+      [1, 2, 1]
+    ];
+    kernelSum = 16;
+    kernelRadius = 1;
+  } else if (radius === 2) {
+    // 5x5 高斯核（更強的背景平滑）
+    kernel = [
+      [1, 4, 6, 4, 1],
+      [4, 16, 24, 16, 4],
+      [6, 24, 36, 24, 6],
+      [4, 16, 24, 16, 4],
+      [1, 4, 6, 4, 1]
+    ];
+    kernelSum = 256;
+    kernelRadius = 2;
+  } else {
+    // 默認使用3x3
+    kernel = [
+      [1, 2, 1],
+      [2, 4, 2],
+      [1, 2, 1]
+    ];
+    kernelSum = 16;
+    kernelRadius = 1;
+  }
 
-  for (let y = 1; y < height - 1; y++) {
-    for (let x = 1; x < width - 1; x++) {
+  for (let y = kernelRadius; y < height - kernelRadius; y++) {
+    for (let x = kernelRadius; x < width - kernelRadius; x++) {
       let sum = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -kernelRadius; dy <= kernelRadius; dy++) {
+        for (let dx = -kernelRadius; dx <= kernelRadius; dx++) {
           const idx = ((y + dy) * width + (x + dx)) * 4;
-          const weight = kernel[dy + 1][dx + 1];
+          const weight = kernel[dy + kernelRadius][dx + kernelRadius];
           sum += data[idx] * weight;
         }
       }
@@ -282,6 +313,118 @@ function applyGaussianBlur(imageData: ImageData, radius = 1): ImageData {
     }
   }
 
+  return new ImageData(newData, width, height);
+}
+
+/**
+ * 去除細小網格線（針對背景紋理）
+ * 通過檢測並平滑細線來去除網格干擾
+ */
+function removeGridLines(imageData: ImageData): ImageData {
+  const { data, width, height } = imageData;
+  const newData = new Uint8ClampedArray(data);
+  
+  // 使用更大的平滑核來去除細線
+  const smoothRadius = 2;
+  
+  for (let y = smoothRadius; y < height - smoothRadius; y++) {
+    for (let x = smoothRadius; x < width - smoothRadius; x++) {
+      // 計算局部區域的平均值（用於平滑細線）
+      let sum = 0;
+      let count = 0;
+      
+      for (let dy = -smoothRadius; dy <= smoothRadius; dy++) {
+        for (let dx = -smoothRadius; dx <= smoothRadius; dx++) {
+          const idx = ((y + dy) * width + (x + dx)) * 4;
+          sum += data[idx];
+          count++;
+        }
+      }
+      
+      const avg = Math.round(sum / count);
+      const idx = (y * width + x) * 4;
+      const current = data[idx];
+      
+      // 如果當前像素與周圍平均值差異較小（可能是網格線），則平滑它
+      const diff = Math.abs(current - avg);
+      if (diff < 30) { // 閾值可調整
+        newData[idx] = avg;
+        newData[idx + 1] = avg;
+        newData[idx + 2] = avg;
+      } else {
+        // 保留文字邊緣
+        newData[idx] = current;
+        newData[idx + 1] = current;
+        newData[idx + 2] = current;
+      }
+    }
+  }
+  
+  return new ImageData(newData, width, height);
+}
+
+/**
+ * 雙邊濾波（保留邊緣的同時平滑背景）
+ * 這對於去除網格紋理特別有效
+ * 使用優化版本以提高性能
+ */
+function applyBilateralFilter(imageData: ImageData, radius = 2): ImageData {
+  const { data, width, height } = imageData;
+  const newData = new Uint8ClampedArray(data);
+  
+  const spatialSigma = radius * 0.8;
+  const colorSigma = 40; // 顏色差異閾值（降低以更好地平滑網格）
+  
+  // 預計算空間權重表以提高性能
+  const spatialWeights: number[][] = [];
+  for (let dy = -radius; dy <= radius; dy++) {
+    spatialWeights[dy + radius] = [];
+    for (let dx = -radius; dx <= radius; dx++) {
+      const spatialDist = Math.sqrt(dx * dx + dy * dy);
+      spatialWeights[dy + radius][dx + radius] = Math.exp(-(spatialDist * spatialDist) / (2 * spatialSigma * spatialSigma));
+    }
+  }
+  
+  // 預計算顏色權重表
+  const colorWeightCache = new Map<number, number>();
+  const getColorWeight = (colorDist: number): number => {
+    if (!colorWeightCache.has(colorDist)) {
+      colorWeightCache.set(colorDist, Math.exp(-(colorDist * colorDist) / (2 * colorSigma * colorSigma)));
+    }
+    return colorWeightCache.get(colorDist)!;
+  };
+  
+  for (let y = radius; y < height - radius; y++) {
+    for (let x = radius; x < width - radius; x++) {
+      const centerIdx = (y * width + x) * 4;
+      const centerValue = data[centerIdx];
+      
+      let weightedSum = 0;
+      let weightSum = 0;
+      
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const neighborIdx = ((y + dy) * width + (x + dx)) * 4;
+          const neighborValue = data[neighborIdx];
+          
+          // 使用預計算的權重
+          const spatialWeight = spatialWeights[dy + radius][dx + radius];
+          const colorDist = Math.abs(centerValue - neighborValue);
+          const colorWeight = getColorWeight(colorDist);
+          
+          const weight = spatialWeight * colorWeight;
+          weightedSum += neighborValue * weight;
+          weightSum += weight;
+        }
+      }
+      
+      const filteredValue = Math.round(weightedSum / weightSum);
+      newData[centerIdx] = filteredValue;
+      newData[centerIdx + 1] = filteredValue;
+      newData[centerIdx + 2] = filteredValue;
+    }
+  }
+  
   return new ImageData(newData, width, height);
 }
 
@@ -366,6 +509,58 @@ function applySharpen(imageData: ImageData): ImageData {
 }
 
 /**
+ * 檢測是否為淺色文字在深色背景上
+ * 通過分析圖像的亮度分佈來判斷
+ */
+function detectLightTextOnDarkBackground(imageData: ImageData): boolean {
+  const { data } = imageData;
+  const brightnessValues: number[] = [];
+  
+  // 採樣圖像像素（每10個像素採樣一次以提高效率）
+  for (let i = 0; i < data.length; i += 40) {
+    const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    brightnessValues.push(gray);
+  }
+  
+  // 計算平均亮度
+  const avgBrightness = brightnessValues.reduce((a, b) => a + b, 0) / brightnessValues.length;
+  
+  // 計算亮度分佈（標準差）
+  const variance = brightnessValues.reduce((sum, val) => sum + Math.pow(val - avgBrightness, 2), 0) / brightnessValues.length;
+  const stdDev = Math.sqrt(variance);
+  
+  // 如果平均亮度低且標準差較大，可能是淺色文字在深色背景上
+  // 平均亮度 < 120 且標準差 > 40 時，認為是淺色文字在深色背景
+  const isLightText = avgBrightness < 120 && stdDev > 40;
+  
+  console.log('[OCR DEBUG] detectLightTextOnDarkBackground: 檢測結果', {
+    avgBrightness: Math.round(avgBrightness),
+    stdDev: Math.round(stdDev),
+    isLightText,
+    timestamp: new Date().toISOString(),
+  });
+  
+  return isLightText;
+}
+
+/**
+ * 反轉圖像（用於淺色文字在深色背景的情況）
+ */
+function invertImage(imageData: ImageData): ImageData {
+  const { data, width, height } = imageData;
+  const newData = new Uint8ClampedArray(data);
+  
+  for (let i = 0; i < data.length; i += 4) {
+    newData[i] = 255 - data[i];     // R
+    newData[i + 1] = 255 - data[i + 1]; // G
+    newData[i + 2] = 255 - data[i + 2]; // B
+    newData[i + 3] = data[i + 3];   // A
+  }
+  
+  return new ImageData(newData, width, height);
+}
+
+/**
  * 自適應對比度增強（針對深色背景+淺色文字優化）
  */
 function enhanceContrastForDarkBackground(imageData: ImageData): ImageData {
@@ -375,21 +570,45 @@ function enhanceContrastForDarkBackground(imageData: ImageData): ImageData {
   // 計算圖像的亮度分佈
   let sum = 0;
   let count = 0;
+  const brightnessValues: number[] = [];
+  
   for (let i = 0; i < data.length; i += 4) {
     const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
     sum += gray;
     count++;
+    brightnessValues.push(gray);
   }
   const avgBrightness = sum / count;
   
-  // 如果平均亮度較低（深色背景），使用更激進的對比度增強
-  const isDarkBackground = avgBrightness < 100;
-  const contrastFactor = isDarkBackground ? 2.5 : 1.8; // 深色背景使用更高對比度
-  const brightnessShift = isDarkBackground ? -20 : 0; // 深色背景稍微降低亮度以增強對比
+  // 計算亮度分佈的標準差
+  const variance = brightnessValues.reduce((sum, val) => sum + Math.pow(val - avgBrightness, 2), 0) / brightnessValues.length;
+  const stdDev = Math.sqrt(variance);
+  
+  // 判斷是否為淺色文字在深色背景
+  const isLightTextOnDark = avgBrightness < 120 && stdDev > 40;
+  
+  // 根據場景調整對比度參數
+  let contrastFactor: number;
+  let brightnessShift: number;
+  
+  if (isLightTextOnDark) {
+    // 淺色文字在深色背景：更激進的對比度增強
+    contrastFactor = 3.0;
+    brightnessShift = 30; // 增加亮度以突出淺色文字
+  } else if (avgBrightness < 100) {
+    // 深色背景：中等對比度增強
+    contrastFactor = 2.5;
+    brightnessShift = -20;
+  } else {
+    // 正常場景
+    contrastFactor = 1.8;
+    brightnessShift = 0;
+  }
   
   console.log('[OCR DEBUG] enhanceContrastForDarkBackground: 對比度增強', {
-    avgBrightness,
-    isDarkBackground,
+    avgBrightness: Math.round(avgBrightness),
+    stdDev: Math.round(stdDev),
+    isLightTextOnDark,
     contrastFactor,
     brightnessShift,
     timestamp: new Date().toISOString(),
@@ -482,23 +701,72 @@ function preprocessImage(image: HTMLImageElement): Promise<HTMLImageElement> {
       timestamp: new Date().toISOString(),
     });
 
-    // 步驟3: 啟用進階處理（去噪和背景平滑）
+    // 步驟2.5: 檢測並反轉圖像（如果是淺色文字在深色背景上）
+    if (CONFIG.invertForLightText) {
+      const isLightText = detectLightTextOnDarkBackground(imageData);
+      if (isLightText) {
+        console.log('[OCR DEBUG] preprocessImage: 檢測到淺色文字，開始反轉圖像', {
+          timestamp: new Date().toISOString(),
+        });
+        const beforeInvert = Date.now();
+        imageData = invertImage(imageData);
+        const afterInvert = Date.now();
+        console.log('[OCR DEBUG] preprocessImage: 圖像反轉完成', {
+          duration: afterInvert - beforeInvert,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        console.log('[OCR DEBUG] preprocessImage: 未檢測到淺色文字，跳過反轉', {
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+
+    // 步驟3: 啟用進階處理（去噪和背景平滑，特別針對網格紋理）
     if (CONFIG.enableAdvancedProcessing) {
-      console.log('[OCR DEBUG] preprocessImage: 開始高斯模糊平滑背景', {
+      // 3.1: 雙邊濾波（保留文字邊緣，平滑背景網格）
+      console.log('[OCR DEBUG] preprocessImage: 開始雙邊濾波去除網格', {
+        timestamp: new Date().toISOString(),
+      });
+      const beforeBilateral = Date.now();
+      imageData = applyBilateralFilter(imageData, 2);
+      const afterBilateral = Date.now();
+      console.log('[OCR DEBUG] preprocessImage: 雙邊濾波完成', {
+        duration: afterBilateral - beforeBilateral,
+        timestamp: new Date().toISOString(),
+      });
+
+      // 3.2: 去除細小網格線
+      console.log('[OCR DEBUG] preprocessImage: 開始去除細小網格線', {
+        timestamp: new Date().toISOString(),
+      });
+      const beforeGrid = Date.now();
+      imageData = removeGridLines(imageData);
+      const afterGrid = Date.now();
+      console.log('[OCR DEBUG] preprocessImage: 網格線去除完成', {
+        duration: afterGrid - beforeGrid,
+        timestamp: new Date().toISOString(),
+      });
+
+      // 3.3: 增強的高斯模糊平滑背景（使用更大的核）
+      console.log('[OCR DEBUG] preprocessImage: 開始增強高斯模糊平滑背景', {
         timestamp: new Date().toISOString(),
       });
       const beforeBlur = Date.now();
-      imageData = applyGaussianBlur(imageData, 1);
+      imageData = applyGaussianBlur(imageData, 2); // 使用更大的核（5x5）
       const afterBlur = Date.now();
-      console.log('[OCR DEBUG] preprocessImage: 高斯模糊完成', {
+      console.log('[OCR DEBUG] preprocessImage: 增強高斯模糊完成', {
         duration: afterBlur - beforeBlur,
         timestamp: new Date().toISOString(),
       });
 
+      // 3.4: 中值濾波去噪（多次應用以更好地去除小噪點）
       console.log('[OCR DEBUG] preprocessImage: 開始中值濾波去噪', {
         timestamp: new Date().toISOString(),
       });
       const beforeFilter = Date.now();
+      imageData = applyMedianFilter(imageData, 2); // 使用更大的半徑
+      // 再次應用以更好地去除殘留噪點
       imageData = applyMedianFilter(imageData, 1);
       const afterFilter = Date.now();
       console.log('[OCR DEBUG] preprocessImage: 中值濾波完成', {
@@ -564,12 +832,13 @@ function preprocessImage(image: HTMLImageElement): Promise<HTMLImageElement> {
     });
 
     // 步驟7: 形態學開運算（去除小噪點，連接斷裂的文字）
+    // 使用更大的核以更好地去除網格殘留
     if (CONFIG.enableAdvancedProcessing) {
       console.log('[OCR DEBUG] preprocessImage: 開始形態學開運算', {
         timestamp: new Date().toISOString(),
       });
       const beforeMorphology = Date.now();
-      imageData = applyMorphologyOpen(imageData, 1);
+      imageData = applyMorphologyOpen(imageData, 2); // 使用更大的核
       const afterMorphology = Date.now();
       console.log('[OCR DEBUG] preprocessImage: 形態學開運算完成', {
         duration: afterMorphology - beforeMorphology,
@@ -704,7 +973,11 @@ async function performOCR(
     
     const params = {
       tessedit_char_whitelist: chineseCharWhitelist, // 空字符串 = 不限制字符（讓 Tesseract 使用語言模型的默認字符集）
-      tessedit_pageseg_mode: '6', // 統一文本塊
+      // 嘗試多種PSM模式以提高識別準確度
+      // PSM 7: 單行文本（適合水平排列的文字，避免字符順序混亂）
+      // PSM 8: 單詞（如果PSM 7效果不好，可以嘗試這個）
+      // PSM 6: 統一文本塊（原設定，保留作為備選）
+      tessedit_pageseg_mode: '7', // 單行文本模式，確保字符按正確順序識別
       // 提升識別準確度的參數
       tessedit_ocr_engine_mode: '1', // LSTM OCR Engine（更準確）
       classify_bln_numeric_mode: '0', // 不限制為數字模式（0=禁用數字模式，有助於減少數字誤識別）
@@ -719,6 +992,9 @@ async function performOCR(
       textord_really_old_xheight: '0.9', // 降低x高度閾值，識別更小的文字
       classify_adapt_proto_threshold: '0.5', // 降低原型適應閾值，提高識別敏感度
       classify_adapt_feature_threshold: '0.5', // 降低特徵適應閾值
+      // 針對單行文本的優化
+      textord_min_linesize_fraction: '0.1', // 降低最小行尺寸分數
+      textord_debug_pitch_metric: '0', // 禁用調試模式
     };
     console.log('[OCR DEBUG] performOCR: 設定 OCR 參數', {
       params,
