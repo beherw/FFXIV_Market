@@ -486,71 +486,25 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           }
         });
         
-        // After loading quest data, check if we still need levequest data
-        const stillMissingNames = questIds.some(questId => {
-          const questData = loadedDataRef.current.twQuests[questId] || loadedDataRef.current.twQuests[String(questId)];
-          const hasName = questData && questData.tw;
-          if (!hasName) {
-            console.log(`[ObtainMethods] Quest ${questId} still missing name after loading tw-quests.json`);
-          }
-          return !hasName;
-        });
-        
-        console.log(`[ObtainMethods] After loading tw-quests.json, stillMissingNames: ${stillMissingNames}, twLevesStaticData: ${!!twLevesStaticData}, isLoadingLevesData: ${isLoadingLevesData}`);
-        
-        // Load tw-leves.json if quest names are still missing (might be levequests)
-        if (stillMissingNames && !twLevesStaticData && !isLoadingLevesData) {
-          console.log(`[ObtainMethods] 📥 Lazy loading tw-leves.json for quest IDs (might be leve IDs): ${questIds.join(', ')}`);
-          setIsLoadingLevesData(true);
-          loadTwLevesData().then(levesData => {
-            console.log(`[ObtainMethods] ✅ Loaded tw-leves.json (${Object.keys(levesData).length} leves)`);
-            // Check if quest 795 is in the data
-            if (levesData[795] || levesData['795']) {
-              console.log(`[ObtainMethods] Found quest 795 in tw-leves.json:`, levesData[795] || levesData['795']);
-            }
-            setTwLevesStaticData(levesData);
-            setIsLoadingLevesData(false);
-          }).catch(err => {
-            console.warn('[ObtainMethods] Failed to load tw-leves.json:', err);
-            setIsLoadingLevesData(false);
-          });
-        }
+        // Note: Levequest data (tw-leves.json) is now loaded upfront in the main useEffect
+        // No need to check for missing levequest names here since they're handled during initial query
       }).catch(err => {
         console.warn('[ObtainMethods] Failed to load tw-quests.json:', err);
         setIsLoadingQuestsData(false);
       });
-    } else if (twQuestsStaticData && !isLoadingLevesData) {
-      // If quest data is already loaded, check if we need levequest data
-      const stillMissingNames = questIds.some(questId => {
-        const questData = loadedData.twQuests[questId] || loadedData.twQuests[String(questId)];
-        const staticQuestData = twQuestsStaticData[questId] || twQuestsStaticData[String(questId)];
-        return (!questData || !questData.tw) && (!staticQuestData || !staticQuestData.tw);
-      });
-      
-      // Load tw-leves.json if quest names are still missing (might be levequests)
-      if (stillMissingNames && !twLevesStaticData) {
-        console.log(`[ObtainMethods] 📥 Lazy loading tw-leves.json for quest IDs (might be leve IDs): ${questIds.join(', ')}`);
-        setIsLoadingLevesData(true);
-        loadTwLevesData().then(data => {
-          console.log(`[ObtainMethods] ✅ Loaded tw-leves.json (${Object.keys(data).length} leves)`);
-          setTwLevesStaticData(data);
-          setIsLoadingLevesData(false);
-        }).catch(err => {
-          console.warn('[ObtainMethods] Failed to load tw-leves.json:', err);
-          setIsLoadingLevesData(false);
-        });
-      }
     }
-  }, [sources, loadedData.twQuests, twQuestsStaticData, twLevesStaticData, dataLoaded, isLoadingQuestsData, isLoadingLevesData]);
+    // Note: Levequest data (tw-leves.json) is now loaded upfront in the main useEffect
+  }, [sources, loadedData.twQuests, twQuestsStaticData, dataLoaded, isLoadingQuestsData]);
 
-  // Lazy load leves-database-pages.json when levequests are present
+  // Fallback: Load levequest data if it wasn't loaded upfront (should rarely trigger)
+  // This is a safety net in case sources change after initial load or if upfront loading failed
   useEffect(() => {
     if (!sources || sources.length === 0 || !dataLoaded) {
       return;
     }
     
-    // Check if we have any levequest sources (ISLAND_CROP with levequest format)
-    const levequestSources = sources.filter(s => {
+    // Only trigger if levequest data is missing but we have levequest sources
+    const hasLevequestSources = sources.some(s => {
       if (s.type === DataType.ISLAND_CROP && Array.isArray(s.data) && s.data.length > 0) {
         const firstItem = s.data[0];
         return firstItem && typeof firstItem === 'object' && 'id' in firstItem && 'lvl' in firstItem && 'item' in firstItem;
@@ -558,399 +512,67 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return false;
     });
     
-    if (levequestSources.length === 0) {
-      return;
-    }
-    
-    // Extract all leve IDs from ISLAND_CROP sources
-    const leveIds = [];
-    levequestSources.forEach(source => {
-      if (Array.isArray(source.data)) {
-        source.data.forEach(leve => {
-          if (leve && typeof leve === 'object' && 'id' in leve) {
-            leveIds.push(leve.id);
-          }
-        });
-      }
-    });
-    
-    // Also check QUESTS sources for levequests (they might be converted to levequest format in render)
-    // We need to load tw-leves.json first to identify which quests are actually levequests
-    const checkQuestsForLeves = async () => {
-      // Check if we have QUESTS sources that might be levequests
-      const questSources = sources.filter(s => s.type === DataType.QUESTS && Array.isArray(s.data) && s.data.length > 0);
-      if (questSources.length > 0) {
-        // Load tw-leves.json if not already loaded
-        let twLevesData = twLevesStaticData;
-        if (!twLevesData) {
-          twLevesData = await loadTwLevesData();
-          setTwLevesStaticData(twLevesData);
-        }
-        
-        // Find quest IDs that are actually levequests
-        questSources.forEach(source => {
-          if (Array.isArray(source.data)) {
-            source.data.forEach(questItem => {
-              const questId = typeof questItem === 'object' && questItem !== null && 'id' in questItem ? questItem.id : questItem;
-              if (questId && twLevesData && (twLevesData[questId] || twLevesData[String(questId)])) {
-                // This is a levequest, add to leveIds
-                if (!leveIds.includes(questId)) {
-                  leveIds.push(questId);
-                }
-              }
-            });
-          }
-        });
-      }
-      
-      return leveIds;
-    };
-    
-    // Load leves-database-pages.json if needed
-    if (!levesDatabasePagesData && !isLoadingLevesDatabasePages) {
-      console.log(`[ObtainMethods] 📥 Lazy loading leves-database-pages.json for leve IDs: ${leveIds.join(', ')}`);
+    // If we have levequest sources but no data loaded, load it as fallback
+    if (hasLevequestSources && !levesDatabasePagesData && !isLoadingLevesDatabasePages) {
+      console.log(`[ObtainMethods] ⚠️ Fallback: Loading levequest data that wasn't loaded upfront`);
       setIsLoadingLevesDatabasePages(true);
       
-      // First check for levequests in QUESTS sources, then load database pages
-      checkQuestsForLeves().then(allLeveIds => {
-        if (allLeveIds.length === 0) {
-          setIsLoadingLevesDatabasePages(false);
-          return;
-        }
-        
-        loadLevesDatabasePages().then(pagesData => {
-          console.log(`[ObtainMethods] ✅ Loaded leves-database-pages.json (${Object.keys(pagesData).length} leves)`);
-          setLevesDatabasePagesData(pagesData);
-          setIsLoadingLevesDatabasePages(false);
-          
-          // Extract NPC IDs and item IDs from leve data and load them
-          const npcIdsToLoad = new Set();
-          const itemIdsToLoad = new Set();
-          
-          allLeveIds.forEach(leveId => {
-            const leveData = pagesData[leveId] || pagesData[String(leveId)];
-            if (leveData) {
-              // Extract NPC IDs
-              if (Array.isArray(leveData.npcs)) {
-                leveData.npcs.forEach(npc => {
-                  if (npc && npc.id) {
-                    npcIdsToLoad.add(npc.id);
-                  }
-                });
-              }
-              // Extract item IDs from items array
-              if (Array.isArray(leveData.items)) {
-                leveData.items.forEach(item => {
-                  if (item && item.id) {
-                    itemIdsToLoad.add(item.id);
-                  }
-                });
-              }
-              // Extract item IDs from rewards array
-              if (Array.isArray(leveData.rewards)) {
-                leveData.rewards.forEach(reward => {
-                  if (reward && reward.id) {
-                    itemIdsToLoad.add(reward.id);
-                  }
-                });
+      // Extract leve IDs from ISLAND_CROP sources
+      const leveIds = [];
+      sources.forEach(s => {
+        if (s.type === DataType.ISLAND_CROP && Array.isArray(s.data)) {
+          s.data.forEach(leve => {
+            if (leve && typeof leve === 'object' && 'id' in leve) {
+              const leveId = leve.id;
+              if (!leveIds.includes(leveId)) {
+                leveIds.push(leveId);
               }
             }
           });
-          
-          // Load NPC and item data if needed
-        if (npcIdsToLoad.size > 0) {
-          const npcIdsArray = Array.from(npcIdsToLoad);
-          console.log(`[ObtainMethods] 📥 Loading NPC data for ${npcIdsArray.length} NPCs from leve data:`, npcIdsArray);
-          Promise.all([
-            getTwNpcsByIds(npcIdsArray).then(data => {
-              console.log(`[ObtainMethods] ✅ Loaded twNpcs data:`, Object.keys(data));
-              setLoadedData(prev => ({
-                ...prev,
-                twNpcs: { ...prev.twNpcs, ...data }
-              }));
-              Object.keys(data).forEach(id => {
-                loadedDataRef.current.twNpcs[id] = data[id];
-                loadedDataRef.current.twNpcs[String(id)] = data[id];
-              });
-              return data;
-            }),
-            getNpcsByIds(npcIdsArray).then(data => {
-              console.log(`[ObtainMethods] ✅ Loaded npcs data:`, Object.keys(data));
-              setLoadedData(prev => ({
-                ...prev,
-                npcs: { ...prev.npcs, ...data }
-              }));
-              Object.keys(data).forEach(id => {
-                loadedDataRef.current.npcs[id] = data[id];
-                loadedDataRef.current.npcs[String(id)] = data[id];
-              });
-              return data;
-            }),
-            getNpcsDatabasePagesByIds(npcIdsArray).then(data => {
-              console.log(`[ObtainMethods] ✅ Loaded npcsDatabasePages data:`, Object.keys(data));
-              setLoadedData(prev => ({
-                ...prev,
-                npcsDatabasePages: { ...prev.npcsDatabasePages, ...data }
-              }));
-              Object.keys(data).forEach(id => {
-                loadedDataRef.current.npcsDatabasePages[id] = data[id];
-                loadedDataRef.current.npcsDatabasePages[String(id)] = data[id];
-              });
-              
-              // Check if any NPCs are missing position data, and load JSON fallback if needed
-              const missingPositions = npcIdsArray.filter(npcId => {
-                const npcData = data[npcId] || data[String(npcId)];
-                return !npcData || !npcData.position;
-              });
-              
-              if (missingPositions.length > 0 && !npcsDatabasePagesJsonData && !npcsDatabasePagesJsonLoading) {
-                console.log(`[ObtainMethods] 📥 ${missingPositions.length} NPCs missing position data, loading JSON fallback...`);
-                loadNpcsDatabasePagesJson().then(jsonData => {
-                  if (jsonData) {
-                    setNpcsDatabasePagesJsonData(jsonData);
-                    
-                    // Extract zone IDs from JSON fallback NPC positions and load place names
-                    const zoneIdsFromJson = new Set();
-                    Object.values(jsonData).forEach(npcData => {
-                      if (npcData?.position?.zoneid) {
-                        const zoneId = npcData.position.zoneid;
-                        const currentLoadedData = loadedDataRef.current;
-                        const hasTwPlace = currentLoadedData.twPlaces[zoneId] || currentLoadedData.twPlaces[String(zoneId)];
-                        const hasPlace = currentLoadedData.places[zoneId] || currentLoadedData.places[String(zoneId)];
-                        if (!hasTwPlace && !hasPlace) {
-                          zoneIdsFromJson.add(zoneId);
-                        }
-                      }
-                    });
-                    
-                    // Load place names from JSON fallback if needed
-                    if (zoneIdsFromJson.size > 0) {
-                      const zoneIdsArray = Array.from(zoneIdsFromJson);
-                      console.log(`[ObtainMethods] 📥 Loading place names for ${zoneIdsArray.length} zones from JSON fallback NPCs`);
-                      Promise.all([
-                        getTwPlacesByIds(zoneIdsArray),
-                        getPlacesByIds(zoneIdsArray)
-                      ]).then(([twPlaces, places]) => {
-                        setLoadedData(prev => ({
-                          ...prev,
-                          twPlaces: { ...prev.twPlaces, ...twPlaces },
-                          places: { ...prev.places, ...places }
-                        }));
-                        Object.keys(twPlaces).forEach(id => {
-                          loadedDataRef.current.twPlaces[id] = twPlaces[id];
-                          loadedDataRef.current.twPlaces[String(id)] = twPlaces[id];
-                        });
-                        Object.keys(places).forEach(id => {
-                          loadedDataRef.current.places[id] = places[id];
-                          loadedDataRef.current.places[String(id)] = places[id];
-                        });
-                      });
-                    }
-                  }
-                });
-              }
-              
-              // Extract zone IDs from NPC positions and load place names
-              const zoneIdsToLoad = new Set();
-              Object.values(data).forEach(npcData => {
-                if (npcData?.position?.zoneid) {
-                  const zoneId = npcData.position.zoneid;
-                  // Check if place name is already loaded
-                  const currentLoadedData = loadedDataRef.current;
-                  const hasTwPlace = currentLoadedData.twPlaces[zoneId] || currentLoadedData.twPlaces[String(zoneId)];
-                  const hasPlace = currentLoadedData.places[zoneId] || currentLoadedData.places[String(zoneId)];
-                  if (!hasTwPlace && !hasPlace) {
-                    zoneIdsToLoad.add(zoneId);
-                  }
-                }
-              });
-              
-              // Also check JSON fallback data for zone IDs
-              if (npcsDatabasePagesJsonData) {
-                Object.values(npcsDatabasePagesJsonData).forEach(npcData => {
-                  if (npcData?.position?.zoneid) {
-                    const zoneId = npcData.position.zoneid;
-                    const currentLoadedData = loadedDataRef.current;
-                    const hasTwPlace = currentLoadedData.twPlaces[zoneId] || currentLoadedData.twPlaces[String(zoneId)];
-                    const hasPlace = currentLoadedData.places[zoneId] || currentLoadedData.places[String(zoneId)];
-                    if (!hasTwPlace && !hasPlace) {
-                      zoneIdsToLoad.add(zoneId);
-                    }
-                  }
-                });
-              }
-              
-              // Load place names if needed
-              if (zoneIdsToLoad.size > 0) {
-                const zoneIdsArray = Array.from(zoneIdsToLoad);
-                console.log(`[ObtainMethods] 📥 Loading place names for ${zoneIdsArray.length} zones from NPC positions`);
-                Promise.all([
-                  getTwPlacesByIds(zoneIdsArray),
-                  getPlacesByIds(zoneIdsArray)
-                ]).then(([twPlaces, places]) => {
-                  setLoadedData(prev => ({
-                    ...prev,
-                    twPlaces: { ...prev.twPlaces, ...twPlaces },
-                    places: { ...prev.places, ...places }
-                  }));
-                  Object.keys(twPlaces).forEach(id => {
-                    loadedDataRef.current.twPlaces[id] = twPlaces[id];
-                    loadedDataRef.current.twPlaces[String(id)] = twPlaces[id];
-                  });
-                  Object.keys(places).forEach(id => {
-                    loadedDataRef.current.places[id] = places[id];
-                    loadedDataRef.current.places[String(id)] = places[id];
-                  });
-                });
-              }
-              
-              return data;
-            })
-          ]).then(([twNpcsData, npcsData, npcsDbData]) => {
-            console.log(`[ObtainMethods] ✅ All NPC data loaded. twNpcs:`, Object.keys(twNpcsData || {}), `npcs:`, Object.keys(npcsData || {}), `npcsDatabasePages:`, Object.keys(npcsDbData || {}));
-            // Force re-render by updating state
-            setLeveNpcsLoaded(true);
-          }).catch(err => {
-            console.warn('[ObtainMethods] Failed to load NPC data:', err);
-          });
         }
-        
-        if (itemIdsToLoad.size > 0) {
-          const itemIdsArray = Array.from(itemIdsToLoad);
-          console.log(`[ObtainMethods] 📥 Loading item data for ${itemIdsArray.length} items from leve data`);
-          getTwItemsByIds(itemIdsArray).then(data => {
-            setLoadedData(prev => ({
-              ...prev,
-              twItems: { ...prev.twItems, ...data }
-            }));
-            Object.keys(data).forEach(id => {
-              loadedDataRef.current.twItems[id] = data[id];
-              loadedDataRef.current.twItems[String(id)] = data[id];
-            });
-          }).catch(err => {
-            console.warn('[ObtainMethods] Failed to load item data:', err);
-          });
-        }
-        }).catch(err => {
-          console.warn('[ObtainMethods] Failed to load leves-database-pages.json:', err);
-          setIsLoadingLevesDatabasePages(false);
-        });
-      }).catch(err => {
-        console.warn('[ObtainMethods] Failed to check quests for leves:', err);
-        setIsLoadingLevesDatabasePages(false);
       });
-    } else if (levesDatabasePagesData) {
-      // levesDatabasePagesData is already loaded, but we might have new QUESTS sources
-      // Check if we need to load NPCs for levequests from QUESTS sources
-      checkQuestsForLeves().then(allLeveIds => {
-        if (allLeveIds.length === 0) {
-          return;
-        }
-        
-        // Extract NPC IDs from leve data and load them
-        const npcIdsToLoad = new Set();
-        allLeveIds.forEach(leveId => {
-          const leveData = levesDatabasePagesData[leveId] || levesDatabasePagesData[String(leveId)];
-          if (leveData && Array.isArray(leveData.npcs)) {
-            leveData.npcs.forEach(npc => {
-              if (npc && npc.id) {
-                // Check if NPC data is already loaded
-                const currentLoadedData = loadedDataRef.current;
-                const hasNpcData = currentLoadedData.twNpcs[npc.id] || currentLoadedData.twNpcs[String(npc.id)] ||
-                                  currentLoadedData.npcs[npc.id] || currentLoadedData.npcs[String(npc.id)] ||
-                                  currentLoadedData.npcsDatabasePages[npc.id] || currentLoadedData.npcsDatabasePages[String(npc.id)];
-                if (!hasNpcData) {
-                  npcIdsToLoad.add(npc.id);
-                }
+      
+      // Also check QUESTS sources
+      const questSources = sources.filter(s => s.type === DataType.QUESTS && Array.isArray(s.data) && s.data.length > 0);
+      
+      const loadFallbackData = async () => {
+        if (questSources.length > 0) {
+          // Load tw-leves.json if not already loaded
+          let twLevesData = twLevesStaticData;
+          if (!twLevesData) {
+            twLevesData = await loadTwLevesData();
+            setTwLevesStaticData(twLevesData);
+          }
+          
+          if (twLevesData) {
+            questSources.forEach(source => {
+              if (Array.isArray(source.data)) {
+                source.data.forEach(questItem => {
+                  const questId = typeof questItem === 'object' && questItem !== null && 'id' in questItem ? questItem.id : questItem;
+                  if (questId && (twLevesData[questId] || twLevesData[String(questId)])) {
+                    if (!leveIds.includes(questId)) {
+                      leveIds.push(questId);
+                    }
+                  }
+                });
               }
             });
           }
-        });
-        
-        // Load NPC data if needed
-        if (npcIdsToLoad.size > 0) {
-          const npcIdsArray = Array.from(npcIdsToLoad);
-          console.log(`[ObtainMethods] 📥 Loading NPC data for ${npcIdsArray.length} additional NPCs from QUESTS levequests:`, npcIdsArray);
-          Promise.all([
-            getTwNpcsByIds(npcIdsArray).then(data => {
-              setLoadedData(prev => ({
-                ...prev,
-                twNpcs: { ...prev.twNpcs, ...data }
-              }));
-              Object.keys(data).forEach(id => {
-                loadedDataRef.current.twNpcs[id] = data[id];
-                loadedDataRef.current.twNpcs[String(id)] = data[id];
-              });
-              return data;
-            }),
-            getNpcsByIds(npcIdsArray).then(data => {
-              setLoadedData(prev => ({
-                ...prev,
-                npcs: { ...prev.npcs, ...data }
-              }));
-              Object.keys(data).forEach(id => {
-                loadedDataRef.current.npcs[id] = data[id];
-                loadedDataRef.current.npcs[String(id)] = data[id];
-              });
-              return data;
-            }),
-            getNpcsDatabasePagesByIds(npcIdsArray).then(data => {
-              setLoadedData(prev => ({
-                ...prev,
-                npcsDatabasePages: { ...prev.npcsDatabasePages, ...data }
-              }));
-              Object.keys(data).forEach(id => {
-                loadedDataRef.current.npcsDatabasePages[id] = data[id];
-                loadedDataRef.current.npcsDatabasePages[String(id)] = data[id];
-              });
-              
-              // Extract zone IDs from NPC positions and load place names
-              const zoneIdsToLoad = new Set();
-              Object.values(data).forEach(npcData => {
-                if (npcData?.position?.zoneid) {
-                  const zoneId = npcData.position.zoneid;
-                  // Check if place name is already loaded
-                  const currentLoadedData = loadedDataRef.current;
-                  const hasTwPlace = currentLoadedData.twPlaces[zoneId] || currentLoadedData.twPlaces[String(zoneId)];
-                  const hasPlace = currentLoadedData.places[zoneId] || currentLoadedData.places[String(zoneId)];
-                  if (!hasTwPlace && !hasPlace) {
-                    zoneIdsToLoad.add(zoneId);
-                  }
-                }
-              });
-              
-              // Load place names if needed
-              if (zoneIdsToLoad.size > 0) {
-                const zoneIdsArray = Array.from(zoneIdsToLoad);
-                console.log(`[ObtainMethods] 📥 Loading place names for ${zoneIdsArray.length} zones from QUESTS levequest NPCs`);
-                Promise.all([
-                  getTwPlacesByIds(zoneIdsArray),
-                  getPlacesByIds(zoneIdsArray)
-                ]).then(([twPlaces, places]) => {
-                  setLoadedData(prev => ({
-                    ...prev,
-                    twPlaces: { ...prev.twPlaces, ...twPlaces },
-                    places: { ...prev.places, ...places }
-                  }));
-                  Object.keys(twPlaces).forEach(id => {
-                    loadedDataRef.current.twPlaces[id] = twPlaces[id];
-                    loadedDataRef.current.twPlaces[String(id)] = twPlaces[id];
-                  });
-                  Object.keys(places).forEach(id => {
-                    loadedDataRef.current.places[id] = places[id];
-                    loadedDataRef.current.places[String(id)] = places[id];
-                  });
-                });
-              }
-              
-              return data;
-            })
-          ]).then(() => {
-            setLeveNpcsLoaded(true);
-          }).catch(err => {
-            console.warn('[ObtainMethods] Failed to load additional NPC data:', err);
-          });
         }
+        
+        if (leveIds.length > 0) {
+          const pagesData = await loadLevesDatabasePages();
+          console.log(`[ObtainMethods] ✅ Fallback loaded leves-database-pages.json`);
+          setLevesDatabasePagesData(pagesData);
+          setIsLoadingLevesDatabasePages(false);
+        } else {
+          setIsLoadingLevesDatabasePages(false);
+        }
+      };
+      
+      loadFallbackData().catch(err => {
+        console.warn('[ObtainMethods] Failed to load levequest data in fallback:', err);
+        setIsLoadingLevesDatabasePages(false);
       });
     }
   }, [sources, dataLoaded, levesDatabasePagesData, isLoadingLevesDatabasePages, twLevesStaticData]);
@@ -1090,7 +712,112 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         
         const requiredIds = extractIdsFromSources(sourcesData);
         
-        // Step 2.5: Get FATE IDs from fate_sources table and add to requiredIds
+        // Step 2.5: Identify and load levequest data upfront
+        // Check for levequest sources (ISLAND_CROP with levequest format)
+        const levequestIds = [];
+        const islandCropSourcesWithData = islandCropSources.filter(s => Array.isArray(s.data) && s.data.length > 0);
+        islandCropSourcesWithData.forEach(source => {
+          const firstItem = source.data[0];
+          const isLevequestFormat = firstItem && typeof firstItem === 'object' && 'id' in firstItem && 'lvl' in firstItem && 'item' in firstItem;
+          if (isLevequestFormat) {
+            source.data.forEach(leve => {
+              if (leve && typeof leve === 'object' && 'id' in leve) {
+                const leveId = leve.id;
+                if (!levequestIds.includes(leveId)) {
+                  levequestIds.push(leveId);
+                }
+              }
+            });
+          }
+        });
+        
+        // Check QUESTS sources for levequests - need to load tw-leves.json first
+        let twLevesDataForState = null;
+        const questSourcesWithData = questSources.filter(s => Array.isArray(s.data) && s.data.length > 0);
+        if (questSourcesWithData.length > 0 || levequestIds.length > 0) {
+          // Load tw-leves.json to identify which quests are actually levequests
+          twLevesDataForState = await loadTwLevesData();
+          if (twLevesDataForState && questSourcesWithData.length > 0) {
+            questSourcesWithData.forEach(source => {
+              if (Array.isArray(source.data)) {
+                source.data.forEach(questItem => {
+                  const questId = typeof questItem === 'object' && questItem !== null && 'id' in questItem ? questItem.id : questItem;
+                  if (questId && (twLevesDataForState[questId] || twLevesDataForState[String(questId)])) {
+                    // This is a levequest
+                    if (!levequestIds.includes(questId)) {
+                      levequestIds.push(questId);
+                    }
+                  }
+                });
+              }
+            });
+          }
+        }
+        
+        // Load leves-database-pages.json if we have any levequests
+        let levesDatabasePagesDataForState = null;
+        if (levequestIds.length > 0) {
+          console.log(`[ObtainMethods] 📥 Loading levequest data upfront for ${levequestIds.length} leve IDs: ${levequestIds.join(', ')}`);
+          levesDatabasePagesDataForState = await loadLevesDatabasePages();
+          
+          // Extract NPC IDs and item IDs from levequest data
+          const leveNpcIds = new Set();
+          const leveItemIds = new Set();
+          
+          levequestIds.forEach(leveId => {
+            const leveData = levesDatabasePagesDataForState[leveId] || levesDatabasePagesDataForState[String(leveId)];
+            if (leveData) {
+              // Extract NPC IDs
+              if (Array.isArray(leveData.npcs)) {
+                leveData.npcs.forEach(npc => {
+                  if (npc && npc.id) {
+                    leveNpcIds.add(npc.id);
+                  }
+                });
+              }
+              // Extract item IDs from items array
+              if (Array.isArray(leveData.items)) {
+                leveData.items.forEach(item => {
+                  if (item && item.id) {
+                    leveItemIds.add(item.id);
+                  }
+                });
+              }
+              // Extract item IDs from rewards array
+              if (Array.isArray(leveData.rewards)) {
+                leveData.rewards.forEach(reward => {
+                  if (reward && reward.id) {
+                    leveItemIds.add(reward.id);
+                  }
+                });
+              }
+            }
+          });
+          
+          // Add extracted IDs to requiredIds
+          Array.from(leveNpcIds).forEach(npcId => {
+            if (!requiredIds.npcIds.includes(npcId)) {
+              requiredIds.npcIds.push(npcId);
+            }
+          });
+          Array.from(leveItemIds).forEach(itemId => {
+            if (!requiredIds.itemIds.includes(itemId)) {
+              requiredIds.itemIds.push(itemId);
+            }
+          });
+          
+          console.log(`[ObtainMethods] ✅ Extracted ${leveNpcIds.size} NPC IDs and ${leveItemIds.size} item IDs from levequest data`);
+        }
+        
+        // Set levequest data to state immediately so it's available for rendering
+        if (twLevesDataForState) {
+          setTwLevesStaticData(twLevesDataForState);
+        }
+        if (levesDatabasePagesDataForState) {
+          setLevesDatabasePagesData(levesDatabasePagesDataForState);
+        }
+        
+        // Step 2.6: Get FATE IDs from fate_sources table and add to requiredIds
         const fateSourcesFromTable = await getFateSourcesByItemId(currentItemId, abortController.signal);
         if (Array.isArray(fateSourcesFromTable) && fateSourcesFromTable.length > 0) {
           fateSourcesFromTable.forEach(fateId => {
@@ -1102,7 +829,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           // We'll add zoneIds after we get the FATE data, but we need to ensure we query fatesDatabasePages
         }
         
-        // Step 2.6: Get monster drop zone IDs from drop-sources.json and add to requiredIds
+        // Step 2.7: Get monster drop zone IDs from drop-sources.json and add to requiredIds
         const dropSourceMonsterIds = dropSourcesData[currentItemId] || dropSourcesData[String(currentItemId)];
         if (Array.isArray(dropSourceMonsterIds) && dropSourceMonsterIds.length > 0) {
           dropSourceMonsterIds.forEach(monsterId => {
@@ -1187,13 +914,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           );
         }
         
-        // Place queries
-        if (requiredIds.zoneIds.length > 0) {
-          queries.push(
-            getTwPlacesByIds(requiredIds.zoneIds, abortController.signal).then(data => ({ type: 'twPlaces', data })),
-            getPlacesByIds(requiredIds.zoneIds, abortController.signal).then(data => ({ type: 'places', data }))
-          );
-        }
+        // Place queries - DELAYED: We'll query zoneIds after processing all sources
+        // to collect all zoneIds from FATEs, instances, quests, NPCs, etc. in one batch
+        // This avoids duplicate queries and ensures we get all zoneIds at once
         
         // Item queries (for currency names, etc.)
         if (requiredIds.itemIds.length > 0) {
@@ -1598,6 +1321,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           // This ensures we load place data for all zoneIds used by any obtainable method
           const allZoneIds = new Set();
           
+          // 0. Add initial zoneIds from requiredIds (from sources extraction)
+          requiredIds.zoneIds.forEach(zoneId => allZoneIds.add(zoneId));
+          
           // 1. Collect zoneIds from FATE sources (already collected in fateZoneIds)
           fateZoneIds.forEach(zoneId => allZoneIds.add(zoneId));
           
@@ -1696,45 +1422,128 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             });
           }
           
-          // Query place data for all collected zoneIds that are missing
-          if (allZoneIds.size > 0) {
-            const zoneIdsToQuery = Array.from(allZoneIds).filter(zoneId => {
-              const hasTwPlace = newLoadedData.twPlaces[zoneId] || newLoadedData.twPlaces[String(zoneId)];
-              const hasPlace = newLoadedData.places[zoneId] || newLoadedData.places[String(zoneId)];
-              return !hasTwPlace && !hasPlace;
+          // Extract FATE reward item IDs from fatesDatabasePages (do this before querying)
+          const fateRewardItemIds = new Set();
+          const fatesDatabasePages = newLoadedData.fatesDatabasePages || {};
+          
+          Object.keys(fatesDatabasePages).forEach(fateIdStr => {
+            const fateDb = fatesDatabasePages[fateIdStr];
+            if (fateDb && Array.isArray(fateDb.items)) {
+              fateDb.items.forEach(itemIdRaw => {
+                // Normalize item ID to number
+                const normalizedItemId = typeof itemIdRaw === 'number' ? itemIdRaw : parseInt(itemIdRaw, 10);
+                if (normalizedItemId && !isNaN(normalizedItemId)) {
+                  fateRewardItemIds.add(normalizedItemId);
+                }
+              });
+            }
+          });
+          
+          // Also add current item if it's a rare reward (in fate_sources but not in items array)
+          if (fateSourcesForItem.length > 0) {
+            // Check if current item is in any FATE's items array (normalize IDs for comparison)
+            const isInAnyFateItems = Object.values(fatesDatabasePages).some(fateDb => {
+              if (!fateDb || !Array.isArray(fateDb.items)) return false;
+              return fateDb.items.some(itemIdRaw => {
+                const normalizedItemId = typeof itemIdRaw === 'number' ? itemIdRaw : parseInt(itemIdRaw, 10);
+                return normalizedItemId === currentItemIdNum;
+              });
             });
             
-            if (zoneIdsToQuery.length > 0) {
-              try {
-                const [twPlaces, places] = await Promise.all([
-                  getTwPlacesByIds(zoneIdsToQuery, abortController.signal),
-                  getPlacesByIds(zoneIdsToQuery, abortController.signal)
-                ]);
-                
-                // Check if request was cancelled or itemId changed before updating state
-                if (!abortController.signal.aborted && currentItemId === itemId) {
-                  // Update loadedData with place data
-                  setLoadedData(prev => {
-                    const updated = {
-                      ...prev,
-                      twPlaces: { ...prev.twPlaces, ...twPlaces },
-                      places: { ...prev.places, ...places }
-                    };
-                    // CRITICAL: Also update ref to keep it in sync with state
-                    loadedDataRef.current = updated;
-                    return updated;
-                  });
-                  // Also update newLoadedData for immediate use
-                  newLoadedData.twPlaces = { ...newLoadedData.twPlaces, ...twPlaces };
-                  newLoadedData.places = { ...newLoadedData.places, ...places };
-                  // Also update ref with newLoadedData to ensure consistency
-                  loadedDataRef.current.twPlaces = { ...loadedDataRef.current.twPlaces, ...twPlaces };
-                  loadedDataRef.current.places = { ...loadedDataRef.current.places, ...places };
-                }
-              } catch (err) {
-                if (!abortController.signal.aborted && currentItemId === itemId) {
-                  console.error(`[ObtainMethods] Error loading place data:`, err);
-                }
+            // If current item is not in any FATE's items array but is in fate_sources, it's a rare reward
+            if (!isInAnyFateItems) {
+              fateRewardItemIds.add(currentItemIdNum);
+            }
+          }
+          
+          // Batch query: Query place data and FATE reward items together
+          const zoneIdsToQuery = Array.from(allZoneIds).filter(zoneId => {
+            const hasTwPlace = newLoadedData.twPlaces[zoneId] || newLoadedData.twPlaces[String(zoneId)];
+            const hasPlace = newLoadedData.places[zoneId] || newLoadedData.places[String(zoneId)];
+            return !hasTwPlace && !hasPlace;
+          });
+          
+          const missingRewardItemIds = Array.from(fateRewardItemIds).filter(itemId => {
+            const itemIdStr = String(itemId);
+            return !newLoadedData.twItems[itemId] && !newLoadedData.twItems[itemIdStr];
+          });
+          
+          // Batch all follow-up queries together
+          const followUpQueries = [];
+          
+          if (zoneIdsToQuery.length > 0) {
+            followUpQueries.push(
+              getTwPlacesByIds(zoneIdsToQuery, abortController.signal).then(data => ({ type: 'twPlaces', data })),
+              getPlacesByIds(zoneIdsToQuery, abortController.signal).then(data => ({ type: 'places', data }))
+            );
+          }
+          
+          if (missingRewardItemIds.length > 0) {
+            followUpQueries.push(
+              getTwItemsByIds(missingRewardItemIds, abortController.signal)
+                .then(data => ({ type: 'twItems', data }))
+                .catch(err => {
+                  console.error(`[ObtainMethods] ❌ Error loading FATE reward items:`, err);
+                  return { type: 'twItems', data: {} };
+                })
+            );
+          }
+          
+          // Execute follow-up queries if any
+          if (followUpQueries.length > 0) {
+            try {
+              const followUpResults = await Promise.all(followUpQueries);
+              
+              // Check if request was cancelled or itemId changed before updating state
+              if (!abortController.signal.aborted && currentItemId === itemId) {
+                followUpResults.forEach(result => {
+                  if (!result || !result.type) return;
+                  
+                  const { type, data } = result;
+                  
+                  if (type === 'twPlaces' || type === 'places') {
+                    // Update loadedData with place data
+                    setLoadedData(prev => {
+                      const updated = {
+                        ...prev,
+                        [type]: { ...prev[type], ...data }
+                      };
+                      // CRITICAL: Also update ref to keep it in sync with state
+                      loadedDataRef.current = updated;
+                      return updated;
+                    });
+                    // Also update newLoadedData for immediate use
+                    newLoadedData[type] = { ...newLoadedData[type], ...data };
+                    // Also update ref with newLoadedData to ensure consistency
+                    loadedDataRef.current[type] = { ...loadedDataRef.current[type], ...data };
+                  } else if (type === 'twItems') {
+                    // Update loadedData with item data
+                    setLoadedData(prev => {
+                      const updated = {
+                        ...prev,
+                        twItems: { ...prev.twItems, ...data }
+                      };
+                      // CRITICAL: Also update ref to keep it in sync with state
+                      loadedDataRef.current = updated;
+                      
+                      // Update cache with the latest data including reward items
+                      const cached = obtainMethodsCache[currentItemId];
+                      if (cached) {
+                        cached.loadedData = updated;
+                        cached.timestamp = Date.now(); // Refresh timestamp
+                      }
+                      
+                      return updated;
+                    });
+                    // Also update newLoadedData and ref
+                    newLoadedData.twItems = { ...newLoadedData.twItems, ...data };
+                    loadedDataRef.current.twItems = { ...loadedDataRef.current.twItems, ...data };
+                  }
+                });
+              }
+            } catch (err) {
+              if (!abortController.signal.aborted && currentItemId === itemId) {
+                console.error(`[ObtainMethods] Error loading follow-up data:`, err);
               }
             }
           }
@@ -1838,78 +1647,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             // This is a limitation - we'd need to query the shops table with full trade data
             // For now, just log that we have shop data but can't use it without trade info
             console.warn(`[ObtainMethods] ⚠️ Shop data exists but cannot create sources without trade information. Item ${currentItemId} may need to be added to extracts table.`);
-          }
-          
-          // Extract FATE reward item IDs from fatesDatabasePages and load twItems
-          const fateRewardItemIds = new Set();
-          const fatesDatabasePages = newLoadedData.fatesDatabasePages || {};
-          
-          Object.keys(fatesDatabasePages).forEach(fateIdStr => {
-            const fateDb = fatesDatabasePages[fateIdStr];
-            if (fateDb && Array.isArray(fateDb.items)) {
-              fateDb.items.forEach(itemIdRaw => {
-                // Normalize item ID to number
-                const normalizedItemId = typeof itemIdRaw === 'number' ? itemIdRaw : parseInt(itemIdRaw, 10);
-                if (normalizedItemId && !isNaN(normalizedItemId)) {
-                  fateRewardItemIds.add(normalizedItemId);
-                }
-              });
-            }
-          });
-          
-          // Also add current item if it's a rare reward (in fate_sources but not in items array)
-          // Note: fateSourcesForItem is already declared above (line 346)
-          if (fateSourcesForItem.length > 0) {
-            // Check if current item is in any FATE's items array (normalize IDs for comparison)
-            const isInAnyFateItems = Object.values(fatesDatabasePages).some(fateDb => {
-              if (!fateDb || !Array.isArray(fateDb.items)) return false;
-              return fateDb.items.some(itemIdRaw => {
-                const normalizedItemId = typeof itemIdRaw === 'number' ? itemIdRaw : parseInt(itemIdRaw, 10);
-                return normalizedItemId === currentItemIdNum;
-              });
-            });
-            
-            // If current item is not in any FATE's items array but is in fate_sources, it's a rare reward
-            if (!isInAnyFateItems) {
-              fateRewardItemIds.add(currentItemIdNum);
-            }
-          }
-          
-          // Query missing twItems for FATE reward items
-          const missingRewardItemIds = Array.from(fateRewardItemIds).filter(itemId => {
-            const itemIdStr = String(itemId);
-            return !newLoadedData.twItems[itemId] && !newLoadedData.twItems[itemIdStr];
-          });
-          
-          if (missingRewardItemIds.length > 0) {
-            getTwItemsByIds(missingRewardItemIds, abortController.signal)
-              .then(rewardItemsData => {
-                // Check if request was cancelled or itemId changed
-                if (!abortController.signal.aborted && currentItemId === itemId) {
-                  setLoadedData(prev => {
-                    const updated = {
-                      ...prev,
-                      twItems: { ...prev.twItems, ...rewardItemsData }
-                    };
-                    // CRITICAL: Also update ref to keep it in sync with state
-                    loadedDataRef.current = updated;
-                    
-                    // Update cache with the latest data including reward items
-                    const cached = obtainMethodsCache[currentItemId];
-                    if (cached) {
-                      cached.loadedData = updated;
-                      cached.timestamp = Date.now(); // Refresh timestamp
-                    }
-                    
-                    return updated;
-                  });
-                }
-              })
-              .catch(err => {
-                if (!abortController.signal.aborted && currentItemId === itemId) {
-                  console.error(`[ObtainMethods] Error loading FATE reward items:`, err);
-                }
-              });
           }
           
           // Final check: log if processedSources is empty
@@ -2714,6 +2451,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`trade-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
+            <img src="https://xivapi.com/i/065000/065002.png" alt="Trade" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">兌換</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
@@ -2811,8 +2549,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     </div>
                   )}
                   
-                  {/* NPCs list - horizontal compact display */}
-                  <div className="flex flex-wrap gap-1.5">
+                  {/* NPCs list - grid display, 2 per row */}
+                  <div className="grid grid-cols-2 gap-1.5">
                     {group.npcs.map((npc, npcIndex) => {
                       const npcId = typeof npc === 'object' ? npc.id : npc;
                       const npcName = getNpcName(npcId);
@@ -2823,8 +2561,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       const hasLocation = npcCoords && npcCoords.x !== undefined && npcCoords.y !== undefined;
                       
                       return (
-                        <div key={`npc-${npcIndex}`} className="text-xs bg-slate-800/40 rounded px-2 py-1.5 border border-slate-700/30 flex-shrink-0 max-w-full">
-                          <div className="text-gray-300 font-medium whitespace-nowrap overflow-hidden text-ellipsis">{npcName}</div>
+                        <div key={`npc-${npcIndex}`} className="text-xs bg-slate-800/40 rounded px-2 py-1.5 border border-slate-700/30 w-full">
+                          <div className="flex items-center gap-0.5">
+                            <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-4 h-4 flex-shrink-0 grayscale opacity-70" />
+                            <div className="text-gray-300 font-medium whitespace-nowrap overflow-hidden text-ellipsis">{npcName}</div>
+                          </div>
                           {zoneName && hasLocation && (
                             <button
                               onClick={(e) => {
@@ -2839,7 +2580,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                   mapId: npcMapId,
                                 });
                               }}
-                              className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors mt-0.5 text-[10px]"
+                              className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors text-[10px] ml-[4px]"
                               title={`${zoneName} (${npcCoords.x.toFixed(1)}, ${npcCoords.y.toFixed(1)})`}
                             >
                               <svg className="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2967,7 +2708,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               return (
                 <div key={npcGroupIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col">
                   <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-0.5">
+                      <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-5 h-5 flex-shrink-0 grayscale opacity-70" />
                       <span className="font-medium text-white">{npcName}</span>
                       {(() => {
                         const npcTitle = getNpcTitle(firstVendor.npcId);
@@ -3260,7 +3002,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`drops-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-3">
-            <img src="https://xivapi.com/c/BNpcName.png" alt="Monster" className="w-6 h-6" />
+            <img src="https://xivapi.com/c/BNpcName.png" alt="Monster" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">怪物掉落</span>
           </div>
           
@@ -3283,6 +3025,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       <div key={monsterIndex} className="flex items-start gap-2 text-sm">
                         <div className="flex-1">
                         <div className="flex items-center gap-2">
+                          <img src="https://xivapi.com/c/BNpcName.png" alt="Monster" className="w-7 h-7" />
                           <span className="text-white">{monster.mobName}</span>
                         </div>
                           {monster.levelRange && (
@@ -4376,7 +4119,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         return (
           <div key={`levequest-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
             <div className="flex items-center gap-2 mb-2">
-              <img src="https://xivapi.com/i/060000/060454.png" alt="Levequest" className="w-6 h-6" />
+              <img src="https://xivapi.com/c/Leve.png" alt="Levequest" className="w-10 h-10" />
               <span className="text-ffxiv-gold font-medium">理符任務</span>
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
@@ -4480,7 +4223,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   <div key={leveIndex} className="w-[320px] flex-grow-0 bg-slate-900/50 rounded p-3 min-h-[100px] flex flex-col gap-2">
                     {/* Leve name with wiki link - same style as FATE */}
                     <div className="flex items-center gap-2 mb-1">
-                      <img src="https://xivapi.com/i/060000/060454.png" alt="Levequest" className="w-7 h-7 object-contain flex-shrink-0" />
+                      <img src="https://xivapi.com/c/Leve.png" alt="Levequest" className="w-9 h-9 object-contain flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         {wikiUrl ? (
                           <a
@@ -4598,7 +4341,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                           
                           return (
                             <div key={`npc-${npcIndex}`} className="text-xs">
-                              <div className="text-gray-300 font-medium">{npcName}</div>
+                              <div className="flex items-center gap-0.5">
+                                <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-4 h-4 flex-shrink-0 grayscale opacity-70" />
+                                <div className="text-gray-300 font-medium">{npcName}</div>
+                              </div>
                               {zoneName && hasLocation && (
                                 <button
                                   onClick={(e) => {
@@ -4613,7 +4359,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                       mapId: mapId || null,
                                     });
                                   }}
-                                  className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors mt-0.5"
+                                  className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors ml-[2px]"
                                 >
                                   <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
