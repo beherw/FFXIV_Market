@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { formatRelativeTime, formatLocalTime } from '../utils/timeFormat';
+import { createPortal } from 'react-dom';
+import { formatRelativeTime, formatLocalTime, formatLocalTimeForTooltip } from '../utils/timeFormat';
 
 /**
  * Component to display last upload times for all servers in a DC
@@ -9,7 +10,7 @@ import { formatRelativeTime, formatLocalTime } from '../utils/timeFormat';
  * @param {Array} props.dcWorlds - Array of world IDs in the data center
  */
 export default function ServerUploadTimes({ worldUploadTimes, worlds, dcWorlds }) {
-  const [tooltipState, setTooltipState] = useState({ show: false, x: 0, y: 0, content: '' });
+  const [tooltipState, setTooltipState] = useState({ show: false, x: 0, y: 0, uploadTime: null });
   const [activeCell, setActiveCell] = useState(null); // For touch devices
   const tableRef = useRef(null);
   const tooltipRef = useRef(null);
@@ -76,26 +77,23 @@ export default function ServerUploadTimes({ worldUploadTimes, worlds, dcWorlds }
     if (!uploadTime || !tableRef.current) return;
     const elementRect = e.currentTarget.getBoundingClientRect();
     const tableRect = tableRef.current.getBoundingClientRect();
-    const tooltipContent = formatLocalTime(uploadTime);
     const position = calculateTooltipPosition(elementRect, tableRect);
     
     setTooltipState({
       show: true,
       x: position.x,
       y: position.y,
-      content: tooltipContent
+      uploadTime
     });
   };
 
   const handleMouseEnter = (e, uploadTime) => {
-    if (!isTouchDevice()) {
-      showTooltip(e, uploadTime);
-    }
+    showTooltip(e, uploadTime);
   };
 
   const handleMouseLeave = () => {
-    if (!isTouchDevice() && activeCell === null) {
-      setTooltipState({ show: false, x: 0, y: 0, content: '' });
+    if (activeCell === null) {
+      setTooltipState({ show: false, x: 0, y: 0, uploadTime: null });
     }
   };
 
@@ -105,7 +103,7 @@ export default function ServerUploadTimes({ worldUploadTimes, worlds, dcWorlds }
       // Toggle tooltip on tap
       if (activeCell === cellId) {
         setActiveCell(null);
-        setTooltipState({ show: false, x: 0, y: 0, content: '' });
+        setTooltipState({ show: false, x: 0, y: 0, uploadTime: null });
       } else {
         setActiveCell(cellId);
         showTooltip(e, uploadTime);
@@ -119,7 +117,7 @@ export default function ServerUploadTimes({ worldUploadTimes, worlds, dcWorlds }
       if (isTouchDevice() && activeCell !== null) {
         if (tooltipRef.current && !tooltipRef.current.contains(e.target)) {
           setActiveCell(null);
-          setTooltipState({ show: false, x: 0, y: 0, content: '' });
+          setTooltipState({ show: false, x: 0, y: 0, uploadTime: null });
         }
       }
     };
@@ -158,51 +156,53 @@ export default function ServerUploadTimes({ worldUploadTimes, worlds, dcWorlds }
     };
   }, [tooltipState.show, activeCell]);
 
-  // Tooltip component - always shows above the table
-  const Tooltip = () => {
-    if (!tooltipState.show) return null;
-    return (
-      <div 
-        ref={tooltipRef}
-        className="fixed px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-br from-slate-900/98 via-purple-900/95 to-slate-900/98 backdrop-blur-md text-white text-xs sm:text-sm rounded-lg shadow-2xl pointer-events-auto sm:pointer-events-none whitespace-normal sm:whitespace-nowrap z-[999999] border border-purple-500/60 glow-blue max-w-[90vw] sm:max-w-none sm:min-w-max"
-        style={{
-          left: `${tooltipState.x}px`,
-          bottom: `${window.innerHeight - tooltipState.y}px`,
-          transform: 'translateX(-50%)',
-        }}
-      >
-        <div className="relative z-10">
-          <div className="flex items-center gap-1.5">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-ffxiv-gold flex-shrink-0" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
-              />
-            </svg>
-            <span className="text-ffxiv-gold font-semibold break-words">{tooltipState.content}</span>
-          </div>
+  const tooltipParts = tooltipState.uploadTime ? formatLocalTimeForTooltip(tooltipState.uploadTime) : null;
+
+  // Tooltip content - rendered via portal to document.body so fixed positioning is relative to viewport
+  const tooltipContent = tooltipState.show && tooltipParts ? (
+    <div 
+      ref={tooltipRef}
+      className="fixed px-3 py-2.5 rounded-xl pointer-events-auto sm:pointer-events-none z-[999999] max-w-[90vw] sm:max-w-none sm:min-w-max
+        bg-slate-900/95 backdrop-blur-md border border-slate-600/50
+        shadow-[0_4px_24px_rgba(0,0,0,0.4),0_0_1px_rgba(255,255,255,0.08)_inset]
+        text-white"
+      style={{
+        left: `${tooltipState.x}px`,
+        bottom: `${window.innerHeight - tooltipState.y}px`,
+        transform: 'translateX(-50%)',
+      }}
+    >
+      <div className="relative z-10 flex flex-col gap-0.5 min-w-0">
+        <span className="text-xs text-slate-400">{tooltipParts.tzStr}</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-4 w-4 text-ffxiv-gold flex-shrink-0 self-center" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+            />
+          </svg>
+          <span className="text-sm font-semibold text-ffxiv-gold tabular-nums">{tooltipParts.dateStr}</span>
+          <span className="text-sm font-semibold text-slate-200 tabular-nums">{tooltipParts.timeStr}</span>
         </div>
-        {/* Arrow pointing down */}
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-px">
-          <div className="border-4 border-transparent border-t-purple-900/95"></div>
-        </div>
-        {/* Glow effect */}
-        <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-purple-500/20 via-transparent to-purple-500/20 pointer-events-none"></div>
       </div>
-    );
-  };
+      {/* Arrow pointing down */}
+      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-px">
+        <div className="border-[6px] border-transparent border-t-slate-900/95"></div>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <>
-      <Tooltip />
+      {createPortal(tooltipContent, document.body)}
       <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-2 sm:p-4 relative z-10">
         {/* Header */}
         <div className="flex items-center gap-2 mb-2 sm:mb-3">

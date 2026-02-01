@@ -1435,6 +1435,176 @@ export async function getEquipmentByJobs(jobAbbrs, signal = null) {
   return promise;
 }
 
+/** Equip slot display order: Head, Body, Hands, Waist, Legs, Feet, then accessories */
+const EQUIP_SLOT_ORDER = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+/** Cache for getEquipmentByLevelAndJobs: key = level + '_' + sortedJobs.join(',') */
+const equipmentByLevelJobsCache = {};
+const equipmentByLevelJobsPromises = {};
+
+/** Cache for getItemSetFromDB: key = itemId */
+const itemSetCache = {};
+const itemSetPromises = {};
+
+/**
+ * Get equipment rows where level and jobs array match exactly (for set query).
+ * Result is cached by (level, jobsKey) to avoid duplicate queries.
+ * @param {number} level - Equipment level
+ * @param {Array<string>} jobsArray - Job abbreviations (e.g. ['CRP','BSM',...])
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<Object>} - {itemId: {id, level, jobs, equipSlotCategory, ...}}
+ */
+export async function getEquipmentByLevelAndJobs(level, jobsArray, signal = null) {
+  if (level == null || level < 0 || !jobsArray || !Array.isArray(jobsArray) || jobsArray.length === 0) {
+    return {};
+  }
+  const jobsKey = [...jobsArray].sort().join(',');
+  const cacheKey = `${level}_${jobsKey}`;
+
+  if (equipmentByLevelJobsCache[cacheKey]) {
+    return equipmentByLevelJobsCache[cacheKey];
+  }
+  if (equipmentByLevelJobsPromises[cacheKey]) {
+    return equipmentByLevelJobsPromises[cacheKey];
+  }
+
+  const promise = (async () => {
+    try {
+      if (signal && signal.aborted) {
+        throw new DOMException('Request aborted', 'AbortError');
+      }
+      // Query by level only; filter by jobs in memory (Supabase JSONB .eq() can be unreliable for array equality)
+      const { data, error } = await supabase
+        .from('equipment')
+        .select('*')
+        .eq('level', level);
+
+      if (signal && signal.aborted) {
+        throw new DOMException('Request aborted', 'AbortError');
+      }
+      if (error) {
+        console.error('[Supabase] getEquipmentByLevelAndJobs error:', error);
+        return {};
+      }
+      const jobsKey = [...jobsArray].sort().join(',');
+      const result = {};
+      if (data) {
+        data.forEach(row => {
+          const rowJobs = row.jobs || row.job_abbrs || [];
+          const rowJobsKey = Array.isArray(rowJobs) ? [...rowJobs].sort().join(',') : '';
+          if (rowJobsKey === jobsKey) {
+            const id = row.id;
+            if (id !== undefined && id !== null) {
+              result[id] = row;
+            }
+          }
+        });
+      }
+      equipmentByLevelJobsCache[cacheKey] = result;
+      return result;
+    } catch (err) {
+      if (err.name === 'AbortError' || (signal && signal.aborted)) {
+        throw err;
+      }
+      return {};
+    } finally {
+      delete equipmentByLevelJobsPromises[cacheKey];
+    }
+  })();
+  equipmentByLevelJobsPromises[cacheKey] = promise;
+  return promise;
+}
+
+/**
+ * Get full equipment set for an item (same patch, ilvl, level, jobs). Uses DB for equipment
+ * and shared ilvls/item_patch cache. Result cached per itemId; in-flight requests deduplicated.
+ * @param {number} itemId - Equipment item ID
+ * @param {AbortSignal} signal - Optional abort signal
+ * @returns {Promise<{ setItemIds: number[], seedItemId: number, isEquipmentSet: boolean, ilvl?: number, patch?: number, level?: number }>}
+ */
+export async function getItemSetFromDB(itemId, signal = null) {
+  if (!itemId || itemId <= 0) {
+    return { setItemIds: [], seedItemId: itemId, isEquipmentSet: false };
+  }
+
+  if (itemSetCache[itemId]) {
+    return itemSetCache[itemId];
+  }
+  if (itemSetPromises[itemId]) {
+    return itemSetPromises[itemId];
+  }
+
+  const promise = (async () => {
+    try {
+      const seedEquipMap = await getEquipmentByIds([itemId], signal);
+      const seedEquip = seedEquipMap[itemId];
+      if (!seedEquip) {
+        const result = { setItemIds: [itemId], seedItemId: itemId, isEquipmentSet: false };
+        itemSetCache[itemId] = result;
+        return result;
+      }
+
+      const seedLevel = seedEquip.level;
+      const seedJobs = seedEquip.jobs || seedEquip.job_abbrs || [];
+      const candidatesMap = await getEquipmentByLevelAndJobs(seedLevel, seedJobs, signal);
+      const candidateIds = Object.keys(candidatesMap).map(id => parseInt(id, 10));
+
+      if (candidateIds.length === 0) {
+        const result = { setItemIds: [itemId], seedItemId: itemId, isEquipmentSet: true, ilvl: undefined, patch: undefined, level: seedLevel };
+        itemSetCache[itemId] = result;
+        return result;
+      }
+
+      const allIds = [itemId, ...candidateIds];
+      const [ilvlsMap, patchMap] = await Promise.all([
+        getIlvlsByIds(allIds, signal),
+        getItemPatchByIds(allIds, signal),
+      ]);
+      const seedIlvl = ilvlsMap[itemId];
+      const seedPatch = patchMap[itemId];
+
+      const setItemIds = candidateIds.filter(id => ilvlsMap[id] === seedIlvl && patchMap[id] === seedPatch);
+      if (!setItemIds.includes(itemId)) {
+        setItemIds.unshift(itemId);
+      }
+      const equipById = { ...candidatesMap, [itemId]: seedEquip };
+      setItemIds.sort((a, b) => {
+        const rowA = equipById[a] || {};
+        const rowB = equipById[b] || {};
+        const slotA = rowA.equipSlotCategory ?? rowA.equip_slot_category ?? 99;
+        const slotB = rowB.equipSlotCategory ?? rowB.equip_slot_category ?? 99;
+        const orderA = EQUIP_SLOT_ORDER.indexOf(slotA);
+        const orderB = EQUIP_SLOT_ORDER.indexOf(slotB);
+        const oA = orderA === -1 ? 99 : orderA;
+        const oB = orderB === -1 ? 99 : orderB;
+        if (oA !== oB) return oA - oB;
+        return a - b;
+      });
+
+      const result = {
+        setItemIds,
+        seedItemId: itemId,
+        isEquipmentSet: true,
+        ilvl: seedIlvl,
+        patch: seedPatch,
+        level: seedLevel,
+      };
+      itemSetCache[itemId] = result;
+      return result;
+    } catch (err) {
+      if (err.name === 'AbortError' || (signal && signal.aborted)) {
+        throw err;
+      }
+      console.error('[Supabase] getItemSetFromDB error:', err);
+      return { setItemIds: [itemId], seedItemId: itemId, isEquipmentSet: false };
+    } finally {
+      delete itemSetPromises[itemId];
+    }
+  })();
+  itemSetPromises[itemId] = promise;
+  return promise;
+}
+
 /**
  * Get item levels (loaded from JSON, never from Supabase)
  * @returns {Promise<Object>} - {itemId: ilvl}

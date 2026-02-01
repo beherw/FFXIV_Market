@@ -21,7 +21,7 @@ import { addItemToHistory } from './utils/itemHistory';
 import { addSearchToHistory } from './utils/searchHistory';
 import { useHistory } from './hooks/useHistory';
 import { hasRecipe, buildCraftingTree, findRelatedItems } from './services/recipeDatabase';
-import { getIlvls, getItemPatch, getPatchNames } from './services/supabaseData';
+import { getIlvls, getItemPatch, getPatchNames, getItemSetFromDB, getTwItemsByIds } from './services/supabaseData';
 import { initializeSupabaseConnection } from './services/supabaseClient';
 import TopBar from './components/TopBar';
 import NotFound from './components/NotFound';
@@ -142,8 +142,18 @@ function App() {
   const [buttonOrder, setButtonOrder] = useState({
     obtainMethods: 0,
     craftingTree: 0,
-    relatedItems: 0
+    relatedItems: 0,
+    itemSet: 0
   });
+
+  // 全套查詢 states - lazy load on first expand, cache per itemId in service
+  const [hasItemSet, setHasItemSet] = useState(false);
+  const [isItemSetExpanded, setIsItemSetExpanded] = useState(false);
+  const [isLoadingItemSet, setIsLoadingItemSet] = useState(false);
+  const [itemSetResult, setItemSetResult] = useState(null);
+  const [itemSetNames, setItemSetNames] = useState({});
+  const [itemSetAveragePrices, setItemSetAveragePrices] = useState({});
+  const [isLoadingItemSetPrices, setIsLoadingItemSetPrices] = useState(false);
   
   // Track if crafting tree was expanded from ObtainMethods
   const [expandedFromObtainMethods, setExpandedFromObtainMethods] = useState(false);
@@ -299,6 +309,48 @@ function App() {
     return rounded.toFixed(1);
   }, [itemPatchData, patchNamesData]);
 
+  useEffect(() => {
+    if (!selectedItem?.id) return;
+    let cancelled = false;
+    loadIlvlsData([selectedItem.id])
+      .then((data) => {
+        if (cancelled || !data) return;
+        setIlvlsData(prev => ({ ...(prev || {}), ...data }));
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Failed to load ilvl for selected item:', err);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [selectedItem, loadIlvlsData]);
+
+  useEffect(() => {
+    if (!selectedItem?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getItemPatchByIds } = await import('./services/supabaseData');
+        const [patchData, patchNames] = await Promise.all([
+          getItemPatchByIds([selectedItem.id]),
+          loadPatchNamesData()
+        ]);
+        if (cancelled) return;
+        if (patchData) {
+          setItemPatchData(prev => ({ ...(prev || {}), ...patchData }));
+        }
+        if (patchNames) {
+          setPatchNamesData(patchNames);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to load patch data for selected item:', err);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedItem, loadPatchNamesData]);
+
   // Version color palette - colors are assigned sequentially by major version number
   // This ensures consistent colors across sessions and automatic color assignment for new versions
   const VERSION_COLOR_PALETTE = [
@@ -354,6 +406,40 @@ function App() {
     const id = Date.now() + (++toastIdCounterRef.current);
     setToasts(prev => [...prev, { id, message, type }]);
   }, []);
+
+  const loadItemSetForSelectedItem = useCallback(async (itemId, options = {}) => {
+    const { autoExpand = false } = options;
+    if (!itemId) return;
+    setIsLoadingItemSet(true);
+    try {
+      const result = await getItemSetFromDB(itemId);
+      setItemSetResult(result);
+      const hasSet = result.isEquipmentSet && result.setItemIds && result.setItemIds.length > 0;
+      setHasItemSet(hasSet);
+      if (autoExpand && hasSet) {
+        setIsItemSetExpanded(true);
+      }
+      if (result.setItemIds?.length) {
+        getTwItemsByIds(result.setItemIds).then(namesData => {
+          const next = {};
+          result.setItemIds.forEach(id => {
+            const tw = namesData[id]?.tw;
+            next[id] = (typeof tw === 'string' ? tw : '').replace(/^["']|["']$/g, '').trim() || `Item ${id}`;
+          });
+          setItemSetNames(next);
+        });
+      } else {
+        setItemSetNames({});
+      }
+    } catch (err) {
+      console.error('getItemSetFromDB failed:', err);
+      addToast('套裝查詢失敗', 'error');
+      setItemSetResult({ setItemIds: [], seedItemId: itemId, isEquipmentSet: false });
+      setItemSetNames({});
+    } finally {
+      setIsLoadingItemSet(false);
+    }
+  }, [addToast]);
 
   // Remove toast function
   const removeToast = useCallback((id) => {
@@ -927,8 +1013,29 @@ function App() {
   }, [selectedItem]);
 
   useEffect(() => {
-    searchResultsRef.current = showUntradeable ? untradeableResults : tradeableResults;
+    const combinedResults = [...tradeableResults, ...untradeableResults];
+    searchResultsRef.current = showUntradeable ? combinedResults : tradeableResults;
   }, [tradeableResults, untradeableResults, showUntradeable]);
+  
+  // Preload icons for untradeable items when toggling to show them
+  // This ensures icons load properly for non-marketable items
+  useEffect(() => {
+    if (showUntradeable && untradeableResults.length > 0) {
+      // Preload icons for ALL untradeable items, prioritizing first 20
+      const itemsToPreload = untradeableResults;
+      itemsToPreload.forEach((item, index) => {
+        // Prioritize first 20 items with immediate queuing
+        const delay = index < 20 ? index * 50 : 1000 + (index - 20) * 100;
+        setTimeout(() => {
+          preloadItemIcon(item.id).catch(err => {
+            if (err.message !== 'Request cancelled') {
+              // Silently handle errors
+            }
+          });
+        }, delay);
+      });
+    }
+  }, [showUntradeable, untradeableResults]);
   
   // Auto-hide untradeable items when tradeable items first appear (initial load)
   // But allow user to manually toggle via button after that
@@ -951,13 +1058,26 @@ function App() {
     
     // Update ref for next comparison
     prevTradeableResultsLengthRef.current = currentLength;
-  }, [tradeableResults.length, untradeableResults.length, showUntradeable]);
+  }, [tradeableResults.length, untradeableResults.length]);
 
   // Fetch velocity, average price, and tradability data for search results
   useEffect(() => {
     // Get displayed results first to check if we'll need to fetch
-    const displayedResults = showUntradeable ? untradeableResults : tradeableResults;
+    const displayedResults = showUntradeable
+      ? [...tradeableResults, ...untradeableResults]
+      : tradeableResults;
     const willNeedFetch = displayedResults && displayedResults.length > 0 && selectedServerOption && selectedWorld;
+    
+    // Pre-queue icon loads for displayed items to ensure they load as soon as possible
+    if (displayedResults && displayedResults.length > 0) {
+      displayedResults.slice(0, 20).forEach((item, index) => {
+        setTimeout(() => {
+          preloadItemIcon(item.id).catch(() => {
+            // Silently ignore errors
+          });
+        }, index * 50);
+      });
+    }
     
     // Cancel any in-progress fetch
     if (velocityFetchAbortControllerRef.current) {
@@ -1941,7 +2061,9 @@ function App() {
   // Show indicator when loading velocities (isLoadingVelocities) OR when server selector is disabled due to loading
   // This ensures indicator stays visible until ALL batches complete, not just the first batch
   useEffect(() => {
-    const currentResults = showUntradeable ? untradeableResults : tradeableResults;
+    const currentResults = showUntradeable
+      ? [...tradeableResults, ...untradeableResults]
+      : tradeableResults;
     const hasEnoughItems = currentResults.length >= 50 || tradeableResults.length >= 50 || untradeableResults.length >= 50;
     
     // Show indicator if:
@@ -2378,7 +2500,7 @@ function App() {
               // Button will show nonMarketableItems count and be disabled until loading completes
               
               if (results.length === 0) {
-                addToast('未找到相關物品', 'warning');
+                addToast('未找到可製品', 'warning');
                 // No results means velocity fetch won't run, so re-enable server selector here
                 if (lastProcessedURLRef.current === currentURLKey) {
                   setIsServerSelectorDisabled(false);
@@ -2686,7 +2808,7 @@ function App() {
       // Button will show nonMarketableItems count and be disabled until loading completes
       
       if (results.length === 0) {
-        addToast('未找到相關物品', 'warning');
+        addToast('未找到可製品', 'warning');
         // No results means velocity fetch won't run, so re-enable server selector here
         setIsServerSelectorDisabled(false);
       } else {
@@ -3074,10 +3196,23 @@ function App() {
       setHasRelatedItems(false);
       setIsRelatedItemsExpanded(false);
       setIsObtainMethodsExpanded(false);
-      setButtonOrder({ obtainMethods: 0, craftingTree: 0, relatedItems: 0 });
+      setItemSetResult(null);
+      setItemSetNames({});
+      setItemSetAveragePrices({});
+      setIsItemSetExpanded(false);
+      setHasItemSet(false);
+      setIsLoadingItemSet(false);
+      setButtonOrder({ obtainMethods: 0, craftingTree: 0, relatedItems: 0, itemSet: 0 });
       shouldAutoExpandObtainableRef.current = false;
       return;
     }
+
+    setItemSetResult(null);
+    setItemSetNames({});
+    setItemSetAveragePrices({});
+    setIsItemSetExpanded(false);
+    setHasItemSet(false);
+    setIsLoadingItemSet(false);
     
     // Auto-expand obtainable if we clicked from obtainable
     // Use setTimeout to ensure this happens after React has updated the DOM
@@ -3149,6 +3284,48 @@ function App() {
         setIsLoadingCraftingTree(false);
       });
   }, [excludeCrystals, selectedItem, hasCraftingRecipe]);
+
+  useEffect(() => {
+    if (!selectedItem) return;
+    const ilvl = getIlvl(selectedItem.id);
+    if (ilvl === null || ilvl === 1) return;
+    if (isLoadingItemSet) return;
+    if (itemSetResult && itemSetResult.seedItemId === selectedItem.id) return;
+    loadItemSetForSelectedItem(selectedItem.id, { autoExpand: false });
+  }, [selectedItem, getIlvl, isLoadingItemSet, itemSetResult, loadItemSetForSelectedItem]);
+
+  // Fetch DC average prices for 全套查詢 set items (same as item table 全服平均價格)
+  useEffect(() => {
+    const setIds = itemSetResult?.setItemIds;
+    const dcName = selectedWorld?.section;
+    if (!setIds?.length || !dcName) {
+      setItemSetAveragePrices({});
+      setIsLoadingItemSetPrices(false);
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingItemSetPrices(true);
+    getItemsVelocity(dcName, setIds)
+      .then((result) => {
+        if (cancelled) return;
+        const prices = {};
+        setIds.forEach((id) => {
+          const v = result[id];
+          prices[id] = v?.averagePrice != null ? v.averagePrice : null;
+        });
+        setItemSetAveragePrices(prices);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('全套查詢 DC 平均價取得失敗:', err);
+          setItemSetAveragePrices({});
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingItemSetPrices(false);
+      });
+    return () => { cancelled = true; };
+  }, [itemSetResult?.seedItemId, selectedWorld?.section]);
 
   // Scroll to crafting tree when it's expanded from ObtainMethods
   useEffect(() => {
@@ -3373,7 +3550,7 @@ function App() {
         onTaxRatesClick={() => {
           setIsTaxRatesModalOpen(true);
         }}
-        searchResults={showUntradeable ? untradeableResults : tradeableResults}
+        searchResults={showUntradeable ? [...tradeableResults, ...untradeableResults] : tradeableResults}
         marketableItems={marketableItems}
       />
 
@@ -3507,8 +3684,10 @@ function App() {
           {!isOnHistoryPage && !selectedItem && (() => {
             // Determine which items to display based on showUntradeable flag
             // Default: show ONLY marketable items (tradeableResults)
-            // When button clicked: show ONLY non-marketable items (untradeableResults)
-            const itemsToDisplay = showUntradeable ? untradeableResults : tradeableResults;
+            // When button clicked: show BOTH marketable and non-marketable items
+            const itemsToDisplay = showUntradeable
+              ? [...tradeableResults, ...untradeableResults]
+              : tradeableResults;
             
             // If searching and no results yet, SearchResultsTable will show RunningLoader
             // If not searching and no results, don't render anything
@@ -3578,6 +3757,7 @@ function App() {
                 itemsPerPageOptions={[20, 30, 50, 100, 200]}
                 onSelect={handleItemSelect}
                 preserveItemOrder={isOCRSearchResult}
+                separateTradableInSort={!showUntradeable}
               />
             );
           })()}
@@ -3681,7 +3861,7 @@ function App() {
                             <>
                               {version && (
                                 <span 
-                                  className="inline-flex items-center px-2 py-0.5 rounded-md border text-xs mid:text-sm font-bold whitespace-nowrap"
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded-md border text-[10px] mid:text-xs font-semibold whitespace-nowrap"
                                   style={{
                                     background: `linear-gradient(135deg, ${getVersionColor(version)}20 0%, ${getVersionColor(version)}10 100%)`,
                                     borderColor: `${getVersionColor(version)}50`,
@@ -3693,7 +3873,7 @@ function App() {
                                 </span>
                               )}
                               {ilvl !== null && (
-                                <span className="text-xs mid:text-sm text-green-400 font-semibold">
+                                <span className="text-[10px] mid:text-xs text-green-400 font-semibold">
                                   ilvl: {ilvl}
                                 </span>
                               )}
@@ -3891,7 +4071,7 @@ function App() {
                       isLoadingRelatedItems 
                         ? '載入中...' 
                         : hasRelatedItems 
-                          ? (isRelatedItemsExpanded ? '收起相關物品' : '展開相關物品')
+                          ? (isRelatedItemsExpanded ? '收起可製品' : '展開可製品')
                           : '此物品未被用作材料'
                     }
                   >
@@ -3908,8 +4088,69 @@ function App() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                       </svg>
                     )}
-                    <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">相關物品</span>
+                    <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">可製品</span>
                   </button>
+
+                  {/* 全套查詢 Button - auto load on entry, cache in service */}
+                  {(() => {
+                    const ilvl = selectedItem ? getIlvl(selectedItem.id) : null;
+                    if (!selectedItem || ilvl === null || ilvl === 1) {
+                      return null;
+                    }
+
+                    const isButtonDisabled = isLoadingItemSet || !hasItemSet;
+
+                    return (
+                      <button
+                        onClick={() => {
+                          if (isLoadingItemSet) return;
+                          if (itemSetResult && itemSetResult.seedItemId === selectedItem.id) {
+                            setIsItemSetExpanded(!isItemSetExpanded);
+                          } else {
+                            loadItemSetForSelectedItem(selectedItem.id, { autoExpand: true });
+                          }
+                          setButtonOrder(prev => ({ ...prev, itemSet: Math.max(...Object.values(prev)) + 1 }));
+                        }}
+                        disabled={isButtonDisabled}
+                        className={`
+                          flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300
+                          ${!isButtonDisabled
+                            ? isItemSetExpanded
+                              ? 'bg-gradient-to-r from-amber-900/60 via-yellow-800/50 to-orange-900/60 border border-ffxiv-gold/60 text-ffxiv-gold'
+                              : 'bg-gradient-to-r from-purple-900/50 via-indigo-900/40 to-purple-900/50 border border-purple-400/40 text-purple-200 hover:text-ffxiv-gold hover:border-ffxiv-gold/50'
+                            : 'bg-slate-800/30 border border-slate-600/20 text-gray-600 cursor-not-allowed'
+                          }
+                        `}
+                        title={
+                          isLoadingItemSet
+                            ? '載入中...'
+                            : hasItemSet
+                              ? (isItemSetExpanded ? '收起全套查詢結果' : '展開全套查詢結果')
+                              : '查無同套裝結果'
+                        }
+                      >
+                        {isLoadingItemSet ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-400/30 border-t-purple-400"></div>
+                        ) : (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isItemSetExpanded ? 'rotate-90' : ''}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                          </svg>
+                        )}
+                        <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">
+                          {hasItemSet && itemSetResult?.setItemIds?.length
+                            ? `全套查詢 (${itemSetResult.setItemIds.filter((id) => id !== selectedItem?.id).length})`
+                            : '全套查詢'}
+                        </span>
+                      </button>
+                    );
+                  })()}
+                
                 </div>
               </div>
 
@@ -3957,11 +4198,11 @@ function App() {
                     key: 'relatedItems',
                     order: buttonOrder.relatedItems,
                     component: (
-                      <ErrorBoundary key="relatedItems" fallbackMessage="相關物品載入失敗，請重新整理頁面">
+                      <ErrorBoundary key="relatedItems" fallbackMessage="可製品載入失敗，請重新整理頁面">
                         <Suspense fallback={
                           <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
                             <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
-                            <p className="mt-4 text-sm text-gray-400">載入相關物品...</p>
+                            <p className="mt-4 text-sm text-gray-400">載入可製品...</p>
                           </div>
                         }>
                           <RelatedItems
@@ -3970,6 +4211,80 @@ function App() {
                           />
                         </Suspense>
                       </ErrorBoundary>
+                    )
+                  });
+                }
+
+                // 全套查詢
+                if (isItemSetExpanded && itemSetResult) {
+                  sections.push({
+                    key: 'itemSet',
+                    order: buttonOrder.itemSet,
+                    component: (
+                      <div
+                        key="itemSetContainer"
+                        className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-6"
+                      >
+                        <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold flex items-center gap-2 mb-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                          </svg>
+                          全套查詢
+                        </h3>
+                        {(() => {
+                          const itemSetVersion = itemSetResult?.seedItemId
+                            ? getVersion(itemSetResult.seedItemId)
+                            : (selectedItem ? getVersion(selectedItem.id) : null);
+                          return (
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                              {itemSetVersion && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md border text-xs font-semibold text-sky-300 border-sky-400/40 bg-sky-900/20">
+                                  版本 {itemSetVersion}
+                                </span>
+                              )}
+                              {itemSetResult?.ilvl != null && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md border text-xs font-semibold text-emerald-300 border-emerald-400/40 bg-emerald-900/20">
+                                  ilvl {itemSetResult.ilvl}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        <p className="text-sm text-slate-300/80 mb-4 leading-relaxed">
+                          同套裝判定：同版本、同品級（ilvl）、同裝備等級、同職業限制；下方列出同套的其他部位（不含當前這件）。
+                        </p>
+                        {!itemSetResult.isEquipmentSet ? (
+                          <p className="text-sm text-gray-400">此物品非裝備，無套裝資訊。</p>
+                        ) : !itemSetResult.setItemIds?.length ? (
+                          <p className="text-sm text-gray-400">無同套裝備資料。</p>
+                        ) : (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                            {itemSetResult.setItemIds.filter((id) => id !== selectedItem?.id).map((id) => (
+                              <button
+                                key={id}
+                                type="button"
+                                onClick={() => handleItemSelect({ id, name: itemSetNames[id] || `Item ${id}`, nameTW: itemSetNames[id] || null })}
+                                className="flex flex-col items-center gap-2 p-3 rounded-lg bg-slate-800/60 border border-purple-500/30 hover:border-ffxiv-gold/60 hover:bg-slate-700/70 transition-all duration-200"
+                              >
+                                <ItemImage
+                                  itemId={id}
+                                  alt={itemSetNames[id] || `Item ${id}`}
+                                  className="w-12 h-12 object-contain rounded border border-purple-500/30 group-hover:border-ffxiv-gold/60 transition-colors duration-200"
+                                />
+                                <span className="text-xs text-center text-gray-200 line-clamp-2 w-full">{itemSetNames[id] || `Item ${id}`}</span>
+                                <span className="text-[10px] text-slate-400">全服平均價格</span>
+                                {isLoadingItemSetPrices ? (
+                                  <span className="text-xs text-slate-500">均價載入中…</span>
+                                ) : itemSetAveragePrices[id] != null ? (
+                                  <span className="text-xs text-emerald-400">{itemSetAveragePrices[id].toLocaleString()} Gil</span>
+                                ) : (
+                                  <span className="text-xs text-slate-500">—</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )
                   });
                 }

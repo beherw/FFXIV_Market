@@ -83,6 +83,8 @@ export default function SearchResultsTable({
       
       // When true (e.g. OCR search), ItemTable preserves result order and skips ilvl/sort
       preserveItemOrder = false,
+      // When false, allow tradable and untradable to mix in sort order
+      separateTradableInSort = true,
 }) {
   // Pagination state (use external if provided, otherwise use internal)
   const [internalCurrentPage, setInternalCurrentPage] = useState(1);
@@ -448,6 +450,7 @@ export default function SearchResultsTable({
         itemsAlreadyFiltered={true}
         isRaritySelectorDisabled={isRaritySelectorDisabled}
         preserveItemOrder={preserveItemOrder}
+        separateTradableInSort={separateTradableInSort}
       />
       
       {/* Pagination Controls (Bottom) */}

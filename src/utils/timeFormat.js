@@ -87,3 +87,30 @@ export function formatLocalTime(timestamp) {
   
   return `${year}-${month}-${day} ${hours}:${minutes} ${timezoneName} ${offsetString}`;
 }
+
+/**
+ * Format timestamp for tooltip display: clean date, time, and timezone on separate lines
+ * @param {number} timestamp - Unix timestamp (seconds or milliseconds)
+ * @returns {{ dateStr: string, timeStr: string, tzStr: string } | null}
+ */
+export function formatLocalTimeForTooltip(timestamp) {
+  if (!timestamp) return null;
+
+  const normalizedTimestamp = normalizeTimestamp(timestamp);
+  if (!normalizedTimestamp) return null;
+
+  const date = new Date(normalizedTimestamp * 1000);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  const timezoneName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  return {
+    dateStr: `${year}/${month}/${day}`,
+    timeStr: `${hours}:${minutes}`,
+    tzStr: timezoneName,
+  };
+}

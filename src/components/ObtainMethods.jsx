@@ -2224,7 +2224,22 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`trade-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/065000/065002.png" alt="Trade" className="w-6 h-6" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 220 200"
+              className="w-6 h-6 text-ffxiv-gold"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="9"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <g>
+                <polyline points="150,55 75,55 75,35 20,77 75,120 75,100" />
+                <line x1="75" y1="100" x2="145" y2="100" />
+                <polyline points="145,100 145,80 200,122 145,165 145,145 70,145" />
+              </g>
+            </svg>
             <span className="text-ffxiv-gold font-medium">兌換</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">

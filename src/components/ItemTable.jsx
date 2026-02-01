@@ -151,7 +151,7 @@ const ItemNameCell = ({ itemName, addToast }) => {
   );
 };
 
-export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null, selectedRarities: externalSelectedRarities, setSelectedRarities: externalSetSelectedRarities, raritiesData: externalRaritiesData, externalRarityFilter = false, externalRarityCounts = null, isServerDataLoaded = true, isRaritySelectorDisabled = false, itemsAlreadyFiltered = false, preserveItemOrder = false }) {
+export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null, selectedRarities: externalSelectedRarities, setSelectedRarities: externalSetSelectedRarities, raritiesData: externalRaritiesData, externalRarityFilter = false, externalRarityCounts = null, isServerDataLoaded = true, isRaritySelectorDisabled = false, itemsAlreadyFiltered = false, preserveItemOrder = false, separateTradableInSort = true }) {
   const [sortColumn, setSortColumn] = useState('id');
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc' - default to desc for highest ilvl first
   const [ilvlsData, setIlvlsData] = useState(null);
@@ -336,7 +336,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
       const bIsTradable = bTradable === true;
       
       // For 'tradable' column, skip this check as it's the primary sort
-      if (sortColumn !== 'tradable' && aIsTradable !== bIsTradable) {
+      if (separateTradableInSort && sortColumn !== 'tradable' && aIsTradable !== bIsTradable) {
         return bIsTradable ? 1 : -1; // Tradable (true) comes before untradable (false)
       }
 
@@ -485,7 +485,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
       // If values are equal, use ID as secondary sort
       return a.id - b.id;
     });
-  }, [filteredItems, sortColumn, sortDirection, preserveItemOrder, itemTradability, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, ilvlsData, itemPatchData, patchNamesData]);
+  }, [filteredItems, sortColumn, sortDirection, preserveItemOrder, separateTradableInSort, itemTradability, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, ilvlsData, itemPatchData, patchNamesData]);
 
   // Paginate sorted items if pagination is enabled
   const paginatedItems = useMemo(() => {

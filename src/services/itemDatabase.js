@@ -1220,8 +1220,9 @@ export async function getItemById(itemId) {
 const EQUIP_SLOT_ORDER = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 /**
- * 套裝查詢：根據一件裝備 ID，從本地 JSON 找出同套裝的所有裝備（同 patch、同 ilvl、同裝備等級、同職業限制）。
+ * 套裝查詢（JSON 版）：根據一件裝備 ID，從本地 JSON 找出同套裝的所有裝備。
  * 僅使用 teamcraft 的 equipment.json / ilvls.json / item-patch.json，不呼叫 API。
+ * @deprecated UI 請改用 supabaseData 的 getItemSetFromDB(itemId)，可共用 ilvls/item_patch 快取且不載入約 8.4 MB JSON。此函式保留作為 fallback 或離線/測試用。
  * @param {number} itemId - 裝備道具 ID（例如 19623）
  * @returns {Promise<{ setItemIds: number[], seedItemId: number, isEquipmentSet: boolean, ilvl?: number, patch?: number, level?: number }>}
  */
