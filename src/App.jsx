@@ -18,6 +18,7 @@ import ItemImage from './components/ItemImage';
 import { cancelAllIconRequests, preloadItemIcon } from './utils/itemImage';
 import HistoryButton from './components/HistoryButton';
 import { addItemToHistory } from './utils/itemHistory';
+import { generateBracketPatterns } from './utils/searchNormalization';
 import { addSearchToHistory } from './utils/searchHistory';
 import { useHistory } from './hooks/useHistory';
 import { hasRecipe, buildCraftingTree, findRelatedItems } from './services/recipeDatabase';
@@ -92,6 +93,7 @@ function App() {
   const [marketHistory, setMarketHistory] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchingItemsCount, setSearchingItemsCount] = useState(0); // Track items count during search
+  const [searchingLanguage, setSearchingLanguage] = useState(null); // Track language being searched
   const [isOCRSearchResult, setIsOCRSearchResult] = useState(false); // When true, ItemTable preserves result order (no ilvl sort)
   const [isLoadingMarket, setIsLoadingMarket] = useState(false);
   const [error, setError] = useState(null);
@@ -2699,6 +2701,7 @@ function App() {
     }
     setIsSearching(true);
     setError(null);
+    setSearchingLanguage('繁體'); // Start with traditional Chinese by default
     
     setSelectedItem(null);
     selectedItemRef.current = null;
@@ -2742,10 +2745,29 @@ function App() {
       setSearchingItemsCount(0); // Reset count when starting new search
       setIsSearching(true);
       
-      // Use OCR search if isOCR flag is set, otherwise use regular search
-      const searchResult = isOCR 
-        ? await searchItemsOCR(trimmedTerm, searchSignal, ocrOptions || undefined)
-        : await searchItems(trimmedTerm, false, searchSignal);
+      // Generate search patterns with variable spacing before bracket
+      const searchPatterns = generateBracketPatterns(trimmedTerm);
+      let searchResult = null;
+      
+      // Try each pattern for exact matching until we find results
+      if (!isOCR) {
+        for (const pattern of searchPatterns) {
+          const result = await searchItems(pattern, false, searchSignal);
+          if (result.results && result.results.length > 0) {
+            searchResult = result;
+            break;
+          }
+        }
+        
+        // If no exact match found, try fuzzy search with primary pattern
+        if (!searchResult || !searchResult.results || searchResult.results.length === 0) {
+          searchResult = await searchItems(searchPatterns[0], true, searchSignal);
+        }
+      } else {
+        // For OCR search, use the primary pattern
+        searchResult = await searchItemsOCR(searchPatterns[0], searchSignal, ocrOptions || undefined);
+      }
+      
       const { results, converted, originalText, convertedText, searchedSimplified } = searchResult;
       
       // Update searching items count for display
@@ -2756,10 +2778,12 @@ function App() {
       // Show toast if conversion happened
       if (converted && convertedText) {
         if (searchedSimplified) {
+          setSearchingLanguage('簡體'); // Update to simplified Chinese
           if (results.length > 0) {
             addToast(`「${originalText}」繁體搜尋無資料，在簡體中文資料庫找到結果！`, 'warning');
           }
         } else {
+          setSearchingLanguage('繁體 (轉譯)'); // Show that we're using converted text
           addToast(`「${originalText}」無搜尋結果，正在嘗試轉譯成「${convertedText}」`, 'info');
         }
       }
@@ -2795,6 +2819,7 @@ function App() {
         setError(null);
         setIsSearching(false); // Search complete - set INSIDE flushSync to ensure atomic update
         setSearchingItemsCount(0); // Reset count after search completes
+        setSearchingLanguage(null); // Reset language indicator
         setIsOCRSearchResult(isOCR); // Preserve result order in ItemTable for OCR (no ilvl sort)
       });
       
@@ -3723,6 +3748,7 @@ function App() {
                 showLoadingIndicator={showLoadingIndicator}
                 isSearching={isSearching}
                 searchingItemsCount={searchingItemsCount}
+                searchingLanguage={searchingLanguage}
                 averagePriceHeader={selectedServerOption === selectedWorld?.section ? '全服平均價格' : '平均價格'}
                 getSimplifiedChineseName={getSimplifiedChineseName}
                 addToast={addToast}

@@ -1,7 +1,10 @@
 // Cute fluffy cloud loader animation
 import { useEffect, useState, useRef } from 'react';
 
-export default function RunningLoader({ message = '正在搜尋中...' }) {
+export default function RunningLoader({ 
+  message = '正在搜尋中...',
+  searchingLanguage = null  // Optional: display language being searched (e.g., '繁體', '簡體', 'English')
+}) {
   const [position, setPosition] = useState(0);
   const [frame, setFrame] = useState(0);
   const [isResetting, setIsResetting] = useState(false);
@@ -152,7 +155,7 @@ export default function RunningLoader({ message = '正在搜尋中...' }) {
       {/* Loading text with animation */}
       <div className="text-center">
         <p className="text-lg sm:text-xl font-semibold text-purple-300 mb-3">
-          {message}
+          {searchingLanguage ? `正在搜尋${searchingLanguage}資料庫...` : message}
         </p>
         <div className="flex items-center justify-center gap-2">
           <div className="w-2 h-2 bg-purple-300 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>

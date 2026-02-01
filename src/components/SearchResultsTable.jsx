@@ -76,6 +76,7 @@ export default function SearchResultsTable({
       // Loading state for running loader
       isSearching = false, // Show running loader when searching and no results
       searchingItemsCount = 0, // Count of items found during search
+      searchingLanguage = null, // Optional: language being searched (e.g., '繁體', 'English')
       
       // Callbacks
       onPageChange = null, // Optional callback when page changes
@@ -183,7 +184,10 @@ export default function SearchResultsTable({
   if (items.length === 0 && isSearching) {
     return (
       <div className="mb-6 min-h-[500px]">
-        <RunningLoader message={searchingItemsCount > 0 ? `正在載入 ${searchingItemsCount} 個物品...` : '正在搜尋中...'} />
+        <RunningLoader 
+          message={searchingItemsCount > 0 ? `正在載入 ${searchingItemsCount} 個物品...` : '正在搜尋中...'} 
+          searchingLanguage={searchingLanguage}
+        />
       </div>
     );
   }
