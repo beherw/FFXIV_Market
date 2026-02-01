@@ -952,7 +952,14 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
             return (
               <tr
                 key={item.id || index}
-                onClick={() => onSelect && onSelect(item)}
+                onClick={(e) => {
+                  // Left-click opens in new tab, Ctrl/Cmd+click also opens in new tab
+                  if (e.ctrlKey || e.metaKey || e.button === 0) {
+                    const basename = window.location.pathname.includes('/FFXIV_Market') ? '/FFXIV_Market' : '';
+                    const url = basename + generateItemUrl(item.id, item.nameTW || item.name || 'item');
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }
+                }}
                 onMouseDown={(e) => {
                   // Middle mouse button (button === 1)
                   if (e.button === 1) {
