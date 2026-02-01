@@ -1,17 +1,22 @@
 /**
  * Supabase Client Configuration
- * 
- * This file initializes the Supabase client for accessing game data.
- * Uses public anon key for client-side access (read-only).
+ *
+ * Uses env vars only (no keys in repo). Set in .env:
+ *   VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+ * See .env.example for placeholders.
  */
 
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase configuration
-const SUPABASE_URL = 'https://dojkqotccerymtnqnyfj.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_hMotsHXlY9psWRl35E3Ppw_WAH4P7Pf';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Create Supabase client
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error(
+    'Missing Supabase env: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env (see .env.example)'
+  );
+}
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /**

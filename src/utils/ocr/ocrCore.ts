@@ -3,6 +3,7 @@
  */
 
 import { OCR_CONFIG } from './config';
+import { TESSERACT_INIT_CONFIG } from './tesseractConfig';
 import type { OCRFilterOptions } from './types';
 import { buildItemtwCharWhitelist, validateAgainstWhitelist, getWhitelistString } from './whitelist';
 import { autoCropImage, filterChineseOnly } from './imageUtils';
@@ -16,12 +17,12 @@ export async function detectTextRegion(image: HTMLImageElement): Promise<{ x: nu
       return null;
     }
 
-    // 使用 Tesseract 原生 CDN 模型
-    const worker = await window.Tesseract.createWorker(OCR_CONFIG.tesseractLang, 1);
+    // 使用 Tesseract 原生 CDN 模型；傳入 LSTM 專用 init config 避免「Parameter not found」警告
+    const worker = await window.Tesseract.createWorker(OCR_CONFIG.tesseractLang, 1, {}, TESSERACT_INIT_CONFIG);
     
+    // OEM 已在 createWorker(lang, 1) 時設為 LSTM，勿在此重設（會觸發「只能於初始化時設定」警告）
     const detectionParams: Record<string, string> = {
       tessedit_pageseg_mode: '7',
-      tessedit_ocr_engine_mode: '1',
     };
     
     if (OCR_CONFIG.useItemtwWhitelist) {
@@ -159,8 +160,8 @@ export async function performOCR(
       throw new Error('Tesseract.js 尚未載入，請稍候再試');
     }
 
-    // 使用 Tesseract 原生 CDN 模型
-    const worker = await window.Tesseract.createWorker(OCR_CONFIG.tesseractLang, 1);
+    // 使用 Tesseract 原生 CDN 模型；傳入 LSTM 專用 init config 避免「Parameter not found」警告
+    const worker = await window.Tesseract.createWorker(OCR_CONFIG.tesseractLang, 1, {}, TESSERACT_INIT_CONFIG);
 
     let chineseCharWhitelist = '';
     
@@ -168,10 +169,10 @@ export async function performOCR(
       chineseCharWhitelist = await buildItemtwCharWhitelist();
     }
     
+    // OEM 已在 createWorker(lang, 1) 時設為 LSTM，勿在此重設
     const params = {
       tessedit_char_whitelist: chineseCharWhitelist,
       tessedit_pageseg_mode: '7',
-      tessedit_ocr_engine_mode: '1',
       classify_bln_numeric_mode: '0',
       textord_min_linesize: '2.0', // 降低最小行尺寸，識別更小的字符
       classify_enable_learning: '0',

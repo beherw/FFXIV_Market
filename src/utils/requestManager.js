@@ -55,9 +55,16 @@ class RequestManager {
 
   /**
    * Create a queued request with rate limit handling
+   * @param {Function} requestFn - Function that makes the API request (should accept abort signal)
+   * @param {Object} options - Options including maxRetries, onRateLimit, and signal
    */
   async makeRequest(requestFn, options = {}) {
-    const { maxRetries = 3, onRateLimit } = options;
+    const { maxRetries = 3, onRateLimit, signal } = options;
+
+    // Check if already aborted before starting
+    if (signal && signal.aborted) {
+      throw new DOMException('Request aborted', 'AbortError');
+    }
 
     // Wait if needed to respect minimum interval
     const waitTime = this.getWaitTime();
@@ -65,14 +72,29 @@ class RequestManager {
       await new Promise(resolve => setTimeout(resolve, waitTime));
     }
 
+    // Check again after waiting
+    if (signal && signal.aborted) {
+      throw new DOMException('Request aborted', 'AbortError');
+    }
+
     let lastError = null;
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      // Check if aborted before each attempt
+      if (signal && signal.aborted) {
+        throw new DOMException('Request aborted', 'AbortError');
+      }
+
       try {
         this.updateLastRequestTime();
         const result = await requestFn();
         return result;
       } catch (error) {
+        // Handle abort errors
+        if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || (signal && signal.aborted)) {
+          throw new DOMException('Request aborted', 'AbortError');
+        }
+
         lastError = error;
 
         // Check if it's a rate limit error
@@ -91,6 +113,11 @@ class RequestManager {
 
           // Wait before retrying
           await new Promise(resolve => setTimeout(resolve, retryDelay));
+          
+          // Check if aborted after waiting
+          if (signal && signal.aborted) {
+            throw new DOMException('Request aborted', 'AbortError');
+          }
           continue;
         }
 

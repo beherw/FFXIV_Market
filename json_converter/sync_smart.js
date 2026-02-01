@@ -16,12 +16,13 @@ import crypto from 'crypto';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Configuration
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://dojkqotccerymtnqnyfj.supabase.co';
+// Configuration — no defaults; use env only (never commit keys)
+const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SECRET_KEY;
 
-if (!SUPABASE_SERVICE_KEY) {
-  console.error('ERROR: SUPABASE_SERVICE_KEY or SUPABASE_SECRET_KEY environment variable is required');
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error('ERROR: Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_SECRET_KEY) in your environment.');
+  console.error('See json_converter/README.md for setup. Never commit real keys.');
   process.exit(1);
 }
 
@@ -646,7 +647,7 @@ async function main() {
   console.log('='.repeat(80));
   console.log('Smart CSV to Supabase Sync');
   console.log('='.repeat(80));
-  console.log(`Supabase URL: ${SUPABASE_URL}`);
+  console.log('Supabase URL: ' + (SUPABASE_URL ? SUPABASE_URL.replace(/https:\/\/([^.]+)\./, 'https://***.') : '(not set)'));
   console.log('');
   
   // Ensure metadata table exists for change detection

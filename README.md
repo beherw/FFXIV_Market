@@ -118,6 +118,8 @@
 
 ### 開發環境設定
 
+1. **環境變數**：複製 `.env.example` 為 `.env`，填入 `VITE_SUPABASE_URL` 與 `VITE_SUPABASE_ANON_KEY`（勿將 `.env` 或真實金鑰提交至版本庫）。
+
 ```bash
 # 安裝依賴套件
 npm install

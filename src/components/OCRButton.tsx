@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { getTwItems } from '../services/supabaseData';
 import { cropBlackBorders } from '../utils/ocr/imageUtils';
-import { getTesseractConfig, ocrDebugLog, type TesseractFiltersConfig } from '../utils/ocr/tesseractConfig';
+import { getTesseractConfig, ocrDebugLog, TESSERACT_INIT_CONFIG, type TesseractFiltersConfig } from '../utils/ocr/tesseractConfig';
 
 // Tesseract.js v5 類型聲明（從 CDN 載入）
 // v5 API: createWorker(langs?, oem?, options?, config?)
@@ -738,7 +738,7 @@ function preprocessImage(
 
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
 
     // ========== 步驟0: Canvas 設置和圖像縮放 ==========
     const scale = filterSwitches.enableImageScale ? getConfig().imageScale : 1.0;
@@ -1333,13 +1333,12 @@ async function detectTextRegion(image: HTMLImageElement): Promise<{ x: number; y
     }
 
     // 創建臨時 Worker 進行快速檢測
-    // 使用 Tesseract 原生 CDN 模型
-    const worker = await window.Tesseract.createWorker(getConfig().tesseractLang, 1);
+    // 使用 Tesseract 原生 CDN 模型；傳入 LSTM 專用 init config 避免載入含舊版參數的預設 config（消除「Parameter not found」警告）
+    const worker = await window.Tesseract.createWorker(getConfig().tesseractLang, 1, {}, TESSERACT_INIT_CONFIG);
     
-    // 構建參數：使用快速模式
+    // 構建參數：使用快速模式（OEM 已在 createWorker(lang, 1) 時設為 LSTM，勿在此重設）
     const detectionParams: Record<string, string> = {
       tessedit_pageseg_mode: '7', // 單行文本模式
-      tessedit_ocr_engine_mode: '1', // LSTM OCR Engine
     };
     
     // 如果白名單已構建，使用它來提高檢測準確度
@@ -1855,8 +1854,8 @@ async function performOCR(
       timestamp: new Date().toISOString(),
     });
     const workerCreateStart = Date.now();
-    // v5 API: createWorker(lang, oem?, options?) - 使用 CDN 原生模型
-    const worker = await window.Tesseract.createWorker(getConfig().tesseractLang, 1);
+    // v5 API: createWorker(lang, oem?, options?, config?) - 使用 CDN 原生模型；傳入 LSTM 專用 init config 避免「Parameter not found」警告
+    const worker = await window.Tesseract.createWorker(getConfig().tesseractLang, 1, {}, TESSERACT_INIT_CONFIG);
     const workerCreateEnd = Date.now();
     ocrDebugLog('performOCR: Worker 創建成功（已預載語言）', {
       duration: workerCreateEnd - workerCreateStart,
@@ -1901,15 +1900,10 @@ async function performOCR(
       });
     }
     
+    // OEM 已在 createWorker(lang, 1) 時設為 LSTM，勿用 setParameters 重設 tessedit_ocr_engine_mode（會觸發「只能於初始化時設定」警告）
     const params = {
       tessedit_char_whitelist: chineseCharWhitelist, // 字符白名單：空字符串 = 不限制字符；非空 = 只識別白名單中的字符（使用 itemtw 白名單時，只識別 itemtw 中存在的字符）
-      // 嘗試多種PSM模式以提高識別準確度
-      // PSM 7: 單行文本（適合水平排列的文字，避免字符順序混亂）
-      // PSM 8: 單詞（如果PSM 7效果不好，可以嘗試這個）
-      // PSM 6: 統一文本塊（原設定，保留作為備選）
       tessedit_pageseg_mode: '7', // 單行文本模式，確保字符按正確順序識別
-      // 提升識別準確度的參數
-      tessedit_ocr_engine_mode: '1', // LSTM OCR Engine（更準確）
       classify_bln_numeric_mode: '0', // 不限制為數字模式（0=禁用數字模式，有助於減少數字誤識別）
       textord_min_linesize: '2.5', // 最小行尺寸
       classify_enable_learning: '0', // 禁用學習模式以保持一致性

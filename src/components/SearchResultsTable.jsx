@@ -80,6 +80,9 @@ export default function SearchResultsTable({
       // Callbacks
       onPageChange = null, // Optional callback when page changes
       scrollRef = null, // Optional ref to scroll to when page changes (instead of top of page)
+      
+      // When true (e.g. OCR search), ItemTable preserves result order and skips ilvl/sort
+      preserveItemOrder = false,
 }) {
   // Pagination state (use external if provided, otherwise use internal)
   const [internalCurrentPage, setInternalCurrentPage] = useState(1);
@@ -444,6 +447,7 @@ export default function SearchResultsTable({
         externalRarityCounts={externalRarityCounts}
         itemsAlreadyFiltered={true}
         isRaritySelectorDisabled={isRaritySelectorDisabled}
+        preserveItemOrder={preserveItemOrder}
       />
       
       {/* Pagination Controls (Bottom) */}

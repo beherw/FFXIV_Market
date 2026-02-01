@@ -58,12 +58,10 @@ let twLevesDataLoading = false;
  */
 async function loadTwQuestsData() {
   if (twQuestsDataCache) {
-    console.log('[ObtainMethods] Using cached tw-quests.json');
     return twQuestsDataCache;
   }
   
   if (twQuestsDataLoading) {
-    console.log('[ObtainMethods] Waiting for ongoing tw-quests.json load...');
     // Wait for ongoing load
     while (twQuestsDataLoading) {
       await new Promise(resolve => setTimeout(resolve, 50));
@@ -73,16 +71,8 @@ async function loadTwQuestsData() {
   
   twQuestsDataLoading = true;
   try {
-    console.log('[ObtainMethods] Starting to load tw-quests.json...');
     const module = await import('../../teamcraft_git/libs/data/src/lib/json/tw/tw-quests.json');
     twQuestsDataCache = module.default || module;
-    console.log('[ObtainMethods] Successfully loaded tw-quests.json, module keys:', Object.keys(module).join(', '));
-    console.log('[ObtainMethods] Cache keys count:', twQuestsDataCache ? Object.keys(twQuestsDataCache).length : 0);
-    if (twQuestsDataCache && twQuestsDataCache[795]) {
-      console.log('[ObtainMethods] Quest 795 found in tw-quests.json:', twQuestsDataCache[795]);
-    } else {
-      console.log('[ObtainMethods] Quest 795 NOT found in tw-quests.json');
-    }
     return twQuestsDataCache;
   } catch (error) {
     console.error('[ObtainMethods] Failed to load tw-quests.json:', error);
@@ -98,12 +88,10 @@ async function loadTwQuestsData() {
  */
 async function loadTwLevesData() {
   if (twLevesDataCache) {
-    console.log('[ObtainMethods] Using cached tw-leves.json');
     return twLevesDataCache;
   }
   
   if (twLevesDataLoading) {
-    console.log('[ObtainMethods] Waiting for ongoing tw-leves.json load...');
     // Wait for ongoing load
     while (twLevesDataLoading) {
       await new Promise(resolve => setTimeout(resolve, 50));
@@ -113,16 +101,8 @@ async function loadTwLevesData() {
   
   twLevesDataLoading = true;
   try {
-    console.log('[ObtainMethods] Starting to load tw-leves.json...');
     const module = await import('../../teamcraft_git/libs/data/src/lib/json/tw/tw-leves.json');
     twLevesDataCache = module.default || module;
-    console.log('[ObtainMethods] Successfully loaded tw-leves.json, module keys:', Object.keys(module).join(', '));
-    console.log('[ObtainMethods] Cache keys count:', twLevesDataCache ? Object.keys(twLevesDataCache).length : 0);
-    if (twLevesDataCache && (twLevesDataCache[795] || twLevesDataCache['795'])) {
-      console.log('[ObtainMethods] Leve 795 found in tw-leves.json:', twLevesDataCache[795] || twLevesDataCache['795']);
-    } else {
-      console.log('[ObtainMethods] Leve 795 NOT found in tw-leves.json');
-    }
     return twLevesDataCache;
   } catch (error) {
     console.error('[ObtainMethods] Failed to load tw-leves.json:', error);
@@ -196,11 +176,18 @@ function setCachedObtainMethodsData(itemId, sources, loadedData) {
   };
 }
 
-export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTree, isCraftingTreeExpanded = false }) {
+export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTree, isCraftingTreeExpanded = false, onLoadingChange }) {
   
   const navigate = useNavigate();
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Notify parent component when loading state changes
+  useEffect(() => {
+    if (onLoadingChange) {
+      onLoadingChange(loading);
+    }
+  }, [loading, onLoadingChange]);
   const [mapModal, setMapModal] = useState({ isOpen: false, zoneName: '', x: 0, y: 0, npcName: '', mapId: null });
   const [hoveredAchievement, setHoveredAchievement] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
@@ -389,10 +376,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     
     // Load tw-quests.json if needed
     if (needsQuestData && !twQuestsStaticData && !isLoadingQuestsData) {
-      console.log(`[ObtainMethods] 📥 Lazy loading tw-quests.json for quest IDs: ${questIds.join(', ')}`);
       setIsLoadingQuestsData(true);
       loadTwQuestsData().then(data => {
-        console.log(`[ObtainMethods] ✅ Loaded tw-quests.json (${Object.keys(data).length} quests)`);
         setTwQuestsStaticData(data);
         setIsLoadingQuestsData(false);
         // Update loadedData with static data
@@ -475,7 +460,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Check cache first - if data exists and is not expired, use it immediately
     const cached = getCachedObtainMethodsData(itemId);
     if (cached) {
-      console.log(`[ObtainMethods] 📦 Using cached data for item ${itemId}`);
       // Update ref immediately
       currentItemIdRef.current = itemId;
       // Restore cached data - clone to avoid mutating cache
@@ -495,8 +479,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return; // Skip loading from Supabase
     }
 
-    console.log(`[ObtainMethods] Loading obtainable methods for item ${itemId}`);
-    
     // Update ref immediately to prevent showing stale data during redirects
     currentItemIdRef.current = itemId;
     
@@ -520,13 +502,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       .then(async sourcesData => {
         // Check if request was cancelled or itemId changed
         if (abortController.signal.aborted) {
-          console.log(`[ObtainMethods] ⏹️ Request cancelled for item ${currentItemId}`);
           return;
         }
         
         // Check again if request was cancelled (after async getFateSourcesByItemId)
         if (abortController.signal.aborted) {
-          console.log(`[ObtainMethods] ⏹️ Request cancelled for item ${currentItemId} after getFateSourcesByItemId`);
           return;
         }
         
@@ -548,27 +528,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           console.warn(`[ObtainMethods] ⚠️ No sources found for item ${currentItemId}`);
         }
         
-        // Debug: Log sources structure
-        console.log(`[ObtainMethods] 📋 Loaded ${sourcesData.length} sources for item ${currentItemId}`);
         const islandCropSources = sourcesData.filter(s => s.type === DataType.ISLAND_CROP);
         const questSources = sourcesData.filter(s => s.type === DataType.QUESTS);
-        console.log(`[ObtainMethods] 📋 ISLAND_CROP sources: ${islandCropSources.length}`);
-        islandCropSources.forEach((source, idx) => {
-          console.log(`[ObtainMethods] 📋 ISLAND_CROP source ${idx}:`, {
-            type: source.type,
-            dataLength: Array.isArray(source.data) ? source.data.length : 'not array',
-            data: source.data
-          });
-        });
-        console.log(`[ObtainMethods] 📋 QUESTS sources: ${questSources.length}`);
-        questSources.forEach((source, idx) => {
-          console.log(`[ObtainMethods] 📋 QUESTS source ${idx}:`, {
-            type: source.type,
-            dataLength: Array.isArray(source.data) ? source.data.length : 'not array',
-            data: source.data
-          });
-        });
-        
+
         const requiredIds = extractIdsFromSources(sourcesData);
         
         // Step 2.5: Identify and load levequest data upfront
@@ -615,7 +577,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         
         // Add levequest IDs to requiredIds for Supabase query
         if (levequestIds.length > 0) {
-          console.log(`[ObtainMethods] 📥 Will query levequest data for ${levequestIds.length} leve IDs: ${levequestIds.join(', ')}`);
           // Note: NPC IDs and item IDs will be extracted after leve data is loaded from Supabase
         }
         
@@ -756,7 +717,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         return Promise.all(queries).then(async results => {
           // Check if request was cancelled or itemId changed
           if (abortController.signal.aborted) {
-            console.log(`[ObtainMethods] ⏹️ Request cancelled for item ${currentItemId} after queries`);
             return;
           }
           
@@ -1501,8 +1461,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             
             // Cache the loaded data for future use (use finalLoadedData which includes all updates)
             setCachedObtainMethodsData(currentItemId, processedSources, finalLoadedData);
-            
-            console.log(`[ObtainMethods] ✅ Loaded ${processedSources.length} obtainable method(s) for item ${currentItemId}`);
           }
         });
       })
@@ -3001,9 +2959,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         return item; // Already an ID
       }).filter(questId => questId !== null && questId !== undefined);
       
-      console.log(`[ObtainMethods] 🔍 QUESTS source ${index}, questIds:`, questIds);
-      console.log(`[ObtainMethods] 🔍 QUESTS source ${index}, raw data:`, data);
-      
       if (questIds.length === 0) {
         return null; // Skip if no valid quests
       }
@@ -3942,9 +3897,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       if (isLevequestFormat) {
         // This is actually levequest data, display as levequests (理符任務)
         // Also collect levequests from QUESTS sources to display together
-        console.log(`[ObtainMethods] 🔍 ISLAND_CROP source ${index} is levequest format, data length: ${data.length}`);
-        console.log(`[ObtainMethods] 🔍 Levequest data:`, data);
-        
         // Collect all levequests from QUESTS sources
         const questLevequests = [];
         sources.forEach(s => {
@@ -3975,7 +3927,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         
         // Combine ISLAND_CROP levequests with QUESTS levequests
         const allLevequests = [...data, ...questLevequests];
-        console.log(`[ObtainMethods] 🔍 Combined levequests: ${allLevequests.length} (${data.length} from ISLAND_CROP, ${questLevequests.length} from QUESTS)`);
         
         return (
           <div key={`levequest-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
@@ -4026,7 +3977,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   const npcDbState = loadedData.npcsDatabasePages[npcId] || loadedData.npcsDatabasePages[String(npcId)];
                   const npcDb = npcDbRef || npcDbState;
                   if (npcDb?.position) {
-                    console.log(`[ObtainMethods] ✅ Found NPC ${npcId} position in npcsDatabasePages:`, npcDb.position);
                     return npcDb.position;
                   }
                   // Fallback to npcs.json (from getNpcsByIds) - check both ref and state
@@ -4034,12 +3984,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   const npcDataState = loadedData.npcs[npcId] || loadedData.npcs[String(npcId)];
                   const npcData = npcDataRef || npcDataState;
                   if (npcData?.position) {
-                    console.log(`[ObtainMethods] ✅ Found NPC ${npcId} position in npcs:`, npcData.position);
                     return npcData.position;
-                  }
-                  // Debug: log what data we have for this NPC
-                  if (npcId) {
-                    console.log(`[ObtainMethods] ⚠️ NPC ${npcId} has no position data. npcDb:`, !!npcDb, 'npcData:', !!npcData);
                   }
                   return null;
                 });

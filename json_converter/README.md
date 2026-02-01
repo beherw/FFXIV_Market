@@ -9,8 +9,8 @@ This directory contains tools to convert JSON data files to CSV format and autom
 Go to: `https://github.com/YOUR_REPO/settings/secrets/actions`
 
 Add:
-- `SUPABASE_URL`: `https://dojkqotccerymtnqnyfj.supabase.co`
-- `SUPABASE_SERVICE_KEY`: `sb_secret_Lpd3cK-AMqwfBYYaWakH8w_QRQ3f8w5`
+- `SUPABASE_URL`: your Supabase project URL (e.g. `https://xxxxx.supabase.co`)
+- `SUPABASE_SERVICE_KEY`: your **service role** key from Supabase Dashboard → Settings → API (never commit this; use GitHub Secrets only)
 
 ### 2. Setup Helper Function (One-time)
 
@@ -67,10 +67,11 @@ node json_to_csv.js
 
 ### Sync to Supabase (Local Test)
 ```bash
-export SUPABASE_URL="https://dojkqotccerymtnqnyfj.supabase.co"
-export SUPABASE_SERVICE_KEY="sb_secret_Lpd3cK-AMqwfBYYaWakH8w_QRQ3f8w5"
+export SUPABASE_URL="https://your-project.supabase.co"
+export SUPABASE_SERVICE_KEY="your-service-role-key-from-dashboard"
 node sync_smart.js
 ```
+Never paste your real service key into docs or code; use env vars only.
 
 ## Adding New JSON Files
 

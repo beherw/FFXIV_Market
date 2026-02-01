@@ -98,7 +98,7 @@ const getVersionColor = (versionString) => {
   return '#9CA3AF';
 };
 
-// Item name cell with copy button
+// Item name cell with copy button (OCR match score only in console log, not shown in UI)
 const ItemNameCell = ({ itemName, addToast }) => {
   const handleCopyClick = (e) => {
     e.stopPropagation();
@@ -151,7 +151,7 @@ const ItemNameCell = ({ itemName, addToast }) => {
   );
 };
 
-export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null, selectedRarities: externalSelectedRarities, setSelectedRarities: externalSetSelectedRarities, raritiesData: externalRaritiesData, externalRarityFilter = false, externalRarityCounts = null, isServerDataLoaded = true, isRaritySelectorDisabled = false, itemsAlreadyFiltered = false }) {
+export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null, selectedRarities: externalSelectedRarities, setSelectedRarities: externalSetSelectedRarities, raritiesData: externalRaritiesData, externalRarityFilter = false, externalRarityCounts = null, isServerDataLoaded = true, isRaritySelectorDisabled = false, itemsAlreadyFiltered = false, preserveItemOrder = false }) {
   const [sortColumn, setSortColumn] = useState('id');
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc' - default to desc for highest ilvl first
   const [ilvlsData, setIlvlsData] = useState(null);
@@ -322,8 +322,9 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     return filtered;
   }, [items, isLoadingVelocities, itemTradability, marketableItems, selectedRarities, raritiesDataToUse, externalRarityFilter, selectedVersions, itemPatchData, patchNamesData, itemsAlreadyFiltered]);
 
-  // Sort items based on current sort column and direction
+  // Sort items based on current sort column and direction (skip when preserveItemOrder e.g. OCR search)
   const sortedItems = useMemo(() => {
+    if (preserveItemOrder) return filteredItems;
     if (!sortColumn) return filteredItems;
 
     return [...filteredItems].sort((a, b) => {
@@ -484,7 +485,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
       // If values are equal, use ID as secondary sort
       return a.id - b.id;
     });
-  }, [filteredItems, sortColumn, sortDirection, itemTradability, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, ilvlsData, itemPatchData, patchNamesData]);
+  }, [filteredItems, sortColumn, sortDirection, preserveItemOrder, itemTradability, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, ilvlsData, itemPatchData, patchNamesData]);
 
   // Paginate sorted items if pagination is enabled
   const paginatedItems = useMemo(() => {

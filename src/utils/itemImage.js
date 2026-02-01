@@ -150,6 +150,12 @@ class IconRequestQueue {
         // Clear recent timestamps to allow recovery after pause
         this.requestTimestamps = [];
         
+        // Check if request was cancelled before retrying
+        if (item.abortSignal && item.abortSignal.aborted) {
+          item.reject(new Error('Request cancelled'));
+          return;
+        }
+        
         // Retry the request (put it back at the front of the queue)
         item.retryCount++;
         if (item.retryCount < 5) { // Max 5 retries
@@ -171,6 +177,17 @@ class IconRequestQueue {
    * Supports parallel processing up to MAX_CONCURRENT requests while respecting rate limits
    */
   async processQueue() {
+    // Filter out aborted requests from queue first
+    // This prevents aborted requests from blocking new requests
+    this.queue = this.queue.filter(item => {
+      if (item.abortSignal && item.abortSignal.aborted) {
+        // Request was cancelled, reject it and remove from queue
+        item.reject(new Error('Request cancelled'));
+        return false;
+      }
+      return true;
+    });
+
     if (this.queue.length === 0) {
       this.processing = false;
       return;
@@ -191,8 +208,16 @@ class IconRequestQueue {
     const itemsToProcess = [];
     
     // Get items from queue up to MAX_CONCURRENT
+    // Skip items that are already aborted
     while (itemsToProcess.length < MAX_CONCURRENT && this.queue.length > 0) {
       const item = this.queue.shift();
+      
+      // Skip aborted items - they should have been filtered above, but double-check
+      if (item.abortSignal && item.abortSignal.aborted) {
+        item.reject(new Error('Request cancelled'));
+        continue;
+      }
+      
       // Check if we can process this item now (rate limit check)
       const delay = this.getDelayBeforeNextRequest();
       if (delay === 0 || itemsToProcess.length === 0) {
@@ -236,6 +261,10 @@ class IconRequestQueue {
     });
     this.queue = [];
     this.processing = false;
+    // Reset rate limiting state to allow immediate new requests
+    this.requestTimestamps = [];
+    this.isPaused = false;
+    this.pauseUntil = 0;
   }
 }
 

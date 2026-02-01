@@ -321,11 +321,7 @@ export async function loadItemDatabase(isOCRFuzzySearch = false) {
   isLoading = true;
   const loadStartTime = performance.now();
   
-  if (isOCRFuzzySearch) {
-    // OCR fuzzy search is a legitimate fallback scenario - use info level logging
-    console.log(`[ItemDB] 🔍 Loading full item database for OCR fuzzy search (all 42,679 items)`);
-    console.log(`[ItemDB] ℹ️ This is expected when OCR text doesn't match exactly - using fuzzy matching fallback`);
-  } else {
+  if (!isOCRFuzzySearch) {
     // Unexpected usage - warn about it
     console.warn(`[ItemDB] ⚠️ Loading FULL item database (all 42,679 items)!`);
     console.warn(`[ItemDB] ⚠️ This should ONLY happen for fuzzy search or fallback scenarios.`);
@@ -1220,6 +1216,75 @@ export async function getItemById(itemId) {
   }
 }
 
+/** Equip slot display order: Head, Body, Hands, Waist, Legs, Feet, then accessories */
+const EQUIP_SLOT_ORDER = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+/**
+ * 套裝查詢：根據一件裝備 ID，從本地 JSON 找出同套裝的所有裝備（同 patch、同 ilvl、同裝備等級、同職業限制）。
+ * 僅使用 teamcraft 的 equipment.json / ilvls.json / item-patch.json，不呼叫 API。
+ * @param {number} itemId - 裝備道具 ID（例如 19623）
+ * @returns {Promise<{ setItemIds: number[], seedItemId: number, isEquipmentSet: boolean, ilvl?: number, patch?: number, level?: number }>}
+ */
+export async function getItemSet(itemId) {
+  if (!itemId || itemId <= 0) {
+    return { setItemIds: [], seedItemId: itemId, isEquipmentSet: false };
+  }
+
+  try {
+    const [equipmentModule, ilvlsModule, itemPatchModule] = await Promise.all([
+      import('../../teamcraft_git/libs/data/src/lib/json/equipment.json'),
+      import('../../teamcraft_git/libs/data/src/lib/json/ilvls.json'),
+      import('../../teamcraft_git/libs/data/src/lib/json/item-patch.json'),
+    ]);
+    const equipment = equipmentModule.default;
+    const ilvls = ilvlsModule.default;
+    const itemPatch = itemPatchModule.default;
+
+    const seedEquip = equipment[String(itemId)];
+    if (!seedEquip) {
+      return { setItemIds: [itemId], seedItemId: itemId, isEquipmentSet: false };
+    }
+
+    const seedIlvl = ilvls[String(itemId)];
+    const seedPatch = itemPatch[String(itemId)];
+    const seedLevel = seedEquip.level;
+    const seedJobsKey = [...(seedEquip.jobs || [])].sort().join(',');
+
+    const setItemIds = [];
+    for (const idStr of Object.keys(equipment)) {
+      const eq = equipment[idStr];
+      if (!eq || eq.level !== seedLevel) continue;
+      const jobsKey = [...(eq.jobs || [])].sort().join(',');
+      if (jobsKey !== seedJobsKey) continue;
+      const ilvl = ilvls[idStr];
+      const patch = itemPatch[idStr];
+      if (ilvl !== seedIlvl || patch !== seedPatch) continue;
+      setItemIds.push(parseInt(idStr, 10));
+    }
+
+    setItemIds.sort((a, b) => {
+      const slotA = equipment[String(a)]?.equipSlotCategory ?? 99;
+      const slotB = equipment[String(b)]?.equipSlotCategory ?? 99;
+      const orderA = EQUIP_SLOT_ORDER.indexOf(slotA);
+      const orderB = EQUIP_SLOT_ORDER.indexOf(slotB);
+      if (orderA !== orderB) return (orderA === -1 ? 99 : orderA) - (orderB === -1 ? 99 : orderB);
+      return a - b;
+    });
+
+    return {
+      setItemIds,
+      seedItemId: itemId,
+      isEquipmentSet: true,
+      ilvl: seedIlvl,
+      patch: seedPatch,
+      level: seedLevel,
+    };
+  } catch (error) {
+    console.error('[ItemDB] getItemSet failed:', error);
+    return { setItemIds: [itemId], seedItemId: itemId, isEquipmentSet: false };
+  }
+}
+
 // ==================== OCR Fuzzy Search Functions ====================
 
 /**
@@ -1304,7 +1369,7 @@ function levenshteinDistance(str1, str2) {
 }
 
 /**
- * Calculate position similarity score (how many characters match at same positions)
+ * Calculate position similarity score (how many characters match at same positions).
  * @param {string} query - Query text
  * @param {string} name - Item name
  * @returns {number} - Position similarity score (0-1)
@@ -1312,14 +1377,10 @@ function levenshteinDistance(str1, str2) {
 function positionMatchScore(query, name) {
   const minLen = Math.min(query.length, name.length);
   if (minLen === 0) return 0;
-  
   let matches = 0;
   for (let i = 0; i < minLen; i++) {
-    if (query[i] === name[i]) {
-      matches++;
-    }
+    if (query[i] === name[i]) matches++;
   }
-  
   return matches / Math.max(query.length, name.length);
 }
 
@@ -1345,7 +1406,7 @@ function subsequenceMatchScore(query, name, charWeights = null) {
     const w = useWeights ? charWeights[i] : 1;
     if (useWeights) weightedSum += w;
     while (nameIdx < name.length) {
-      if (name[nameIdx] === c) {
+      if (c === name[nameIdx]) {
         matched += useWeights ? w : 1;
         nameIdx++;
         break;
@@ -1392,6 +1453,29 @@ function orderFirstScore(query, name, charWeights = null) {
 }
 
 /**
+ * Consecutive-run score: reward query substrings that appear contiguously in the item name.
+ * E.g. OCR "信 力 廣 品 石 參 型" → query "信力廣品石參型"; name "信力魔晶石參型" has runs "信力" (2) and "石參型" (3).
+ * @param {string} query - Query text (normalized, no spaces)
+ * @param {string} name - Item name
+ * @returns {number} - Score 0-1: fraction of query covered by runs that appear consecutively in name
+ */
+function consecutiveRunScore(query, name) {
+  const q = (query || '').replace(/\s+/g, '');
+  if (!q || !name) return 0;
+  let totalRun = 0;
+  let i = 0;
+  while (i < q.length) {
+    let bestL = 0;
+    for (let L = 1; L <= q.length - i; L++) {
+      if (name.includes(q.substring(i, i + L))) bestL = L;
+    }
+    totalRun += bestL;
+    i += Math.max(bestL, 1);
+  }
+  return totalRun / q.length;
+}
+
+/**
  * Calculate n-gram overlap score
  * @param {string} query - Query text
  * @param {string} name - Item name
@@ -1428,21 +1512,25 @@ function calcOcrFriendlySimilarity(query, name, charWeights = null) {
   
   // Primary: order-first score (順序對、缺字多字少時效果最好)
   const orderScore = orderFirstScore(query, name, charWeights);
-  
+
+  // Consecutive-run: when two+ query chars appear together in name (e.g. 信力), add score so correct item ranks higher
+  const consecScore = consecutiveRunScore(query, name);
+
   // Secondary: n-gram overlap, edit distance, position (prefix)
   const overlapScore = ngramOverlapScore(query, name, 2);
   const maxLen = Math.max(query.length, name.length);
   const editDist = levenshteinDistance(query, name);
   const edScore = maxLen > 0 ? 1 - (editDist / maxLen) : 0;
   const posScore = positionMatchScore(query, name);
-  
-  // Weights: order-first dominant (0.5), then ngram (0.2), edit (0.2), position (0.1)
-  const wOrder = 0.5;
+
+  // Weights: order (0.45), consecutive-run bonus (0.15), ngram (0.2), edit (0.15), position (0.05)
+  const wOrder = 0.45;
+  const wConsec = 0.15;
   const wNgram = 0.2;
-  const wEd = 0.2;
-  const wPos = 0.1;
-  
-  const score = wOrder * orderScore + wNgram * overlapScore + wEd * edScore + wPos * posScore;
+  const wEd = 0.15;
+  const wPos = 0.05;
+
+  const score = wOrder * orderScore + wConsec * consecScore + wNgram * overlapScore + wEd * edScore + wPos * posScore;
   return Math.max(0, Math.min(1, score)); // Clamp to [0, 1]
 }
 
@@ -1598,9 +1686,6 @@ function ocrFuzzySearch(query, items, ngramIndex = null, topK = 50, minScore = 0
   
   // Step 2: Candidates = all itemIds in candidateScore (2-gram match or 1-gram recall added above)
   const candidates = Array.from(candidateScore.keys());
-  if (typeof window !== 'undefined' && window.__OCR_DEBUG__) {
-    console.log('[OCR] ocrFuzzySearch candidates:', candidates.length, 'minScore:', effectiveMinScore, 'query:', normalizedQuery);
-  }
   if (candidates.length === 0) {
     return [];
   }
@@ -1679,10 +1764,6 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
   const ocrConfidence = options && (options.ocrConfidence !== undefined && options.ocrConfidence !== null) ? options.ocrConfidence : null;
   const charWeights = ocrWords && ocrWords.length > 0 ? buildCharWeightsFromOcrWords(normalizedQuery, ocrWords) : null;
 
-  if (typeof window !== 'undefined' && window.__OCR_DEBUG__) {
-    console.log('[OCR] searchItemsOCR:', { raw: trimmedSearchText, normalized: normalizedQuery });
-  }
-
   // Step 1: Try exact/substring match first (same as regular search)
   try {
     if (signal && signal.aborted) {
@@ -1720,9 +1801,6 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
     // Load ilvl and version data
     if (results.length > 0) {
       await loadIlvlAndVersionForResults(results, signal);
-      if (typeof window !== 'undefined' && window.__OCR_DEBUG__) {
-        console.log('[OCR] Step 1 (exact) found', results.length, 'results');
-      }
     }
   } catch (error) {
     if (error.name === 'AbortError' || (signal && signal.aborted)) {
@@ -1785,6 +1863,7 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
             seenIds.add(id);
             let name = item['9: Name'] || item['0: Singular'] || '';
             const cleanName = name.replace(/^["']|["']$/g, '').trim();
+            const ocrScore = calcOcrFriendlySimilarity(normalizedQuery, cleanName, charWeights);
             substringResults.push({
               id: parseInt(id, 10),
               name: cleanName,
@@ -1795,7 +1874,7 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
               inShop: false,
               canBeHQ: item['27: CanBeHq'] !== 'False',
               isTradable: true,
-              ocrScore: 0.5,
+              ocrScore,
               ocrSubstringMatch: substr,
             });
           }
@@ -1817,12 +1896,27 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
             r.isTradable = marketItems.has(r.id);
           });
         }
+        // Order by OCR similarity (higher first), then longer substring match, then id
+        substringResults.sort((a, b) => {
+          const scoreDiff = (b.ocrScore ?? 0) - (a.ocrScore ?? 0);
+          if (scoreDiff !== 0) return scoreDiff;
+          const lenA = (a.ocrSubstringMatch && a.ocrSubstringMatch.length) || 0;
+          const lenB = (b.ocrSubstringMatch && b.ocrSubstringMatch.length) || 0;
+          if (lenB !== lenA) return lenB - lenA;
+          return a.id - b.id;
+        });
         results = substringResults.slice(0, 200);
         if (results.length > 0) {
           await loadIlvlAndVersionForResults(results, signal);
-        }
-        if (typeof window !== 'undefined' && window.__OCR_DEBUG__) {
-          console.log('[OCR] Substring recall:', normalizedQuery, '→ found', results.length, 'items (e.g. containing 石陸型)');
+          // loadIlvlAndVersionForResults sorts by ilvl; restore OCR score order for display
+          results.sort((a, b) => {
+            const scoreDiff = (b.ocrScore ?? 0) - (a.ocrScore ?? 0);
+            if (scoreDiff !== 0) return scoreDiff;
+            const lenA = (a.ocrSubstringMatch && a.ocrSubstringMatch.length) || 0;
+            const lenB = (b.ocrSubstringMatch && b.ocrSubstringMatch.length) || 0;
+            if (lenB !== lenA) return lenB - lenA;
+            return a.id - b.id;
+          });
         }
       }
     } catch (error) {
@@ -1848,10 +1942,7 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
       
       // Perform OCR fuzzy search (minScore 0.35 so partial matches like 石陸型/魔匠魔晶石陸型 pass)
       const ocrResults = ocrFuzzySearch(normalizedQuery, items, ngramIndex, 50, 0.35, ocrConfidence, charWeights);
-      if (typeof window !== 'undefined' && window.__OCR_DEBUG__) {
-        console.log('[OCR] ocrFuzzySearch returned', ocrResults.length, 'candidates; top 3:', ocrResults.slice(0, 3).map(({ item, score }) => ({ name: item['9: Name'], score })));
-      }
-      
+
       if (ocrResults.length > 0) {
         // Transform OCR fuzzy results to standard format
         const shopItems = [];
@@ -1924,6 +2015,14 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
         // Load ilvl and version data
         if (results.length > 0) {
           await loadIlvlAndVersionForResults(results, signal);
+          // loadIlvlAndVersionForResults sorts by ilvl; restore OCR score order for display
+          results.sort((a, b) => {
+            const scoreDiff = (b.ocrScore || 0) - (a.ocrScore || 0);
+            if (scoreDiff !== 0) return scoreDiff;
+            const tradableDiff = (b.isTradable ? 1 : 0) - (a.isTradable ? 1 : 0);
+            if (tradableDiff !== 0) return tradableDiff;
+            return a.id - b.id;
+          });
         }
       }
     } catch (error) {
@@ -1932,6 +2031,15 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
       }
       console.error('Error in OCR fuzzy search:', error);
     }
+  }
+
+  // Log OCR results (same order as returned: by matching score descending)
+  if (results.length > 0) {
+    const lines = results.map((item, i) => {
+      const score = item.ocrScore != null ? `${Math.round(item.ocrScore * 100)}%` : 'N/A';
+      return `${i + 1}. ${item.name || item.nameTW || '(no name)'} (id: ${item.id}) — OCR 匹配度: ${score}`;
+    });
+    console.log('[OCR search] Items with matching score (sorted by score desc, same order as table):\n' + lines.join('\n'));
   }
 
   // Return results with OCR-specific metadata

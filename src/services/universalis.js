@@ -246,6 +246,7 @@ export async function getMarketData(server, itemId, options = {}) {
       },
       {
         maxRetries: 2,
+        signal: options.signal, // Pass signal to requestManager so it can check during retries
         onRateLimit: (attempt, delay) => {
           // This will be handled by the caller
         }
@@ -307,18 +308,35 @@ export async function getMarketDataMultiple(itemId, worldNames) {
  * Get market data for an item from an entire data center
  * @param {number} itemId - Item ID
  * @param {string} dataCenter - Data center name
+ * @param {Object} options - Additional options like abort signal
  * @returns {Promise<Object>} - Market data aggregated by data center
  */
-export async function getMarketDataByDataCenter(itemId, dataCenter) {
+export async function getMarketDataByDataCenter(itemId, dataCenter, options = {}) {
+  // Don't proceed if request is aborted
+  if (options.signal && options.signal.aborted) {
+    return null;
+  }
+
   try {
-    const response = await axios.get(`${UNIVERSALIS_BASE_URL}/${dataCenter}/${itemId}`, {
+    const config = {
       params: {
         listings: 20,
         entries: 20,
       },
-    });
+    };
+
+    // Add abort signal if provided
+    if (options.signal) {
+      config.signal = options.signal;
+    }
+
+    const response = await axios.get(`${UNIVERSALIS_BASE_URL}/${dataCenter}/${itemId}`, config);
     return response.data;
   } catch (error) {
+    // Don't log error if request was aborted
+    if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || (options.signal && options.signal.aborted)) {
+      return null;
+    }
     // 404 is normal - item has no market data, return null silently
     if (error.response?.status === 404) {
       return null;
@@ -572,17 +590,34 @@ export function formatMarketData(marketData) {
 /**
  * Get market tax rates for a specific world
  * @param {string|number} world - World name or ID
+ * @param {Object} options - Additional options like abort signal
  * @returns {Promise<Object>} - Tax rates object with city names as keys and percentages as values
  */
-export async function getTaxRates(world) {
+export async function getTaxRates(world, options = {}) {
+  // Don't proceed if request is aborted
+  if (options.signal && options.signal.aborted) {
+    return null;
+  }
+
   try {
-    const response = await axios.get(`${UNIVERSALIS_BASE_URL}/tax-rates`, {
+    const config = {
       params: {
         world: world
       }
-    });
+    };
+
+    // Add abort signal if provided
+    if (options.signal) {
+      config.signal = options.signal;
+    }
+
+    const response = await axios.get(`${UNIVERSALIS_BASE_URL}/tax-rates`, config);
     return response.data;
   } catch (error) {
+    // Don't log error if request was aborted
+    if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || (options.signal && options.signal.aborted)) {
+      return null;
+    }
     console.error(`Error fetching tax rates for ${world}:`, error);
     return null;
   }

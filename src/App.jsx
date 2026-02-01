@@ -15,7 +15,7 @@ import { getMarketData, getMarketableItems, getItemsVelocity, getTaxRates } from
 // Removed containsChinese import - no longer restricting to Chinese input
 import { getAssetPath } from './utils/assetPath.js';
 import ItemImage from './components/ItemImage';
-import { cancelAllIconRequests } from './utils/itemImage';
+import { cancelAllIconRequests, preloadItemIcon } from './utils/itemImage';
 import HistoryButton from './components/HistoryButton';
 import { addItemToHistory } from './utils/itemHistory';
 import { addSearchToHistory } from './utils/searchHistory';
@@ -92,6 +92,7 @@ function App() {
   const [marketHistory, setMarketHistory] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchingItemsCount, setSearchingItemsCount] = useState(0); // Track items count during search
+  const [isOCRSearchResult, setIsOCRSearchResult] = useState(false); // When true, ItemTable preserves result order (no ilvl sort)
   const [isLoadingMarket, setIsLoadingMarket] = useState(false);
   const [error, setError] = useState(null);
   const [listSize, setListSize] = useState(20);
@@ -133,6 +134,7 @@ function App() {
   
   // Obtain methods states
   const [isObtainMethodsExpanded, setIsObtainMethodsExpanded] = useState(false);
+  const [isObtainMethodsLoading, setIsObtainMethodsLoading] = useState(false);
   // Track if we should auto-expand obtainable when item changes (e.g., when clicking from obtainable)
   const shouldAutoExpandObtainableRef = useRef(false);
   
@@ -865,18 +867,34 @@ function App() {
       return;
     }
 
+    // Create abort controller for tax rates requests
+    const taxRatesAbortController = new AbortController();
+    const taxRatesSignal = taxRatesAbortController.signal;
+
     setIsLoadingTaxRates(true);
     const fetchPromises = worldIds.map(async (worldId) => {
       try {
-        const rates = await getTaxRates(worldId);
+        // Check if aborted before making request
+        if (taxRatesSignal.aborted) {
+          return { worldId, rates: null };
+        }
+        const rates = await getTaxRates(worldId, { signal: taxRatesSignal });
         return { worldId, rates };
       } catch (error) {
+        // Don't log error if request was aborted
+        if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || taxRatesSignal.aborted) {
+          return { worldId, rates: null };
+        }
         console.error(`Failed to fetch tax rates for world ${worldId}:`, error);
         return { worldId, rates: null };
       }
     });
 
     Promise.all(fetchPromises).then(results => {
+      // Check if aborted before updating state
+      if (taxRatesSignal.aborted) {
+        return;
+      }
       const taxRatesMap = {};
       results.forEach(({ worldId, rates }) => {
         if (rates) {
@@ -888,10 +906,19 @@ function App() {
       // Mark this datacenter's tax rates as loaded
       loadedTaxRatesDcRef.current = currentDcName;
     }).catch(error => {
+      // Don't log error if request was aborted
+      if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || taxRatesSignal.aborted) {
+        return;
+      }
       console.error('Error fetching tax rates:', error);
       setIsLoadingTaxRates(false);
       loadedTaxRatesDcRef.current = null;
     });
+
+    // Cleanup: abort requests when modal closes or dependencies change
+    return () => {
+      taxRatesAbortController.abort();
+    };
   }, [selectedWorld?.section, worlds, isTaxRatesModalOpen]); // Only depend on datacenter name, not the whole selectedWorld object
 
   // Sync selectedItem to ref
@@ -1459,11 +1486,13 @@ function App() {
   }, [tradeableResults, untradeableResults, selectedServerOption, selectedWorld, isServerDataLoaded]);
 
 
-  // Cancel icon requests when leaving search page
+  // Cancel icon requests when navigating away from search page
+  // This ensures item info page icons load immediately without waiting for search page requests
   useEffect(() => {
     const isOnSearchPage = location.pathname === '/search';
     
-    // If we're not on the search page, cancel all icon requests
+    // If we're not on the search page, cancel all icon requests immediately
+    // This allows item info page icons to load without waiting for queued search page requests
     if (!isOnSearchPage) {
       cancelAllIconRequests();
     }
@@ -1971,6 +2000,10 @@ function App() {
     
     // Clear search text to prevent auto-search from triggering when entering item page
     setSearchText('');
+    
+    // Cancel all icon requests immediately when selecting an item
+    // This ensures item info page icon loads without waiting for queued search page requests
+    cancelAllIconRequests();
     
     // If clicking from obtainable, mark that we should auto-expand obtainable for the new item
     // Set this BEFORE updating selectedItem to ensure it's ready when useEffect runs
@@ -2638,6 +2671,7 @@ function App() {
         setError(null);
         setIsSearching(false); // Search complete - set INSIDE flushSync to ensure atomic update
         setSearchingItemsCount(0); // Reset count after search completes
+        setIsOCRSearchResult(isOCR); // Preserve result order in ItemTable for OCR (no ilvl sort)
       });
       
       prevTradeableResultsLengthRef.current = 0;
@@ -2694,6 +2728,7 @@ function App() {
       setUntradeableResults([]);
       setShowUntradeable(false);
       setSearchingItemsCount(0);
+      setIsOCRSearchResult(false);
     } finally {
       setIsSearching(false);
       setSearchingItemsCount(0); // Reset count when search completes (success or error)
@@ -2750,6 +2785,23 @@ function App() {
     // Disable server selector when server is changed - velocity fetch will re-enable it when done
     setIsServerSelectorDisabled(true);
   }, [datacenters, worlds]);
+
+  // Preload item icon immediately when item info page loads
+  // This ensures icon request is processed before prices/obtainable methods/etc
+  useEffect(() => {
+    if (!selectedItem || !selectedItem.id) {
+      return;
+    }
+
+    // Preload icon immediately - this will queue the request first
+    // The ItemImage component will use the cached result when it renders
+    preloadItemIcon(selectedItem.id).catch(error => {
+      // Silently ignore errors - ItemImage component will handle retries
+      if (error.message !== 'Request cancelled') {
+        // Only log non-cancellation errors
+      }
+    });
+  }, [selectedItem?.id]); // Only depend on item ID to avoid unnecessary reloads
 
   // Load market data when item or server changes
   useEffect(() => {
@@ -3525,6 +3577,7 @@ function App() {
                 defaultItemsPerPage={20}
                 itemsPerPageOptions={[20, 30, 50, 100, 200]}
                 onSelect={handleItemSelect}
+                preserveItemOrder={isOCRSearchResult}
               />
             );
           })()}
@@ -3724,17 +3777,26 @@ function App() {
                   {/* Obtain Methods Button */}
                   <button
                     onClick={() => {
+                      // Prevent toggling while loading to avoid confusion
+                      if (isObtainMethodsLoading) {
+                        return;
+                      }
                       setIsObtainMethodsExpanded(!isObtainMethodsExpanded);
                       setButtonOrder(prev => ({ ...prev, obtainMethods: Math.max(...Object.values(prev)) + 1 }));
                     }}
+                    disabled={isObtainMethodsLoading}
                     className={`
                       relative flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 overflow-hidden
+                      ${isObtainMethodsLoading
+                        ? 'opacity-50 cursor-not-allowed'
+                        : ''
+                      }
                       ${isObtainMethodsExpanded
                         ? 'bg-gradient-to-r from-blue-900/60 via-cyan-800/50 to-blue-900/60 border border-blue-400/60 text-blue-300 shadow-[0_0_20px_rgba(59,130,246,0.4)]'
                         : 'bg-gradient-to-r from-blue-900/50 via-indigo-900/40 to-blue-900/50 border border-blue-400/40 text-blue-200 hover:text-blue-300 hover:border-blue-400/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]'
                       }
                     `}
-                    title={isObtainMethodsExpanded ? '收起取得方式' : '展開取得方式'}
+                    title={isObtainMethodsLoading ? '載入中...' : (isObtainMethodsExpanded ? '收起取得方式' : '展開取得方式')}
                   >
                     {/* Shimmer effect for active button */}
                     {!isObtainMethodsExpanded && (
@@ -3934,6 +3996,7 @@ function App() {
                               <ObtainMethods
                                 itemId={selectedItem.id}
                                 onItemClick={handleItemSelect}
+                                onLoadingChange={setIsObtainMethodsLoading}
                               onExpandCraftingTree={() => {
                                 // Prevent expanding if still loading or craftingTree is not ready
                                 if (isLoadingCraftingTree || !hasCraftingRecipe || !craftingTree) {
