@@ -414,7 +414,9 @@ function App() {
     try {
       const result = await getItemSetFromDB(itemId);
       setItemSetResult(result);
-      const hasSet = result.isEquipmentSet && result.setItemIds && result.setItemIds.length > 0;
+      // Check if there are other items in the set (excluding current item)
+      const otherItemsCount = result.setItemIds ? result.setItemIds.filter(id => id !== itemId).length : 0;
+      const hasSet = result.isEquipmentSet && otherItemsCount > 0;
       setHasItemSet(hasSet);
       if (autoExpand && hasSet) {
         setIsItemSetExpanded(true);
