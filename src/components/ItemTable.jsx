@@ -957,8 +957,9 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                   // Middle mouse button (button === 1)
                   if (e.button === 1) {
                     e.preventDefault();
-                    // Use relative path to ensure proper routing in SPA
-                    const url = generateItemUrl(item.id, item.nameTW || item.name || 'item');
+                    // For middle-click to open in new tab, add basename for GitHub Pages
+                    const basename = window.location.pathname.includes('/FFXIV_Market') ? '/FFXIV_Market' : '';
+                    const url = basename + generateItemUrl(item.id, item.nameTW || item.name || 'item');
                     window.open(url, '_blank', 'noopener,noreferrer');
                   }
                 }}

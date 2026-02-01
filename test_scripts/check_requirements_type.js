@@ -3,9 +3,9 @@
  * Run with: node test_scripts/check_requirements_type.js
  */
 
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
+import { createClient } from '@supabase/supabase-js';
 
+// 直接設定 Supabase 憑證（從 .env 檔案讀取）
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 

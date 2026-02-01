@@ -28,19 +28,6 @@ export function generateItemSlug(itemName) {
  */
 export function generateItemUrl(itemId, itemName, baseUrl = '') {
   const slug = generateItemSlug(itemName);
-  // 檢查是否在 GitHub Pages 上運行（repository basename）
-  const basename = window.location.pathname.includes('/FFXIV_Market') ? '/FFXIV_Market' : '';
   const path = `/item/${itemId}/${encodeURIComponent(slug)}`;
-  
-  if (baseUrl) {
-    return `${baseUrl}${path}`;
-  }
-  
-  // 對於中鍵打開新頁面的情況，需要包含 basename
-  // 檢查是否是相對路徑（用於新視窗打開）
-  if (typeof window !== 'undefined') {
-    return `${basename}${path}`;
-  }
-  
-  return path;
+  return baseUrl ? `${baseUrl}${path}` : path;
 }
