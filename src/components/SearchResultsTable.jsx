@@ -35,6 +35,7 @@ export default function SearchResultsTable({
   averagePriceHeader = '平均價格',
   getSimplifiedChineseName,
   addToast,
+  openInNewTab = false, // Controls whether ItemTable opens new tab or calls onSelect
   
   // Pagination
   defaultItemsPerPage = 20,
@@ -455,6 +456,7 @@ export default function SearchResultsTable({
         isRaritySelectorDisabled={isRaritySelectorDisabled}
         preserveItemOrder={preserveItemOrder}
         separateTradableInSort={separateTradableInSort}
+        openInNewTab={openInNewTab}
       />
       
       {/* Pagination Controls (Bottom) */}

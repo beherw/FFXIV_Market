@@ -952,6 +952,7 @@ export default function MSQPriceChecker({
                   });
                 }
               }}
+              openInNewTab={false}
             />
           )}
 

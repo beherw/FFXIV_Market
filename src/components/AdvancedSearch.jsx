@@ -4350,6 +4350,7 @@ export default function AdvancedSearch({
                     onItemSelect(item);
                   }
                 }}
+                openInNewTab={true}
               />
               </div>
             );

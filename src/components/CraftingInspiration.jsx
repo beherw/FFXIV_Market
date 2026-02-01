@@ -1235,6 +1235,7 @@ export default function CraftingJobPriceChecker({
               const itemUrl = generateItemUrl(item.id, item.nameTW || item.name || 'item');
               window.open(`${window.location.origin}${getInternalUrl(itemUrl)}`, '_blank', 'noopener,noreferrer');
             }}
+            openInNewTab={true}
           />
           </div>
         )}

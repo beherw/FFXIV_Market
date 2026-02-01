@@ -3786,6 +3786,7 @@ function App() {
                 onSelect={handleItemSelect}
                 preserveItemOrder={isOCRSearchResult}
                 separateTradableInSort={!showUntradeable}
+                openInNewTab={false}
               />
             );
           })()}

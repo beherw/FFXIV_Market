@@ -151,7 +151,7 @@ const ItemNameCell = ({ itemName, addToast }) => {
   );
 };
 
-export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null, selectedRarities: externalSelectedRarities, setSelectedRarities: externalSetSelectedRarities, raritiesData: externalRaritiesData, externalRarityFilter = false, externalRarityCounts = null, isServerDataLoaded = true, isRaritySelectorDisabled = false, itemsAlreadyFiltered = false, preserveItemOrder = false, separateTradableInSort = true }) {
+export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null, selectedRarities: externalSelectedRarities, setSelectedRarities: externalSetSelectedRarities, raritiesData: externalRaritiesData, externalRarityFilter = false, externalRarityCounts = null, isServerDataLoaded = true, isRaritySelectorDisabled = false, itemsAlreadyFiltered = false, preserveItemOrder = false, separateTradableInSort = true, openInNewTab = false }) {
   const [sortColumn, setSortColumn] = useState('id');
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc' - default to desc for highest ilvl first
   const [ilvlsData, setIlvlsData] = useState(null);
@@ -953,18 +953,21 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
               <tr
                 key={item.id || index}
                 onClick={(e) => {
-                  // Left-click opens in new tab, Ctrl/Cmd+click also opens in new tab
-                  if (e.ctrlKey || e.metaKey || e.button === 0) {
+                  if (openInNewTab) {
+                    // Open in new tab (used by batch search, advanced search, etc.)
                     const basename = window.location.pathname.includes('/FFXIV_Market') ? '/FFXIV_Market' : '';
                     const url = basename + generateItemUrl(item.id, item.nameTW || item.name || 'item');
                     window.open(url, '_blank', 'noopener,noreferrer');
+                  } else {
+                    // Call onSelect callback (used by main search)
+                    onSelect && onSelect(item);
                   }
                 }}
                 onMouseDown={(e) => {
                   // Middle mouse button (button === 1)
                   if (e.button === 1) {
                     e.preventDefault();
-                    // For middle-click to open in new tab, add basename for GitHub Pages
+                    // For middle-click, always open in new tab regardless of openInNewTab setting
                     const basename = window.location.pathname.includes('/FFXIV_Market') ? '/FFXIV_Market' : '';
                     const url = basename + generateItemUrl(item.id, item.nameTW || item.name || 'item');
                     window.open(url, '_blank', 'noopener,noreferrer');

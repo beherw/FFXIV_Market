@@ -30,6 +30,7 @@ export default function MapModal({ isOpen, onClose, zoneName, x, y, npcName, map
   const [scale, setScale] = useState(1);
   const [showTooltip, setShowTooltip] = useState(false);
   const [transformOrigin, setTransformOrigin] = useState('center top');
+  const [infoPosition, setInfoPosition] = useState('top-left'); // 'top-left', 'top-right', 'bottom-left', 'bottom-right'
   const mapContainerRef = useRef(null);
   const markerRef = useRef(null);
 
@@ -98,8 +99,24 @@ export default function MapModal({ isOpen, onClose, zoneName, x, y, npcName, map
           x: mapX,
           y: mapY
         });
+        
+        // 根据标记点位置动态调整信息框位置，避免被标记点遮挡
+        // 标记点在地图的百分比位置
+        let newPosition = 'top-left';
+        if (mapX > 50 && mapY < 50) {
+          newPosition = 'top-left'; // 标记在右上，信息放左上
+        } else if (mapX > 50 && mapY >= 50) {
+          newPosition = 'top-left'; // 标记在右下，信息放左上
+        } else if (mapX <= 50 && mapY >= 50) {
+          newPosition = 'top-right'; // 标记在左下，信息放右上
+        } else {
+          // 标记在左上，信息放右下或底部
+          newPosition = 'bottom-right';
+        }
+        setInfoPosition(newPosition);
       } else {
         setMarkerPosition(null);
+        setInfoPosition('top-left');
       }
     }).catch(error => {
       if (!cancelled) {
@@ -380,7 +397,12 @@ export default function MapModal({ isOpen, onClose, zoneName, x, y, npcName, map
             </svg>
           </button>
           
-          <div className="absolute top-3 left-3 z-50" style={{
+          <div className={`absolute z-50 ${
+            infoPosition === 'top-right' ? 'top-3 right-3' :
+            infoPosition === 'bottom-left' ? 'bottom-3 left-3' :
+            infoPosition === 'bottom-right' ? 'bottom-3 right-3' :
+            'top-3 left-3'
+          }`} style={{
             background: 'linear-gradient(135deg, rgba(212, 165, 116, 0.95) 0%, rgba(196, 148, 96, 0.95) 100%)',
             backdropFilter: 'blur(8px)',
             padding: '10px 14px',

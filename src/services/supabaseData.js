@@ -2748,6 +2748,21 @@ async function batchQueryByIds(tableName, ids, idColumn = 'id', signal = null, c
         }
 
         if (error) {
+          // Handle 404 errors (table might not exist in this database)
+          // Check multiple ways the error might be represented
+          const isNotFound = 
+            error.code === 'PGRST116' || 
+            error.status === 404 || 
+            error.statusCode === 404 ||
+            error.message?.includes('404') ||
+            error.message?.includes('not found') ||
+            error.message?.includes('does not exist');
+          
+          if (isNotFound) {
+            console.warn(`[Supabase] ⚠️ Table '${tableName}' not found or empty (404) - skipping this table`);
+            continue; // Continue to next batch, might be empty for this batch
+          }
+          
           console.error(`Error loading ${tableName} batch:`, error);
           continue; // Continue with next batch
         }

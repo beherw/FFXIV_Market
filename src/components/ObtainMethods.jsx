@@ -676,7 +676,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         // Leve queries
         if (levequestIds.length > 0) {
           queries.push(
-            getLevesDatabasePagesByIds(levequestIds, abortController.signal).then(data => ({ type: 'levesDatabasePages', data }))
+            getLevesDatabasePagesByIds(levequestIds, abortController.signal)
+              .then(data => ({ type: 'levesDatabasePages', data }))
+              .catch(err => {
+                console.warn(`[ObtainMethods] ⚠️ Failed to load levesDatabasePages:`, err);
+                return { type: 'levesDatabasePages', data: {} };
+              })
           );
         }
         
@@ -2005,18 +2010,29 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onExpandCraftingTree();
+                  if (dataLoaded) {
+                    onExpandCraftingTree();
+                  }
                 }}
+                disabled={!dataLoaded}
                 className={`ml-auto px-2 py-1 text-xs border rounded transition-all duration-200 flex items-center gap-1 ${
-                  isCraftingTreeExpanded
+                  !dataLoaded
+                    ? 'bg-gray-900/50 border-gray-600/40 text-gray-500 cursor-not-allowed opacity-60'
+                    : isCraftingTreeExpanded
                     ? 'bg-amber-900/50 hover:bg-amber-800/70 border-ffxiv-gold/60 hover:border-ffxiv-gold text-ffxiv-gold'
                     : 'bg-purple-900/50 hover:bg-purple-800/70 border-purple-500/40 hover:border-purple-400/60 text-purple-200 hover:text-ffxiv-gold'
                 }`}
-                title={isCraftingTreeExpanded ? '收起製作價格樹' : '展開製作價格樹'}
+                title={!dataLoaded ? '正在加載數據...' : isCraftingTreeExpanded ? '收起製作價格樹' : '展開製作價格樹'}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
+                {!dataLoaded ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                )}
                 {isCraftingTreeExpanded ? '收起樹' : '展開樹'}
               </button>
             )}
@@ -2037,23 +2053,34 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               return (
                 <button
                   key={`craft-${index}-${craftIndex}`}
+                  disabled={!dataLoaded}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (onExpandCraftingTree) {
+                    if (dataLoaded && onExpandCraftingTree) {
                       onExpandCraftingTree();
                     }
                   }}
-                  className={`w-[280px] flex-grow-0 rounded p-2 min-h-[70px] flex flex-col justify-center transition-all duration-200 cursor-pointer ${
-                    isCraftingTreeExpanded
-                      ? 'bg-amber-900/30 hover:bg-amber-800/40 border border-ffxiv-gold/40'
-                      : 'bg-slate-900/50 hover:bg-slate-800/70'
+                  className={`w-[280px] flex-grow-0 rounded p-2 min-h-[70px] flex flex-col justify-center transition-all duration-200 ${
+                    !dataLoaded
+                      ? 'bg-gray-900/40 border border-gray-700/40 text-gray-500 cursor-not-allowed opacity-50'
+                      : isCraftingTreeExpanded
+                      ? 'bg-amber-900/30 hover:bg-amber-800/40 border border-ffxiv-gold/40 cursor-pointer'
+                      : 'bg-slate-900/50 hover:bg-slate-800/70 cursor-pointer'
                   }`}
-                  title={isCraftingTreeExpanded ? '點擊收起製作價格樹' : '點擊展開製作價格樹'}
+                  title={!dataLoaded ? '正在加載數據...' : isCraftingTreeExpanded ? '點擊收起製作價格樹' : '點擊展開製作價格樹'}
                 >
                   <div className="flex items-center gap-2">
-                    {jobIconUrl && (
-                      <img src={jobIconUrl} alt={jobName} className="w-7 h-7 object-contain" />
+                    {!dataLoaded ? (
+                      <div className="w-7 h-7 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8" />
+                        </svg>
+                      </div>
+                    ) : (
+                      jobIconUrl && (
+                        <img src={jobIconUrl} alt={jobName} className="w-7 h-7 object-contain" />
+                      )
                     )}
                     <div className="flex-1 text-left">
                       <div className="flex items-center gap-2">
@@ -2254,8 +2281,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const questEnData = currentLoadedData.quests[requiredQuestId] || currentLoadedData.quests[String(requiredQuestId)];
               const questName = questData?.tw || questEnData?.name?.en || questEnData?.en || null;
               
+              // Check if this is a single NPC group
+              const isSingleNpc = group.npcs.length === 1;
+              
               return (
-                <div key={`group-${groupIndex}`} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 flex flex-col">
+                <div key={`group-${groupIndex}`} className={`${isSingleNpc ? 'w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 flex flex-col`}>
                   {/* Currency header - shown once per group */}
                   <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-700/50">
                     {group.hasCurrencyItem ? (
@@ -2337,8 +2367,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     </div>
                   )}
                   
-                  {/* NPCs list - grid display, 2 per row */}
-                  <div className="grid grid-cols-2 gap-1.5">
+                  {/* NPCs list - grid display, 2 per row for multiple NPCs, 1 column for single NPC */}
+                  <div className={`grid ${isSingleNpc ? 'grid-cols-1' : 'grid-cols-2'} gap-1.5`}>
                     {group.npcs.map((npc, npcIndex) => {
                       const npcId = typeof npc === 'object' ? npc.id : npc;
                       const npcName = getNpcName(npcId);
@@ -2414,165 +2444,217 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         return { npcId, vendors: vendorsByNpc[npcId] };
       });
 
+      // Separate NPCs into those with location info and those without
+      const npcGroupsWithLocation = [];
+      const npcGroupsWithoutLocation = [];
+
+      npcGroups.forEach((npcGroup) => {
+        const npcVendors = npcGroup.vendors;
+        const firstVendor = npcVendors[0];
+        const npcName = getNpcName(firstVendor.npcId);
+        
+        // Try to get position from vendor data first, then fallback to npcs.json
+        let zoneId = firstVendor.zoneId;
+        let coords = firstVendor.coords;
+        let mapId = firstVendor.mapId;
+        
+        // If vendor doesn't have position data, try to get it from npcs.json (lazy loaded)
+        if ((!zoneId || !coords || coords.x === undefined || coords.y === undefined) && firstVendor.npcId && currentLoadedData.npcs) {
+          const npcData = currentLoadedData.npcs[firstVendor.npcId] || currentLoadedData.npcs[String(firstVendor.npcId)];
+          if (npcData?.position) {
+            zoneId = zoneId || npcData.position.zoneid;
+            mapId = mapId || npcData.position.map;
+            if (!coords || coords.x === undefined || coords.y === undefined) {
+              coords = {
+                x: npcData.position.x,
+                y: npcData.position.y
+              };
+            }
+          }
+        }
+        
+        // Check if this is a housing NPC (journeyman salvager or other housing NPCs)
+        // NPCs like 1025913 (journeyman salvager) are housing NPCs without fixed locations
+        const isHousingNPC = !zoneId && !coords && (
+          npcName?.includes('古董商') || 
+          npcName?.includes('journeyman salvager') ||
+          firstVendor.npcId >= 1025000 && firstVendor.npcId < 1026000 // Housing NPC ID range
+        );
+        
+        // For housing NPCs, set default zoneId and coords
+        if (isHousingNPC) {
+          zoneId = 1160; // 個人房屋 (Personal Housing)
+          coords = { x: 0, y: 0 };
+          mapId = null; // No map for housing NPCs
+        }
+        
+        // For other NPCs without coords but with zoneId, set default 0,0
+        if (zoneId && (!coords || coords.x === undefined || coords.y === undefined)) {
+          coords = { x: 0, y: 0 };
+        }
+        
+        const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
+        // Check if we have location info (even if 0,0 for housing NPCs)
+        const hasLocationInfo = zoneName && coords && coords.x !== undefined && coords.y !== undefined;
+
+        // Categorize NPC group
+        if (hasLocationInfo) {
+          npcGroupsWithLocation.push({ ...npcGroup, zoneId, coords, mapId, zoneName, npcName });
+        } else {
+          npcGroupsWithoutLocation.push({ ...npcGroup, npcName });
+        }
+      });
+
       return (
         <div key={`vendor-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/065000/065002.png" alt="Gil" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">NPC商店</span>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {npcGroups.map((npcGroup, npcGroupIndex) => {
-              const npcVendors = npcGroup.vendors;
-              const firstVendor = npcVendors[0];
-              const npcName = getNpcName(firstVendor.npcId);
-              
-              // Try to get position from vendor data first, then fallback to npcs.json
-              let zoneId = firstVendor.zoneId;
-              let coords = firstVendor.coords;
-              let mapId = firstVendor.mapId;
-              
-              // If vendor doesn't have position data, try to get it from npcs.json (lazy loaded)
-              if ((!zoneId || !coords || coords.x === undefined || coords.y === undefined) && firstVendor.npcId && npcsDataLoaded) {
-                const npcData = npcsDataLoaded[firstVendor.npcId] || npcsDataLoaded[String(firstVendor.npcId)];
-                if (npcData?.position) {
-                  zoneId = zoneId || npcData.position.zoneid;
-                  mapId = mapId || npcData.position.map;
-                  if (!coords || coords.x === undefined || coords.y === undefined) {
-                    coords = {
-                      x: npcData.position.x,
-                      y: npcData.position.y
-                    };
-                  }
-                }
-              }
-              
-              // Check if this is a housing NPC (journeyman salvager or other housing NPCs)
-              // NPCs like 1025913 (journeyman salvager) are housing NPCs without fixed locations
-              const isHousingNPC = !zoneId && !coords && (
-                npcName?.includes('古董商') || 
-                npcName?.includes('journeyman salvager') ||
-                firstVendor.npcId >= 1025000 && firstVendor.npcId < 1026000 // Housing NPC ID range
-              );
-              
-              // For housing NPCs, set default zoneId and coords
-              if (isHousingNPC) {
-                zoneId = 1160; // 個人房屋 (Personal Housing)
-                coords = { x: 0, y: 0 };
-                mapId = null; // No map for housing NPCs
-              }
-              
-              // For other NPCs without coords but with zoneId, set default 0,0
-              if (zoneId && (!coords || coords.x === undefined || coords.y === undefined)) {
-                coords = { x: 0, y: 0 };
-              }
-              
-              const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
-              // Check if we have location info (even if 0,0 for housing NPCs)
-              const hasLocationInfo = zoneName && coords && coords.x !== undefined && coords.y !== undefined;
-              // Check if location is valid for map display (must have mapId and not be 0,0)
-              const hasValidMapLocation = hasLocationInfo && mapId && (coords.x !== 0 || coords.y !== 0);
-              
-              // Get all shop names for this NPC
-              const shopNames = npcVendors.map(v => getVendorShopName(v.shopName)).filter(Boolean);
-              const uniqueShopNames = [...new Set(shopNames)];
-              
-              // Check if any vendor requires achievement
-              const requiresAchievement = achievementIds.length > 0 || 
-                npcVendors.some(vendor => {
-                  const shopName = getVendorShopName(vendor.shopName);
-                  return vendor.shopName && (
-                    vendor.shopName.en?.toLowerCase().includes('achievement') ||
-                    vendor.shopName.en?.toLowerCase().includes('reward') ||
-                    shopName?.includes('成就')
-                  );
-                });
-              
-              // Get prices - show range if multiple vendors have different prices
-              const prices = npcVendors.map(v => v.price).filter(Boolean);
-              const minPrice = prices.length > 0 ? Math.min(...prices) : null;
-              const maxPrice = prices.length > 0 ? Math.max(...prices) : null;
-              const hasPriceRange = minPrice !== null && maxPrice !== null && minPrice !== maxPrice;
-              
-              return (
-                <div key={npcGroupIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-0.5">
-                      <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-5 h-5 flex-shrink-0 grayscale opacity-70" />
-                      <span className="font-medium text-white">{npcName}</span>
-                      {(() => {
-                        const npcTitle = getNpcTitle(firstVendor.npcId);
-                        return npcTitle ? (
-                          <span className="text-xs text-gray-400">&lt;{npcTitle}&gt;</span>
+          <div className="flex flex-col gap-3 mt-2">
+            {/* NPCs with location info */}
+            {npcGroupsWithLocation.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {npcGroupsWithLocation.map((npcGroup, npcGroupIndex) => {
+                  const npcVendors = npcGroup.vendors;
+                  const firstVendor = npcVendors[0];
+                  const { zoneName, coords, mapId, npcName } = npcGroup;
+                  
+                  // Get all shop names for this NPC
+                  const shopNames = npcVendors.map(v => getVendorShopName(v.shopName)).filter(Boolean);
+                  const uniqueShopNames = [...new Set(shopNames)];
+                  
+                  // Check if any vendor requires achievement
+                  const requiresAchievement = achievementIds.length > 0 || 
+                    npcVendors.some(vendor => {
+                      const shopName = getVendorShopName(vendor.shopName);
+                      return vendor.shopName && (
+                        vendor.shopName.en?.toLowerCase().includes('achievement') ||
+                        vendor.shopName.en?.toLowerCase().includes('reward') ||
+                        shopName?.includes('成就')
+                      );
+                    });
+                  
+                  // Get prices - show range if multiple vendors have different prices
+                  const prices = npcVendors.map(v => v.price).filter(Boolean);
+                  const minPrice = prices.length > 0 ? Math.min(...prices) : null;
+                  const maxPrice = prices.length > 0 ? Math.max(...prices) : null;
+                  const hasPriceRange = minPrice !== null && maxPrice !== null && minPrice !== maxPrice;
+                  
+                  // Check if location is valid for map display (must have mapId and not be 0,0)
+                  const hasValidMapLocation = mapId && (coords.x !== 0 || coords.y !== 0);
+                  
+                  return (
+                    <div key={npcGroupIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-0.5">
+                          <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-5 h-5 flex-shrink-0 grayscale opacity-70" />
+                          <span className="text-sm font-medium text-white">{npcName}</span>
+                          {(() => {
+                            const npcTitle = getNpcTitle(firstVendor.npcId);
+                            return npcTitle ? (
+                              <span className="text-xs text-gray-400">&lt;{npcTitle}&gt;</span>
+                            ) : null;
+                          })()}
+                        </div>
+                        {minPrice && (
+                          <span className="text-yellow-400 text-sm">
+                            {hasPriceRange ? `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}` : formatPrice(minPrice)} Gil
+                          </span>
+                        )}
+                      </div>
+                      {uniqueShopNames.length > 0 && (
+                        <div className="text-xs text-gray-400 mt-1">
+                          {uniqueShopNames.join(', ')}
+                        </div>
+                      )}
+                      {requiresAchievement && achievementIds.length > 0 && (() => {
+                        const achievementInfo = getAchievementInfo(achievementIds[0]);
+                        return achievementInfo ? (
+                          <div 
+                            className="text-xs mt-1 flex items-start gap-1 relative"
+                            onMouseEnter={(e) => handleAchievementMouseEnter(e, achievementIds[0])}
+                            onMouseMove={handleAchievementMouseMove}
+                            onMouseLeave={handleAchievementMouseLeave}
+                          >
+                            <span className="text-pink-400/90">需要完成成就：</span>
+                            <span className="font-medium text-yellow-400/90 cursor-help underline decoration-dotted decoration-yellow-400/50 hover:decoration-yellow-400 transition-colors">
+                              {achievementInfo.name}
+                            </span>
+                          </div>
                         ) : null;
                       })()}
-                    </div>
-                    {minPrice && (
-                      <span className="text-yellow-400 text-sm">
-                        {hasPriceRange ? `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}` : formatPrice(minPrice)} Gil
-                      </span>
-                    )}
-                  </div>
-                  {uniqueShopNames.length > 0 && (
-                    <div className="text-xs text-gray-400 mt-1">
-                      {uniqueShopNames.join(', ')}
-                    </div>
-                  )}
-                  {requiresAchievement && achievementIds.length > 0 && (() => {
-                    const achievementInfo = getAchievementInfo(achievementIds[0]);
-                    return achievementInfo ? (
-                      <div 
-                        className="text-xs mt-1 flex items-start gap-1 relative"
-                        onMouseEnter={(e) => handleAchievementMouseEnter(e, achievementIds[0])}
-                        onMouseMove={handleAchievementMouseMove}
-                        onMouseLeave={handleAchievementMouseLeave}
-                      >
-                        <span className="text-pink-400/90">需要完成成就：</span>
-                        <span className="font-medium text-yellow-400/90 cursor-help underline decoration-dotted decoration-yellow-400/50 hover:decoration-yellow-400 transition-colors">
-                          {achievementInfo.name}
-                        </span>
-                      </div>
-                    ) : null;
-                  })()}
-                  {hasLocationInfo && (
-                    hasValidMapLocation ? (
-                      <button
-                        onClick={() => setMapModal({
-                          isOpen: true,
-                          zoneName,
-                          x: coords.x,
-                          y: coords.y,
-                          npcName,
-                          mapId: mapId,
-                        })}
-                        className="flex items-center gap-1.5 mt-1 pt-1 border-t border-slate-700/50 text-xs text-blue-400 hover:bg-slate-800/50 hover:text-blue-300 rounded px-1 py-0.5 transition-all w-full text-left"
-                      >
-                        <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                        </svg>
-                        <span>
-                          {zoneName}
-                          <span className="ml-2">
-                            X: {coords.x.toFixed(1)} - Y: {coords.y.toFixed(1)}
+                      {hasValidMapLocation ? (
+                        <button
+                          onClick={() => setMapModal({
+                            isOpen: true,
+                            zoneName,
+                            x: coords.x,
+                            y: coords.y,
+                            npcName,
+                            mapId: mapId,
+                          })}
+                          className="flex items-center gap-1.5 mt-1 pt-1 border-t border-slate-700/50 text-xs text-blue-400 hover:bg-slate-800/50 hover:text-blue-300 rounded px-1 py-0.5 transition-all w-full text-left"
+                        >
+                          <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                          </svg>
+                          <span>
+                            {zoneName}
+                            <span className="ml-2">
+                              X: {coords.x.toFixed(1)} - Y: {coords.y.toFixed(1)}
+                            </span>
                           </span>
-                        </span>
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-1.5 mt-1 pt-1 border-t border-slate-700/50 text-xs text-blue-400">
-                        <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                        </svg>
-                        <span>
-                          {zoneName}
-                          <span className="ml-2">
-                            X: {coords.x.toFixed(1)} - Y: {coords.y.toFixed(1)}
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1.5 mt-1 pt-1 border-t border-slate-700/50 text-xs text-blue-400">
+                          <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                          </svg>
+                          <span>
+                            {zoneName}
+                            <span className="ml-2">
+                              X: {coords.x.toFixed(1)} - Y: {coords.y.toFixed(1)}
+                            </span>
                           </span>
-                        </span>
-                      </div>
-                    )
-                  )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* NPCs without location info - consolidated display */}
+            {npcGroupsWithoutLocation.length > 0 && (
+              <div className="bg-slate-900/30 rounded p-2 border border-slate-700/50">
+                <div className="text-xs text-gray-400 mb-1.5 flex items-center gap-1">
+                  <span>特殊 NPC 商人</span>
+                  <span className="text-gray-600">({npcGroupsWithoutLocation.length} 位)</span>
                 </div>
-              );
-            })}
+                <div className="grid grid-cols-2 gap-1.5">
+                  {npcGroupsWithoutLocation.map((npcGroup, npcGroupIndex) => {
+                    const { npcName, vendors: npcVendors } = npcGroup;
+                    const firstVendor = npcVendors[0];
+                    return (
+                      <div
+                        key={npcGroupIndex}
+                        className="flex items-center gap-1 text-xs px-2 py-1 bg-slate-800/50 rounded border border-slate-700/30 w-full"
+                      >
+                        <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-3 h-3 flex-shrink-0 grayscale opacity-60" />
+                        <span className="text-gray-300">{npcName}</span>
+                        {(() => {
+                          const npcTitle = getNpcTitle(firstVendor.npcId);
+                          return npcTitle ? (
+                            <span className="text-xs text-gray-500">&lt;{npcTitle}&gt;</span>
+                          ) : null;
+                        })()}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -3089,8 +3171,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               
               // If no location from quest, try to get it from NPC data (like vendors do) (lazy loaded)
               // Try both number and string keys
-              if ((!zoneId || !coords || coords.x === undefined || coords.y === undefined) && startingNpcId && npcsDataLoaded) {
-                const npcData = npcsDataLoaded[startingNpcId] || npcsDataLoaded[String(startingNpcId)];
+              if ((!zoneId || !coords || coords.x === undefined || coords.y === undefined) && startingNpcId && currentLoadedData.npcs) {
+                const npcData = currentLoadedData.npcs[startingNpcId] || currentLoadedData.npcs[String(startingNpcId)];
                 if (npcData?.position) {
                   zoneId = zoneId || npcData.position.zoneid;
                   mapId = mapId || npcData.position.map;
@@ -3119,9 +3201,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               }
               
               // If still no location, try checking quest's npcs array for any NPC with location (lazy loaded)
-              if ((!zoneId || !coords || coords.x === undefined || coords.y === undefined) && questDb?.npcs && npcsDataLoaded) {
+              if ((!zoneId || !coords || coords.x === undefined || coords.y === undefined) && questDb?.npcs && currentLoadedData.npcs) {
                 for (const npcId of questDb.npcs) {
-                  const npcData = npcsDataLoaded[npcId] || npcsDataLoaded[String(npcId)];
+                  const npcData = currentLoadedData.npcs[npcId] || currentLoadedData.npcs[String(npcId)];
                   if (npcData?.position) {
                     zoneId = zoneId || npcData.position.zoneid;
                     mapId = mapId || npcData.position.map;
@@ -4019,8 +4101,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 // Create wiki URL using Simplified Chinese name with "任务:" prefix
                 const wikiUrl = leveNameZh ? `https://ff14.huijiwiki.com/wiki/任务:${encodeURIComponent(leveNameZh)}` : null;
                 
+                const hasDetailSections = requiredItems.length > 0 || rewards.length > 0 || npcNames.length > 0;
+
                 return (
-                  <div key={leveIndex} className="w-[320px] flex-grow-0 bg-slate-900/50 rounded p-3 min-h-[100px] flex flex-col gap-2">
+                  <div key={leveIndex} className={`w-[320px] flex-grow-0 bg-slate-900/50 rounded p-3 ${hasDetailSections ? 'min-h-[100px] gap-2' : 'gap-1' } flex flex-col`}>
                     {/* Leve name with wiki link - same style as FATE */}
                     <div className="flex items-center gap-2 mb-1">
                       <div className="flex-1 min-w-0">
