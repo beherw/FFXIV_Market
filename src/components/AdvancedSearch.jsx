@@ -42,7 +42,6 @@ export default function AdvancedSearch({
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('filter'); // 'batch' or 'filter'
-  const BATCH_SEARCH_DISABLED = true; // 批量搜索功能暂时禁用
   const [batchInput, setBatchInput] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [untradeableResults, setUntradeableResults] = useState([]);
@@ -403,11 +402,6 @@ export default function AdvancedSearch({
 
   // Handle batch search
   const handleBatchSearch = useCallback(async (inputOverride = null) => {
-    // Batch search is disabled
-    if (BATCH_SEARCH_DISABLED) {
-      addToast('批量搜索功能暂时不可用，敬请期待', 'info');
-      return;
-    }
     // Prevent multiple clicks within 1.5 seconds
     if (isSearchButtonDisabled) return;
 
@@ -972,13 +966,6 @@ export default function AdvancedSearch({
 
     lastProcessedURLRef.current = currentURLKey;
   }, [location.pathname, location.search, searchParams, isServerDataLoaded, batchInput, activeTab, searchResults.length, isBatchSearching, isFilterSearching, isSearching]);
-
-  // Force switch to filter tab if batch search is disabled and user is on batch tab
-  useEffect(() => {
-    if (BATCH_SEARCH_DISABLED && activeTab === 'batch') {
-      setActiveTab('filter');
-    }
-  }, [activeTab]);
 
   // Manage loading indicator (same logic as main search page)
   useEffect(() => {
@@ -2781,59 +2768,47 @@ export default function AdvancedSearch({
             >
               篩選搜尋
             </button>
-            <div 
-              className="relative"
-              title={BATCH_SEARCH_DISABLED ? "敬请期待" : ""}
+            <button
+              onClick={() => {
+                setActiveTab('batch');
+                // Clear filter selections when switching to batch tab
+                setSelectedJobs([]);
+                setSelectedCategories([]);
+                setTooManyItemsWarning(null);
+                // Reset level range to default
+                setMinLevel(1);
+                setMaxLevel(999);
+                // Reset item name filter
+                setItemNameFilter('');
+                // Reset untradeable display state
+                setShowUntradeable(false);
+                setUntradeableResults([]);
+                // Clear all search results and market data
+                setSearchResults([]);
+                setItemVelocities({});
+                setItemAveragePrices({});
+                setItemMinListings({});
+                setItemRecentPurchases({});
+                setItemTradability({});
+                setCurrentPage(1);
+                // Cancel any ongoing requests
+                if (velocityFetchAbortControllerRef.current) {
+                  velocityFetchAbortControllerRef.current.abort();
+                }
+                setIsLoadingVelocities(false);
+              }}
+              className={`px-4 py-2 font-semibold transition-all border-b-2 ${
+                activeTab === 'batch'
+                  ? 'text-ffxiv-gold border-ffxiv-gold'
+                  : 'text-gray-400 border-transparent hover:text-gray-300'
+              }`}
             >
-              <button
-                onClick={() => {
-                  // Batch search is disabled
-                  if (BATCH_SEARCH_DISABLED) {
-                    return;
-                  }
-                  setActiveTab('batch');
-                  // Clear filter selections when switching to batch tab
-                  setSelectedJobs([]);
-                  setSelectedCategories([]);
-                  setTooManyItemsWarning(null);
-                  // Reset level range to default
-                  setMinLevel(1);
-                  setMaxLevel(999);
-                  // Reset item name filter
-                  setItemNameFilter('');
-                  // Reset untradeable display state
-                  setShowUntradeable(false);
-                  setUntradeableResults([]);
-                  // Clear all search results and market data
-                  setSearchResults([]);
-                  setItemVelocities({});
-                  setItemAveragePrices({});
-                  setItemMinListings({});
-                  setItemRecentPurchases({});
-                  setItemTradability({});
-                  setCurrentPage(1);
-                  // Cancel any ongoing requests
-                  if (velocityFetchAbortControllerRef.current) {
-                    velocityFetchAbortControllerRef.current.abort();
-                  }
-                  setIsLoadingVelocities(false);
-                }}
-                disabled={BATCH_SEARCH_DISABLED}
-                className={`px-4 py-2 font-semibold transition-all border-b-2 ${
-                  BATCH_SEARCH_DISABLED
-                    ? 'text-gray-500 border-transparent cursor-not-allowed opacity-50'
-                    : activeTab === 'batch'
-                      ? 'text-ffxiv-gold border-ffxiv-gold'
-                      : 'text-gray-400 border-transparent hover:text-gray-300'
-                }`}
-              >
-                批量搜尋（開發中）
-              </button>
-            </div>
+              批量搜尋
+            </button>
           </div>
 
           {/* Tab Content */}
-          {activeTab === 'batch' && !BATCH_SEARCH_DISABLED && (
+          {activeTab === 'batch' && (
             <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-6 mb-6">
               {/* Batch Input */}
               <div className="mb-6">
@@ -2908,9 +2883,9 @@ export default function AdvancedSearch({
               {/* Search Button */}
               <button
                 onClick={() => handleBatchSearch()}
-                disabled={isBatchSearching || isSearching || isSearchButtonDisabled || !batchInput.trim() || BATCH_SEARCH_DISABLED}
+                disabled={isBatchSearching || isSearching || isSearchButtonDisabled || !batchInput.trim()}
                 className={`w-full py-3 rounded-lg font-semibold transition-all ${
-                  isBatchSearching || isSearching || !batchInput.trim() || BATCH_SEARCH_DISABLED
+                  isBatchSearching || isSearching || !batchInput.trim()
                     ? 'bg-slate-700/50 text-gray-500 cursor-not-allowed opacity-50'
                     : 'bg-gradient-to-r from-ffxiv-gold to-yellow-500 text-slate-900 hover:shadow-[0_0_20px_rgba(212,175,55,0.5)]'
                 }`}
@@ -4242,7 +4217,7 @@ export default function AdvancedSearch({
             const hasTradeableItems = searchResults.length > 0;
             const shouldRender = activeTab === 'filter' 
               ? (hasTradeableItems || (!hasTradeableItems && untradeableResults.length > 0) || isFilterSearching)
-              : (activeTab === 'batch' && !BATCH_SEARCH_DISABLED && (searchResults.length > 0 || isBatchSearching));
+              : (activeTab === 'batch' && (searchResults.length > 0 || isBatchSearching));
             
             if (!shouldRender) return null;
             
@@ -4262,7 +4237,7 @@ export default function AdvancedSearch({
                 allResultsForRarityCount = searchResults;
                 currentResults = searchResults;
               }
-            } else if (activeTab === 'batch' && !BATCH_SEARCH_DISABLED) {
+            } else if (activeTab === 'batch') {
               allResultsForRarityCount = searchResults;
               currentResults = searchResults;
             } else {
