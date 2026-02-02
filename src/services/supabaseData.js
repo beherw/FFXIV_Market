@@ -1327,6 +1327,214 @@ export async function getEquipmentByIds(itemIds, signal = null) {
 }
 
 /**
+ * Get equipment data matching specific equipSlotCategory values (targeted query - efficient)
+ * Queries equipment where equipSlotCategory is in the provided list
+ * @param {Array<number>} slotCategories - Array of equipSlotCategory IDs (e.g., [1, 13, 14] for main hand)
+ * @param {AbortSignal} signal - Optional abort signal to cancel the request
+ * @returns {Promise<Object>} - {itemId: {equipSlotCategory, jobs, level, ...}}
+ */
+export async function getEquipmentBySlotCategories(slotCategories, signal = null) {
+  if (!slotCategories || slotCategories.length === 0) {
+    return {};
+  }
+
+  // Remove duplicates
+  const uniqueSlots = [...new Set(slotCategories.filter(slot => slot && slot > 0))];
+  if (uniqueSlots.length === 0) {
+    return {};
+  }
+
+  // Create cache key from sorted slot IDs
+  const cacheKey = uniqueSlots.sort((a, b) => a - b).join(',');
+
+  // Check cache first
+  if (targetedQueryCache.equipment && targetedQueryCache.equipment[`slots:${cacheKey}`]) {
+    console.log(`[Supabase] 📦 Using cached equipment for equipSlotCategories: ${uniqueSlots.join(', ')}`);
+    return targetedQueryCache.equipment[`slots:${cacheKey}`];
+  }
+
+  // Check if there's already a pending request for these slots
+  if (targetedQueryPromises.equipment && targetedQueryPromises.equipment[`slots:${cacheKey}`]) {
+    return targetedQueryPromises.equipment[`slots:${cacheKey}`];
+  }
+
+  // Initialize cache if needed
+  if (!targetedQueryCache.equipment) {
+    targetedQueryCache.equipment = {};
+  }
+  if (!targetedQueryPromises.equipment) {
+    targetedQueryPromises.equipment = {};
+  }
+
+  const loadStartTime = performance.now();
+  console.log(`[Supabase] 📥 Loading equipment for equipSlotCategories: ${uniqueSlots.join(', ')}...`);
+
+  // Create promise and store it
+  const promise = (async () => {
+    try {
+      const result = {};
+      let allLoaded = false;
+      let offset = 0;
+      const pageSize = 1000;
+
+      // Paginate through results since Supabase has row limits
+      while (!allLoaded) {
+        const query = supabase
+          .from('equipment')
+          .select('id, equipSlotCategory, jobs, level, unique, pDmg, mDmg, pDef, mDef, delay')
+          .in('equipSlotCategory', uniqueSlots)
+          .range(offset, offset + pageSize - 1);
+
+        // Check if aborted after request
+        if (signal && signal.aborted) {
+          throw new DOMException('Request aborted', 'AbortError');
+        }
+
+        const { data: equipmentData, error: equipError } = await query;
+
+        // Check if aborted after request
+        if (signal && signal.aborted) {
+          throw new DOMException('Request aborted', 'AbortError');
+        }
+
+        if (equipError) {
+          console.error(`Error loading equipment by slot categories:`, equipError);
+          throw equipError;
+        }
+
+        // Convert to {id: {...}} format
+        if (equipmentData && Array.isArray(equipmentData)) {
+          equipmentData.forEach(item => {
+            result[item.id] = item;
+          });
+          
+          // If we got fewer than pageSize items, we've reached the end
+          if (equipmentData.length < pageSize) {
+            allLoaded = true;
+          } else {
+            offset += pageSize;
+          }
+        } else {
+          allLoaded = true;
+        }
+      }
+
+      const loadTime = performance.now() - loadStartTime;
+      console.log(`[Supabase] ✅ Loaded ${Object.keys(result).length} equipment items (${loadTime.toFixed(1)}ms)`);
+
+      // Cache the result
+      targetedQueryCache.equipment[`slots:${cacheKey}`] = result;
+      return result;
+    } catch (error) {
+      console.error('[Supabase] Error in getEquipmentBySlotCategories:', error);
+      throw error;
+    } finally {
+      // Remove promise from cache
+      delete targetedQueryPromises.equipment[`slots:${cacheKey}`];
+    }
+  })();
+
+  targetedQueryPromises.equipment[`slots:${cacheKey}`] = promise;
+  return promise;
+}
+
+/**
+ * Get equipment data matching specific job abbreviations AND equipSlotCategory values
+ * This applies both filters in the query to avoid over-fetching
+ * @param {Array<string>} jobAbbrs - Array of job abbreviations (e.g., ['WAR'])
+ * @param {Array<number>} slotCategories - Array of equipSlotCategory IDs (e.g., [1, 13, 14])
+ * @param {AbortSignal} signal - Optional abort signal to cancel the request
+ * @returns {Promise<Object>} - {itemId: {equipSlotCategory, jobs, level, ...}}
+ */
+export async function getEquipmentByJobsAndSlotCategories(jobAbbrs, slotCategories, signal = null) {
+  if (!jobAbbrs || jobAbbrs.length === 0 || !slotCategories || slotCategories.length === 0) {
+    return {};
+  }
+
+  const uniqueJobAbbrs = [...new Set(jobAbbrs.filter(abbr => abbr))];
+  const uniqueSlots = [...new Set(slotCategories.filter(slot => slot && slot > 0))];
+  if (uniqueJobAbbrs.length === 0 || uniqueSlots.length === 0) {
+    return {};
+  }
+
+  const jobsKey = uniqueJobAbbrs.sort().join(',');
+  const slotsKey = uniqueSlots.sort((a, b) => a - b).join(',');
+  const cacheKey = `jobsSlots:${jobsKey}|${slotsKey}`;
+
+  if (targetedQueryCache.equipment && targetedQueryCache.equipment[cacheKey]) {
+    console.log(`[Supabase] 📦 Using cached equipment for jobs+slots: ${jobsKey} / ${slotsKey}`);
+    return targetedQueryCache.equipment[cacheKey];
+  }
+
+  if (targetedQueryPromises.equipment && targetedQueryPromises.equipment[cacheKey]) {
+    return targetedQueryPromises.equipment[cacheKey];
+  }
+
+  if (!targetedQueryCache.equipment) {
+    targetedQueryCache.equipment = {};
+  }
+  if (!targetedQueryPromises.equipment) {
+    targetedQueryPromises.equipment = {};
+  }
+
+  const loadStartTime = performance.now();
+  console.log(`[Supabase] 📥 Loading equipment for jobs+slots: ${jobsKey} / ${slotsKey}...`);
+
+  const promise = (async () => {
+    try {
+      const result = {};
+
+      for (const abbr of uniqueJobAbbrs) {
+        if (signal && signal.aborted) {
+          throw new DOMException('Request aborted', 'AbortError');
+        }
+
+        const { data: jobData, error: jobError } = await supabase
+          .from('equipment')
+          .select('id, equipSlotCategory, jobs, level, unique, pDmg, mDmg, pDef, mDef, delay')
+          .in('equipSlotCategory', uniqueSlots)
+          .filter('jobs', 'cs', JSON.stringify([abbr]));
+
+        if (signal && signal.aborted) {
+          throw new DOMException('Request aborted', 'AbortError');
+        }
+
+        if (jobError) {
+          console.error(`Error loading equipment for job ${abbr} with slots:`, jobError);
+          continue;
+        }
+
+        if (jobData) {
+          jobData.forEach(row => {
+            const id = row.id;
+            if (id !== undefined && id !== null) {
+              result[id] = row;
+            }
+          });
+        }
+      }
+
+      const loadDuration = performance.now() - loadStartTime;
+      console.log(`[Supabase] ✅ Loaded equipment for ${Object.keys(result).length} items (jobs+slots) in ${loadDuration.toFixed(2)}ms`);
+
+      targetedQueryCache.equipment[cacheKey] = result;
+      return result;
+    } catch (error) {
+      if (error.name === 'AbortError' || (signal && signal.aborted)) {
+        throw error;
+      }
+      console.error(`Error loading equipment by jobs+slots:`, error);
+      return {};
+    } finally {
+      delete targetedQueryPromises.equipment[cacheKey];
+    }
+  })();
+
+  targetedQueryPromises.equipment[cacheKey] = promise;
+  return promise;
+}
+
+/**
  * Get equipment data matching specific job abbreviations (targeted query - efficient)
  * Uses Supabase array overlap operator to find equipment where jobs array contains any of the specified job abbreviations
  * @param {Array<string>} jobAbbrs - Array of job abbreviations (e.g., ['PLD', 'WAR', 'CRP'])

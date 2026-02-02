@@ -17,6 +17,7 @@ import { getInternalUrl } from '../utils/internalUrl.js';
 import axios from 'axios';
 import { getTwJobAbbr, getIlvlsByIds } from '../services/supabaseData';
 import { APP_VERSION } from '../constants/version';
+import { PAGINATION_CONFIG } from '../constants/pagination';
 import { generateItemUrl } from '../utils/urlSlug';
 import VersionFooter from './VersionFooter';
 
@@ -64,7 +65,7 @@ export default function CraftingJobPriceChecker({
   const [marketableItems, setMarketableItems] = useState(null);
   const [tooManyItemsWarning, setTooManyItemsWarning] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [itemsPerPage, setItemsPerPage] = useState(PAGINATION_CONFIG.DEFAULT_ITEMS_PER_PAGE);
   const MAX_ITEMS_LIMIT = 500; // Maximum number of items to process
   
   // Loading indicator state (same as AdvancedSearch page)
@@ -1224,8 +1225,8 @@ export default function CraftingJobPriceChecker({
             getSimplifiedChineseName={getSimplifiedChineseName}
             addToast={addToast}
             title="搜索結果"
-            defaultItemsPerPage={50}
-            itemsPerPageOptions={[50, 100, 200]}
+            defaultItemsPerPage={PAGINATION_CONFIG.DEFAULT_ITEMS_PER_PAGE}
+            itemsPerPageOptions={PAGINATION_CONFIG.ITEMS_PER_PAGE_OPTIONS}
             untradeableCount={untradeableResults.length}
             tradeableCount={tradeableResults.length}
             onToggleUntradeable={(newValue) => {

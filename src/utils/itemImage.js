@@ -11,8 +11,12 @@
 // and ensures we never exceed 20 requests per second, maximizing throughput while
 // staying within limits.
 
-// Cache for icon paths to avoid repeated API calls
-const iconCache = new Map();
+import { LRUCache } from './lruCache';
+
+// LRU Cache for icon paths with maximum size of 2000 items
+// This prevents unbounded memory growth while keeping common items cached
+// When cache is full, least recently used items are evicted
+const iconCache = new LRUCache(2000);
 // Track pending requests to avoid duplicate API calls
 const pendingRequests = new Map();
 // Track abort controllers for pending requests to allow cancellation
@@ -515,4 +519,12 @@ export function cancelIconRequests(itemIds) {
     // Remove from pending requests
     pendingRequests.delete(itemId);
   });
+}
+
+/**
+ * Get icon cache statistics
+ * @returns {object} - Cache statistics including size, maxSize, and fillPercentage
+ */
+export function getIconCacheStats() {
+  return iconCache.getStats();
 }

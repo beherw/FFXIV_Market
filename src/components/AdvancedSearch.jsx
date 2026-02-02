@@ -11,8 +11,9 @@ import ServerSelector from './ServerSelector';
 import { getMarketableItems, getMarketableItemsByIds } from '../services/universalis';
 import { searchItems, getSimplifiedChineseName, getItemById } from '../services/itemDatabase';
 import { loadRecipeDatabase, loadRecipesByJobAndLevel } from '../services/recipeDatabase';
-import { getTwJobAbbr, getTwItemUICategories, getTwItems, getIlvlsByIds, getRaritiesByIds, getEquipmentByIds, getEquipmentByJobs, getUICategoriesByIds, getTwItemById, getTwItemsByIds, getItemIdsByCategories, getItemIdsByIlvlRange } from '../services/supabaseData';
+import { getTwJobAbbr, getTwItemUICategories, getTwItems, getIlvlsByIds, getRaritiesByIds, getEquipmentByIds, getEquipmentByJobs, getEquipmentBySlotCategories, getEquipmentByJobsAndSlotCategories, getUICategoriesByIds, getTwItemById, getTwItemsByIds, getItemIdsByCategories, getItemIdsByIlvlRange } from '../services/supabaseData';
 import { APP_VERSION } from '../constants/version';
+import { PAGINATION_CONFIG } from '../constants/pagination';
 import VersionFooter from './VersionFooter';
 
 export default function AdvancedSearch({
@@ -57,6 +58,11 @@ export default function AdvancedSearch({
   const [marketableItems, setMarketableItems] = useState(null);
   const [isBatchSearching, setIsBatchSearching] = useState(false);
   const [tooManyItemsWarning, setTooManyItemsWarning] = useState(null);
+  
+  // DEBUG: Set to true to disable job compatibility filter (for diagnosis only)
+  // Change this to true to see all category items without job filtering
+  const DEBUG_DISABLE_JOB_FILTER = false;
+  const debugItemId = 34232; // 輝翠銀長刃斧 - tracking this item through all filters
   const MAX_ITEMS_LIMIT = 500; // Maximum number of items to process
   const [batchFuzzySearch, setBatchFuzzySearch] = useState(true); // Fuzzy search toggle for batch search (default: true = fuzzy search)
   
@@ -79,7 +85,7 @@ export default function AdvancedSearch({
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [itemsPerPage, setItemsPerPage] = useState(PAGINATION_CONFIG.DEFAULT_ITEMS_PER_PAGE);
   
   // Loading indicator state (same as main search page)
   const [showLoadingIndicator, setShowLoadingIndicator] = useState(false);
@@ -105,6 +111,24 @@ export default function AdvancedSearch({
   
   // Disabled categories based on selected jobs
   const [disabledCategories, setDisabledCategories] = useState(new Set());
+  
+  // Check if any miscellaneous category is selected (including 套裝)
+  const hasMiscellaneousCategory = useMemo(() => {
+    // 套裝 (112) 被視為特殊分類，不能與職業或 iLvL 過濾一起使用
+    const setCategory = 112;
+    // 其他設備分類 (不包括套裝)
+    const equipmentCategoryIds = new Set([34, 35, 36, 37, 38, 40, 41, 42, 43, 62, 11]);
+    const genericCategories = new Set(['main_weapon', 'offhand_weapon']);
+    
+    return selectedCategories.some(catId => {
+      // If 套裝 is selected, treat it like miscellaneous category
+      if (catId === setCategory) {
+        return true;
+      }
+      // Check if it's NOT an equipment category and NOT a generic category
+      return !equipmentCategoryIds.has(catId) && !genericCategories.has(catId);
+    });
+  }, [selectedCategories]);
   
   // Cache for Supabase data
   const twJobAbbrDataRef = useRef(null);
@@ -178,7 +202,7 @@ export default function AdvancedSearch({
   }, []);
 
   // Calculate disabled categories based on selected jobs
-  // All jobs (battle, crafting, gathering) should disable miscellaneous categories
+  // All jobs (battle, crafting, gathering) should disable miscellaneous categories and 套裝
   const calculateDisabledCategories = useCallback((jobs) => {
     const disabled = new Set();
     
@@ -186,25 +210,28 @@ export default function AdvancedSearch({
       return disabled;
     }
     
-    // Equipment category IDs (weapons, armor, accessories)
+    // Equipment category IDs (weapons, armor, accessories) - NOTE: 套裝 (112) is NOT included here
+    // 套裝 should be disabled when jobs are selected (like miscellaneous categories)
     const equipmentCategoryIdsSet = new Set([
       // Weapons (already handled by generic categories)
       // Armor
       34, 35, 36, 37, 38, // 頭部防具、身體防具、腿部防具、手部防具、腳部防具
-      112, // 套裝 (moved to equipment section but originally in miscellaneous)
       // Accessories
       40, 41, 42, 43, // 項鍊、耳飾、手鐲、戒指
       // Soul crystal
       62, // 靈魂水晶
     ]);
     
-    // If any job is selected (battle, crafting, or gathering), disable miscellaneous
-    // All jobs only have equipment categories, disable miscellaneous
+    // If any job is selected (battle, crafting, or gathering):
+    // 1. Disable all miscellaneous categories (non-equipment)
+    // 2. Also disable 套裝 (112) since it can't be combined with job-based equipment
     const twItemUICategoriesData = twItemUICategoriesDataRef.current || {};
     Object.entries(twItemUICategoriesData).forEach(([id, data]) => {
       const categoryId = parseInt(id, 10);
-      // If it's not an equipment category and not excluded, disable it
-      if (!equipmentCategoryIdsSet.has(categoryId) && !EXCLUDED_CATEGORIES.includes(categoryId) && categoryId !== 11) {
+      // Disable if:
+      // - It's 套裝 (112), OR
+      // - It's not an equipment category and not excluded and not shield (11)
+      if (categoryId === 112 || (!equipmentCategoryIdsSet.has(categoryId) && !EXCLUDED_CATEGORIES.includes(categoryId) && categoryId !== 11)) {
         disabled.add(categoryId);
       }
     });
@@ -235,21 +262,20 @@ export default function AdvancedSearch({
   }, []);
 
   // Update disabled categories when selectedJobs changes (with debounce)
-  // Also clear non-set miscellaneous categories when jobs are selected
+  // Also clear miscellaneous categories and 套裝 when jobs are selected
   useEffect(() => {
     // Clear existing debounce timer
     if (jobDebounceTimerRef.current) {
       clearTimeout(jobDebounceTimerRef.current);
     }
     
-    // If jobs are selected, clear non-set miscellaneous categories from selectedCategories
+    // If jobs are selected, clear miscellaneous categories and 套裝 from selectedCategories
     if (selectedJobs.length > 0) {
       setSelectedCategories(prev => {
-        // Filter out miscellaneous categories except set (112)
-        // Miscellaneous categories are those not in equipmentCategoryIds (excluding 11 and 112)
+        // Equipment categories that should be kept when jobs are selected
+        // Note: 套裝 (112) is NOT included - it will be cleared
         const equipmentCategoryIdsSet = new Set([
           34, 35, 36, 37, 38, // Armor
-          112, // 套裝 (keep this one)
           40, 41, 42, 43, // Accessories
           62, // Soul crystal
         ]);
@@ -260,7 +286,7 @@ export default function AdvancedSearch({
             return true;
           }
           
-          // Keep equipment categories (including set 112)
+          // Keep equipment categories (excluding 套裝)
           if (equipmentCategoryIdsSet.has(catId)) {
             return true;
           }
@@ -270,7 +296,7 @@ export default function AdvancedSearch({
             return true;
           }
           
-          // Remove all other categories (miscellaneous except set)
+          // Remove all other categories (miscellaneous and 套裝)
           return false;
         });
       });
@@ -330,6 +356,25 @@ export default function AdvancedSearch({
     // Cache it
     equipmentCacheRef.current[cacheKey] = equipmentData;
     
+    return equipmentData;
+  }, []);
+
+  // Helper function to load equipment data for specific jobs + equipSlotCategory (targeted query)
+  const loadEquipmentByJobsAndSlotCategories = useCallback(async (jobAbbrs, slotCategories) => {
+    if (!jobAbbrs || jobAbbrs.length === 0 || !slotCategories || slotCategories.length === 0) {
+      return {};
+    }
+
+    const jobsKey = jobAbbrs.sort().join(',');
+    const slotsKey = [...new Set(slotCategories)].sort((a, b) => a - b).join(',');
+    const cacheKey = `jobsSlots:${jobsKey}|${slotsKey}`;
+
+    if (equipmentCacheRef.current[cacheKey]) {
+      return equipmentCacheRef.current[cacheKey];
+    }
+
+    const equipmentData = await getEquipmentByJobsAndSlotCategories(jobAbbrs, slotCategories);
+    equipmentCacheRef.current[cacheKey] = equipmentData;
     return equipmentData;
   }, []);
   
@@ -1195,6 +1240,29 @@ export default function AdvancedSearch({
     99,  // 捕魚用具（副工具）
   ]);
 
+  // EquipSlotCategory 映射 - 根据 equip-slot-categories.json 定义
+  // 主手 (MainHand: 1) 包括: category 1 (单手主手), 13 (双手), 14 (可主可副)
+  // 副手 (OffHand: 1) 包括: category 2 (副手), 13 (双手), 14 (可主可副)
+  const equipSlotCategoryMap = {
+    mainHand: [1, 13, 14],     // 所有主手 equipSlotCategory
+    offHand: [2, 13, 14],      // 所有副手 equipSlotCategory
+  };
+
+  // Map UI category IDs to equipSlotCategory IDs for armor/accessories
+  const uiCategoryToEquipSlotCategoryMap = {
+    34: [3],  // 頭部防具 -> Head
+    35: [4],  // 身體防具 -> Body
+    37: [5],  // 手部防具 -> Hands
+    36: [7],  // 腿部防具 -> Legs
+    38: [8],  // 腳部防具 -> Feet
+    41: [9],  // 耳飾 -> Earring
+    40: [10], // 項鍊 -> Necklace
+    42: [11], // 手鐲 -> Bracelet
+    43: [12], // 戒指 -> Ring
+    // Note: 112 (套裝) is NOT included here - it's treated like miscellaneous categories
+    // It's queried directly by UI category, not by equipSlotCategory
+  };
+
   // Map job IDs to their main weapon category IDs
   const jobToWeaponCategoryMap = {
     // Battle jobs
@@ -1284,11 +1352,11 @@ export default function AdvancedSearch({
   };
 
   // Equipment category IDs (weapons, armor, accessories)
+  // NOTE: 套裝 (112) is NOT included - it's treated like miscellaneous categories
   const equipmentCategoryIds = new Set([
     // Weapons (already handled by generic categories)
     // Armor
     34, 35, 36, 37, 38, // 頭部防具、身體防具、腿部防具、手部防具、腳部防具
-    112, // 套裝
     // Accessories
     40, 41, 42, 43, // 項鍊、耳飾、手鐲、戒指
     // Soul crystal
@@ -1307,9 +1375,9 @@ export default function AdvancedSearch({
       .filter(cat => !jobSpecificWeaponCategories.has(cat.id) && !jobSpecificToolCategories.has(cat.id) && !EXCLUDED_CATEGORIES.includes(cat.id)); // Exclude categories in EXCLUDED_CATEGORIES
     
     // Separate equipment and miscellaneous categories
-    // Exclude shield (11) from miscellaneous categories
+    // NOTE: 套裝 (112) is treated as miscellaneous, not equipment
     const equipmentCategories = allCategories.filter(cat => equipmentCategoryIds.has(cat.id));
-    const miscellaneousCategories = allCategories
+    let miscellaneousCategories = allCategories
       .filter(cat => !equipmentCategoryIds.has(cat.id) && cat.id !== 11) // Exclude shield (11) from miscellaneous
       .map(cat => {
         // Map category 63 (其他) to "坐騎/鳥甲"
@@ -1319,8 +1387,12 @@ export default function AdvancedSearch({
         return cat;
       });
     
-    // Sort equipment categories with custom order: head(34), set(112), body(35), hand(37), leg(36), feet(38), then accessories (earring, necklace, bracelet, ring)
-    const equipmentOrder = [34, 112, 35, 37, 36, 38, 41, 40, 42, 43, 62];
+    // Extract 套裝 (112) from miscellaneous to insert at the top as a special category
+    const setCategory = miscellaneousCategories.find(cat => cat.id === 112);
+    miscellaneousCategories = miscellaneousCategories.filter(cat => cat.id !== 112);
+    
+    // Sort equipment categories with custom order: head(34), body(35), hand(37), leg(36), feet(38), then accessories (earring, necklace, bracelet, ring)
+    const equipmentOrder = [34, 35, 37, 36, 38, 41, 40, 42, 43, 62];
     equipmentCategories.sort((a, b) => {
       const indexA = equipmentOrder.indexOf(a.id);
       const indexB = equipmentOrder.indexOf(b.id);
@@ -1350,10 +1422,10 @@ export default function AdvancedSearch({
     ];
     
     // Separate equipment into groups:
-    // 1. Armor (head, set, body, hand, leg, feet): 34, 112, 35, 37, 36, 38
+    // 1. Armor (head, body, hand, leg, feet): 34, 35, 37, 36, 38 (NOTE: set (112) is no longer here)
     // 2. Accessories: 41, 40, 42, 43 (earring, necklace, bracelet, ring)
     // 3. Others (soul crystal, etc.): 62
-    const armorIds = [34, 112, 35, 37, 36, 38]; // Include set (112) after head (34)
+    const armorIds = [34, 35, 37, 36, 38]; // Set (112) removed
     const accessoryIds = [41, 40, 42, 43];
     const armorCategories = equipmentCategories.filter(cat => armorIds.includes(cat.id));
     const accessoryCategories = equipmentCategories.filter(cat => accessoryIds.includes(cat.id));
@@ -1371,9 +1443,13 @@ export default function AdvancedSearch({
         return cat;
       });
     
+    // Prepare armor categories: insert 套裝 (112) as first item for UI display
+    // Note: Despite being in armor visually, 套裝 behaves like miscellaneous (disables jobs & ilvl)
+    const armorWithSet = setCategory ? [setCategory, ...armorCategories] : armorCategories;
+    
     return {
       weapons: genericCategories, // 主手、副手
-      armor: armorCategories, // 头部、身体、手、腿、脚
+      armor: armorWithSet, // 套裝、头部、身体、手、腿、脚
       accessories: accessoryCategories, // 项链、耳饰、手镯、戒指
       otherEquipment: otherEquipmentCategories, // 其他裝備（如坐騎/鳥甲）
       miscellaneous: miscellaneousCategories,
@@ -1528,92 +1604,59 @@ export default function AdvancedSearch({
     // Check for main/offhand weapon categories (needed for job compatibility filtering later)
     const hasMainWeaponCategory = selectedCategories.includes('main_weapon');
     const hasOffhandWeaponCategory = selectedCategories.includes('offhand_weapon');
+    const selectedJobAbbrsAll = selectedJobs.map(jobId => getJobAbbreviation(jobId)).filter(abbr => abbr);
     
     let itemIds = new Set();
+    let equipSlotCategoriesToFilter = new Set();
+    let equipSlotCategoriesArray = null;
+    let slotJobItemIds = null;
     
     // STEP 1: Filter by categories FIRST (if selected) - this can dramatically reduce item count
-    // Query ui_categories table directly by category IDs to get itemIds
     if (selectedCategories.length > 0) {
-      // Map generic categories to specific categories
       let categoryIdsToFilter = new Set();
-      
+
       selectedCategories.forEach(catId => {
         if (catId === 'main_weapon') {
-          // When "主手" is selected, map to job-specific categories if jobs are selected
-          if (selectedJobs.length > 0) {
-            // Map to job-specific categories based on selected jobs
-            selectedJobs.forEach(jobId => {
-              // Battle weapons
-              const weaponCategories = jobToWeaponCategoryMap[jobId];
-              if (weaponCategories) {
-                weaponCategories.forEach(catId => categoryIdsToFilter.add(catId));
-              }
-              // Production main tools
-              const productionMainTool = jobToProductionMainToolMap[jobId];
-              if (productionMainTool) {
-                categoryIdsToFilter.add(productionMainTool);
-              }
-              // Gathering main tools
-              const gatheringMainTool = jobToGatheringMainToolMap[jobId];
-              if (gatheringMainTool) {
-                categoryIdsToFilter.add(gatheringMainTool);
-              }
-            });
-          } else {
-            // If no jobs selected, include ALL main weapon/tool categories
-            genericCategoryGroups['主武器'].forEach(catId => categoryIdsToFilter.add(catId));
-          }
+          // When "主手" is selected, use equipSlotCategory directly
+          equipSlotCategoryMap.mainHand.forEach(slot => equipSlotCategoriesToFilter.add(slot));
         } else if (catId === 'offhand_weapon') {
-          // When "副手" is selected, map to job-specific categories if jobs are selected
-          if (selectedJobs.length > 0) {
-            // Map to job-specific offhand categories based on selected jobs
-            selectedJobs.forEach(jobId => {
-              // Battle offhand
-              const offhandWeapon = jobToOffhandWeaponMap[jobId];
-              if (offhandWeapon) {
-                categoryIdsToFilter.add(offhandWeapon);
-              }
-              // Production offhand tools
-              const productionOffhandTool = jobToProductionOffhandToolMap[jobId];
-              if (productionOffhandTool) {
-                categoryIdsToFilter.add(productionOffhandTool);
-              }
-              // Gathering offhand tools
-              const gatheringOffhandTool = jobToGatheringOffhandToolMap[jobId];
-              if (gatheringOffhandTool) {
-                categoryIdsToFilter.add(gatheringOffhandTool);
-              }
-            });
-          } else {
-            // If no jobs selected, include ALL offhand weapon/tool categories
-            genericCategoryGroups['副手武器'].forEach(catId => categoryIdsToFilter.add(catId));
-          }
+          // When "副手" is selected, use equipSlotCategory directly
+          equipSlotCategoryMap.offHand.forEach(slot => equipSlotCategoriesToFilter.add(slot));
         } else {
-          // Regular category ID
-          categoryIdsToFilter.add(parseInt(catId, 10));
+          const categoryId = parseInt(catId, 10);
+          const slotCategories = uiCategoryToEquipSlotCategoryMap[categoryId];
+          if (slotCategories && slotCategories.length > 0) {
+            slotCategories.forEach(slot => equipSlotCategoriesToFilter.add(slot));
+          } else {
+            // Regular UI category ID
+            categoryIdsToFilter.add(categoryId);
+          }
         }
       });
       
-      console.log(`[AdvancedSearch] Step 1 - Category filter: ${Array.from(categoryIdsToFilter).join(', ')}`);
+      // Query by equipSlotCategory if main/offhand weapon selected
+      if (equipSlotCategoriesToFilter && equipSlotCategoriesToFilter.size > 0) {
+        const slotCategoryArray = Array.from(equipSlotCategoriesToFilter);
+        equipSlotCategoriesArray = slotCategoryArray;
+        if (selectedJobAbbrsAll.length > 0) {
+          const equipmentDataForSlots = await loadEquipmentByJobsAndSlotCategories(selectedJobAbbrsAll, slotCategoryArray);
+          slotJobItemIds = new Set(Object.keys(equipmentDataForSlots).map(itemId => parseInt(itemId, 10)));
+          console.log(`[AdvancedSearch] Step 1 - Jobs+EquipSlotCategories ${selectedJobAbbrsAll.join(', ')} / ${slotCategoryArray.join(', ')}: ${slotJobItemIds.size} items`);
+          slotJobItemIds.forEach(itemId => itemIds.add(itemId));
+        } else {
+          const equipmentDataForSlots = await getEquipmentBySlotCategories(slotCategoryArray);
+          console.log(`[AdvancedSearch] Step 1 - EquipSlotCategories ${slotCategoryArray.join(', ')}: ${Object.keys(equipmentDataForSlots).length} items`);
+          Object.keys(equipmentDataForSlots).forEach(itemId => {
+            itemIds.add(parseInt(itemId, 10));
+          });
+        }
+      }
       
-      // Query ui_categories table directly by category IDs (NO need to load all items!)
-      const categoryItemIds = await getItemIdsByCategories(Array.from(categoryIdsToFilter));
-      console.log(`[AdvancedSearch] Found ${categoryItemIds.length} items matching categories`);
-      
-      // Filter out excluded categories
-      // Note: getItemIdsByCategories already returns items matching the specified categories
-      // We need to filter out items that are in EXCLUDED_CATEGORIES
-      if (categoryItemIds.length > 0) {
-        const uiCategoriesData = await loadUICategoriesByIds(categoryItemIds);
-        categoryItemIds.forEach(itemId => {
-          const itemCategoryId = uiCategoriesData[itemId];
-          // Include item if it doesn't have a category in EXCLUDED_CATEGORIES
-          // If itemCategoryId is undefined/null, include it (might be a valid item without category data)
-          if (!itemCategoryId || !EXCLUDED_CATEGORIES.includes(itemCategoryId)) {
-            itemIds.add(itemId);
-          }
-        });
-        console.log(`[AdvancedSearch] After excluding categories: ${itemIds.size} items`);
+      // Query by UI categories if any
+      if (categoryIdsToFilter.size > 0) {
+        const categoryItemIds = await getItemIdsByCategories(Array.from(categoryIdsToFilter));
+        console.log(`[AdvancedSearch] Step 1 - UI Categories ${Array.from(categoryIdsToFilter).join(', ')}: ${categoryItemIds.length} items`);
+        categoryItemIds.forEach(id => itemIds.add(id));
       }
     }
     
@@ -1637,10 +1680,17 @@ export default function AdvancedSearch({
       // Also add production tools from equipment - use targeted query by jobs
       const productionJobAbbrs = productionJobIds.map(jobId => getJobAbbreviation(jobId)).filter(abbr => abbr);
       if (productionJobAbbrs.length > 0) {
-        const equipmentData = await loadEquipmentByJobs(productionJobAbbrs);
-        Object.keys(equipmentData).forEach(itemId => {
-          jobItemIds.add(parseInt(itemId, 10));
-        });
+        if (equipSlotCategoriesArray && equipSlotCategoriesArray.length > 0) {
+          const equipmentData = await loadEquipmentByJobsAndSlotCategories(productionJobAbbrs, equipSlotCategoriesArray);
+          Object.keys(equipmentData).forEach(itemId => {
+            jobItemIds.add(parseInt(itemId, 10));
+          });
+        } else {
+          const equipmentData = await loadEquipmentByJobs(productionJobAbbrs);
+          Object.keys(equipmentData).forEach(itemId => {
+            jobItemIds.add(parseInt(itemId, 10));
+          });
+        }
       }
     }
 
@@ -1648,11 +1698,27 @@ export default function AdvancedSearch({
     if (battleJobIds.length > 0) {
       const battleJobAbbrs = battleJobIds.map(jobId => getJobAbbreviation(jobId)).filter(abbr => abbr);
       if (battleJobAbbrs.length > 0) {
-        const equipmentData = await loadEquipmentByJobs(battleJobAbbrs);
-        Object.keys(equipmentData).forEach(itemId => {
-          jobItemIds.add(parseInt(itemId, 10));
-        });
-        console.log(`[AdvancedSearch] Step 2 - Found ${jobItemIds.size} items for jobs: ${battleJobAbbrs.join(', ')}`);
+        if (slotJobItemIds && slotJobItemIds.size > 0 && equipSlotCategoriesToFilter && equipSlotCategoriesToFilter.size > 0) {
+          slotJobItemIds.forEach(itemId => jobItemIds.add(itemId));
+          console.log(`[AdvancedSearch] Step 2 - Using jobs+slots results: ${jobItemIds.size} items`);
+        } else {
+          const equipmentData = await loadEquipmentByJobs(battleJobAbbrs);
+          Object.keys(equipmentData).forEach(itemId => {
+            jobItemIds.add(parseInt(itemId, 10));
+          });
+          console.log(`[AdvancedSearch] Step 2 - Found ${jobItemIds.size} items for jobs: ${battleJobAbbrs.join(', ')}`);
+          
+          // DEBUG: Show all axes in WAR equipment
+          if (battleJobAbbrs.includes('WAR')) {
+            const warAxes = Object.entries(equipmentData)
+              .filter(([itemId, data]) => data.equipSlotCategory === 13) // equipSlotCategory 13 = 双手武器
+              .map(([itemId]) => parseInt(itemId, 10));
+            console.log(`[DEBUG] WAR 装备表中的双手武器: ${warAxes.length} items`);
+            if (warAxes.length <= 30) {
+              console.log(`  IDs: ${warAxes.join(', ')}`);
+            }
+          }
+        }
       }
     }
     
@@ -1660,13 +1726,34 @@ export default function AdvancedSearch({
     if (selectedCategories.length > 0 && selectedJobs.length > 0) {
       // If both category and job filters are selected, take intersection
       const intersection = new Set();
+      const categoryOnlyItems = [];
       itemIds.forEach(itemId => {
         if (jobItemIds.has(itemId)) {
           intersection.add(itemId);
+        } else {
+          categoryOnlyItems.push(itemId);
         }
       });
       itemIds = intersection;
       console.log(`[AdvancedSearch] After category + job intersection: ${itemIds.size} items`);
+      console.log(`  - Category items in job list: ${intersection.size}`);
+      console.log(`  - Category items NOT in job list: ${categoryOnlyItems.length}`);
+      
+      // DEBUG: Check item 34232 after job intersection
+      if (categoryOnlyItems.includes(debugItemId)) {
+        console.log(`❌ [DEBUG 34232] Was in category filter but NOT in job filter`);
+        if (jobItemIds.has(debugItemId)) {
+          console.log(`   ERROR: 34232 is in jobItemIds but missed in intersection`);
+        } else {
+          console.log(`   34232 is not in the WAR equipment list from jobs filter`);
+        }
+      } else if (itemIds.has(debugItemId)) {
+        console.log(`✅ [DEBUG 34232] Passed category + job intersection filter`);
+      }
+      
+      if (categoryOnlyItems.length > 0 && categoryOnlyItems.length <= 20) {
+        console.log(`  - Missing items IDs: ${categoryOnlyItems.join(', ')}`);
+      }
     } else if (selectedJobs.length > 0 && selectedCategories.length === 0) {
       // If only jobs selected (no categories), use job results
       itemIds = jobItemIds;
@@ -1675,29 +1762,57 @@ export default function AdvancedSearch({
     
     // If jobs are selected and we have "主手" or "副手" category, filter by job compatibility
     // This ensures that when user selects a job + "主手", they see all main hand weapons that job can use
-    if (selectedJobs.length > 0 && (hasMainWeaponCategory || hasOffhandWeaponCategory) && itemIds.size > 0) {
+    if (!DEBUG_DISABLE_JOB_FILTER && selectedJobs.length > 0 && (hasMainWeaponCategory || hasOffhandWeaponCategory) && itemIds.size > 0) {
       const itemIdsArray = Array.from(itemIds);
       const equipmentData = await loadEquipmentByIds(itemIdsArray);
       const selectedJobAbbrs = selectedJobs.map(jobId => getJobAbbreviation(jobId)).filter(abbr => abbr);
       const jobCompatibleItems = new Set();
+      let itemsWithEquipmentData = 0;
+      let itemsWithoutEquipmentData = 0;
+      let itemsWithJobsData = 0;
       
       itemIds.forEach(itemId => {
         const equipment = equipmentData[itemId];
         if (equipment && equipment.jobs && Array.isArray(equipment.jobs)) {
+          itemsWithJobsData++;
           // Check if any selected job can use this item
           const canUse = selectedJobAbbrs.some(jobAbbr => equipment.jobs.includes(jobAbbr));
-          if (canUse) {
+          
+          // Also check equipSlotCategory if main/offhand weapon is selected
+          let correctSlot = true;
+          if (hasMainWeaponCategory && !hasOffhandWeaponCategory) {
+            // Main hand only - must be in equipSlotCategory [1, 13, 14]
+            correctSlot = equipSlotCategoryMap.mainHand.includes(equipment.equipSlotCategory);
+          } else if (hasOffhandWeaponCategory && !hasMainWeaponCategory) {
+            // Off hand only - must be in equipSlotCategory [2, 13, 14]
+            correctSlot = equipSlotCategoryMap.offHand.includes(equipment.equipSlotCategory);
+          }
+          
+          if (canUse && correctSlot) {
             jobCompatibleItems.add(itemId);
           }
+          itemsWithEquipmentData++;
         } else {
+          if (equipment) {
+            itemsWithEquipmentData++;
+          } else {
+            itemsWithoutEquipmentData++;
+          }
           // If no equipment data or no jobs field, include it (might be non-equipment item)
           // But for weapons, we should have equipment data, so this is a safety net
           jobCompatibleItems.add(itemId);
         }
       });
       
-      console.log(`[AdvancedSearch] Job compatibility filter: ${jobCompatibleItems.size} items compatible with jobs ${selectedJobAbbrs.join(', ')}`);
+      console.log(`[AdvancedSearch] Job + EquipSlotCategory compatibility filter:`);
+      console.log(`  - Total items: ${itemIds.size}`);
+      console.log(`  - Items with equipment data: ${itemsWithEquipmentData}`);
+      console.log(`  - Items without equipment data: ${itemsWithoutEquipmentData}`);
+      console.log(`  - Items with jobs data: ${itemsWithJobsData}`);
+      console.log(`  - Compatible items: ${jobCompatibleItems.size}`);
       itemIds = jobCompatibleItems;
+    } else if (DEBUG_DISABLE_JOB_FILTER && selectedJobs.length > 0 && (hasMainWeaponCategory || hasOffhandWeaponCategory)) {
+      console.log(`[AdvancedSearch] ⚠️  DEBUG_DISABLE_JOB_FILTER is enabled - skipping job compatibility filter`);
     }
     
     // Exclude items in excluded categories (if we haven't already done so)
@@ -1717,28 +1832,47 @@ export default function AdvancedSearch({
       console.log(`[AdvancedSearch] After excluding categories (no category filter): ${itemIds.size} items`);
     }
 
-    // Filter by equipment level range if specified (LevelEquip, not ilvl)
-    // Use targeted query since we already have itemIds
-    if (minLevel > 1 || maxLevel < 999) {
+    // Filter by item level range (ilvl, not equipment level)
+    // Use ilvl JSON data for comparison instead of equipment.level
+    // NOTE: Skip ilvl filtering if 套裝 (112) is selected (sets don't have ilvl)
+    const hasSetCategory = selectedCategories.includes(112);
+    console.log(`[AdvancedSearch] Step 4a - Before ilvl filter: minLevel=${minLevel}, maxLevel=${maxLevel}, items=${itemIds.size}, hasSetCategory=${hasSetCategory}`);
+    
+    if (!hasSetCategory && (minLevel > 1 || maxLevel < 999)) {
       const itemIdsArray = Array.from(itemIds);
-      const equipmentData = await loadEquipmentByIds(itemIdsArray);
+      // Load ilvls for these items
+      const ilvlsDataForFilter = await loadIlvlsData(itemIdsArray);
       const filteredByLevel = new Set();
+      let ilvlStats = { min: Infinity, max: -Infinity, count: 0, withData: 0, withoutData: 0 };
+      
       itemIds.forEach(itemId => {
-        const equipment = equipmentData[itemId];
-        // Include items without equipment level if range is not restrictive (default range)
-        if (!equipment || equipment.level === undefined || equipment.level === null) {
-          // If no equipment level data, include it only if range is default (1-999)
-          if (minLevel === 1 && maxLevel === 999) {
-            filteredByLevel.add(itemId);
-          }
+        const ilvl = ilvlsDataForFilter[itemId];
+        // Include items without ilvl data ALWAYS (they may not be equipment, so no ilvl needed)
+        if (ilvl === undefined || ilvl === null) {
+          ilvlStats.withoutData++;
+          // Always include items without ilvl data (they might not be equippable)
+          filteredByLevel.add(itemId);
         } else {
-          // Include items within equipment level range
-          if (equipment.level >= minLevel && equipment.level <= maxLevel) {
+          ilvlStats.withData++;
+          ilvlStats.min = Math.min(ilvlStats.min, ilvl);
+          ilvlStats.max = Math.max(ilvlStats.max, ilvl);
+          ilvlStats.count++;
+          // Include items within ilvl range
+          if (ilvl >= minLevel && ilvl <= maxLevel) {
             filteredByLevel.add(itemId);
           }
         }
       });
       itemIds = filteredByLevel;
+      console.log(`[AdvancedSearch] Step 4b - Ilvl filter (${minLevel}-${maxLevel}): ${itemIds.size} items`);
+      console.log(`  - Items with ilvl data: ${ilvlStats.withData} (min=${ilvlStats.min}, max=${ilvlStats.max})`);
+      console.log(`  - Items without ilvl data: ${ilvlStats.withoutData}`);
+    } else {
+      if (hasSetCategory) {
+        console.log(`[AdvancedSearch] Step 4b - Ilvl filter: Skipped (套裝 category selected, sets don't have ilvl)`);
+      } else {
+        console.log(`[AdvancedSearch] Step 4b - Ilvl filter: Using default range (1-999), skipping filter`);
+      }
     }
 
     // Filter by item name BEFORE checking tradeable status (must be after job/category/level filters)
@@ -1865,6 +1999,15 @@ export default function AdvancedSearch({
         // (This is intentional - we can't match items without names)
       });
       itemIds = filteredByName;
+      
+      // DEBUG: Check item 34232 after name filter
+      if (itemNameFilter.trim()) {  // Only log if name filter was actually applied
+        if (itemIds.has(debugItemId)) {
+          console.log(`✅ [DEBUG 34232] Passed name filter`);
+        } else {
+          console.log(`❌ [DEBUG 34232] Was filtered out by name filter "${itemNameFilter}"`);
+        }
+      }
     }
 
     // Check if any items match the filters (after job/category/level/name filtering)
@@ -1880,6 +2023,17 @@ export default function AdvancedSearch({
     // Note: Don't call setMarketableItems here - it will be set in handleFilterSearch using the returned marketableSet
     let tradeableItemIds = allItemIds.filter(id => marketableSet.has(id));
     const untradeableItemIds = allItemIds.filter(id => !marketableSet.has(id));
+
+    // DEBUG: Check item 34232 after marketable filter
+    if (allItemIds.includes(debugItemId)) {
+      if (marketableSet.has(debugItemId)) {
+        console.log(`✅ [DEBUG 34232] Is marketable (tradeable)`);
+      } else {
+        console.log(`⚠️  [DEBUG 34232] Is NOT marketable (untradeable) - will be in untradeableItemIds`);
+      }
+    } else {
+      console.log(`❌ [DEBUG 34232] NOT in allItemIds before marketable filter`);
+    }
 
     // Verify that we have at least some items (tradeable or untradeable)
     // Note: tradeableItemIds.length + untradeableItemIds.length should always equal allItemIds.length
@@ -1918,11 +2072,14 @@ export default function AdvancedSearch({
       return b - a;
     });
 
-    // Check if too many items (only check tradeable items for limit)
+    // Check if too many items (check TOTAL items: tradeable + untradeable)
     // Skip this check if skipLimitCheck is true (for "continue search" button)
-    if (!skipLimitCheck && tradeableItemIds.length > MAX_ITEMS_LIMIT) {
+    const totalItemsCount = tradeableItemIds.length + untradeableItemIds.length;
+    if (!skipLimitCheck && totalItemsCount > MAX_ITEMS_LIMIT) {
       setTooManyItemsWarning({
-        total: tradeableItemIds.length,
+        total: totalItemsCount,
+        tradeable: tradeableItemIds.length,
+        untradeable: untradeableItemIds.length,
         limit: MAX_ITEMS_LIMIT
       });
       return null; // Return null to indicate warning was set
@@ -1934,7 +2091,7 @@ export default function AdvancedSearch({
       untradeableItemIds,
       marketableSet 
     };
-  }, [selectedJobs, selectedCategories, selectedWorld, selectedServerOption, minLevel, maxLevel, itemNameFilter, filterFuzzySearch, addToast, loadRecipeDatabase, loadEquipmentByJobs, loadEquipmentByIds, loadUICategoriesByIds, loadIlvlsData, getJobAbbreviation]);
+  }, [selectedJobs, selectedCategories, selectedWorld, selectedServerOption, minLevel, maxLevel, itemNameFilter, filterFuzzySearch, addToast, loadRecipeDatabase, loadEquipmentByJobs, loadEquipmentByJobsAndSlotCategories, loadEquipmentByIds, loadUICategoriesByIds, loadIlvlsData, getJobAbbreviation]);
 
   // Handle filter search
   const handleFilterSearch = useCallback(async () => {
@@ -2048,8 +2205,23 @@ export default function AdvancedSearch({
 
       // Load ilvls data for sorting - use targeted query for these specific items
       const allItemIdsForSort = [...verifiedTradeableItemIds, ...untradeableItemIds];
-      console.log(`[AdvancedSearch] handleFilterSearch: Loading ilvls for ${allItemIdsForSort.length} items (${verifiedTradeableItemIds.length} tradeable + ${untradeableItemIds.length} untradeable)`);
+      console.log(`[AdvancedSearch] Loading ilvls for ${allItemIdsForSort.length} items (${verifiedTradeableItemIds.length} tradeable + ${untradeableItemIds.length} untradeable)`);
       const ilvlsData = await loadIlvlsData(allItemIdsForSort);
+      
+      // Log ilvl statistics
+      const ilvlValues = allItemIdsForSort
+        .map(id => ilvlsData[id])
+        .filter(ilvl => ilvl !== undefined && ilvl !== null);
+      if (ilvlValues.length > 0) {
+        const minIlvl = Math.min(...ilvlValues);
+        const maxIlvl = Math.max(...ilvlValues);
+        const avgIlvl = (ilvlValues.reduce((a, b) => a + b, 0) / ilvlValues.length).toFixed(1);
+        console.log(`[AdvancedSearch] iLvL statistics for results:`);
+        console.log(`  - Min iLvL: ${minIlvl}`);
+        console.log(`  - Max iLvL: ${maxIlvl}`);
+        console.log(`  - Average iLvL: ${avgIlvl}`);
+        console.log(`  - Items with iLvL data: ${ilvlValues.length} / ${allItemIdsForSort.length}`);
+      }
       
       // Check again if this request was superseded
       if (currentRequestId !== filterSearchRequestIdRef.current) {
@@ -2228,39 +2400,47 @@ export default function AdvancedSearch({
   }, [selectedJobs, selectedCategories, selectedWorld, selectedServerOption, addToast, isFilterSearching, isSearching, itemNameFilter, minLevel, maxLevel, filterFuzzySearch, isSearchButtonDisabled]);
 
   // Fetch velocity, average price, and tradability data for search results (like main search page)
-  // This loads prices for ALL items when searchResults or selectedServerOption changes
+  // This loads prices for TRADEABLE items only when searchResults or selectedServerOption changes
+  // IMPORTANT: Do NOT include showUntradeable or untradeableResults in dependencies
+  // - showUntradeable: toggling visibility should NOT reload data
+  // - untradeableResults: untradeable items don't need market data and changes shouldn't trigger reload
   useEffect(() => {
-    // Get displayed results first to check if we'll need to fetch
-    const displayedResults = showUntradeable ? untradeableResults : searchResults;
-    const willNeedFetch = displayedResults && displayedResults.length > 0 && selectedServerOption && selectedWorld;
+    // Only fetch for tradeable items (searchResults), not untradeable items
+    // This is the correct behavior - untradeable items don't need market data
+    const tradeableItems = searchResults;
     
-    // Cancel any in-progress fetch
+    // Cancel any in-progress fetch first
     if (velocityFetchAbortControllerRef.current) {
       velocityFetchAbortControllerRef.current.abort();
       velocityFetchInProgressRef.current = false;
       setVelocityFetchInProgress(false);
     }
     
-    // Reset state if no search results or no server selected
-    if (!displayedResults || displayedResults.length === 0 || !selectedServerOption || !selectedWorld) {
-      setItemVelocities({});
-      setItemAveragePrices({});
-      setItemMinListings({});
-      setItemRecentPurchases({});
-      setItemTradability({});
+    // Reset state if no tradeable search results or no server selected
+    if (!tradeableItems || tradeableItems.length === 0 || !selectedServerOption || !selectedWorld) {
       setIsLoadingVelocities(false);
       setVelocityLoadingProgress({ loaded: 0, total: 0 });
       velocityFetchInProgressRef.current = false;
       setVelocityFetchInProgress(false);
-      lastFetchedItemIdsRef.current = '';
+      // Only clear market data if there are no tradeable results
+      // Keep existing data so switching views doesn't lose it
+      if (!tradeableItems || tradeableItems.length === 0) {
+        // Clear data only when there are truly no tradeable results
+        setItemVelocities({});
+        setItemAveragePrices({});
+        setItemMinListings({});
+        setItemRecentPurchases({});
+        setItemTradability({});
+        lastFetchedItemIdsRef.current = '';
+      }
       return;
     }
 
-    // Get all item IDs from displayed results and sort by ilvl before API query
+    // Get all item IDs from TRADEABLE results only and sort by ilvl before API query
     (async () => {
-      const allItemIds = displayedResults.map(item => item.id);
+      const allItemIds = tradeableItems.map(item => item.id);
       
-      // Check marketability ONLY for displayed items (efficient - uses WHERE IN)
+      // Check marketability ONLY for these items (efficient - uses WHERE IN)
       const marketableSet = await getMarketableItemsByIds(allItemIds);
       
       // Filter to only marketable items before batch processing
@@ -2593,6 +2773,11 @@ export default function AdvancedSearch({
                 return;
               }
               console.error('Error fetching market data:', error);
+              // On error, stop loading immediately and mark items as failed
+              setIsLoadingVelocities(false);
+              setVelocityLoadingProgress({ loaded: 0, total: 0 });
+              velocityFetchInProgressRef.current = false;
+              setVelocityFetchInProgress(false);
               // Mark batch items as non-tradable on error
               const batchTradability = {};
               batch.forEach(itemId => {
@@ -2604,6 +2789,8 @@ export default function AdvancedSearch({
                   setItemTradability(prev => ({ ...prev, ...batchTradability }));
                 });
               }
+              // Throw error to stop batch processing
+              throw error;
             }
           };
           
@@ -2632,8 +2819,13 @@ export default function AdvancedSearch({
               batchSize = 100;
             }
             
-            // Process this batch
-            await processBatch(batchNumber, startIndex);
+            // Process this batch - wrap in try/catch to stop on error
+            try {
+              await processBatch(batchNumber, startIndex);
+            } catch (error) {
+              // Error already handled in processBatch, just stop processing
+              return;
+            }
             
             // Check if we should continue
             if (abortSignal.aborted || currentRequestId !== velocityFetchRequestIdRef.current) {
@@ -2677,7 +2869,9 @@ export default function AdvancedSearch({
       // Start fetching data
       fetchData();
     })();
-  }, [searchResults, untradeableResults, showUntradeable, selectedServerOption, selectedWorld, loadIlvlsData]);
+  // CRITICAL: Only depend on searchResults (tradeable items), selectedServerOption, selectedWorld, and loadIlvlsData
+  // Do NOT include: showUntradeable (toggling visibility) or untradeableResults (untradeable items don't need market data)
+  }, [searchResults, selectedServerOption, selectedWorld, loadIlvlsData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
@@ -3283,7 +3477,10 @@ export default function AdvancedSearch({
                         找到的物品過多
                       </h3>
                       <p className="text-sm text-gray-300 mb-3">
-                        找到 <span className="text-yellow-400 font-bold">{tooManyItemsWarning.total}</span> 個可交易物品，
+                        找到 <span className="text-yellow-400 font-bold">{tooManyItemsWarning.total}</span> 個物品
+                        {tooManyItemsWarning.tradeable !== undefined && tooManyItemsWarning.untradeable !== undefined && (
+                          <span className="text-gray-400"> （{tooManyItemsWarning.tradeable} 可交易 + {tooManyItemsWarning.untradeable} 不可交易）</span>
+                        )}，
                         超過建議上限 <span className="text-yellow-400 font-bold">{tooManyItemsWarning.limit}</span> 個。
                         處理過多物品可能會導致搜索時間過長或性能問題。
                       </p>
@@ -3356,13 +3553,28 @@ export default function AdvancedSearch({
                               // This matches handleBatchSearch behavior - filter BEFORE setting searchResults
                               const verifiedTradeableItemIds = tradeableItemIds.filter(id => marketableSet.has(id));
 
-                              // Limit to MAX_ITEMS_LIMIT (this is the "continue search" path)
-                              // Use verifiedTradeableItemIds instead of tradeableItemIds
-                              const limitedTradeableItemIds = verifiedTradeableItemIds.slice(0, MAX_ITEMS_LIMIT);
-                              addToast(`已限制為前 ${limitedTradeableItemIds.length} 個物品，正在獲取市場數據...`, 'warning');
+                              // Limit TOTAL items (tradeable + untradeable) to MAX_ITEMS_LIMIT
+                              // This ensures the combined count doesn't exceed 500
+                              const totalItems = verifiedTradeableItemIds.length + untradeableItemIds.length;
+                              let limitedTradeableItemIds = verifiedTradeableItemIds;
+                              let limitedUntradeableItemIds = untradeableItemIds;
+                              
+                              if (totalItems > MAX_ITEMS_LIMIT) {
+                                // Calculate how many items to take from each category proportionally
+                                const tradeableRatio = verifiedTradeableItemIds.length / totalItems;
+                                const tradeableLimit = Math.floor(MAX_ITEMS_LIMIT * tradeableRatio);
+                                const untradeableLimit = MAX_ITEMS_LIMIT - tradeableLimit;
+                                
+                                limitedTradeableItemIds = verifiedTradeableItemIds.slice(0, Math.max(tradeableLimit, 0));
+                                limitedUntradeableItemIds = untradeableItemIds.slice(0, Math.max(untradeableLimit, 0));
+                                
+                                addToast(`已限制為前 ${limitedTradeableItemIds.length + limitedUntradeableItemIds.length} 個物品（${limitedTradeableItemIds.length} 可交易 + ${limitedUntradeableItemIds.length} 不可交易），正在獲取市場數據...`, 'warning');
+                              } else {
+                                addToast(`共 ${totalItems} 個物品（${limitedTradeableItemIds.length} 可交易 + ${limitedUntradeableItemIds.length} 不可交易），正在獲取市場數據...`, 'info');
+                              }
 
                               // Load ilvls data for sorting - use targeted query for these specific items
-                              const allItemIdsForSortContinue = [...limitedTradeableItemIds, ...untradeableItemIds];
+                              const allItemIdsForSortContinue = [...limitedTradeableItemIds, ...limitedUntradeableItemIds];
                               const ilvlsData = await loadIlvlsData(allItemIdsForSortContinue);
                               
                               // Check again if this request was superseded
@@ -3926,13 +4138,13 @@ export default function AdvancedSearch({
                                 });
                                 
                                 // Also load untradeable items in background if they exist
-                                if (untradeableItemIds.length > 0) {
-                                  loadItemsProgressively(untradeableItemIds, false).catch(error => {
+                                if (limitedUntradeableItemIds.length > 0) {
+                                  loadItemsProgressively(limitedUntradeableItemIds, false).catch(error => {
                                     console.error('Error loading untradeable items:', error);
                                   });
                                 }
-                              } else if (untradeableItemIds.length > 0) {
-                                loadItemsProgressively(untradeableItemIds, false).catch(error => {
+                              } else if (limitedUntradeableItemIds.length > 0) {
+                                loadItemsProgressively(limitedUntradeableItemIds, false).catch(error => {
                                   console.error('Error loading untradeable items:', error);
                                 });
                               }
@@ -3944,8 +4156,8 @@ export default function AdvancedSearch({
                               }
 
                               // Show toast with results count
-                              if (limitedTradeableItemIds.length > 0 || untradeableItemIds.length > 0) {
-                                addToast(`找到 ${limitedTradeableItemIds.length} 個可交易物品${untradeableItemIds.length > 0 ? `、${untradeableItemIds.length} 個不可交易物品` : ''}`, 'success');
+                              if (limitedTradeableItemIds.length > 0 || limitedUntradeableItemIds.length > 0) {
+                                addToast(`找到 ${limitedTradeableItemIds.length} 個可交易物品${limitedUntradeableItemIds.length > 0 ? `、${limitedUntradeableItemIds.length} 個不可交易物品` : ''}`, 'success');
                               }
 
                               setIsFilterSearching(false);
@@ -4140,13 +4352,11 @@ export default function AdvancedSearch({
                         onFocus={() => {
                           setMinLevelFocused(true);
                         }}
-                        onBlur={(e) => {
+                        onBlur={() => {
                           setMinLevelFocused(false);
-                          if (e.target.value === '' || e.target.value === '1') {
-                            setMinLevel(1);
-                          }
+                          // No need to reset on blur - let state maintain the value
                         }}
-                        disabled={isLoadingVelocities || isFilterSearching}
+                        disabled={isLoadingVelocities || isFilterSearching || hasMiscellaneousCategory}
                         placeholder="1"
                         className="w-40 pl-3 pr-12 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                       />
@@ -4178,13 +4388,11 @@ export default function AdvancedSearch({
                       onFocus={() => {
                         setMaxLevelFocused(true);
                       }}
-                      onBlur={(e) => {
+                      onBlur={() => {
                         setMaxLevelFocused(false);
-                        if (e.target.value === '' || e.target.value === '999') {
-                          setMaxLevel(999);
-                        }
+                        // No need to reset on blur - let state maintain the value
                       }}
-                      disabled={isLoadingVelocities || isFilterSearching}
+                      disabled={isLoadingVelocities || isFilterSearching || hasMiscellaneousCategory}
                       placeholder="999"
                       className="w-40 px-3 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                     />
@@ -4324,7 +4532,7 @@ export default function AdvancedSearch({
                 getSimplifiedChineseName={getSimplifiedChineseName}
                 addToast={addToast}
                 title="搜索結果"
-                titleSuffix={filteredResults.length !== currentResults.length ? `，顯示 ${filteredResults.length} 個` : ''}
+                titleSuffix=""
                 showUntradeableButton={activeTab === 'filter' && untradeableResults.length > 0 && searchResults.length > 0}
                 untradeableCount={untradeableResults.length}
                 tradeableCount={searchResults.length}
@@ -4343,8 +4551,8 @@ export default function AdvancedSearch({
                   setItemsPerPage(newItemsPerPage);
                   setCurrentPage(1);
                 }}
-                defaultItemsPerPage={50}
-                itemsPerPageOptions={[50, 100, 200]}
+                defaultItemsPerPage={PAGINATION_CONFIG.DEFAULT_ITEMS_PER_PAGE}
+                itemsPerPageOptions={PAGINATION_CONFIG.ITEMS_PER_PAGE_OPTIONS}
                 scrollRef={resultsTableRef}
                 onSelect={(item) => {
                   if (onItemSelect) {

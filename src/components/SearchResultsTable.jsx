@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import ItemTable from './ItemTable';
 import ServerSelector from './ServerSelector';
 import RunningLoader from './RunningLoader';
+import { PAGINATION_CONFIG } from '../constants/pagination';
 
 export default function SearchResultsTable({
   // Results data
@@ -38,8 +39,8 @@ export default function SearchResultsTable({
   openInNewTab = false, // Controls whether ItemTable opens new tab or calls onSelect
   
   // Pagination
-  defaultItemsPerPage = 20,
-  itemsPerPageOptions = [20, 30, 50, 100, 200],
+  defaultItemsPerPage = PAGINATION_CONFIG.DEFAULT_ITEMS_PER_PAGE,
+  itemsPerPageOptions = PAGINATION_CONFIG.ITEMS_PER_PAGE_OPTIONS,
   // External pagination control (optional - if provided, use external state instead of internal)
   externalCurrentPage = null,
   externalItemsPerPage = null,
@@ -131,15 +132,10 @@ export default function SearchResultsTable({
   }, [items.length, externalCurrentPage]);
   
   // Handle page change
+  // Note: Removed automatic scrolling to prevent scroll jump when pagination changes
+  // Scroll behavior is now controlled by parent components if needed
   const handlePageChange = useCallback((newPage) => {
     if (newPage < 1 || newPage > totalPages) return;
-    
-    // Scroll to results table if scrollRef provided, otherwise scroll to top
-    if (scrollRef && scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
     
     // Use external handler if provided, otherwise use internal state
     if (onExternalPageChange) {
@@ -152,7 +148,7 @@ export default function SearchResultsTable({
     if (onPageChange) {
       onPageChange(newPage);
     }
-  }, [totalPages, onPageChange, onExternalPageChange, externalCurrentPage, scrollRef]);
+  }, [totalPages, onPageChange, onExternalPageChange, externalCurrentPage]);
   
   // Handle items per page change
   const handleItemsPerPageChange = useCallback((newItemsPerPage) => {
@@ -206,8 +202,9 @@ export default function SearchResultsTable({
       {/* Header */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         {/* Show marketable items count in header (not total items) */}
+        {/* When loading, show count with progress, when complete show "X 個物品" */}
         <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold">
-          {title} ({tradeableCount > 0 ? tradeableCount : items.length} 個物品{titleSuffix || ''})
+          {title} ({`${tradeableCount > 0 ? tradeableCount : items.length}`} 個物品{titleSuffix || ''})
         </h2>
         {showServerBadge && selectedWorld && selectedServerOption && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm">
@@ -220,16 +217,16 @@ export default function SearchResultsTable({
             </span>
           </div>
         )}
-        {/* Show/Hide Non-Marketable Items Button - ALWAYS VISIBLE */}
+        {/* Show/Hide Non-Marketable Items Button */}
         {/* Logic:
-            1. Always show button if onToggleUntradeable is provided (even if count is 0)
+            1. If tradeableCount === 0 (all items untradable): HIDE button completely (clicking would hide all results)
             2. If untradeableCount === 0: Show disabled tag "無不可交易物品"
             3. If untradeableCount > 0 but loading: Show disabled tag with count
             4. If untradeableCount > 0 and loaded: Show enabled button with count
             5. Button is disabled until server selector is enabled (all API requests complete)
             6. Clicking toggles between showing marketable vs non-marketable items
         */}
-        {onToggleUntradeable && (
+        {onToggleUntradeable && tradeableCount > 0 && (
           <button
             onClick={() => {
               // Prevent click when disabled
@@ -264,18 +261,24 @@ export default function SearchResultsTable({
             }
           </button>
         )}
-        {/* Loading Indicator - show only for >=50 items, with minimum display time */}
-        {/* Use fixed height container to prevent layout shift when indicator appears/disappears */}
-        <div className="h-[28px] flex items-center">
-          {showLoadingIndicator && items.length >= 50 && (
-            <div className="flex items-center gap-2 px-2 py-1 bg-slate-800/50 border border-purple-500/30 rounded-lg">
-              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-ffxiv-gold"></div>
-              <span className="text-xs text-gray-300">
-                載入中{velocityLoadingProgressDisplay && velocityLoadingProgressDisplay.total > 0 ? ` ${velocityLoadingProgressDisplay.loaded}/${velocityLoadingProgressDisplay.total}` : ''}
-              </span>
+        {/* Loading Progress Bar - compact and elegant */}
+        {showLoadingIndicator && items.length >= 50 && velocityLoadingProgressDisplay && velocityLoadingProgressDisplay.total > 0 && (
+          <div className="flex items-center gap-2 min-w-[140px]">
+            <div className="flex-1">
+              <div className="h-1.5 bg-slate-800/50 rounded-full overflow-hidden border border-purple-500/20">
+                <div 
+                  className="h-full bg-gradient-to-r from-ffxiv-gold via-amber-400 to-ffxiv-gold transition-all duration-300 ease-out"
+                  style={{ 
+                    width: `${Math.min(100, (velocityLoadingProgressDisplay.loaded / velocityLoadingProgressDisplay.total) * 100)}%` 
+                  }}
+                />
+              </div>
             </div>
-          )}
-        </div>
+            <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">
+              {velocityLoadingProgressDisplay.loaded}/{velocityLoadingProgressDisplay.total}
+            </span>
+          </div>
+        )}
       </div>
       
       {/* Warning for large result sets - ONLY based on marketable items count */}

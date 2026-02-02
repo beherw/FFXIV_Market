@@ -936,10 +936,14 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
               : 0;
             const originalIndex = paginationOffset + index;
             
-            // Ensure priority is only set for items that are actually in the first 5 positions
-            // This handles the case where sortedItems might be recalculating
-            const isPriority = originalIndex < 5 && sortedItems.length > 0;
-            // Use API-based tradability if available, otherwise fallback to marketableItems
+            // CRITICAL: Calculate loadDelay based on position within current page, not global position
+            // This ensures all pages load icons quickly, not just page 1
+            // For each page: first 5 items load immediately (priority), rest load sequentially
+            const indexInCurrentPage = index;
+            const isPriority = indexInCurrentPage < 5 && sortedItems.length > 0;
+            // For non-priority items: load with minimal delay based on position in page
+            // This ensures all pages load similarly fast, ~50-200ms per item
+            const baseLoadDelay = isPriority ? 0 : (indexInCurrentPage >= 5 ? (indexInCurrentPage - 5) * 50 : 0);
             const isTradableFromAPI = itemTradability ? itemTradability[item.id] : undefined;
             const isMarketable = marketableItems ? marketableItems.has(item.id) : true;
             // Use API-based tradability, fallback to marketableItems check if API data not loaded yet
@@ -985,7 +989,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                     alt={item.name}
                     className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded border border-purple-500/30 bg-slate-900/50"
                     priority={isPriority}
-                    loadDelay={isPriority ? 0 : (originalIndex >= 5 ? (originalIndex - 5) * 200 : 0)}
+                    loadDelay={baseLoadDelay}
                   />
                 </td>
                 <td className="px-2 sm:px-4 py-2 text-right font-mono text-xs">

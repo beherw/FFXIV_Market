@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getItemImageUrl, getItemImageUrlSync, getCalculatedIconUrls } from '../utils/itemImage';
 
-export default function ItemImage({ itemId, alt, className, priority = false, loadDelay = 0, isTradable = undefined, ...props }) {
+export default function ItemImage({ itemId, alt, className, priority = false, loadDelay = 0, ...props }) {
   // For priority items, initialize with calculated URL immediately to prevent flickering
   // This ensures the image shows on first render instead of loading indicator
   const getInitialState = () => {
@@ -43,12 +43,40 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
   const retryTimeoutRef = useRef(null);
   const fallbackUrlsRef = useRef(initialState.fallbackUrls);
   const currentFallbackIndexRef = useRef(0);
-  const isTradableRef = useRef(isTradable);
 
-  // Update ref when isTradable changes
+
+  // CRITICAL: Check cache immediately when itemId changes (before loadDelay)
+  // This ensures cached images are displayed instantly without waiting for delay
   useEffect(() => {
-    isTradableRef.current = isTradable;
-  }, [isTradable]);
+    if (!itemId || itemId <= 0) {
+      setImageUrl(null);
+      return;
+    }
+
+    // Check cache first - if found, bypass loadDelay and show immediately
+    const cachedUrl = getItemImageUrlSync(itemId);
+    if (cachedUrl) {
+      // Found in cache - show immediately without delay
+      setImageUrl(cachedUrl);
+      setImageLoaded(true);     // Mark as loaded
+      setHasError(false);
+      setIconIsLoading(false);  // No loading indicator
+      setUsingCalculatedUrl(false);
+      // Don't call loadImage for cached URLs - just display them
+      return;
+    }
+
+    // Not in cache - check if we should load based on loadDelay
+    // If loadDelay indicates we haven't reached this item yet, wait
+    if (loadDelay >= 100000) {
+      // Very large delay = waiting for sort, don't load yet
+      setShouldLoad(false);
+      return;
+    }
+
+    // No cache and not waiting for sort - proceed with delayed loading
+    // (loadDelay will be applied by the existing setTimeout logic below)
+  }, [itemId]);
 
   // For priority items, immediately set calculated URL when itemId changes
   // This prevents flickering when switching between items in item info page
@@ -98,10 +126,15 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
       timeoutRef.current = null;
     }
     
-    // Don't load if item is explicitly marked as untradeable
-    if (isTradable === false) {
-      setShouldLoad(false);
-      return;
+    // CRITICAL: If image is already cached, load immediately (no delay)
+    // This ensures cached images display instantly when pagination changes
+    if (itemId && itemId > 0) {
+      const cachedUrl = getItemImageUrlSync(itemId);
+      if (cachedUrl) {
+        // Cached URL found - set shouldLoad immediately without delay
+        setShouldLoad(true);
+        return;
+      }
     }
     
     // For priority items (like item info page), load immediately without delay
@@ -114,13 +147,9 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
     // Load with the specified delay (sequential loading from top to bottom)
     // Delay is calculated as index * 53ms to respect API rate limits (19 req/sec)
     timeoutRef.current = setTimeout(() => {
-      // Check isTradable when timeout fires using ref (current value)
-      // This allows icons to load even if tradeability data loads asynchronously
-      if (isTradableRef.current === false) {
-        setShouldLoad(false);
-      } else {
-        setShouldLoad(true);
-      }
+      // Load icons regardless of tradeability status
+      // Icons should load for both tradable and untradable items when they are displayed
+      setShouldLoad(true);
     }, loadDelay);
     
     return () => {
@@ -129,7 +158,7 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
         timeoutRef.current = null;
       }
     };
-  }, [loadDelay, isTradable, priority]);
+  }, [loadDelay, priority]);
 
   // Load image with retry logic
   const loadImage = useCallback((attemptNumber = 0, forceReload = false) => {
@@ -145,11 +174,14 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
       const cachedUrl = getItemImageUrlSync(itemId);
       if (cachedUrl) {
         setImageUrl(cachedUrl);
-        // Don't set iconIsLoading to false here - wait for onLoad event
+        // CRITICAL: Don't reset imageLoaded when using cached URL
+        // This prevents flickering and unnecessary re-renders
+        // The image was already loaded before (that's why it's cached)
+        setImageLoaded(true); // Image is cached, mark as loaded
         setHasError(false);
         setUsingCalculatedUrl(false);
         setRetryCount(0);
-        setImageLoaded(false); // Reset loaded state for cached URL
+        setIconIsLoading(false); // Also stop loading indicator for cached images
         return;
       }
     }

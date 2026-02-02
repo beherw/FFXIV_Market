@@ -14,6 +14,7 @@ import { getMarketableItems } from '../services/universalis';
 import { getItemById, getSimplifiedChineseName } from '../services/itemDatabase';
 import { getInternalUrl } from '../utils/internalUrl.js';
 import { generateItemUrl } from '../utils/urlSlug';
+import { PAGINATION_CONFIG } from '../constants/pagination';
 import axios from 'axios';
 import twJobAbbrData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json';
 
@@ -58,7 +59,7 @@ export default function CraftingJobPriceChecker({
   const [marketableItems, setMarketableItems] = useState(null);
   const [tooManyItemsWarning, setTooManyItemsWarning] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [itemsPerPage, setItemsPerPage] = useState(PAGINATION_CONFIG.DEFAULT_ITEMS_PER_PAGE);
   const MAX_ITEMS_LIMIT = 500; // Maximum number of items to process
   
   // Loading indicator state (same as AdvancedSearch page)
@@ -1045,9 +1046,9 @@ export default function CraftingJobPriceChecker({
                     }}
                     className="px-3 py-1.5 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white text-sm focus:outline-none focus:border-ffxiv-gold"
                   >
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                    <option value={200}>200</option>
+                    {PAGINATION_CONFIG.ITEMS_PER_PAGE_OPTIONS.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
                   </select>
                   <span className="text-sm text-gray-400">
                     顯示 {startIndex + 1}-{Math.min(endIndex, searchResults.length)} / {searchResults.length}
@@ -1144,9 +1145,9 @@ export default function CraftingJobPriceChecker({
                     }}
                     className="px-3 py-1.5 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white text-sm focus:outline-none focus:border-ffxiv-gold"
                   >
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                    <option value={200}>200</option>
+                    {PAGINATION_CONFIG.ITEMS_PER_PAGE_OPTIONS.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
                   </select>
                   <span className="text-sm text-gray-400">
                     顯示 {startIndex + 1}-{Math.min(endIndex, searchResults.length)} / {searchResults.length}
