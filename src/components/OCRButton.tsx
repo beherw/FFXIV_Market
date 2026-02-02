@@ -185,18 +185,20 @@ function resizeImageIfNeeded(image: HTMLImageElement): Promise<HTMLImageElement>
 }
 
 /**
- * Otsu 自動閾值
+ * Otsu 自動閾值（改進版：針對白色文字優化）
  */
 function calculateOtsuThreshold(imageData: ImageData): number {
   const data = imageData.data;
   const histogram = new Array(256).fill(0);
   const totalPixels = data.length / 4;
+  const brightnessValues: number[] = [];
 
   for (let i = 0; i < data.length; i += 4) {
     const gray = Math.round(
       0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
     );
     histogram[gray]++;
+    brightnessValues.push(gray);
   }
 
   let sum = 0;
@@ -225,6 +227,26 @@ function calculateOtsuThreshold(imageData: ImageData): number {
       maxVariance = variance;
       threshold = i;
     }
+  }
+
+  // 檢測是否為白色文字場景（平均亮度低且標準差大）
+  const avgBrightness = brightnessValues.reduce((a, b) => a + b, 0) / brightnessValues.length;
+  const variance = brightnessValues.reduce((sum, val) => sum + Math.pow(val - avgBrightness, 2), 0) / brightnessValues.length;
+  const stdDev = Math.sqrt(variance);
+  const isLightTextOnDark = avgBrightness < 120 && stdDev > 40;
+  
+  // 針對白色文字場景，降低閾值以保留更多文字細節
+  if (isLightTextOnDark) {
+    // 降低閾值 15-20，讓更多亮區被識別為文字
+    threshold = Math.max(80, threshold - 18);
+    ocrDebugLog('calculateOtsuThreshold: 偵測到白色文字場景，調整閾值', {
+      originalThreshold: threshold + 18,
+      adjustedThreshold: threshold,
+      adjustment: -18,
+      avgBrightness: Math.round(avgBrightness),
+      stdDev: Math.round(stdDev),
+      timestamp: new Date().toISOString(),
+    });
   }
 
   return threshold;
@@ -576,38 +598,116 @@ function applySharpen(imageData: ImageData, strength: 'normal' | 'strong' = 'nor
 }
 
 /**
- * 檢測是否為淺色文字在深色背景上
- * 通過分析圖像的亮度分佈來判斷
+ * 偵測文字的主要顏色類型
  */
-function detectLightTextOnDarkBackground(imageData: ImageData): boolean {
+interface TextColorInfo {
+  type: 'white' | 'blue' | 'colored' | 'unknown';
+  isLightText: boolean;
+  avgBrightness: number;
+  colorStats: {
+    avgR: number;
+    avgG: number;
+    avgB: number;
+    blueness: number; // 藍色特徵分數 (0-1)
+  };
+}
+
+function detectTextColor(imageData: ImageData): TextColorInfo {
   const { data } = imageData;
   const brightnessValues: number[] = [];
+  let sumR = 0, sumG = 0, sumB = 0;
+  let sampleCount = 0;
+  let bluePixelCount = 0; // 統計藍色像素數量
   
   // 採樣圖像像素（每10個像素採樣一次以提高效率）
   for (let i = 0; i < data.length; i += 40) {
-    const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+    
     brightnessValues.push(gray);
+    sumR += r;
+    sumG += g;
+    sumB += b;
+    sampleCount++;
+    
+    // 偵測藍色像素：B通道明顯高於R和G通道
+    // 藍色條件：B > 150 且 B > R + 30 且 B > G + 30
+    if (b > 150 && b > r + 30 && b > g + 30) {
+      bluePixelCount++;
+    }
   }
   
-  // 計算平均亮度
+  // 計算平均值
   const avgBrightness = brightnessValues.reduce((a, b) => a + b, 0) / brightnessValues.length;
+  const avgR = sumR / sampleCount;
+  const avgG = sumG / sampleCount;
+  const avgB = sumB / sampleCount;
   
   // 計算亮度分佈（標準差）
   const variance = brightnessValues.reduce((sum, val) => sum + Math.pow(val - avgBrightness, 2), 0) / brightnessValues.length;
   const stdDev = Math.sqrt(variance);
   
-  // 如果平均亮度低且標準差較大，可能是淺色文字在深色背景上
-  // 平均亮度 < 120 且標準差 > 40 時，認為是淺色文字在深色背景
-  const isLightText = avgBrightness < 120 && stdDev > 40;
+  // 計算藍色特徵分數
+  const blueRatio = bluePixelCount / sampleCount;
+  const blueness = avgB > (avgR + avgG) / 2 + 20 ? (avgB - (avgR + avgG) / 2) / 255 : 0;
   
-  ocrDebugLog('detectLightTextOnDarkBackground: 檢測結果', {
-    avgBrightness: Math.round(avgBrightness),
-    stdDev: Math.round(stdDev),
+  // 判斷文字類型
+  let type: TextColorInfo['type'] = 'unknown';
+  let isLightText = false;
+  
+  // 1. 檢查是否為藍色文字（藍色佔比 > 10% 或者藍色特徵分數 > 0.2）
+  if (blueRatio > 0.1 || blueness > 0.2) {
+    type = 'blue';
+    isLightText = avgBrightness < 150; // 藍色背景下的判斷標準
+  }
+  // 2. 檢查是否為白色文字（高亮度且三通道接近）
+  else if (avgBrightness > 180 && Math.abs(avgR - avgG) < 20 && Math.abs(avgG - avgB) < 20) {
+    type = 'white';
+    isLightText = avgBrightness < 120 && stdDev > 40;
+  }
+  // 3. 其他有顏色的文字
+  else if (Math.abs(avgR - avgG) > 20 || Math.abs(avgG - avgB) > 20 || Math.abs(avgR - avgB) > 20) {
+    type = 'colored';
+    isLightText = avgBrightness < 120 && stdDev > 40;
+  }
+  // 4. 無法判斷，使用原有邏輯
+  else {
+    isLightText = avgBrightness < 120 && stdDev > 40;
+  }
+  
+  const result: TextColorInfo = {
+    type,
     isLightText,
+    avgBrightness,
+    colorStats: {
+      avgR: Math.round(avgR),
+      avgG: Math.round(avgG),
+      avgB: Math.round(avgB),
+      blueness: Math.round(blueness * 100) / 100,
+    },
+  };
+  
+  ocrDebugLog('detectTextColor: 顏色檢測結果', {
+    ...result,
+    stdDev: Math.round(stdDev),
+    bluePixelRatio: `${(blueRatio * 100).toFixed(1)}%`,
+    bluePixelCount,
+    sampleCount,
     timestamp: new Date().toISOString(),
   });
   
-  return isLightText;
+  return result;
+}
+
+/**
+ * 檢測是否為淺色文字在深色背景上
+ * 通過分析圖像的亮度分佈來判斷
+ */
+function detectLightTextOnDarkBackground(imageData: ImageData): boolean {
+  const colorInfo = detectTextColor(imageData);
+  return colorInfo.isLightText;
 }
 
 /**
@@ -623,6 +723,187 @@ function invertImage(imageData: ImageData): ImageData {
     newData[i + 2] = 255 - data[i + 2]; // B
     newData[i + 3] = data[i + 3];   // A
   }
+  
+  return new ImageData(newData, width, height);
+}
+
+/**
+ * 針對藍色文字優化處理
+ * 策略：提取藍色通道並增強對比度，使藍色文字更容易被識別
+ */
+function enhanceBlueText(imageData: ImageData): ImageData {
+  const { data, width, height } = imageData;
+  const newData = new Uint8ClampedArray(data);
+  
+  ocrDebugLog('enhanceBlueText: 開始藍色文字增強', {
+    timestamp: new Date().toISOString(),
+  });
+  
+  // 第一步：提取藍色通道並增強
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    
+    // 計算藍色強度 (B通道減去R和G的平均值)
+    const blueStrength = b - (r + g) / 2;
+    
+    // 如果是藍色像素（B通道明顯高於R和G），增強它
+    if (blueStrength > 20) {
+      // 將藍色像素轉為白色（高亮）
+      const enhanced = Math.min(255, b * 1.3 + 30);
+      newData[i] = enhanced;
+      newData[i + 1] = enhanced;
+      newData[i + 2] = enhanced;
+    } else {
+      // 非藍色像素變暗（變成背景）
+      const darkened = Math.max(0, Math.min(r, g, b) * 0.5);
+      newData[i] = darkened;
+      newData[i + 1] = darkened;
+      newData[i + 2] = darkened;
+    }
+    newData[i + 3] = data[i + 3]; // 保留 alpha
+  }
+  
+  // 第二步：增強對比度
+  let min = 255, max = 0;
+  for (let i = 0; i < newData.length; i += 4) {
+    const val = newData[i];
+    min = Math.min(min, val);
+    max = Math.max(max, val);
+  }
+  
+  // 對比度拉伸
+  const range = max - min;
+  if (range > 0) {
+    for (let i = 0; i < newData.length; i += 4) {
+      const normalized = ((newData[i] - min) / range) * 255;
+      newData[i] = normalized;
+      newData[i + 1] = normalized;
+      newData[i + 2] = normalized;
+    }
+  }
+  
+  ocrDebugLog('enhanceBlueText: 藍色文字增強完成', {
+    originalRange: { min, max },
+    rangeStretch: range,
+    timestamp: new Date().toISOString(),
+  });
+  
+  return new ImageData(newData, width, height);
+}
+
+/**
+ * 針對白色文字優化處理
+ * 策略：增強亮區對比度、背景抑制、邊緣強化
+ */
+function enhanceWhiteText(imageData: ImageData): ImageData {
+  const { data, width, height } = imageData;
+  const newData = new Uint8ClampedArray(data);
+  
+  ocrDebugLog('enhanceWhiteText: 開始白色文字增強', {
+    timestamp: new Date().toISOString(),
+  });
+  
+  // 第一步：分析亮度分佈
+  const brightnessValues: number[] = [];
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    brightnessValues.push(gray);
+  }
+  
+  // 計算百分位數（更穩健的閾值）
+  const sortedBrightness = [...brightnessValues].sort((a, b) => a - b);
+  const p10 = sortedBrightness[Math.floor(sortedBrightness.length * 0.1)];
+  const p90 = sortedBrightness[Math.floor(sortedBrightness.length * 0.9)];
+  const median = sortedBrightness[Math.floor(sortedBrightness.length * 0.5)];
+  
+  ocrDebugLog('enhanceWhiteText: 亮度分佈分析', {
+    p10,
+    median,
+    p90,
+    range: p90 - p10,
+    timestamp: new Date().toISOString(),
+  });
+  
+  // 第二步：自適應對比度增強
+  // 使用雙線性拉伸：暗部輕微拉伸，亮部大幅拉伸
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    
+    let enhanced: number;
+    if (gray < median) {
+      // 暗部（背景）：輕微壓暗
+      const ratio = gray / median;
+      enhanced = ratio * ratio * median * 0.6; // 平方函數壓暗
+    } else {
+      // 亮部（文字）：大幅拉伸到高亮區
+      const ratio = (gray - median) / (255 - median);
+      enhanced = median * 0.6 + ratio * (255 - median * 0.6) * 1.4; // 線性拉伸 + 增強
+    }
+    
+    enhanced = Math.max(0, Math.min(255, enhanced));
+    newData[i] = enhanced;
+    newData[i + 1] = enhanced;
+    newData[i + 2] = enhanced;
+    newData[i + 3] = data[i + 3]; // 保留 alpha
+  }
+  
+  // 第三步：邊緣強化（使用 Unsharp Mask）
+  const tempData = new Uint8ClampedArray(newData);
+  const blurRadius = 1;
+  
+  // 簡單的模糊（用於 unsharp mask）
+  for (let y = blurRadius; y < height - blurRadius; y++) {
+    for (let x = blurRadius; x < width - blurRadius; x++) {
+      let sum = 0;
+      let count = 0;
+      
+      for (let dy = -blurRadius; dy <= blurRadius; dy++) {
+        for (let dx = -blurRadius; dx <= blurRadius; dx++) {
+          const idx = ((y + dy) * width + (x + dx)) * 4;
+          sum += tempData[idx];
+          count++;
+        }
+      }
+      
+      const blurred = sum / count;
+      const idx = (y * width + x) * 4;
+      const original = tempData[idx];
+      
+      // Unsharp Mask: original + amount * (original - blurred)
+      const sharpened = original + 1.2 * (original - blurred);
+      const clamped = Math.max(0, Math.min(255, sharpened));
+      
+      newData[idx] = clamped;
+      newData[idx + 1] = clamped;
+      newData[idx + 2] = clamped;
+    }
+  }
+  
+  // 第四步：最終對比度拉伸
+  let min = 255, max = 0;
+  for (let i = 0; i < newData.length; i += 4) {
+    const val = newData[i];
+    min = Math.min(min, val);
+    max = Math.max(max, val);
+  }
+  
+  const range = max - min;
+  if (range > 30) { // 只在有足夠對比度時才拉伸
+    for (let i = 0; i < newData.length; i += 4) {
+      const normalized = ((newData[i] - min) / range) * 255;
+      newData[i] = normalized;
+      newData[i + 1] = normalized;
+      newData[i + 2] = normalized;
+    }
+  }
+  
+  ocrDebugLog('enhanceWhiteText: 白色文字增強完成', {
+    finalRange: { min, max },
+    rangeStretch: range,
+    timestamp: new Date().toISOString(),
+  });
   
   return new ImageData(newData, width, height);
 }
@@ -659,16 +940,16 @@ function enhanceContrastForDarkBackground(imageData: ImageData): ImageData {
   let brightnessShift: number;
   
   if (isLightTextOnDark) {
-    // 淺色文字在深色背景：適度的對比度增強（降低強度以避免筆畫黏連）
-    contrastFactor = 2.2; // 從 3.0 降低到 2.2，避免過度增強
-    brightnessShift = 15; // 從 30 降低到 15，減少亮度偏移
+    // 淺色文字在深色背景：使用更激進的增強（提高白色文字識別率）
+    contrastFactor = 2.5; // 從 2.2 提高到 2.5，增強文字對比度
+    brightnessShift = 20; // 從 15 提高到 20，提高文字亮度
   } else if (avgBrightness < 100) {
     // 深色背景：中等對比度增強
-    contrastFactor = 2.0; // 從 2.5 降低到 2.0
-    brightnessShift = -15; // 從 -20 調整到 -15
+    contrastFactor = 2.0;
+    brightnessShift = -15;
   } else {
     // 正常場景
-    contrastFactor = 1.6; // 從 1.8 降低到 1.6
+    contrastFactor = 1.6;
     brightnessShift = 0;
   }
   
@@ -802,6 +1083,55 @@ function preprocessImage(
       height: imageData.height,
       timestamp: new Date().toISOString(),
     });
+
+    // ========== 步驟0.5: 偵測文字顏色類型 ==========
+    const textColorInfo = detectTextColor(imageData);
+    ocrDebugLog('preprocessImage: [步驟0.5] 偵測到文字顏色', {
+      colorType: textColorInfo.type,
+      isLightText: textColorInfo.isLightText,
+      colorStats: textColorInfo.colorStats,
+      timestamp: new Date().toISOString(),
+    });
+
+    // ========== 步驟0.6: 針對藍色文字進行特殊處理 ==========
+    if (textColorInfo.type === 'blue') {
+      ocrDebugLog('preprocessImage: [步驟0.6] 偵測到藍色文字，使用藍色增強 filter', {
+        timestamp: new Date().toISOString(),
+      });
+      const beforeBlueEnhance = Date.now();
+      imageData = enhanceBlueText(imageData);
+      const afterBlueEnhance = Date.now();
+      ocrDebugLog('preprocessImage: [步驟0.6] 藍色文字增強完成', {
+        duration: afterBlueEnhance - beforeBlueEnhance,
+        timestamp: new Date().toISOString(),
+      });
+      
+      // 藍色文字增強後，跳過灰階化（因為已經轉換為灰階）
+      filterSwitches.enableGrayscale = false;
+      ocrDebugLog('preprocessImage: [步驟0.6] 已跳過後續灰階化步驟（藍色增強已處理）', {
+        timestamp: new Date().toISOString(),
+      });
+    }
+    // 針對白色文字進行特殊處理
+    else if (textColorInfo.type === 'white' && textColorInfo.isLightText) {
+      ocrDebugLog('preprocessImage: [步驟0.6] 偵測到白色文字，使用白色增強 filter', {
+        timestamp: new Date().toISOString(),
+      });
+      const beforeWhiteEnhance = Date.now();
+      imageData = enhanceWhiteText(imageData);
+      const afterWhiteEnhance = Date.now();
+      ocrDebugLog('preprocessImage: [步驟0.6] 白色文字增強完成', {
+        duration: afterWhiteEnhance - beforeWhiteEnhance,
+        timestamp: new Date().toISOString(),
+      });
+      
+      // 白色文字增強後，跳過灰階化和對比度增強（已經處理過）
+      filterSwitches.enableGrayscale = false;
+      filterSwitches.enableContrastEnhancement = false;
+      ocrDebugLog('preprocessImage: [步驟0.6] 已跳過後續灰階化和對比度增強步驟（白色增強已處理）', {
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     // ========== 步驟1: 灰階化 ==========
     if (filterSwitches.enableGrayscale) {
