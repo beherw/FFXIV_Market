@@ -1159,17 +1159,8 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                           : 'text-ffxiv-accent hover:text-ffxiv-gold cursor-pointer'
                       }`}
                     >
-                      Wiki
+                      灰機
                     </button>
-                    <a
-                      href={`https://www.garlandtools.org/db/#item/${item.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-ffxiv-accent hover:text-ffxiv-gold transition-colors whitespace-nowrap"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Garland
-                    </a>
                     <a
                       href={`https://universalis.app/market/${item.id}`}
                       target="_blank"
@@ -1177,7 +1168,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                       className="text-ffxiv-accent hover:text-ffxiv-gold transition-colors whitespace-nowrap"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      Market
+                      數據源
                     </a>
                   </div>
                 </td>

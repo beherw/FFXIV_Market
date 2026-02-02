@@ -291,7 +291,7 @@ export default function SearchResultsTable({
         const isLoadingComplete = !isLoadingVelocities && 
                                    !isServerSelectorDisabled &&
                                    hasVelocityData &&
-                                   (velocityLoadingProgress.total === 0 || velocityLoadingProgress.loaded >= velocityLoadingProgress.total);
+                                   (velocityLoadingProgress == null || velocityLoadingProgress.total === 0 || velocityLoadingProgress.loaded >= velocityLoadingProgress.total);
         
         return (
           <div className={`mb-4 p-4 rounded-lg border-2 transition-all duration-300 ${

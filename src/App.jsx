@@ -31,6 +31,7 @@ import { APP_VERSION } from './constants/version';
 import { generateItemSlug, generateItemUrl } from './utils/urlSlug';
 import { detectLanguage, getItemNameForUrl } from './utils/itemLanguage';
 import ItemSEO from './components/ItemSEO';
+import VersionFooter from './components/VersionFooter';
 
 // Lazy load route-based components with error handling
 const createLazyComponent = (importFn, componentName) => {
@@ -3583,11 +3584,7 @@ function App() {
 
 
       {/* Toast Notifications */}
-      <div className={`fixed right-2 mid:right-4 left-2 mid:left-auto z-50 space-y-2 max-w-sm mid:max-w-none ${
-        selectedItem 
-          ? 'top-[100px] mid:top-[120px] detail:top-24'
-          : 'top-[60px] mid:top-4'
-      }`}>
+      <div className="fixed right-2 mid:right-4 left-2 mid:left-auto z-50 space-y-2 max-w-sm mid:max-w-none top-[60px] mid:top-4">
         {toasts.map(toast => (
           <Toast
             key={toast.id}
@@ -3912,16 +3909,60 @@ function App() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 detail:gap-4 overflow-x-auto min-w-0 detail:flex-shrink-0 detail:max-w-none relative z-10 scroll-pl-1 -ml-1 pl-1">
-                    <ServerSelector
-                      datacenters={datacenters}
-                      worlds={worlds}
-                      selectedWorld={selectedWorld}
-                      onWorldChange={setSelectedWorld}
-                      selectedServerOption={selectedServerOption}
-                      onServerOptionChange={handleServerOptionChange}
-                      serverOptions={serverOptions}
-                    />
+                  <div className="flex flex-col gap-2 w-full detail:w-auto detail:items-end">
+                    {/* External Links Row - Above Server Selector */}
+                    <div className="flex gap-2 flex-wrap justify-end -mt-1">
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (getSimplifiedChineseName) {
+                            const simplifiedName = await getSimplifiedChineseName(selectedItem.id);
+                            if (simplifiedName) {
+                              const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
+                              const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(simplifiedName)}`;
+                              window.open(url, '_blank', 'noopener,noreferrer');
+                            } else {
+                              const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
+                              const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(selectedItem.name)}`;
+                              window.open(url, '_blank', 'noopener,noreferrer');
+                            }
+                          } else {
+                            const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
+                            const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(selectedItem.name)}`;
+                            window.open(url, '_blank', 'noopener,noreferrer');
+                          }
+                        } catch (error) {
+                          console.error('Failed to open Wiki link:', error);
+                          addToast('無法打開灰機連結', 'error');
+                        }
+                      }}
+                      className="px-2 py-1 text-[11px] sm:text-xs font-medium bg-slate-700/50 hover:bg-slate-600/60 text-slate-200 hover:text-white rounded-md border border-slate-500/40 hover:border-slate-400/60 transition-all duration-200"
+                      title="灰機"
+                    >
+                      灰機
+                    </button>
+                    <a
+                      href={`https://universalis.app/market/${selectedItem.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-1 text-[11px] sm:text-xs font-medium bg-slate-700/50 hover:bg-slate-600/60 text-slate-200 hover:text-white rounded-md border border-slate-500/40 hover:border-slate-400/60 transition-all duration-200"
+                      title="數據源"
+                    >
+                      數據源
+                    </a>
+                    </div>
+                    {/* Server Selector Row - Below External Links */}
+                    <div className="flex items-center justify-end gap-3 detail:gap-4 overflow-x-auto w-full detail:w-auto min-w-0 detail:flex-shrink-0 detail:max-w-none relative z-10 scroll-pl-1">
+                      <ServerSelector
+                        datacenters={datacenters}
+                        worlds={worlds}
+                        selectedWorld={selectedWorld}
+                        onWorldChange={setSelectedWorld}
+                        selectedServerOption={selectedServerOption}
+                        onServerOptionChange={handleServerOptionChange}
+                        serverOptions={serverOptions}
+                      />
+                    </div>
                   </div>
                 </div>
                 
@@ -4906,13 +4947,9 @@ function App() {
                     </div>
                   </a>
                 </div>
-                {/* Version Info */}
-                <div className="mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-slate-600/30">
-                  <p className="text-xs text-slate-500 text-center">
-                    版本號: <span className="text-ffxiv-gold font-semibold">{APP_VERSION}</span>
-                  </p>
-                </div>
               </div>
+              {/* Version Footer */}
+              <VersionFooter />
             </div>
           )}
         </div>

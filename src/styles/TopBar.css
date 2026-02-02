@@ -59,153 +59,18 @@
   left: 0;
   right: 0;
   z-index: 50;
+  width: 100%;
   backdrop-filter: none;
   background: transparent !important;
   background-color: transparent !important;
   padding: 0.25rem 0.375rem;
+  box-sizing: border-box;
 }
 
 @media (min-width: 890px) {
   .topbar-container {
     top: 1rem;
-    right: auto;
-    padding: 0;
-  }
-}
-
-/* Item Info Page - Adjust positioning */
-.topbar-container.item-info-page {
-  padding: 0.25rem 0.375rem 0;
-  backdrop-filter: none;
-  background: transparent !important;
-}
-
-@media (min-width: 890px) {
-  .topbar-container.item-info-page {
-    left: 5rem;
-    padding: 0 0.5rem 0.25rem;
-    right: 0.5rem;
-    max-width: none;
-    overflow: visible;
-    backdrop-filter: none;
-    background: transparent !important;
-  }
-}
-
-@media (min-width: 1024px) {
-  .topbar-container.item-info-page {
-    padding: 0 0.75rem 0.25rem;
-    right: 0; /* Don't constrain right side - external links are fixed */
-  }
-}
-
-/* Other Pages - Adjust positioning */
-.topbar-container:not(.item-info-page) {
-  padding-left: 0.375rem;
-}
-
-@media (min-width: 890px) {
-  .topbar-container:not(.item-info-page) {
-    padding-left: 5rem;
-    padding-right: 0;
-  }
-}
-
-/* Item Info Page Wrapper */
-.topbar-item-info-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
-  background: transparent !important;
-}
-
-/* Calculate topbar height for content spacing */
-.topbar-container.item-info-page {
-  --topbar-height-mobile: 180px; /* Mobile: ~180px (logo + search + nav + external + gaps) */
-  --topbar-height-tablet: 160px; /* Tablet: ~160px (search + nav + external + gaps) */
-  --topbar-height-desktop: 140px; /* Desktop: ~140px (search + external + nav + gaps) */
-}
-
-@media (min-width: 768px) {
-  .topbar-container.item-info-page {
-    --topbar-height-mobile: var(--topbar-height-tablet);
-  }
-}
-
-@media (min-width: 1024px) {
-  .topbar-container.item-info-page {
-    --topbar-height-mobile: var(--topbar-height-desktop);
-  }
-}
-
-/* Item Info Page - First Row: Logo + Search + Navigation Buttons (Desktop) + External Links (Desktop, fixed right) */
-.topbar-item-info-first-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  flex-wrap: wrap;
-  position: relative;
-}
-
-@media (min-width: 768px) {
-  .topbar-item-info-first-row {
-    gap: 0.75rem;
-    flex-wrap: nowrap;
-  }
-}
-
-/* Hide navigation buttons on first row for mobile/tablet */
-.topbar-nav-button-container.item-info-page-desktop {
-  display: none;
-}
-
-.topbar-nav-separator.item-info-page-desktop {
-  display: none;
-}
-
-/* Show navigation buttons on first row starting from 1200px (when there's enough space) */
-@media (min-width: 1200px) {
-  .topbar-nav-button-container.item-info-page-desktop {
-    display: block;
-  }
-  
-  .topbar-nav-separator.item-info-page-desktop {
-    display: block;
-  }
-  
-  /* Show text on navigation buttons when there's enough space */
-  .topbar-item-info-first-row .topbar-nav-text.item-info-page {
-    display: inline;
-  }
-  
-  .topbar-item-info-first-row .topbar-nav-button.item-info-page {
-    padding: 0 0.75rem;
-  }
-}
-
-/* Hide text on navigation buttons when space is tight (1100px-1199px) - only icons on first row */
-@media (min-width: 1100px) and (max-width: 1199px) {
-  .topbar-nav-button-container.item-info-page-desktop {
-    display: block;
-  }
-  
-  .topbar-nav-separator.item-info-page-desktop {
-    display: block;
-  }
-  
-  .topbar-item-info-first-row .topbar-nav-text.item-info-page {
-    display: none;
-  }
-  
-  .topbar-item-info-first-row .topbar-nav-button.item-info-page {
-    padding: 0 0.5rem;
-  }
-  
-  /* Hide second row when first row buttons are visible */
-  .topbar-item-info-nav-row {
-    display: none !important;
+    padding: 0 0 0 5rem;
   }
 }
 
@@ -260,94 +125,6 @@
   }
 }
 
-/* Item Info Page - Search Bar */
-.topbar-search-container.item-info-page {
-  flex: 1;
-  min-width: 0;
-  /* Reserve space for external links on mobile: 
-     3 buttons (2rem each = 32px) = 96px
-     + 2 gaps (0.5rem each = 8px) = 16px  
-     + right margin (0.75rem = 12px) = 12px
-     + container right padding (0.375rem = 6px) = 6px
-     + first row gap (0.5rem = 8px) = 8px
-     + extra buffer = 30px
-     Total = ~176px */
-  max-width: calc(100% - 176px);
-}
-
-@media (min-width: 480px) {
-  .topbar-search-container.item-info-page {
-    /* Slightly more space on larger mobile */
-    max-width: calc(100% - 190px);
-  }
-}
-
-@media (min-width: 768px) {
-  .topbar-search-container.item-info-page {
-    flex: 1;
-    min-width: 0;
-    /* Reserve space for external links: 
-       3 buttons (2.25rem each = 36px) = 108px
-       + 2 gaps (0.5rem each = 8px) = 16px
-       + right margin (0.75rem = 12px) = 12px
-       + container padding and buffer = 40px
-       Total = ~176px */
-    max-width: calc(100% - 176px);
-  }
-}
-
-@media (min-width: 800px) {
-  .topbar-search-container.item-info-page {
-    /* More space on larger tablets */
-    max-width: calc(100% - 190px);
-  }
-}
-
-@media (min-width: 850px) {
-  .topbar-search-container.item-info-page {
-    /* Even more space on larger tablets */
-    max-width: calc(100% - 200px);
-  }
-}
-
-@media (min-width: 900px) {
-  .topbar-search-container.item-info-page {
-    /* Reserve more space when showing full text (~300px + right margin ~12px) */
-    max-width: calc(100% - 312px);
-  }
-}
-
-@media (min-width: 1024px) {
-  .topbar-search-container.item-info-page {
-    flex: initial;
-    width: 320px;
-    max-width: none;
-  }
-}
-
-/* Item Info Page - External Links (Always fixed top right) */
-.topbar-item-info-external-links {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-shrink: 0;
-  position: fixed;
-  top: 1rem;
-  right: 0.75rem;
-  z-index: 60;
-}
-
-@media (min-width: 890px) {
-  .topbar-item-info-external-links {
-    right: 0.75rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .topbar-item-info-external-links {
-    right: 0.75rem;
-  }
-}
 
 /* External Link Text - Show full text by default */
 .topbar-external-link-full {
@@ -369,88 +146,6 @@
   }
 }
 
-/* Item Info Page - Navigation Row (Mobile/Tablet and mid-size desktop) */
-.topbar-item-info-nav-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  width: 100%;
-}
-
-@media (min-width: 768px) {
-  .topbar-item-info-nav-row {
-    gap: 0.75rem;
-    flex-wrap: nowrap;
-  }
-}
-
-/* Hide navigation row on large desktop (≥1200px) - buttons are on first row */
-@media (min-width: 1200px) {
-  .topbar-item-info-nav-row {
-    display: none;
-  }
-}
-
-/* Show navigation row on mid-size desktop (1024px-1099px) when buttons move to second row */
-@media (min-width: 1024px) and (max-width: 1099px) {
-  .topbar-item-info-nav-row {
-    display: flex;
-  }
-  
-  /* Show text on navigation buttons when they're on second row and there's space */
-  .topbar-item-info-nav-row .topbar-nav-text.item-info-page {
-    display: inline;
-  }
-  
-  .topbar-item-info-nav-row .topbar-nav-button.item-info-page {
-    padding: 0 0.75rem;
-  }
-  
-  /* Hide first row buttons when second row is visible */
-  .topbar-nav-button-container.item-info-page-desktop {
-    display: none !important;
-  }
-  
-  .topbar-nav-separator.item-info-page-desktop {
-    display: none !important;
-  }
-}
-
-/* Show text on second row buttons for all sizes - never hide text on second row */
-@media (min-width: 400px) and (max-width: 1023px) {
-  .topbar-item-info-nav-row {
-    display: flex;
-  }
-  
-  .topbar-item-info-nav-row .topbar-nav-text.item-info-page {
-    display: inline;
-  }
-  
-  .topbar-item-info-nav-row .topbar-nav-button.item-info-page {
-    padding: 0 0.5rem;
-  }
-  
-  /* Hide first row buttons when second row is visible */
-  .topbar-nav-button-container.item-info-page-desktop {
-    display: none !important;
-  }
-  
-  .topbar-nav-separator.item-info-page-desktop {
-    display: none !important;
-  }
-}
-
-/* Show text on very small screens (<400px) - buttons can wrap */
-@media (max-width: 399px) {
-  .topbar-item-info-nav-row .topbar-nav-text.item-info-page {
-    display: inline;
-  }
-  
-  .topbar-item-info-nav-row .topbar-nav-button.item-info-page {
-    padding: 0 0.5rem;
-  }
-}
 
 /* First Row - Logo, Search Bar, Navigation Buttons (Other Pages) */
 .topbar-first-row {
@@ -460,6 +155,7 @@
   gap: 0.25rem;
   backdrop-filter: none;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 @media (min-width: 890px) {
@@ -511,18 +207,6 @@
   }
 }
 
-/* Item Info Page - Separator */
-.topbar-nav-separator.item-info-page {
-  height: 2rem;
-  margin: 0 0.5rem;
-}
-
-@media (min-width: 768px) {
-  .topbar-nav-separator.item-info-page {
-    height: 2.5rem;
-    margin: 0 0.75rem;
-  }
-}
 
 /* Navigation Button Styles */
 .topbar-nav-button {
@@ -546,29 +230,16 @@
   box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
 }
 
-/* Item Info Page - Nav Button */
-.topbar-nav-button.item-info-page {
-  padding: 0 0.75rem;
-  height: 2.5rem;
-  gap: 0.5rem;
-  backdrop-filter: none;
-}
 
-@media (min-width: 768px) {
-  .topbar-nav-button.item-info-page {
-    height: 3rem;
-  }
-}
-
-/* Other Pages - Nav Button */
-.topbar-nav-button:not(.item-info-page) {
+/* Nav Button */
+.topbar-nav-button {
   padding: 0 0.5rem;
   height: 2.25rem;
   gap: 0.375rem;
 }
 
 @media (min-width: 890px) {
-  .topbar-nav-button:not(.item-info-page) {
+  .topbar-nav-button {
     padding: 0 0.75rem;
     height: 3rem;
     gap: 0.5rem;
@@ -576,7 +247,7 @@
 }
 
 @media (min-width: 1024px) {
-  .topbar-nav-button:not(.item-info-page) {
+  .topbar-nav-button {
     padding: 0 1rem;
   }
 }
@@ -587,25 +258,14 @@
   flex-shrink: 0;
 }
 
-.topbar-nav-icon.item-info-page {
-  width: 1.125rem;
-  height: 1.125rem;
-}
 
-@media (min-width: 768px) {
-  .topbar-nav-icon.item-info-page {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-}
-
-.topbar-nav-icon:not(.item-info-page) {
+.topbar-nav-icon {
   width: 1rem;
   height: 1rem;
 }
 
 @media (min-width: 890px) {
-  .topbar-nav-icon:not(.item-info-page) {
+  .topbar-nav-icon {
     width: 1.25rem;
     height: 1.25rem;
   }
@@ -618,23 +278,12 @@
   color: #fbbf24;
 }
 
-.topbar-nav-text.item-info-page {
-  font-size: 0.8125rem;
-  display: inline;
-}
-
-@media (min-width: 768px) {
-  .topbar-nav-text.item-info-page {
-    font-size: 0.875rem;
-  }
-}
-
-.topbar-nav-text:not(.item-info-page) {
+.topbar-nav-text {
   display: none;
 }
 
 @media (min-width: 890px) {
-  .topbar-nav-text:not(.item-info-page) {
+  .topbar-nav-text {
     display: inline;
     font-size: 0.875rem;
   }
@@ -715,6 +364,132 @@
       width: 2.25rem;
       min-width: 2.25rem;
     }
+  }
+}
+
+/* Bug Report Button - Inside TopBar Container */
+.topbar-bug-report-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  height: 2rem;
+  background: transparent;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 0.25rem;
+  color: #a78bfa;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  backdrop-filter: none;
+  margin-left: auto;
+  margin-right: 0.75rem;
+  flex-grow: 0;
+}
+
+.topbar-bug-report-btn:hover {
+  color: #fbbf24;
+  background: rgba(88, 28, 135, 0.4);
+  border-color: #fbbf24;
+}
+
+.topbar-bug-report-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+
+.topbar-bug-report-text {
+  font-size: 0.7rem;
+  font-weight: 500;
+  display: none;
+}
+
+/* Small mobile (≤360px): show only icon, tight spacing */
+@media (max-width: 360px) {
+  .topbar-bug-report-btn {
+    padding: 0.375rem 0.375rem;
+    gap: 0;
+    height: 1.875rem;
+  }
+  
+  .topbar-bug-report-icon {
+    width: 0.8rem;
+    height: 0.8rem;
+  }
+}
+
+/* Mobile (361px-639px): icon + text, compact */
+@media (min-width: 361px) and (max-width: 639px) {
+  .topbar-bug-report-btn {
+    height: 2rem;
+    padding: 0.375rem 0.5rem;
+    gap: 0.3rem;
+  }
+  
+  .topbar-bug-report-text {
+    display: inline;
+    font-size: 0.65rem;
+  }
+}
+
+/* Tablet (640px-889px) */
+@media (min-width: 640px) and (max-width: 889px) {
+  .topbar-bug-report-btn {
+    height: 2.25rem;
+    padding: 0.5rem 0.625rem;
+    gap: 0.4rem;
+  }
+  
+  .topbar-bug-report-icon {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+  
+  .topbar-bug-report-text {
+    display: inline;
+    font-size: 0.75rem;
+  }
+}
+
+/* Desktop (890px-1023px) */
+@media (min-width: 890px) and (max-width: 1023px) {
+  .topbar-bug-report-btn {
+    height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+  }
+  
+  .topbar-bug-report-icon {
+    width: 1rem;
+    height: 1rem;
+  }
+  
+  .topbar-bug-report-text {
+    font-size: 0.8125rem;
+  }
+}
+
+/* Large desktop (≥1024px) */
+@media (min-width: 1024px) {
+  .topbar-bug-report-btn {
+    height: 2.5rem;
+    padding: 0.5rem 0.875rem;
+    gap: 0.5rem;
+  }
+  
+  .topbar-bug-report-icon {
+    width: 1.0625rem;
+    height: 1.0625rem;
+  }
+  
+  .topbar-bug-report-text {
+    display: inline;
+    font-size: 0.8125rem;
   }
 }
 
