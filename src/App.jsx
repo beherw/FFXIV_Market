@@ -138,6 +138,7 @@ function App() {
   // Obtain methods states
   const [isObtainMethodsExpanded, setIsObtainMethodsExpanded] = useState(false);
   const [isObtainMethodsLoading, setIsObtainMethodsLoading] = useState(false);
+  const [hasObtainMethods, setHasObtainMethods] = useState(true); // Track if item has obtainable methods
   // Track if we should auto-expand obtainable when item changes (e.g., when clicking from obtainable)
   const shouldAutoExpandObtainableRef = useRef(false);
   
@@ -3216,6 +3217,19 @@ function App() {
   }, [selectedItem]);
 
   // Load crafting recipe when item changes
+  // Callback to handle obtainable methods sources change
+  const handleObtainMethodsSourcesChange = useCallback((sortedSources) => {
+    const hasMethod = sortedSources.length > 0;
+    console.log(`[App] Obtainable methods callback: ${sortedSources.length} sources, hasObtainMethods = ${hasMethod}`);
+    setHasObtainMethods(hasMethod);
+    
+    // If no methods available and panel is expanded, collapse it to prevent stuck UI
+    if (!hasMethod && isObtainMethodsExpanded) {
+      console.log(`[App] No obtainable methods available, collapsing panel`);
+      setIsObtainMethodsExpanded(false);
+    }
+  }, [isObtainMethodsExpanded]);
+
   useEffect(() => {
     if (!selectedItem) {
       setCraftingTree(null);
@@ -3224,6 +3238,7 @@ function App() {
       setHasRelatedItems(false);
       setIsRelatedItemsExpanded(false);
       setIsObtainMethodsExpanded(false);
+      setHasObtainMethods(true); // Reset to true when no item selected
       setItemSetResult(null);
       setItemSetNames({});
       setItemSetAveragePrices({});
@@ -3241,6 +3256,7 @@ function App() {
     setIsItemSetExpanded(false);
     setHasItemSet(false);
     setIsLoadingItemSet(false);
+    setHasObtainMethods(false); // Reset to false when new item loads, will be updated by callback
     
     // Auto-expand obtainable if we clicked from obtainable
     // Use setTimeout to ensure this happens after React has updated the DOM
@@ -4028,16 +4044,16 @@ function App() {
                   <button
                     onClick={() => {
                       // Prevent toggling while loading to avoid confusion
-                      if (isObtainMethodsLoading) {
+                      if (isObtainMethodsLoading || !hasObtainMethods) {
                         return;
                       }
                       setIsObtainMethodsExpanded(!isObtainMethodsExpanded);
                       setButtonOrder(prev => ({ ...prev, obtainMethods: Math.max(...Object.values(prev)) + 1 }));
                     }}
-                    disabled={isObtainMethodsLoading}
+                    disabled={isObtainMethodsLoading || !hasObtainMethods}
                     className={`
                       relative flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 overflow-hidden
-                      ${isObtainMethodsLoading
+                      ${(isObtainMethodsLoading || !hasObtainMethods)
                         ? 'opacity-50 cursor-not-allowed'
                         : ''
                       }
@@ -4046,7 +4062,7 @@ function App() {
                         : 'bg-gradient-to-r from-blue-900/50 via-indigo-900/40 to-blue-900/50 border border-blue-400/40 text-blue-200 hover:text-blue-300 hover:border-blue-400/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]'
                       }
                     `}
-                    title={isObtainMethodsLoading ? '載入中...' : (isObtainMethodsExpanded ? '收起取得方式' : '展開取得方式')}
+                    title={isObtainMethodsLoading ? '載入中...' : (!hasObtainMethods ? '此物品無取得方式' : (isObtainMethodsExpanded ? '收起取得方式' : '展開取得方式'))}
                   >
                     {/* Shimmer effect for active button */}
                     {!isObtainMethodsExpanded && (
@@ -4359,13 +4375,18 @@ function App() {
                   });
                 }
                 
-                // Obtain Methods
-                if (isObtainMethodsExpanded && selectedItem && selectedItem.id) {
+                // Obtain Methods - Always render (even when collapsed) to check if item has methods
+                // The component will load sources and notify via callback whether button should be enabled
+                // Hide the panel if item has no obtainable methods to prevent stuck UI
+                if (selectedItem && selectedItem.id) {
                   sections.push({
                     key: 'obtainMethods',
                     order: buttonOrder.obtainMethods,
                     component: (
-                      <div key="obtainMethods" className="relative bg-gradient-to-br from-slate-900/95 via-indigo-950/20 to-slate-900/95 rounded-xl border border-indigo-600/20 shadow-[0_0_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(99,102,241,0.1)] p-4 sm:p-6 mt-4 overflow-hidden backdrop-blur-sm">
+                      <div 
+                        key="obtainMethods" 
+                        className={`relative bg-gradient-to-br from-slate-900/95 via-indigo-950/20 to-slate-900/95 rounded-xl border border-indigo-600/20 shadow-[0_0_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(99,102,241,0.1)] p-4 sm:p-6 mt-4 overflow-hidden backdrop-blur-sm ${(!isObtainMethodsExpanded || !hasObtainMethods) ? 'hidden' : ''}`}
+                      >
                         <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
                           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2/3 h-2/3 bg-indigo-500 rounded-full blur-3xl"></div>
                         </div>
@@ -4382,6 +4403,7 @@ function App() {
                                 itemId={selectedItem.id}
                                 onItemClick={handleItemSelect}
                                 onLoadingChange={setIsObtainMethodsLoading}
+                                onSourcesChange={handleObtainMethodsSourcesChange}
                               onExpandCraftingTree={() => {
                                 // Prevent expanding if still loading or craftingTree is not ready
                                 if (isLoadingCraftingTree || !hasCraftingRecipe || !craftingTree) {

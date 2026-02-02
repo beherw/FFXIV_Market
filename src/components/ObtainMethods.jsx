@@ -176,7 +176,7 @@ function setCachedObtainMethodsData(itemId, sources, loadedData) {
   };
 }
 
-export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTree, isCraftingTreeExpanded = false, onLoadingChange }) {
+export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTree, isCraftingTreeExpanded = false, onLoadingChange, onSourcesChange }) {
   
   const navigate = useNavigate();
   const [sources, setSources] = useState([]);
@@ -188,6 +188,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       onLoadingChange(loading);
     }
   }, [loading, onLoadingChange]);
+  
   const [mapModal, setMapModal] = useState({ isOpen: false, zoneName: '', x: 0, y: 0, npcName: '', mapId: null });
   const [hoveredAchievement, setHoveredAchievement] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
@@ -450,7 +451,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
   // Load sources and all required data from Supabase
   useEffect(() => {
+    console.log(`[ObtainMethods] useEffect triggered for itemId: ${itemId}`);
+    
     if (!itemId) {
+      console.log(`[ObtainMethods] No itemId, skipping load`);
       // Don't clear sources or change loading state when itemId is undefined
       // This prevents showing "no obtainable methods" when itemId is temporarily undefined during redirects
       // The component will show loading state due to the !itemId check in the render logic
@@ -460,6 +464,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Check cache first - if data exists and is not expired, use it immediately
     const cached = getCachedObtainMethodsData(itemId);
     if (cached) {
+      console.log(`[ObtainMethods] Item ${itemId}: Using cached data with ${cached.sources.length} sources`);
       // Update ref immediately
       currentItemIdRef.current = itemId;
       // Restore cached data - clone to avoid mutating cache
@@ -482,6 +487,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Update ref immediately to prevent showing stale data during redirects
     currentItemIdRef.current = itemId;
     
+    console.log(`[ObtainMethods] Item ${itemId}: Starting to load sources from Supabase...`);
+    
     // Clear sources and reset state immediately when itemId changes
     // Use functional updates to ensure atomic state changes and prevent race conditions
     // Set loading state FIRST to prevent showing empty state during redirects
@@ -500,8 +507,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Step 1: Get sources from Supabase
     getItemSources(currentItemId, abortController.signal)
       .then(async sourcesData => {
+        console.log(`[ObtainMethods] Item ${currentItemId}: Received ${sourcesData?.length || 0} sources from Supabase`);
+        
         // Check if request was cancelled or itemId changed
         if (abortController.signal.aborted) {
+          console.log(`[ObtainMethods] Item ${currentItemId}: Request was aborted`);
           return;
         }
         
@@ -1592,15 +1602,30 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
   // Sort sources by item count (descending) - more items appear first (on the left)
   // Filter out QUESTS sources that only contain levequests (they will be shown in 理符任務 instead)
+  // Filter out DESYNTHS sources (精製獲得) - these should not be displayed
   // OPTIMIZED: Memoized to prevent recalculation on every render
   const sortedSources = useMemo(() => {
+    console.log(`[ObtainMethods] Item ${itemId}: Processing ${sources.length} raw sources`);
+    
     // Filter out empty QUESTS sources (only contain levequests)
+    // Filter out DESYNTHS sources (精製獲得)
     const filteredSources = sources.filter(source => {
       if (source.type === DataType.QUESTS) {
-        return !isQuestsSourceEmpty(source);
+        const isEmpty = isQuestsSourceEmpty(source);
+        if (isEmpty) {
+          console.log(`[ObtainMethods] Item ${itemId}: Filtering out empty QUESTS source`);
+        }
+        return !isEmpty;
+      }
+      // Filter out DESYNTHS (精製獲得 - Type 5)
+      if (source.type === DataType.DESYNTHS) {
+        console.log(`[ObtainMethods] Item ${itemId}: Filtering out DESYNTHS (Type 5) source`);
+        return false;
       }
       return true;
     });
+    
+    console.log(`[ObtainMethods] Item ${itemId}: After filtering: ${filteredSources.length} sources remain`);
     
     return filteredSources.sort((a, b) => {
       // DROPS (怪物掉落) always comes first
@@ -1617,6 +1642,24 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return countB - countA;
     });
   }, [sources, getSourceItemCount, isQuestsSourceEmpty]); // Added isQuestsSourceEmpty dependency
+
+  // Notify parent component when sources change (for button disable state)
+  // This determines if the obtainable methods button should be enabled/disabled
+  useEffect(() => {
+    if (onSourcesChange) {
+      // Log for debugging
+      console.log(`[ObtainMethods] Item ${itemId}: Notifying parent. Loading: ${loading}, Raw sources: ${sources.length}, Filtered sources: ${sortedSources.length}`);
+      if (sortedSources.length > 0) {
+        console.log(`[ObtainMethods] Item ${itemId}: Source types:`, sortedSources.map(s => `Type ${s.type}`).join(', '));
+      }
+      
+      // Always notify parent when loading completes or sources change
+      // This ensures hasObtainMethods is always up-to-date
+      if (!loading) {
+        onSourcesChange(sortedSources);
+      }
+    }
+  }, [itemId, sortedSources, onSourcesChange, loading]);
 
   // Filter sources by selected method type
   // OPTIMIZED: Memoized to prevent recalculation on every render
