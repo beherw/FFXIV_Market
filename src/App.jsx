@@ -3926,47 +3926,6 @@ function App() {
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 w-full detail:w-auto detail:items-end">
-                    {/* External Links Row - Above Server Selector */}
-                    <div className="flex gap-2 flex-wrap justify-end -mt-1">
-                    <button
-                      onClick={async () => {
-                        try {
-                          if (getSimplifiedChineseName) {
-                            const simplifiedName = await getSimplifiedChineseName(selectedItem.id);
-                            if (simplifiedName) {
-                              const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
-                              const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(simplifiedName)}`;
-                              window.open(url, '_blank', 'noopener,noreferrer');
-                            } else {
-                              const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
-                              const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(selectedItem.name)}`;
-                              window.open(url, '_blank', 'noopener,noreferrer');
-                            }
-                          } else {
-                            const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
-                            const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(selectedItem.name)}`;
-                            window.open(url, '_blank', 'noopener,noreferrer');
-                          }
-                        } catch (error) {
-                          console.error('Failed to open Wiki link:', error);
-                          addToast('無法打開灰機連結', 'error');
-                        }
-                      }}
-                      className="px-2 py-1 text-[11px] sm:text-xs font-medium bg-slate-700/50 hover:bg-slate-600/60 text-slate-200 hover:text-white rounded-md border border-slate-500/40 hover:border-slate-400/60 transition-all duration-200"
-                      title="灰機"
-                    >
-                      灰機
-                    </button>
-                    <a
-                      href={`https://universalis.app/market/${selectedItem.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-2 py-1 text-[11px] sm:text-xs font-medium bg-slate-700/50 hover:bg-slate-600/60 text-slate-200 hover:text-white rounded-md border border-slate-500/40 hover:border-slate-400/60 transition-all duration-200"
-                      title="數據源"
-                    >
-                      數據源
-                    </a>
-                    </div>
                     {/* Server Selector Row - Below External Links */}
                     <div className="flex items-center justify-end gap-3 detail:gap-4 overflow-x-auto w-full detail:w-auto min-w-0 detail:flex-shrink-0 detail:max-w-none relative z-10 scroll-pl-1">
                       <ServerSelector
@@ -4236,6 +4195,40 @@ function App() {
                       </button>
                     );
                   })()}
+                  
+                  {/* 灰機wiki Button */}
+                  <button
+                    onClick={async () => {
+                      try {
+                        if (getSimplifiedChineseName) {
+                          const simplifiedName = await getSimplifiedChineseName(selectedItem.id);
+                          if (simplifiedName) {
+                            const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
+                            const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(simplifiedName)}`;
+                            window.open(url, '_blank', 'noopener,noreferrer');
+                          } else {
+                            const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
+                            const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(selectedItem.name)}`;
+                            window.open(url, '_blank', 'noopener,noreferrer');
+                          }
+                        } else {
+                          const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
+                          const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(selectedItem.name)}`;
+                          window.open(url, '_blank', 'noopener,noreferrer');
+                        }
+                      } catch (error) {
+                        console.error('Failed to open Wiki link:', error);
+                        addToast('無法打開灰機連結', 'error');
+                      }
+                    }}
+                    className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 bg-gradient-to-r from-slate-700/50 via-slate-600/40 to-slate-700/50 border border-slate-500/40 text-slate-200 hover:text-white hover:border-slate-400/60 hover:shadow-[0_0_15px_rgba(148,163,184,0.2)] ml-auto"
+                    title="灰機wiki"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">灰機wiki</span>
+                  </button>
                 
                 </div>
               </div>

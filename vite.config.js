@@ -20,11 +20,14 @@ export default defineConfig({
             if (id.includes('opencc-js')) {
               return 'opencc';
             }
+            if (id.includes('msgpack-lite')) {
+              return 'msgpack';
+            }
             // Other node_modules go into vendor chunk
             return 'vendor';
           }
-          // Teamcraft data chunks (large JSON files)
-          if (id.includes('teamcraft_git') && (id.includes('tw-items.json') || id.includes('tw-recipes.json') || id.includes('tw-item-descriptions.json'))) {
+          // Teamcraft data chunks (large JSON files) - note: recipes.json no longer used
+          if (id.includes('teamcraft_git') && (id.includes('tw-items.json') || id.includes('tw-item-descriptions.json'))) {
             return 'teamcraft-data';
           }
           // Services that import large data files
