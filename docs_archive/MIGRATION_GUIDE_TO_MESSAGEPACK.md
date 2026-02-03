@@ -64,7 +64,7 @@
  * Build <Table> Data - Converts JSON to MessagePack binary format
  */
 
-import msgpack from 'msgpack-lite';
+import * as msgpack from '@msgpack/msgpack';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -214,7 +214,7 @@ export async function get<Table>(ids) {
 
 ```javascript
 // 新方式：從 MessagePack 本地文件
-import msgpack from 'msgpack-lite';
+import { decode } from '@msgpack/msgpack';
 
 let dataCache = null;
 let indexCache = null;
@@ -241,9 +241,10 @@ export async function load<Table>Database() {
     try {
       const loadStartTime = performance.now();
       
-      // Fetch MessagePack binary file
+      // Fetch MessagePack binary file (使用 BASE_URL 處理 GitHub Pages 子路徑)
       console.log('[<Table>] 📦 Loading from MessagePack...');
-      const response = await fetch('/data/<table>.msgpack');
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const response = await fetch(`${baseUrl}data/<table>.msgpack`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.status}`);
@@ -256,7 +257,7 @@ export async function load<Table>Database() {
       
       // Decode MessagePack
       const decodeStartTime = performance.now();
-      dataCache = msgpack.decode(new Uint8Array(arrayBuffer));
+      dataCache = decode(new Uint8Array(arrayBuffer));
       const decodeTime = performance.now() - decodeStartTime;
       
       // Build indexes for fast lookups
@@ -336,12 +337,13 @@ export async function get<Table>ByIds(ids) {
 ```javascript
 // vite.config.js
 export default defineConfig({
+  base: process.env.GITHUB_PAGES === 'true' ? '/FFXIV_Market/' : '/',
   build: {
     rollupOptions: {
       output: {
         manualChunks(id) {
           // 將 msgpack 分離到獨立 chunk
-          if (id.includes('msgpack-lite')) {
+          if (id.includes('@msgpack/msgpack')) {
             return 'msgpack';
           }
         }
@@ -351,11 +353,19 @@ export default defineConfig({
 });
 ```
 
-### Step 5: 更新 .gitignore
+### Step 5: Git 配置
 
-```gitignore
-# MessagePack binary files (generated at build time)
-public/data/*.msgpack
+**⚠️ 重要：不要將 .msgpack 文件加入 .gitignore！**
+
+MessagePack 文件**必須 commit 到 Git**，因為：
+- GitHub Pages 直接部署 dist/ 目錄
+- CI/CD 雖然會執行 prebuild，但為了確保部署可靠性，建議 commit 文件
+- 文件大小通常 < 5MB，不會造成 repo 負擔
+
+```bash
+# 確認文件已追蹤
+git add public/data/<table>.msgpack
+git commit -m "Add <table> MessagePack binary"
 ```
 
 ### Step 6: 測試
@@ -451,8 +461,10 @@ Recipe 數據已遷移到 MessagePack binary 格式。
 
 ### 配置階段
 - [ ] 更新 `package.json` scripts
-- [ ] 更新 `vite.config.js` (如需要)
-- [ ] 更新 `.gitignore`
+- [ ] 更新 `package.json` dependencies (使用 @msgpack/msgpack)
+- [ ] 更新 `vite.config.js` (manualChunks + BASE_URL)
+- [ ] **確認 fetch 使用 import.meta.env.BASE_URL**
+- [ ] **確認 .msgpack 文件已 commit 到 Git** (不要加入 .gitignore)
 - [ ] 更新 GitHub Actions workflow (如需要)
 
 ### 測試階段
@@ -473,6 +485,114 @@ Recipe 數據已遷移到 MessagePack binary 格式。
 - [ ] 監控記憶體使用
 - [ ] 收集用戶反饋
 - [ ] 記錄性能指標
+```
+
+---
+
+## ⚠️ 重要：避免常見陷阱
+
+### 陷阱 1: 使用錯誤的 MessagePack 庫
+
+❌ **錯誤：使用 msgpack-lite**
+```javascript
+import msgpack from 'msgpack-lite';  // 會在瀏覽器報錯！
+```
+
+**錯誤訊息：**
+```
+Uncaught TypeError: Cannot read properties of undefined (reading 'Buffer')
+```
+
+✅ **正確：使用 @msgpack/msgpack**
+```javascript
+import * as msgpack from '@msgpack/msgpack';  // Build script
+import { decode } from '@msgpack/msgpack';   // Browser code
+```
+
+**原因：** `msgpack-lite` 依賴 Node.js 的 `Buffer`，在瀏覽器中不存在。`@msgpack/msgpack` 專為瀏覽器設計。
+
+---
+
+### 陷阱 2: 使用絕對路徑 fetch
+
+❌ **錯誤：硬編碼絕對路徑**
+```javascript
+const response = await fetch('/data/recipes.msgpack');
+// GitHub Pages 部署後會變成 404！
+```
+
+**錯誤訊息：**
+```
+Failed to load resource: 404
+/data/recipes.msgpack → 404 Not Found
+```
+
+✅ **正確：使用 BASE_URL**
+```javascript
+const baseUrl = import.meta.env.BASE_URL || '/';
+const response = await fetch(`${baseUrl}data/recipes.msgpack`);
+```
+
+**效果：**
+- 本地開發: `http://localhost:5173/data/recipes.msgpack` ✓
+- GitHub Pages: `https://xxx.github.io/FFXIV_Market/data/recipes.msgpack` ✓
+
+---
+
+### 陷阱 3: 忘記 commit .msgpack 文件
+
+❌ **錯誤：將 .msgpack 加入 .gitignore**
+```gitignore
+public/data/*.msgpack  # ← 會導致部署後 404！
+```
+
+✅ **正確：commit 到 Git**
+```bash
+git add public/data/*.msgpack
+git commit -m "Add MessagePack binaries"
+```
+
+**檢查方法：**
+```bash
+# 確認文件已追蹤
+git ls-files public/data/
+# 應該看到: public/data/<table>.msgpack
+```
+
+---
+
+### 陷阱 4: package.json dependencies 不完整
+
+❌ **錯誤：只在 devDependencies 安裝**
+```json
+{
+  "devDependencies": {
+    "@msgpack/msgpack": "^3.1.3"  // ← CI build 會失敗
+  }
+}
+```
+
+✅ **正確：安裝在 dependencies**
+```json
+{
+  "dependencies": {
+    "@msgpack/msgpack": "^3.1.3"
+  }
+}
+```
+
+---
+
+### 陷阱 5: vite.config.js 的 manualChunks 未更新
+
+如果從 `msgpack-lite` 遷移到 `@msgpack/msgpack`，記得更新：
+
+```javascript
+manualChunks(id) {
+  if (id.includes('@msgpack/msgpack')) {  // ← 更新這裡
+    return 'msgpack';
+  }
+}
 ```
 
 ---
@@ -517,7 +637,8 @@ A: MessagePack 需要完整解碼。如果需要部分載入，考慮：
 
 - [Recipe MessagePack 實作完整文檔](RECIPE_MESSAGEPACK_IMPLEMENTATION.md)
 - [MessagePack 官方網站](https://msgpack.org/)
-- [msgpack-lite NPM](https://www.npmjs.com/package/msgpack-lite)
+- [@msgpack/msgpack NPM](https://www.npmjs.com/package/@msgpack/msgpack) ← **推薦使用**
+- [~~msgpack-lite NPM~~](https://www.npmjs.com/package/msgpack-lite) ← **不支援瀏覽器，勿用**
 
 ---
 

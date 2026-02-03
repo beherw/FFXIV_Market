@@ -1,6 +1,10 @@
 /**
  * Item Database Service
  * 
+ * ⚠️ MIGRATION TO MESSAGEPACK:
+ * - tw_items: Now loaded from MessagePack (itemsDatabaseMsgpack.js)
+ * - equipment: Now loaded from MessagePack (itemsDatabaseMsgpack.js)
+ * 
  * ⚠️ CRITICAL PERFORMANCE RULE: NEVER LOAD ALL ITEMS AT ONCE
  * 
  * Always use targeted queries:
@@ -17,7 +21,10 @@
  */
 
 import { convertSimplifiedToTraditional, convertTraditionalToSimplified, isTraditionalChinese, containsChinese } from '../utils/chineseConverter';
-import { getTwItems, searchTwItems, searchCnItems, searchKoItems, searchEnItems, searchJaItems, searchDeItems, searchFrItems } from './supabaseData';
+// Use MessagePack for tw_items and equipment
+import { getTwItems as getTwItemsMsgpack, searchTwItems as searchTwItemsMsgpack } from './itemsDatabaseMsgpack';
+// Keep Supabase for other language searches
+import { searchCnItems, searchKoItems, searchEnItems, searchJaItems, searchDeItems, searchFrItems } from './supabaseData';
 
 let itemsDatabase = null;
 let shopItemsDatabase = null;
@@ -330,11 +337,11 @@ export async function loadItemDatabase(isOCRFuzzySearch = false) {
   }
 
   try {
-    // Load items from JSON (in-memory, fast)
-    const twItemsData = await getTwItems();
+    // Load items from MessagePack (in-memory, fast)
+    const twItemsData = await getTwItemsMsgpack();
     
-    // Convert the JSON data structure to an array of items matching the CSV format
-    // JSON structure: { "13589": { "tw": "堅鋼投斧" }, ... }
+    // Convert the MessagePack data structure to an array of items matching the CSV format
+    // MessagePack structure: { "13589": { "tw": "堅鋼投斧" }, ... }
     // We need to convert to: [{ "key: #": "13589", "9: Name": "堅鋼投斧", ... }, ...]
     const items = Object.entries(twItemsData).map(([id, data]) => {
       const itemName = data.tw || '';
@@ -805,7 +812,8 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
     if (signal && signal.aborted) {
       throw new DOMException('Request aborted', 'AbortError');
     }
-    const searchResults = await searchTwItems(trimmedSearchText, false, signal);
+    // Use MessagePack search
+    const searchResults = await searchTwItemsMsgpack(trimmedSearchText, false, signal);
     // Check if aborted after query
     if (signal && signal.aborted) {
       throw new DOMException('Request aborted', 'AbortError');
@@ -855,7 +863,8 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
   // Note: Fuzzy search requires full database load for character-order checking
   if (results.length === 0 && hasSpaces) {
     try {
-      const searchResults = await searchTwItems(trimmedSearchText, true, signal);
+      // Use MessagePack fuzzy search
+      const searchResults = await searchTwItemsMsgpack(trimmedSearchText, true, signal);
       if (signal && signal.aborted) {
         throw new DOMException('Request aborted', 'AbortError');
       }
@@ -992,7 +1001,8 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
         if (signal && signal.aborted) {
           throw new DOMException('Request aborted', 'AbortError');
         }
-        const searchResults = await searchTwItems(traditionalSearchText, false, signal);
+        // Use MessagePack search with traditional text
+        const searchResults = await searchTwItemsMsgpack(traditionalSearchText, false, signal);
         // Check if aborted after query
         if (signal && signal.aborted) {
           throw new DOMException('Request aborted', 'AbortError');
@@ -1771,8 +1781,8 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
       throw new DOMException('Request aborted', 'AbortError');
     }
     
-    // Try exact match with normalized query
-    const searchResults = await searchTwItems(normalizedQuery, false, signal);
+    // Try exact match with normalized query using MessagePack
+    const searchResults = await searchTwItemsMsgpack(normalizedQuery, false, signal);
     if (signal && signal.aborted) {
       throw new DOMException('Request aborted', 'AbortError');
     }
@@ -1811,10 +1821,11 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
   }
 
   // Step 1.5: If no results, try the same character-order fuzzy as manual search
-  // (Manual: "味智 之秘" → searchTwItems(..., true) finds "甜味智力之秘藥"; OCR should do the same)
+  // (Manual: "味智 之秘" → searchTwItemsMsgpack(..., true) finds "甜味智力之秘藥"; OCR should do the same)
   if (results.length === 0 && trimmedSearchText.includes(' ')) {
     try {
-      const fuzzySearchResults = await searchTwItems(trimmedSearchText, true, signal);
+      // Use MessagePack fuzzy search for OCR
+      const fuzzySearchResults = await searchTwItemsMsgpack(trimmedSearchText, true, signal);
       if (signal && signal.aborted) {
         throw new DOMException('Request aborted', 'AbortError');
       }
@@ -1856,7 +1867,8 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
         for (let i = 0; i <= normalizedQuery.length - len; i++) {
           const substr = normalizedQuery.slice(i, i + len);
           if (signal && signal.aborted) break;
-          const searchResults = await searchTwItems(substr, false, signal);
+          // Use MessagePack search for OCR substring
+          const searchResults = await searchTwItemsMsgpack(substr, false, signal);
           const itemsFromSubstr = transformSearchResultsToItems(searchResults, [], new Set(), null);
           for (const item of itemsFromSubstr) {
             const id = item['key: #'];

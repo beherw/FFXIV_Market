@@ -26,7 +26,7 @@
 
 import { supabase } from './supabaseClient';
 // Load JSON files directly (in-memory for fast lookups)
-import twItemsJson from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-items.json';
+// tw_items and equipment now loaded from MessagePack (see itemsDatabaseMsgpack.js)
 import ilvlsJson from '../../teamcraft_git/libs/data/src/lib/json/ilvls.json';
 import raritiesJson from '../../teamcraft_git/libs/data/src/lib/json/rarities.json';
 import itemPatchJson from '../../teamcraft_git/libs/data/src/lib/json/item-patch.json';
@@ -308,9 +308,9 @@ function arrayToSimpleObject(data) {
 // ============================================================================
 
 /**
- * Get Traditional Chinese item names from JSON (in-memory, fast)
+ * Get Traditional Chinese item names from MessagePack (in-memory, fast)
  * 
- * Loads from tw-items.json directly (no database query).
+ * Loads from items.msgpack binary file.
  * Data is cached in memory after first load.
  * 
  * @returns {Promise<Object>} - {itemId: {tw: "name"}}
@@ -320,17 +320,11 @@ export async function getTwItems() {
     return twItemsCache;
   }
   
-  // Convert JSON structure to expected format
-  // JSON: { "13589": { "tw": "堅鋼投斧" }, ... }
-  // Return: { "13589": { "tw": "堅鋼投斧" }, ... }
-  twItemsCache = {};
-  Object.entries(twItemsJson).forEach(([id, data]) => {
-    if (data && data.tw && data.tw.trim() !== '') {
-      twItemsCache[parseInt(id, 10)] = { tw: data.tw };
-    }
-  });
+  // Load from MessagePack
+  const { getTwItems: getTwItemsMsgpack } = await import('./itemsDatabaseMsgpack.js');
+  twItemsCache = await getTwItemsMsgpack();
   
-  console.log(`[TW Items] ✅ Loaded ${Object.keys(twItemsCache).length} items from JSON (in-memory)`);
+  console.log(`[TW Items] ✅ Loaded ${Object.keys(twItemsCache).length} items from MessagePack (in-memory)`);
   return twItemsCache;
 }
 
@@ -1213,18 +1207,19 @@ export async function getMarketItemsByIds(itemIds, signal = null) {
  * - getEquipmentByJobs(jobAbbrs) to load equipment matching specific jobs
  * 
  * @returns {Promise<Object>} - {itemId: {equipSlotCategory, jobs, ...}}
- * @deprecated Use getEquipmentByIds() or getEquipmentByJobs() instead for better performance
+ * @deprecated Equipment now loaded from MessagePack. This redirects to MessagePack version.
  */
 export async function getEquipment() {
-  console.warn('[Supabase] ⚠️ Loading all equipment (24,098 items). Consider using getEquipmentByIds() or getEquipmentByJobs() for better performance.');
-  console.trace('[Supabase] Full equipment table load called from:');
-  return loadTableData('equipment', arrayToObjectWithId);
+  console.warn('[Supabase] ⚠️ Equipment now loaded from MessagePack.');
+  const { getEquipment: getEquipmentMsgpack } = await import('./itemsDatabaseMsgpack.js');
+  return await getEquipmentMsgpack();
 }
 
 /**
- * Get equipment data for specific item IDs (targeted query - efficient)
+ * Get equipment data for specific item IDs
+ * Now uses MessagePack for better performance
  * @param {Array<number>} itemIds - Array of item IDs
- * @param {AbortSignal} signal - Optional abort signal to cancel the request
+ * @param {AbortSignal} signal - Optional abort signal (ignored, for API compatibility)
  * @returns {Promise<Object>} - {itemId: {equipSlotCategory, jobs, level, ...}}
  */
 export async function getEquipmentByIds(itemIds, signal = null) {
@@ -1232,98 +1227,9 @@ export async function getEquipmentByIds(itemIds, signal = null) {
     return {};
   }
 
-  // Remove duplicates and filter invalid IDs
-  const uniqueIds = [...new Set(itemIds.filter(id => id && id > 0))];
-  if (uniqueIds.length === 0) {
-    return {};
-  }
-
-  // Create cache key from sorted IDs
-  const cacheKey = uniqueIds.sort((a, b) => a - b).join(',');
-
-  // Check cache first
-  if (targetedQueryCache.equipment && targetedQueryCache.equipment[cacheKey]) {
-    console.log(`[Supabase] 📦 Using cached equipment for ${uniqueIds.length} items`);
-    return targetedQueryCache.equipment[cacheKey];
-  }
-
-  // Check if there's already a pending request for these IDs
-  if (targetedQueryPromises.equipment && targetedQueryPromises.equipment[cacheKey]) {
-    return targetedQueryPromises.equipment[cacheKey];
-  }
-
-  // Initialize cache if needed
-  if (!targetedQueryCache.equipment) {
-    targetedQueryCache.equipment = {};
-  }
-  if (!targetedQueryPromises.equipment) {
-    targetedQueryPromises.equipment = {};
-  }
-
-  const loadStartTime = performance.now();
-  console.log(`[Supabase] 📥 Loading equipment for ${uniqueIds.length} items from Supabase...`);
-
-  // Create promise and store it
-  const promise = (async () => {
-    try {
-      const result = {};
-      
-      // Supabase supports up to 1000 items in an IN clause, so we need to batch if needed
-      const batchSize = 1000;
-      
-      for (let i = 0; i < uniqueIds.length; i += batchSize) {
-        // Check if aborted before each batch
-        if (signal && signal.aborted) {
-          throw new DOMException('Request aborted', 'AbortError');
-        }
-
-        const batch = uniqueIds.slice(i, i + batchSize);
-        const { data, error } = await supabase
-          .from('equipment')
-          .select('*')
-          .in('id', batch);
-
-        // Check if aborted after request
-        if (signal && signal.aborted) {
-          throw new DOMException('Request aborted', 'AbortError');
-        }
-
-        if (error) {
-          console.error(`Error loading equipment for items:`, error);
-          throw error;
-        }
-
-        if (data) {
-          data.forEach(row => {
-            const id = row.id;
-            if (id !== undefined && id !== null) {
-              result[id] = row;
-            }
-          });
-        }
-      }
-
-      const loadDuration = performance.now() - loadStartTime;
-      console.log(`[Supabase] ✅ Loaded equipment for ${Object.keys(result).length} items in ${loadDuration.toFixed(2)}ms`);
-      
-      // Cache the result for this specific query
-      targetedQueryCache.equipment[cacheKey] = result;
-      
-      return result;
-    } catch (error) {
-      if (error.name === 'AbortError' || (signal && signal.aborted)) {
-        throw error;
-      }
-      console.error(`Error loading equipment by IDs:`, error);
-      return {};
-    } finally {
-      // Remove promise from cache
-      delete targetedQueryPromises.equipment[cacheKey];
-    }
-  })();
-
-  targetedQueryPromises.equipment[cacheKey] = promise;
-  return promise;
+  // Use MessagePack version for simple ID lookups
+  const { getEquipmentByIds: getEquipmentByIdsMsgpack } = await import('./itemsDatabaseMsgpack.js');
+  return await getEquipmentByIdsMsgpack(itemIds);
 }
 
 /**
@@ -1535,10 +1441,10 @@ export async function getEquipmentByJobsAndSlotCategories(jobAbbrs, slotCategori
 }
 
 /**
- * Get equipment data matching specific job abbreviations (targeted query - efficient)
- * Uses Supabase array overlap operator to find equipment where jobs array contains any of the specified job abbreviations
+ * Get equipment by jobs
+ * Now uses MessagePack with in-memory filtering
  * @param {Array<string>} jobAbbrs - Array of job abbreviations (e.g., ['PLD', 'WAR', 'CRP'])
- * @param {AbortSignal} signal - Optional abort signal to cancel the request
+ * @param {AbortSignal} signal - Optional abort signal (ignored, for API compatibility)
  * @returns {Promise<Object>} - {itemId: {equipSlotCategory, jobs, level, ...}}
  */
 export async function getEquipmentByJobs(jobAbbrs, signal = null) {
@@ -1546,101 +1452,9 @@ export async function getEquipmentByJobs(jobAbbrs, signal = null) {
     return {};
   }
 
-  // Remove duplicates
-  const uniqueJobAbbrs = [...new Set(jobAbbrs.filter(abbr => abbr))];
-  if (uniqueJobAbbrs.length === 0) {
-    return {};
-  }
-
-  // Create cache key from sorted job abbreviations
-  const cacheKey = uniqueJobAbbrs.sort().join(',');
-
-  // Check cache first
-  if (targetedQueryCache.equipment && targetedQueryCache.equipment[`jobs:${cacheKey}`]) {
-    console.log(`[Supabase] 📦 Using cached equipment for jobs: ${uniqueJobAbbrs.join(', ')}`);
-    return targetedQueryCache.equipment[`jobs:${cacheKey}`];
-  }
-
-  // Check if there's already a pending request for these jobs
-  if (targetedQueryPromises.equipment && targetedQueryPromises.equipment[`jobs:${cacheKey}`]) {
-    return targetedQueryPromises.equipment[`jobs:${cacheKey}`];
-  }
-
-  // Initialize cache if needed
-  if (!targetedQueryCache.equipment) {
-    targetedQueryCache.equipment = {};
-  }
-  if (!targetedQueryPromises.equipment) {
-    targetedQueryPromises.equipment = {};
-  }
-
-  const loadStartTime = performance.now();
-  console.log(`[Supabase] 📥 Loading equipment for jobs: ${uniqueJobAbbrs.join(', ')} from Supabase...`);
-
-  // Create promise and store it
-  const promise = (async () => {
-    try {
-      const result = {};
-      
-      // Query each job separately and merge results
-      // This is more reliable than trying to use complex OR conditions with array contains
-      // Supabase's .contains() works for single values, so we query each job and deduplicate
-      for (const abbr of uniqueJobAbbrs) {
-        // Check if aborted before each request
-        if (signal && signal.aborted) {
-          throw new DOMException('Request aborted', 'AbortError');
-        }
-        
-        // Use .filter() with 'cs' (contains) operator and JSON array syntax for JSONB
-        // Format: filter('jobs', 'cs', '["DNC"]') checks if jobs JSONB array contains 'DNC'
-        const { data: jobData, error: jobError } = await supabase
-          .from('equipment')
-          .select('*')
-          .filter('jobs', 'cs', JSON.stringify([abbr]));
-        
-        // Check if aborted after request
-        if (signal && signal.aborted) {
-          throw new DOMException('Request aborted', 'AbortError');
-        }
-        
-        if (jobError) {
-          console.error(`Error loading equipment for job ${abbr}:`, jobError);
-          // Continue with other jobs even if one fails
-          continue;
-        }
-        
-        if (jobData) {
-          jobData.forEach(row => {
-            const id = row.id;
-            if (id !== undefined && id !== null) {
-              // Merge into result (deduplication happens automatically since we use id as key)
-              result[id] = row;
-            }
-          });
-        }
-      }
-
-      const loadDuration = performance.now() - loadStartTime;
-      console.log(`[Supabase] ✅ Loaded equipment for ${Object.keys(result).length} items (${uniqueJobAbbrs.length} jobs) in ${loadDuration.toFixed(2)}ms`);
-      
-      // Cache the result for this specific query
-      targetedQueryCache.equipment[`jobs:${cacheKey}`] = result;
-      
-      return result;
-    } catch (error) {
-      if (error.name === 'AbortError' || (signal && signal.aborted)) {
-        throw error;
-      }
-      console.error(`Error loading equipment by jobs:`, error);
-      return {};
-    } finally {
-      // Remove promise from cache
-      delete targetedQueryPromises.equipment[`jobs:${cacheKey}`];
-    }
-  })();
-
-  targetedQueryPromises.equipment[`jobs:${cacheKey}`] = promise;
-  return promise;
+  // Use MessagePack version with in-memory filtering
+  const { getEquipmentByJobs: getEquipmentByJobsMsgpack } = await import('./itemsDatabaseMsgpack.js');
+  return await getEquipmentByJobsMsgpack(jobAbbrs);
 }
 
 /** Equip slot display order: Head, Body, Hands, Waist, Legs, Feet, then accessories */
@@ -2862,7 +2676,7 @@ export async function getItemSourcesById(itemId, signal = null) {
 
       const loadDuration = performance.now() - loadStartTime;
       console.log(`[Supabase] ✅ Loaded extracts for item ${itemIdNum} (${sources.length} sources) in ${loadDuration.toFixed(2)}ms`);
-      console.log(`[Supabase] 📋 Parsed sources data for item ${itemIdNum}:`, JSON.stringify(sources, null, 2));
+      //console.log(`[Supabase] 📋 Parsed sources data for item ${itemIdNum}:`, JSON.stringify(sources, null, 2));
 
       // Cache the result
       targetedQueryCache.extracts[itemIdNum] = sources;

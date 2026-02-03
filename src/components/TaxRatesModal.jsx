@@ -57,13 +57,14 @@ export default function TaxRatesModal({
 
   // City names mapping (Traditional Chinese)
   const cityNames = {
-    LimsaLominsa: '利姆薩·羅敏薩',
-    Gridania: '格里達尼亞',
+    'Limsa Lominsa': '利姆薩·羅敏薩',
+    'Gridania': '格里達尼亞',
     'Ul\'dah': '烏爾達哈',
-    Ishgard: '伊修加德',
-    Kugane: '黃金港',
-    Crystarium: '水晶都',
-    OldSharlayan: '舊薩雷安'
+    'Ishgard': '伊修加德',
+    'Kugane': '黃金港',
+    'Crystarium': '水晶都',
+    'Old Sharlayan': '舊薩雷安',
+    'Tuliyollal': '圖萊尤拉爾'
   };
 
   return (
@@ -136,7 +137,7 @@ export default function TaxRatesModal({
               <p className="text-gray-400">暫無稅率資料</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {worldIds.map((worldId) => {
                 const worldName = worlds[worldId];
                 const rates = taxRates[worldId];
@@ -178,13 +179,13 @@ export default function TaxRatesModal({
                         {worldName}
                       </div>
                       <div className="space-y-2 text-xs">
-                        {Object.entries(cityNames)
-                          .map(([key, name]) => {
-                            const tax = rates[key];
+                        {Object.entries(rates)
+                          .map(([key, tax]) => {
                             if (tax === null || tax === undefined) {
                               return null;
                             }
-                            return { key, name, tax: Number(tax) };
+                            const displayName = cityNames[key] || key;
+                            return { key, name: displayName, tax: Number(tax) };
                           })
                           .filter(item => item !== null)
                           .sort((a, b) => b.tax - a.tax)

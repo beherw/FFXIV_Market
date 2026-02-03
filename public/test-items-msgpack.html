@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Items MessagePack Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 { color: #333; }
+    .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .info { background: #d1ecf1; color: #0c5460; }
+    pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>📦 Items MessagePack 測試</h1>
+  
+  <div id="status"></div>
+  
+  <h2>測試功能</h2>
+  <button onclick="testLoadDatabase()">載入資料庫</button>
+  <button onclick="testGetTwItem()">取得繁中物品名稱</button>
+  <button onclick="testSearchTwItems()">搜尋繁中物品</button>
+  <button onclick="testGetEquipment()">取得裝備資料</button>
+  
+  <h2>測試結果</h2>
+  <div id="results"></div>
+
+  <script type="module">
+    import { 
+      loadItemsDatabase,
+      getTwItemById,
+      getTwItemsByIds,
+      searchTwItems,
+      getEquipmentById,
+      getEquipmentByIds
+    } from './src/services/itemsDatabaseMsgpack.js';
+
+    window.testLoadDatabase = async function() {
+      const status = document.getElementById('status');
+      const results = document.getElementById('results');
+      
+      try {
+        status.innerHTML = '<div class="status info">⏳ 載入中...</div>';
+        
+        const startTime = performance.now();
+        const { data, index } = await loadItemsDatabase();
+        const loadTime = performance.now() - startTime;
+        
+        const twItemsCount = Object.keys(index.twItems).length;
+        const equipmentCount = Object.keys(index.equipment).length;
+        
+        status.innerHTML = `<div class="status success">✅ 載入成功！耗時 ${loadTime.toFixed(2)}ms</div>`;
+        results.innerHTML = `
+          <h3>資料統計</h3>
+          <pre>繁中物品數量: ${twItemsCount.toLocaleString()}
+裝備數量: ${equipmentCount.toLocaleString()}
+檔案大小: ${(data ? '已載入' : '未載入')}</pre>
+        `;
+      } catch (error) {
+        status.innerHTML = `<div class="status error">❌ 載入失敗: ${error.message}</div>`;
+        console.error(error);
+      }
+    };
+
+    window.testGetTwItem = async function() {
+      const status = document.getElementById('status');
+      const results = document.getElementById('results');
+      
+      try {
+        status.innerHTML = '<div class="status info">⏳ 測試取得物品名稱...</div>';
+        
+        // Test some common item IDs
+        const testIds = [5, 7, 10, 20, 100];
+        const startTime = performance.now();
+        
+        const items = await getTwItemsByIds(testIds);
+        const queryTime = performance.now() - startTime;
+        
+        status.innerHTML = `<div class="status success">✅ 查詢成功！耗時 ${queryTime.toFixed(2)}ms</div>`;
+        results.innerHTML = `
+          <h3>測試物品名稱</h3>
+          <pre>${JSON.stringify(items, null, 2)}</pre>
+        `;
+      } catch (error) {
+        status.innerHTML = `<div class="status error">❌ 查詢失敗: ${error.message}</div>`;
+        console.error(error);
+      }
+    };
+
+    window.testSearchTwItems = async function() {
+      const status = document.getElementById('status');
+      const results = document.getElementById('results');
+      
+      try {
+        const searchText = '精金';
+        status.innerHTML = `<div class="status info">⏳ 搜尋「${searchText}」...</div>`;
+        
+        const startTime = performance.now();
+        const items = await searchTwItems(searchText);
+        const queryTime = performance.now() - startTime;
+        
+        const count = Object.keys(items).length;
+        status.innerHTML = `<div class="status success">✅ 找到 ${count} 個結果！耗時 ${queryTime.toFixed(2)}ms</div>`;
+        
+        // Show first 10 results
+        const first10 = Object.entries(items).slice(0, 10);
+        results.innerHTML = `
+          <h3>搜尋結果 (顯示前 10 個)</h3>
+          <pre>${JSON.stringify(Object.fromEntries(first10), null, 2)}</pre>
+        `;
+      } catch (error) {
+        status.innerHTML = `<div class="status error">❌ 搜尋失敗: ${error.message}</div>`;
+        console.error(error);
+      }
+    };
+
+    window.testGetEquipment = async function() {
+      const status = document.getElementById('status');
+      const results = document.getElementById('results');
+      
+      try {
+        status.innerHTML = '<div class="status info">⏳ 測試取得裝備資料...</div>';
+        
+        // Test some equipment IDs
+        const testIds = [1675, 3559, 6016]; // Common equipment IDs
+        const startTime = performance.now();
+        
+        const equipment = await getEquipmentByIds(testIds);
+        const queryTime = performance.now() - startTime;
+        
+        status.innerHTML = `<div class="status success">✅ 查詢成功！耗時 ${queryTime.toFixed(2)}ms</div>`;
+        results.innerHTML = `
+          <h3>測試裝備資料</h3>
+          <pre>${JSON.stringify(equipment, null, 2)}</pre>
+        `;
+      } catch (error) {
+        status.innerHTML = `<div class="status error">❌ 查詢失敗: ${error.message}</div>`;
+        console.error(error);
+      }
+    };
+
+    // Auto-load on page load
+    window.addEventListener('load', () => {
+      testLoadDatabase();
+    });
+  </script>
+</body>
+</html>

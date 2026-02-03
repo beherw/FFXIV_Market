@@ -3,7 +3,8 @@
 # structure_type: array, object_simple, object_nested, array_of_objects
 
 # Item Data Files (for search - language-specific item names)
-teamcraft_git/libs/data/src/lib/json/tw/tw-items.json|tw_items|object_nested|Traditional Chinese item names - { "itemId": { "tw": "name" } }
+# ⚠️ tw_items 已迁移到 MessagePack (使用 scripts/build-items-data.js)
+# teamcraft_git/libs/data/src/lib/json/tw/tw-items.json|tw_items|object_nested|Traditional Chinese item names - { "itemId": { "tw": "name" } } (已迁移到 MessagePack)
 teamcraft_git/libs/data/src/lib/json/zh/zh-items.json|cn_items|object_nested|Simplified Chinese item names - { "itemId": { "zh": "name" } }
 teamcraft_git/libs/data/src/lib/json/ko/ko-items.json|ko_items|object_nested|Korean item names - { "itemId": { "ko": "name" } }
 # Items.json contains multiple languages (en, ja, de, fr) in one file.
@@ -13,9 +14,10 @@ teamcraft_git/libs/data/src/lib/json/items.json|en_items|object_nested_extract_e
 teamcraft_git/libs/data/src/lib/json/items.json|ja_items|object_nested_extract_ja|Japanese item names - extract "ja" field from items.json
 teamcraft_git/libs/data/src/lib/json/items.json|de_items|object_nested_extract_de|German item names - extract "de" field from items.json
 teamcraft_git/libs/data/src/lib/json/items.json|fr_items|object_nested_extract_fr|French item names - extract "fr" field from items.json
-teamcraft_git/libs/data/src/lib/json/tw/tw-item-descriptions.json|tw_item_descriptions|object_nested|Traditional Chinese item descriptions - { "itemId": { "tw": "description" } }
+# ⚠️ tw_item_descriptions 未使用，已删除 (无组件引用)
 teamcraft_git/libs/data/src/lib/json/market-items.json|market_items|array|List of marketable item IDs - [itemId1, itemId2, ...]
-teamcraft_git/libs/data/src/lib/json/equipment.json|equipment|object_complex|Equipment data - { "itemId": { "equipSlotCategory": 1, "jobs": [...], ... } }
+# ⚠️ equipment 已迁移到 MessagePack (使用 scripts/build-items-data.js)
+# teamcraft_git/libs/data/src/lib/json/equipment.json|equipment|object_complex|Equipment data - { "itemId": { "equipSlotCategory": 1, "jobs": [...], ... } } (已迁移到 MessagePack)
 teamcraft_git/libs/data/src/lib/json/ilvls.json|ilvls|object_simple|Item levels - { "itemId": ilvl }
 teamcraft_git/libs/data/src/lib/json/rarities.json|rarities|object_simple|Item rarities - { "itemId": rarity }
 teamcraft_git/libs/data/src/lib/json/item-patch.json|item_patch|object_simple|Item patch versions - { "itemId": patchId }
