@@ -36,6 +36,15 @@ jobs:
       - name: Install Supabase client
         run: npm install @supabase/supabase-js
 
+      - name: Debug Environment Variables
+        run: |
+          echo "Checking if environment variables are set..."
+          if [ -z "$SUPABASE_URL" ]; then echo "❌ SUPABASE_URL is not set"; else echo "✓ SUPABASE_URL is set"; fi
+          if [ -z "$SUPABASE_SERVICE_KEY" ]; then echo "❌ SUPABASE_SERVICE_KEY is not set"; else echo "✓ SUPABASE_SERVICE_KEY is set"; fi
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
       - name: Sync CSV to Supabase (Smart Sync)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
