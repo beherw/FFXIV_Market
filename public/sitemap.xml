@@ -1,32 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
         xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
   
   <!-- 主頁 -->
   <url>
     <loc>https://beherw.github.io/FFXIV_Market/</loc>
-    <lastmod>2026-01-31</lastmod>
+    <lastmod>2026-02-03</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   
-  <!-- 其他頁面 -->
+  <!-- 歷史記錄頁面 -->
   <url>
     <loc>https://beherw.github.io/FFXIV_Market/history</loc>
-    <lastmod>2026-01-31</lastmod>
+    <lastmod>2026-02-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   
+  <!-- 進階搜尋頁面 -->
   <url>
     <loc>https://beherw.github.io/FFXIV_Market/advanced-search</loc>
-    <lastmod>2026-01-31</lastmod>
+    <lastmod>2026-02-03</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.9</priority>
   </url>
   
-  <!-- 注意：物品頁面需要動態生成，見 SEO_OPTIMIZATION_GUIDE.md 說明 -->
+  <!-- 
+    注意：動態物品頁面建議使用 Google Search Console 的 URL 提交功能
+    或透過 sitemap 生成腳本定期更新熱門物品的 URL
+    範例格式：
+    <url>
+      <loc>https://beherw.github.io/FFXIV_Market/item/5333</loc>
+      <lastmod>2026-02-03</lastmod>
+      <changefreq>monthly</changefreq>
+      <priority>0.6</priority>
+    </url>
+  -->
   
 </urlset>

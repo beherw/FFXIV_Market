@@ -5,26 +5,31 @@
     <link rel="icon" type="image/png" href="./favicon_bear.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- SEO Meta Tags -->
-    <!-- Fallback title: 當 JavaScript 載入失敗時使用，JS 成功後會覆蓋此 title -->
-    <title>FFXIV Market｜FF14 繁中市場查價工具</title>
-    <meta name="description" content="FFXIV（FF14）物價查詢工具，即時查詢最終幻想14物品市場價格、歷史價格趨勢、各伺服器價格比較。支援繁體中文，提供完整的物品取得方式與市場資訊。" />
-    <meta name="keywords" content="FFXIV,FF14,最終幻想14,物價查詢,市場價格,FFXIV Market,FF14 Market,物品價格,市場資訊,繁體中文" />
+    <!-- Primary Meta Tags -->
+    <title>FFXIV Market｜FF14 繁中市場查價工具 - 即時物品價格查詢、OCR 截圖辨識</title>
+    <meta name="title" content="FFXIV Market｜FF14 繁中市場查價工具 - 即時物品價格查詢、OCR 截圖辨識" />
+    <meta name="description" content="FFXIV（FF14）繁體中文市場查價工具，支援 OCR 截圖辨識、即時查詢最終幻想14物品市場價格、歷史價格趨勢、各伺服器價格比較。提供完整物品取得方式、製作配方、採集地點資訊。支援進階搜尋、多語言查詢。" />
+    <meta name="keywords" content="FFXIV,FF14,最終幻想14,Final Fantasy XIV,物價查詢,市場價格,FFXIV Market,FF14 Market,物品價格,市場資訊,繁體中文,OCR,截圖辨識,Universalis,製作配方,採集地點,伺服器比價,繁中服,陸行鳥,莫古力" />
     <meta name="author" content="貝爾" />
+    <meta name="theme-color" content="#1a1a1a" />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://beherw.github.io/FFXIV_Market/" />
-    <meta property="og:title" content="繁中XIV市場 - FF14 Market - 貝爾的市場小屋" />
-    <meta property="og:description" content="FFXIV（FF14）物價查詢工具，即時查詢最終幻想14物品市場價格、歷史價格趨勢、各伺服器價格比較。" />
-    <meta property="og:image" content="https://beherw.github.io/FFXIV_Market/public/logo.png" />
+    <meta property="og:site_name" content="FFXIV Market" />
+    <meta property="og:title" content="FFXIV Market｜FF14 繁中市場查價工具" />
+    <meta property="og:description" content="支援 OCR 截圖辨識的 FFXIV（FF14）繁中市場查價工具，即時查詢物品市場價格、歷史趨勢、伺服器比價。完整物品資訊、製作配方、採集地點一站式查詢。" />
+    <meta property="og:image" content="https://beherw.github.io/FFXIV_Market/logo.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="zh_TW" />
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://beherw.github.io/FFXIV_Market/" />
-    <meta name="twitter:title" content="繁中XIV市場 - FF14 Market - 貝爾的市場小屋" />
-    <meta name="twitter:description" content="FFXIV（FF14）物價查詢工具，即時查詢最終幻想14物品市場價格、歷史價格趨勢、各伺服器價格比較。" />
-    <meta name="twitter:image" content="https://beherw.github.io/FFXIV_Market/public/logo.png" />
+    <meta name="twitter:title" content="FFXIV Market｜FF14 繁中市場查價工具" />
+    <meta name="twitter:description" content="支援 OCR 截圖辨識的 FF14 繁中市場查價工具，即時查詢物品價格、歷史趨勢、伺服器比價" />
+    <meta name="twitter:image" content="https://beherw.github.io/FFXIV_Market/logo.png" />
     
     <!-- Canonical URL -->
     <link rel="canonical" href="https://beherw.github.io/FFXIV_Market/" />
@@ -33,12 +38,52 @@
     <meta http-equiv="content-language" content="zh-TW" />
     
     <!-- Robots -->
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    
+    <!-- Schema.org markup for Google -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "FFXIV Market",
+      "alternateName": "FF14 繁中市場查價工具",
+      "url": "https://beherw.github.io/FFXIV_Market/",
+      "description": "支援 OCR 截圖辨識的 FFXIV（FF14）繁體中文市場查價工具，提供即時物品市場價格查詢、歷史趨勢分析、伺服器比價功能",
+      "applicationCategory": "Utility",
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "TWD"
+      },
+      "inLanguage": "zh-TW",
+      "about": {
+        "@type": "VideoGame",
+        "name": "Final Fantasy XIV",
+        "alternateName": "FFXIV"
+      }
+    }
+    </script>
     
     <!-- Tesseract.js CDN for OCR functionality -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   </head>
   <body>
+    <!-- Single Page Apps for GitHub Pages redirect script -->
+    <script type="text/javascript">
+      // https://github.com/rafgraph/spa-github-pages
+      (function(l) {
+        if (l.search[1] === '/' ) {
+          var decoded = l.search.slice(1).split('&').map(function(s) { 
+            return s.replace(/~and~/g, '&')
+          }).join('?');
+          window.history.replaceState(null, null,
+              l.pathname.slice(0, -1) + decoded + l.hash
+          );
+        }
+      }(window.location))
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx?v=2026-01-30"></script>
     <meta name="version" content="2026-01-30" />
