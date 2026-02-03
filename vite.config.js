@@ -20,7 +20,7 @@ export default defineConfig({
             if (id.includes('opencc-js')) {
               return 'opencc';
             }
-            if (id.includes('msgpack-lite')) {
+            if (id.includes('@msgpack/msgpack')) {
               return 'msgpack';
             }
             // Other node_modules go into vendor chunk

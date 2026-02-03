@@ -44,7 +44,8 @@ export async function loadRecipeDatabase() {
       
       // Fetch MessagePack binary file
       console.log('[Recipe] 📦 Loading recipes from MessagePack...');
-      const response = await fetch('/data/recipes.msgpack');
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const response = await fetch(`${baseUrl}data/recipes.msgpack`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch recipes: ${response.status} ${response.statusText}`);
