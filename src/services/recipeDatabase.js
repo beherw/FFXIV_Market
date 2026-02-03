@@ -4,7 +4,7 @@
 // Data source: /public/data/recipes.msgpack (generated at build time from CSV)
 // Format: MessagePack binary (~2-3MB, 50%+ smaller than JSON, 5x faster parsing)
 
-import msgpack from 'msgpack-lite';
+import { decode } from '@msgpack/msgpack';
 
 let recipesDatabase = null;
 let recipesByResult = null;
@@ -57,7 +57,7 @@ export async function loadRecipeDatabase() {
       
       // Decode MessagePack
       const decodeStartTime = performance.now();
-      recipesDatabase = msgpack.decode(new Uint8Array(arrayBuffer));
+      recipesDatabase = decode(new Uint8Array(arrayBuffer));
       const decodeTime = performance.now() - decodeStartTime;
       console.log(`[Recipe] ✓ Decoded ${recipesDatabase.length} recipes in ${decodeTime.toFixed(2)}ms`);
       

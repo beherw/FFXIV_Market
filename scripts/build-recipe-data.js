@@ -15,7 +15,7 @@
  * - Offline support (data bundled with app)
  */
 
-import msgpack from 'msgpack-lite';
+import * as msgpack from '@msgpack/msgpack';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
