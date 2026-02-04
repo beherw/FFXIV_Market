@@ -282,22 +282,45 @@ async function createTableStructure(tableName, headers, sampleRows) {
     
     if (tableAlreadyExists) {
       console.log(`  ℹ Table ${tableName} already exists, checking for missing columns...`);
-      
-      // Only add columns if table already existed - new tables already have all columns
-      const columnsToAdd = [];
-      for (const header of headers) {
-        const columnType = columnTypes[header];
-        // Remove PRIMARY KEY constraint if present (can't add PK column to existing table)
-        const cleanType = columnType.replace(' PRIMARY KEY', '');
-        columnsToAdd.push({ name: header, type: cleanType });
-      }
-      
-      if (columnsToAdd.length > 0) {
-        // Build SQL to add all columns that don't exist in a single DO block
-        const addColumnsSQL = `
-          DO $$ 
-          BEGIN
-            ${columnsToAdd.map(col => `
+    }
+
+    // Always attempt to add missing columns (safe for new and existing tables)
+    const columnsToAdd = [];
+    for (const header of headers) {
+      const columnType = columnTypes[header];
+      // Remove PRIMARY KEY constraint if present (can't add PK column to existing table)
+      const cleanType = columnType.replace(' PRIMARY KEY', '');
+      columnsToAdd.push({ name: header, type: cleanType });
+    }
+
+    if (columnsToAdd.length > 0) {
+      // Build SQL to add all columns that don't exist in a single DO block
+      const addColumnsSQL = `
+        DO $$ 
+        BEGIN
+          ${columnsToAdd.map(col => `
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_schema = 'public' 
+              AND table_name = '${tableName}' 
+              AND column_name = '${col.name}'
+            ) THEN
+              ALTER TABLE public."${tableName}" ADD COLUMN "${col.name}" ${col.type};
+            END IF;
+          `).join('')}
+        END $$;
+      `;
+
+      const { error: alterError } = await supabase.rpc('exec_sql', { sql_query: addColumnsSQL });
+
+      if (alterError) {
+        // If bulk add fails, try adding columns one by one (fallback)
+        console.log(`  ℹ Bulk column add had issues, trying individual columns...`);
+        let addedCount = 0;
+        for (const col of columnsToAdd) {
+          const singleColumnSQL = `
+            DO $$ 
+            BEGIN
               IF NOT EXISTS (
                 SELECT 1 FROM information_schema.columns 
                 WHERE table_schema = 'public' 
@@ -306,54 +329,35 @@ async function createTableStructure(tableName, headers, sampleRows) {
               ) THEN
                 ALTER TABLE public."${tableName}" ADD COLUMN "${col.name}" ${col.type};
               END IF;
-            `).join('')}
-          END $$;
-        `;
-        
-        const { error: alterError } = await supabase.rpc('exec_sql', { sql_query: addColumnsSQL });
-        
-        if (alterError) {
-          // If bulk add fails, try adding columns one by one (fallback)
-          console.log(`  ℹ Bulk column add had issues, trying individual columns...`);
-          let addedCount = 0;
-          for (const col of columnsToAdd) {
-            const singleColumnSQL = `
-              DO $$ 
-              BEGIN
-                IF NOT EXISTS (
-                  SELECT 1 FROM information_schema.columns 
-                  WHERE table_schema = 'public' 
-                  AND table_name = '${tableName}' 
-                  AND column_name = '${col.name}'
-                ) THEN
-                  ALTER TABLE public."${tableName}" ADD COLUMN "${col.name}" ${col.type};
-                END IF;
-              END $$;
-            `;
-            
-            const { error: singleError } = await supabase.rpc('exec_sql', { sql_query: singleColumnSQL });
-            
-            if (!singleError) {
-              addedCount++;
-              console.log(`  ✓ Added column "${col.name}" (${col.type})`);
-            } else if (!singleError.message.includes('already exists') && !singleError.message.includes('duplicate')) {
-              console.warn(`  ⚠ Could not add column "${col.name}": ${singleError.message}`);
-            }
+            END $$;
+          `;
+
+          const { error: singleError } = await supabase.rpc('exec_sql', { sql_query: singleColumnSQL });
+
+          if (!singleError) {
+            addedCount++;
+            console.log(`  ✓ Added column "${col.name}" (${col.type})`);
+          } else if (!singleError.message.includes('already exists') && !singleError.message.includes('duplicate')) {
+            console.warn(`  ⚠ Could not add column "${col.name}": ${singleError.message}`);
           }
-          
-          if (addedCount > 0) {
-            console.log(`  ✓ Added ${addedCount} column(s)`);
-            // Brief wait for schema cache to update after adding columns
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        } else {
-          // Successfully added columns (or they all existed) - no wait needed if nothing changed
-          console.log(`  ✓ Table structure verified`);
         }
+
+        if (addedCount > 0) {
+          console.log(`  ✓ Added ${addedCount} column(s)`);
+          // Force PostgREST schema cache reload after ALTER TABLE
+          await supabase.rpc('exec_sql', { sql_query: "SELECT pg_notify('pgrst', 'reload schema');" });
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+      } else {
+        console.log(`  ✓ Table structure verified`);
+        // Force PostgREST schema cache reload after ALTER TABLE
+        await supabase.rpc('exec_sql', { sql_query: "SELECT pg_notify('pgrst', 'reload schema');" });
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
-    } else {
+    }
+
+    if (!tableAlreadyExists) {
       console.log(`  ✓ Table ${tableName} structure ensured`);
-      // New table created - no need to wait, schema is fresh
     }
     
     // Create index if needed
