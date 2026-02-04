@@ -293,6 +293,40 @@ export async function getEquipmentBySlotCategories(slotCategories) {
 }
 
 /**
+ * Get equipment by level and jobs (filter in-memory)
+ * Exact match on both level and jobs array (for equipment set queries)
+ * @param {number} level - Equipment level
+ * @param {Array<string>} jobsArray - Array of job abbreviations (must match exactly)
+ * @returns {Promise<Object>} - Object mapping itemId to equipment data
+ */
+export async function getEquipmentByLevelAndJobs(level, jobsArray) {
+  if (level == null || level < 0 || !jobsArray || !Array.isArray(jobsArray) || jobsArray.length === 0) {
+    return {};
+  }
+
+  const { index } = await loadItemsDatabase();
+  const result = {};
+  const jobsKey = [...jobsArray].sort().join(',');
+  
+  Object.entries(index.equipment).forEach(([itemId, equipment]) => {
+    // Match level exactly
+    if (equipment.level !== level) {
+      return;
+    }
+    
+    // Match jobs array exactly (sorted comparison)
+    const rowJobs = equipment.jobs || equipment.job_abbrs || [];
+    const rowJobsKey = Array.isArray(rowJobs) ? [...rowJobs].sort().join(',') : '';
+    
+    if (rowJobsKey === jobsKey) {
+      result[itemId] = equipment;
+    }
+  });
+  
+  return result;
+}
+
+/**
  * Get equipment by jobs and slot categories (filter in-memory)
  * @param {Array<string>} jobAbbrs - Array of job abbreviations
  * @param {Array<number>} slotCategories - Array of equipSlotCategory IDs

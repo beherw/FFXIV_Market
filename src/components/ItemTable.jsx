@@ -2,6 +2,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ItemImage from './ItemImage';
 import { generateItemUrl } from '../utils/urlSlug';
+import { getTwItemsByIds } from '../services/supabaseData';
 
 // Lazy load ilvls data
 let ilvlsDataRef = null;
@@ -158,6 +159,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
   const [raritiesData, setRaritiesData] = useState(null);
   const [itemPatchData, setItemPatchData] = useState(null);
   const [patchNamesData, setPatchNamesData] = useState(null);
+  const [itemMetaById, setItemMetaById] = useState({});
   const [internalSelectedRarities, setInternalSelectedRarities] = useState([]); // Multi-select: empty array = show all, [rarityValue1, rarityValue2, ...] = show selected rarities
   const [selectedVersions, setSelectedVersions] = useState([]); // Multi-select: empty array = show all, [version1, version2, ...] = show selected versions
   
@@ -176,12 +178,36 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     });
   }, []);
 
+  // Load item meta (ilvl + equipLevel) for displayed items from MessagePack
+  useEffect(() => {
+    const loadItemMeta = async () => {
+      if (!items || items.length === 0) return;
+      const ids = items.map(item => item.id).filter(id => id !== undefined && id !== null);
+      const uncached = ids.filter(id => !itemMetaById.hasOwnProperty(id));
+      if (uncached.length === 0) return;
+
+      try {
+        const meta = await getTwItemsByIds(uncached);
+        if (meta && Object.keys(meta).length > 0) {
+          setItemMetaById(prev => ({ ...prev, ...meta }));
+        }
+      } catch (error) {
+        console.error('[ItemTable] Failed to load item meta:', error);
+      }
+    };
+
+    loadItemMeta();
+  }, [items, itemMetaById]);
+
   // Load rarities data (only if not provided externally)
   useEffect(() => {
     // Only load if external data is not provided (undefined or null) and internal data is not loaded yet
     if ((externalRaritiesData === undefined || externalRaritiesData === null) && !raritiesData) {
       loadRaritiesData().then(data => {
         setRaritiesData(data);
+        console.log('[ItemTable] Loaded rarities data:', Object.keys(data).length, 'items');
+      }).catch(err => {
+        console.error('[ItemTable] Failed to load rarities data:', err);
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -199,15 +225,31 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
   }, []);
   
   // Helper function to get ilvl for an item
-  const getIlvl = (itemId) => {
-    if (!ilvlsData || !itemId) return null;
-    return ilvlsData[itemId.toString()] || null;
+  const getIlvl = (item) => {
+    if (!item) return null;
+    if (item.ilvl !== undefined && item.ilvl !== null) return item.ilvl;
+    const metaIlvl = itemMetaById[item.id]?.ilvl;
+    if (metaIlvl !== undefined && metaIlvl !== null) return metaIlvl;
+    if (!ilvlsData || !item.id) return null;
+    return ilvlsData[item.id.toString()] || null;
+  };
+
+  // Helper function to get equipment level (player level)
+  const getEquipLevel = (item) => {
+    if (!item) return null;
+    if (item.equipLevel !== undefined && item.equipLevel !== null) return item.equipLevel;
+    const metaLevel = itemMetaById[item.id]?.equipLevel;
+    if (metaLevel !== undefined && metaLevel !== null) return metaLevel;
+    return null;
   };
 
   // Helper function to get rarity for an item
   const getRarity = useCallback((itemId) => {
-    if (!raritiesDataToUse || !itemId) return 0; // Default to 0 if not found
-    return raritiesDataToUse[itemId.toString()] !== undefined ? raritiesDataToUse[itemId.toString()] : 0;
+    if (!raritiesDataToUse || itemId === undefined || itemId === null) return 0; // Default to 0 if not found
+    const directValue = raritiesDataToUse[itemId];
+    if (directValue !== undefined && directValue !== null) return directValue;
+    const stringValue = raritiesDataToUse[itemId.toString()];
+    return stringValue !== undefined && stringValue !== null ? stringValue : 0;
   }, [raritiesDataToUse]);
 
   // Helper function to get version for an item
@@ -290,9 +332,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     // Skip if externalRarityFilter is true (filtering already done externally before pagination)
     if (!externalRarityFilter && selectedRarities.length > 0 && raritiesDataToUse) {
       filtered = filtered.filter(item => {
-        const itemRarity = raritiesDataToUse[item.id?.toString()] !== undefined 
-          ? raritiesDataToUse[item.id.toString()] 
-          : 0;
+        const itemRarity = getRarity(item.id);
         return selectedRarities.includes(itemRarity);
       });
     }
@@ -320,7 +360,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     }
 
     return filtered;
-  }, [items, isLoadingVelocities, itemTradability, marketableItems, selectedRarities, raritiesDataToUse, externalRarityFilter, selectedVersions, itemPatchData, patchNamesData, itemsAlreadyFiltered]);
+  }, [items, isLoadingVelocities, itemTradability, marketableItems, selectedRarities, raritiesDataToUse, externalRarityFilter, selectedVersions, itemPatchData, patchNamesData, itemsAlreadyFiltered, getRarity]);
 
   // Sort items based on current sort column and direction (skip when preserveItemOrder e.g. OCR search)
   const sortedItems = useMemo(() => {
@@ -345,8 +385,8 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
       switch (sortColumn) {
         case 'id':
           // Sort by ilvl if available, otherwise by id
-          const aIlvl = ilvlsData ? (ilvlsData[a.id?.toString()] || null) : null;
-          const bIlvl = ilvlsData ? (ilvlsData[b.id?.toString()] || null) : null;
+          const aIlvl = getIlvl(a);
+          const bIlvl = getIlvl(b);
           if (aIlvl !== null && bIlvl !== null) {
             aValue = aIlvl;
             bValue = bIlvl;
@@ -360,6 +400,10 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
             aValue = a.id;
             bValue = b.id;
           }
+          break;
+        case 'equipLevel':
+          aValue = getEquipLevel(a);
+          bValue = getEquipLevel(b);
           break;
         case 'name':
           aValue = a.name || '';
@@ -471,6 +515,19 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
           if (aValue > bValue) return sortDirection === 'asc' ? -1 : 1; // Reversed for newest first on asc
         }
         // If both don't have versions, they're equal, will fall through to ID sort
+      } else if (sortColumn === 'equipLevel') {
+        // For equipLevel column: items with equip level come before items without
+        const aHasLevel = aValue !== null && aValue !== undefined;
+        const bHasLevel = bValue !== null && bValue !== undefined;
+
+        if (aHasLevel !== bHasLevel) {
+          return bHasLevel ? 1 : -1; // Items with levels come before items without
+        }
+
+        if (aHasLevel && bHasLevel) {
+          if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+          if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        }
       } else if (sortColumn === 'tradable') {
         // For tradable column, reverse the logic: ascending puts tradable (1) first, descending puts non-tradable (0) first
         if (aValue < bValue) return sortDirection === 'asc' ? 1 : -1; // Reversed: ascending puts higher value (tradable) first
@@ -485,7 +542,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
       // If values are equal, use ID as secondary sort
       return a.id - b.id;
     });
-  }, [filteredItems, sortColumn, sortDirection, preserveItemOrder, separateTradableInSort, itemTradability, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, ilvlsData, itemPatchData, patchNamesData]);
+  }, [filteredItems, sortColumn, sortDirection, preserveItemOrder, separateTradableInSort, itemTradability, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, ilvlsData, itemPatchData, patchNamesData, itemMetaById]);
 
   // Paginate sorted items if pagination is enabled
   const paginatedItems = useMemo(() => {
@@ -552,13 +609,11 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     if (!raritiesDataToUse) return {};
     const counts = {};
     items.forEach(item => {
-      const rarity = raritiesDataToUse[item.id?.toString()] !== undefined 
-        ? raritiesDataToUse[item.id.toString()] 
-        : 0;
+      const rarity = getRarity(item.id);
       counts[rarity] = (counts[rarity] || 0) + 1;
     });
     return counts;
-  }, [items, raritiesDataToUse, externalRarityCounts]);
+  }, [items, raritiesDataToUse, externalRarityCounts, getRarity]);
 
   // Calculate version counts grouped by major version (e.g., 6.X includes 6.0-6.9)
   // Only calculate when items are loaded and patch data is available
@@ -637,13 +692,11 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     // Count rarities in filtered items
     const counts = {};
     itemsToCount.forEach(item => {
-      const rarity = raritiesDataToUse[item.id?.toString()] !== undefined 
-        ? raritiesDataToUse[item.id.toString()] 
-        : 0;
+      const rarity = getRarity(item.id);
       counts[rarity] = (counts[rarity] || 0) + 1;
     });
     return counts;
-  }, [items, raritiesDataToUse, selectedVersions, itemPatchData, patchNamesData]);
+  }, [items, raritiesDataToUse, selectedVersions, itemPatchData, patchNamesData, getRarity]);
 
   // Calculate version counts based on current rarity filter (if rarities are selected)
   // This is used to disable version options that have no items in the selected rarities
@@ -656,9 +709,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     // Apply rarity filter if rarities are selected (multi-select)
     if (selectedRarities.length > 0 && raritiesDataToUse) {
       itemsToCount = items.filter(item => {
-        const itemRarity = raritiesDataToUse[item.id?.toString()] !== undefined 
-          ? raritiesDataToUse[item.id.toString()] 
-          : 0;
+        const itemRarity = getRarity(item.id);
         return selectedRarities.includes(itemRarity);
       });
     }
@@ -687,7 +738,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
       counts[majorVersionKey] = (counts[majorVersionKey] || 0) + 1;
     });
     return counts;
-  }, [items, itemPatchData, patchNamesData, selectedRarities, raritiesDataToUse]);
+  }, [items, itemPatchData, patchNamesData, selectedRarities, raritiesDataToUse, getRarity]);
 
   const rarityOptions = [
     { value: 1, label: '普通', color: '#f3f3f3' },
@@ -713,13 +764,14 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                   const count = selectedVersions.length > 0 
                     ? (rarityCountsWithVersionFilter[rarity.value] || 0)
                     : (rarityCounts[rarity.value] || 0);
-                  const isDisabled = count === 0 || isRaritySelectorDisabled; // Disable if no items of this rarity or data loading in progress
+                  const isDisabled = count === 0 || isRaritySelectorDisabled || !setSelectedRarities; // Disable if no items, data loading, or handler missing
                   
                   return (
                     <button
                       key={rarity.value}
                       type="button"
                       onClick={() => {
+                        if (!setSelectedRarities) return;
                         if (isSelected) {
                           // If this rarity is already selected, remove it from selection
                           setSelectedRarities(prev => prev.filter(r => r !== rarity.value));
@@ -729,16 +781,20 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                         }
                       }}
                       disabled={isDisabled}
-                      className={`px-2 py-1 rounded-md text-xs font-medium transition-all border ${
+                      className={`px-2 py-1 rounded-md text-xs font-medium transition-all border-2 ${
                         isDisabled
                           ? 'border-gray-700 bg-slate-800/30 text-gray-600 cursor-not-allowed opacity-30'
                           : isSelected
-                            ? 'border-ffxiv-gold bg-ffxiv-gold/20 text-ffxiv-gold'
-                            : 'border-gray-600 bg-slate-800/50 text-gray-400 hover:border-gray-500 hover:bg-slate-700/50 opacity-60'
+                            ? 'border-ffxiv-gold bg-ffxiv-gold/20 text-ffxiv-gold shadow-md'
+                            : 'bg-slate-800/60 hover:bg-slate-700/60 hover:shadow-sm'
                       }`}
                       style={{
                         borderColor: isDisabled ? undefined : (isSelected ? undefined : rarity.color),
-                        color: isDisabled ? undefined : (isSelected ? undefined : rarity.color)
+                        color: isDisabled ? undefined : (isSelected ? undefined : rarity.color),
+                        ...(isSelected ? {} : !isDisabled ? { 
+                          backgroundColor: `${rarity.color}10`,
+                          boxShadow: `0 0 4px ${rarity.color}20`
+                        } : {})
                       }}
                       title={isDisabled ? (isRaritySelectorDisabled ? '請耐心等待物品加載完成' : `${rarity.label} (無物品)`) : rarity.label}
                     >
@@ -780,16 +836,20 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                         }
                       }}
                       disabled={isDisabled}
-                      className={`px-2 py-1 rounded-md text-xs font-medium transition-all border ${
+                      className={`px-2 py-1 rounded-md text-xs font-medium transition-all border-2 ${
                         isDisabled
                           ? 'border-gray-700 bg-slate-800/30 text-gray-600 cursor-not-allowed opacity-30'
                           : isSelected
-                            ? 'border-ffxiv-gold bg-ffxiv-gold/20 text-ffxiv-gold'
-                            : 'border-gray-600 bg-slate-800/50 text-gray-400 hover:border-gray-500 hover:bg-slate-700/50 opacity-60'
+                            ? 'border-ffxiv-gold bg-ffxiv-gold/20 text-ffxiv-gold shadow-md'
+                            : 'bg-slate-800/60 hover:bg-slate-700/60 hover:shadow-sm'
                       }`}
                       style={{
-                        borderColor: isDisabled ? undefined : (isSelected ? undefined : `${versionColor}50`),
-                        color: isDisabled ? undefined : (isSelected ? undefined : versionColor)
+                        borderColor: isDisabled ? undefined : (isSelected ? undefined : versionColor),
+                        color: isDisabled ? undefined : (isSelected ? undefined : versionColor),
+                        ...(isSelected ? {} : !isDisabled ? { 
+                          backgroundColor: `${versionColor}10`,
+                          boxShadow: `0 0 4px ${versionColor}20`
+                        } : {})
                       }}
                       title={isDisabled ? (isRaritySelectorDisabled ? '請耐心等待物品加載完成' : `版本 ${version} (無物品)`) : `版本 ${version}`}
                     >
@@ -816,12 +876,21 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
           <tr className="bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border-b border-purple-500/30">
             <th className="px-2 sm:px-4 py-2 text-left text-ffxiv-gold font-semibold text-xs w-12 sm:w-16">圖片</th>
             <th 
-              className="px-2 sm:px-4 py-2 text-left text-ffxiv-gold font-semibold text-xs w-16 sm:w-20 cursor-pointer hover:bg-purple-800/40 transition-colors select-none"
+              className="px-2 sm:px-4 py-2 text-right text-ffxiv-gold font-semibold text-xs w-20 sm:w-24 cursor-pointer hover:bg-purple-800/40 transition-colors select-none"
               onClick={() => handleSort('id')}
             >
-              <div className="flex items-center gap-1">
+              <div className="flex items-center justify-end gap-1">
                 ilvl
                 <SortIcon column="id" />
+              </div>
+            </th>
+            <th 
+              className="px-2 sm:px-4 py-2 text-right text-ffxiv-gold font-semibold text-xs w-20 sm:w-24 cursor-pointer hover:bg-purple-800/40 transition-colors select-none whitespace-nowrap"
+              onClick={() => handleSort('equipLevel')}
+            >
+              <div className="flex items-center justify-end gap-1">
+                裝等
+                <SortIcon column="equipLevel" />
               </div>
             </th>
             <th 
@@ -993,10 +1062,17 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                   />
                 </td>
                 <td className="px-2 sm:px-4 py-2 text-right font-mono text-xs">
-                  {getIlvl(item.id) !== null ? (
-                    <span className="text-green-400 font-semibold">{getIlvl(item.id)}</span>
+                  {getIlvl(item) !== null ? (
+                      <span className="text-green-400 font-semibold inline-block text-right w-10">{getIlvl(item)}</span>
                   ) : (
                     <span className="text-gray-400">{item.id}</span>
+                  )}
+                </td>
+                <td className="px-2 sm:px-4 py-2 text-right font-mono text-xs whitespace-nowrap">
+                  {getEquipLevel(item) !== null ? (
+                      <span className="text-amber-300 font-semibold inline-block text-right w-10">{getEquipLevel(item)}</span>
+                  ) : (
+                    <span className="text-gray-500">-</span>
                   )}
                 </td>
                 <td className="px-2 sm:px-4 py-2 text-center">

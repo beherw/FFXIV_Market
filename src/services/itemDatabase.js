@@ -345,16 +345,19 @@ export async function loadItemDatabase(isOCRFuzzySearch = false) {
     // We need to convert to: [{ "key: #": "13589", "9: Name": "堅鋼投斧", ... }, ...]
     const items = Object.entries(twItemsData).map(([id, data]) => {
       const itemName = data.tw || '';
+      const itemIlvl = data.ilvl ?? '';
+      const equipLevel = data.equipLevel ?? '';
       // Transform to match the expected CSV format
       return {
         'key: #': id.toString(),
         '9: Name': itemName, // Traditional Chinese name from JSON
         '0: Singular': itemName, // Use same as fallback
-        '11: Level{Item}': '', // Not available in JSON
+        '11: Level{Item}': equipLevel, // Equipment level (player level)
         '25: Price{Mid}': '', // Not available in JSON
         '8: Description': '', // Not available in JSON
         '22: IsUntradable': 'False', // Default to tradeable (we can't determine from JSON)
         '27: CanBeHq': 'True', // Default to true (most items can be HQ)
+        ilvl: itemIlvl
       };
     }).filter(item => item['key: #'] && item['9: Name'].trim() !== '');
 

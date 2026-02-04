@@ -96,6 +96,12 @@ export default function SearchResultsTable({
   const currentPage = externalCurrentPage !== null ? externalCurrentPage : internalCurrentPage;
   const itemsPerPage = externalItemsPerPage !== null ? externalItemsPerPage : internalItemsPerPage;
   
+  // Rarity filter state (use external if provided, otherwise use internal)
+  const [internalSelectedRarities, setInternalSelectedRarities] = useState([]);
+  
+  const currentSelectedRarities = setSelectedRarities !== null ? selectedRarities : internalSelectedRarities;
+  const currentSetSelectedRarities = setSelectedRarities !== null ? setSelectedRarities : setInternalSelectedRarities;
+  
   // Loading indicator state
   const [showLoadingIndicatorState, setShowLoadingIndicatorState] = useState(false);
   const loadingIndicatorStartTimeRef = useRef(null);
@@ -450,8 +456,8 @@ export default function SearchResultsTable({
         addToast={addToast}
         currentPage={currentPage}
         itemsPerPage={itemsPerPage}
-        selectedRarities={selectedRarities}
-        setSelectedRarities={setSelectedRarities}
+        selectedRarities={currentSelectedRarities}
+        setSelectedRarities={currentSetSelectedRarities}
         raritiesData={raritiesData}
         externalRarityFilter={externalRarityFilter}
         externalRarityCounts={externalRarityCounts}

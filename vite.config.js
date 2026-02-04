@@ -38,5 +38,20 @@ export default defineConfig({
       }
     },
     chunkSizeWarningLimit: 600
+  },
+  logLevel: 'info',
+  customLogger: {
+    info(msg) {
+      // Filter out some verbose vite messages
+      if (msg.includes('watching for file changes')) return;
+      if (msg.includes('hmr update')) return;
+      console.log(`[Vite] ${msg}`);
+    },
+    warn(msg) {
+      console.warn(`[Vite] Warning: ${msg}`);
+    },
+    error(msg) {
+      console.error(`[Vite] Error: ${msg}`);
+    }
   }
 })

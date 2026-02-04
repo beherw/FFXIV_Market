@@ -337,15 +337,30 @@ async function loadIlvlsCache() {
     return ilvlsCache;
   }
 
-  // Load from JSON - keys are strings, convert to numbers
+  // Prefer MessagePack (tw_items enriched with ilvl) to avoid loading JSON
   ilvlsCache = {};
-  Object.entries(ilvlsJson).forEach(([id, ilvl]) => {
-    if (ilvl !== undefined && ilvl !== null) {
-      ilvlsCache[parseInt(id, 10)] = ilvl;
-    }
-  });
+  try {
+    const twItems = await getTwItems();
+    Object.entries(twItems).forEach(([id, item]) => {
+      if (item?.ilvl !== undefined && item?.ilvl !== null) {
+        ilvlsCache[parseInt(id, 10)] = item.ilvl;
+      }
+    });
+  } catch (error) {
+    console.warn('[ilvls] ⚠️ Failed to load ilvls from MessagePack, falling back to JSON:', error);
+  }
 
-  console.log(`[JSON] ✅ Loaded ilvls from JSON (${Object.keys(ilvlsCache).length} items)`);
+  // Fallback to JSON if MessagePack is missing ilvls
+  if (Object.keys(ilvlsCache).length === 0) {
+    Object.entries(ilvlsJson).forEach(([id, ilvl]) => {
+      if (ilvl !== undefined && ilvl !== null) {
+        ilvlsCache[parseInt(id, 10)] = ilvl;
+      }
+    });
+    console.log(`[JSON] ✅ Loaded ilvls from JSON (${Object.keys(ilvlsCache).length} items)`);
+  } else {
+    console.log(`[MessagePack] ✅ Loaded ilvls from MessagePack (${Object.keys(ilvlsCache).length} items)`);
+  }
   return ilvlsCache;
 }
 
@@ -506,7 +521,11 @@ export async function getTwItemsByIds(itemIds, signal = null) {
   itemIds.forEach(itemId => {
     const item = twItemsCache[itemId];
     if (item && item.tw && item.tw.trim() !== '') {
-      result[itemId] = { tw: item.tw };
+      result[itemId] = {
+        tw: item.tw,
+        ilvl: item.ilvl ?? null,
+        equipLevel: item.equipLevel ?? null
+      };
     }
   });
 
@@ -1460,81 +1479,27 @@ export async function getEquipmentByJobs(jobAbbrs, signal = null) {
 /** Equip slot display order: Head, Body, Hands, Waist, Legs, Feet, then accessories */
 const EQUIP_SLOT_ORDER = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-/** Cache for getEquipmentByLevelAndJobs: key = level + '_' + sortedJobs.join(',') */
-const equipmentByLevelJobsCache = {};
-const equipmentByLevelJobsPromises = {};
-
 /** Cache for getItemSetFromDB: key = itemId */
 const itemSetCache = {};
 const itemSetPromises = {};
 
 /**
  * Get equipment rows where level and jobs array match exactly (for set query).
- * Result is cached by (level, jobsKey) to avoid duplicate queries.
+ * Now uses MessagePack in-memory data instead of Supabase query for better performance.
  * @param {number} level - Equipment level
  * @param {Array<string>} jobsArray - Job abbreviations (e.g. ['CRP','BSM',...])
- * @param {AbortSignal} signal - Optional abort signal
+ * @param {AbortSignal} signal - Optional abort signal (ignored, kept for API compatibility)
  * @returns {Promise<Object>} - {itemId: {id, level, jobs, equipSlotCategory, ...}}
  */
 export async function getEquipmentByLevelAndJobs(level, jobsArray, signal = null) {
-  if (level == null || level < 0 || !jobsArray || !Array.isArray(jobsArray) || jobsArray.length === 0) {
-    return {};
-  }
-  const jobsKey = [...jobsArray].sort().join(',');
-  const cacheKey = `${level}_${jobsKey}`;
-
-  if (equipmentByLevelJobsCache[cacheKey]) {
-    return equipmentByLevelJobsCache[cacheKey];
-  }
-  if (equipmentByLevelJobsPromises[cacheKey]) {
-    return equipmentByLevelJobsPromises[cacheKey];
+  // Check if aborted before starting
+  if (signal && signal.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
   }
 
-  const promise = (async () => {
-    try {
-      if (signal && signal.aborted) {
-        throw new DOMException('Request aborted', 'AbortError');
-      }
-      // Query by level only; filter by jobs in memory (Supabase JSONB .eq() can be unreliable for array equality)
-      const { data, error } = await supabase
-        .from('equipment')
-        .select('*')
-        .eq('level', level);
-
-      if (signal && signal.aborted) {
-        throw new DOMException('Request aborted', 'AbortError');
-      }
-      if (error) {
-        console.error('[Supabase] getEquipmentByLevelAndJobs error:', error);
-        return {};
-      }
-      const jobsKey = [...jobsArray].sort().join(',');
-      const result = {};
-      if (data) {
-        data.forEach(row => {
-          const rowJobs = row.jobs || row.job_abbrs || [];
-          const rowJobsKey = Array.isArray(rowJobs) ? [...rowJobs].sort().join(',') : '';
-          if (rowJobsKey === jobsKey) {
-            const id = row.id;
-            if (id !== undefined && id !== null) {
-              result[id] = row;
-            }
-          }
-        });
-      }
-      equipmentByLevelJobsCache[cacheKey] = result;
-      return result;
-    } catch (err) {
-      if (err.name === 'AbortError' || (signal && signal.aborted)) {
-        throw err;
-      }
-      return {};
-    } finally {
-      delete equipmentByLevelJobsPromises[cacheKey];
-    }
-  })();
-  equipmentByLevelJobsPromises[cacheKey] = promise;
-  return promise;
+  // Use MessagePack for in-memory filtering (much faster than Supabase query)
+  const { getEquipmentByLevelAndJobs: getEquipmentByLevelAndJobsMsgpack } = await import('./itemsDatabaseMsgpack.js');
+  return await getEquipmentByLevelAndJobsMsgpack(level, jobsArray);
 }
 
 /**

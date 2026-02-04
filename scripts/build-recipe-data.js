@@ -31,12 +31,12 @@ const OUTPUT_FILE = path.join(OUTPUT_DIR, 'recipes.msgpack');
  * Load recipes from JSON source file
  */
 function loadRecipesFromJSON(jsonPath) {
-  console.log(`\n📖 Reading JSON source: ${jsonPath}`);
+  console.log(`[Recipe] Reading JSON source...`);
   
   if (!fs.existsSync(jsonPath)) {
-    console.error(`❌ JSON source file not found: ${jsonPath}`);
-    console.error(`\nPlease ensure teamcraft submodule is initialized:`);
-    console.error(`  git submodule update --init --recursive\n`);
+    console.error(`[Recipe] ERROR: JSON source file not found: ${jsonPath}`);
+    console.error(`[Recipe] Please ensure teamcraft submodule is initialized`);
+    console.error(`[Recipe] Run: git submodule update --init --recursive`);
     process.exit(1);
   }
   
@@ -44,11 +44,11 @@ function loadRecipesFromJSON(jsonPath) {
   const recipes = JSON.parse(content);
   
   if (!Array.isArray(recipes) || recipes.length === 0) {
-    console.error('❌ JSON file is empty or invalid');
+    console.error('[Recipe] ERROR: JSON file is empty or invalid');
     process.exit(1);
   }
   
-  console.log(`✓ Loaded ${recipes.length} recipes from JSON`);
+  console.log(`[Recipe] Loaded ${recipes.length} recipes`);
   return recipes;
 }
 
@@ -56,7 +56,7 @@ function loadRecipesFromJSON(jsonPath) {
  * Optimize recipe data structure for smaller size
  */
 function optimizeRecipes(recipes) {
-  console.log(`\n🔧 Optimizing data structure...`);
+  console.log(`[Recipe] Optimizing data structure...`);
   
   // Remove null/undefined fields to reduce size
   const optimized = recipes.map(recipe => {
@@ -70,7 +70,7 @@ function optimizeRecipes(recipes) {
     return cleaned;
   });
   
-  console.log(`✓ Optimized ${optimized.length} recipes`);
+  console.log(`[Recipe] Optimized ${optimized.length} recipes`);
   return optimized;
 }
 
@@ -78,8 +78,7 @@ function optimizeRecipes(recipes) {
  * Main build function
  */
 function buildRecipeData() {
-  console.log('🏗️  Building Recipe Data (JSON → MessagePack)\n');
-  console.log('='.repeat(60));
+  console.log('\n[Recipe] Building Recipe Data (JSON -> MessagePack)');
   
   const startTime = Date.now();
   
@@ -90,11 +89,11 @@ function buildRecipeData() {
   const optimized = optimizeRecipes(recipes);
   
   // Step 3: Encode to MessagePack
-  console.log(`\n📦 Encoding to MessagePack...`);
+  console.log(`[Recipe] Encoding to MessagePack...`);
   const packed = msgpack.encode(optimized);
   
   // Step 4: Save to public directory
-  console.log(`\n💾 Saving to ${OUTPUT_FILE}...`);
+  console.log(`[Recipe] Saving to public/data/...`);
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
@@ -107,22 +106,13 @@ function buildRecipeData() {
   
   const buildTime = Date.now() - startTime;
   
-  console.log('\n' + '='.repeat(60));
-  console.log('✅ Build Complete!\n');
-  console.log('📊 Size Comparison:');
-  console.log(`   JSON Source: ${(jsonSourceSize / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`   JSON (stringified): ${(jsonSize / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`   MessagePack: ${(msgpackSize / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`   Savings:    ${((1 - msgpackSize / jsonSourceSize) * 100).toFixed(1)}% vs source`);
-  console.log(`\n⏱️  Build Time: ${buildTime}ms`);
-  console.log(`📍 Output: ${OUTPUT_FILE}`);
-  console.log('='.repeat(60) + '\n');
+  console.log(`[Recipe] Complete - ${(msgpackSize / 1024 / 1024).toFixed(2)} MB (saved ${((1 - msgpackSize / jsonSourceSize) * 100).toFixed(1)}%) in ${buildTime}ms\n`);
 }
 
 // Run build
 try {
   buildRecipeData();
 } catch (error) {
-  console.error('\n❌ Build failed:', error);
+  console.error('[Recipe] ERROR: Build failed -', error.message);
   process.exit(1);
 }

@@ -1339,6 +1339,8 @@ export default function CraftingTree({
   onItemSelect,
   excludeCrystals = true,
   onExcludeCrystalsChange,
+  onMultiItemClick,
+  currentItemId,
 }) {
   const [itemNames, setItemNames] = useState({});
   const [itemPrices, setItemPrices] = useState({});

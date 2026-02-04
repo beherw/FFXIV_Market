@@ -114,7 +114,7 @@ export default function AdvancedSearch({
   
   // Check if any miscellaneous category is selected (including 套裝)
   const hasMiscellaneousCategory = useMemo(() => {
-    // 套裝 (112) 被視為特殊分類，不能與職業或 iLvL 過濾一起使用
+    // 套裝 (112) 被視為特殊分類，不能與職業或裝等過濾一起使用
     const setCategory = 112;
     // 其他設備分類 (不包括套裝)
     const equipmentCategoryIds = new Set([34, 35, 36, 37, 38, 40, 41, 42, 43, 62, 11]);
@@ -1444,7 +1444,7 @@ export default function AdvancedSearch({
       });
     
     // Prepare armor categories: insert 套裝 (112) as first item for UI display
-    // Note: Despite being in armor visually, 套裝 behaves like miscellaneous (disables jobs & ilvl)
+    // Note: Despite being in armor visually, 套裝 behaves like miscellaneous (disables jobs & 裝等)
     const armorWithSet = setCategory ? [setCategory, ...armorCategories] : armorCategories;
     
     return {
@@ -1832,46 +1832,45 @@ export default function AdvancedSearch({
       console.log(`[AdvancedSearch] After excluding categories (no category filter): ${itemIds.size} items`);
     }
 
-    // Filter by item level range (ilvl, not equipment level)
-    // Use ilvl JSON data for comparison instead of equipment.level
-    // NOTE: Skip ilvl filtering if 套裝 (112) is selected (sets don't have ilvl)
+    // Filter by equipment level (player level)
+    // NOTE: Skip level filtering if 套裝 (112) is selected (sets don't have equipment level)
     const hasSetCategory = selectedCategories.includes(112);
-    console.log(`[AdvancedSearch] Step 4a - Before ilvl filter: minLevel=${minLevel}, maxLevel=${maxLevel}, items=${itemIds.size}, hasSetCategory=${hasSetCategory}`);
+    console.log(`[AdvancedSearch] Step 4a - Before equip level filter: minLevel=${minLevel}, maxLevel=${maxLevel}, items=${itemIds.size}, hasSetCategory=${hasSetCategory}`);
     
     if (!hasSetCategory && (minLevel > 1 || maxLevel < 999)) {
       const itemIdsArray = Array.from(itemIds);
-      // Load ilvls for these items
-      const ilvlsDataForFilter = await loadIlvlsData(itemIdsArray);
+      // Load equipment data for these items
+      const equipmentDataForFilter = await loadEquipmentByIds(itemIdsArray);
       const filteredByLevel = new Set();
-      let ilvlStats = { min: Infinity, max: -Infinity, count: 0, withData: 0, withoutData: 0 };
+      let levelStats = { min: Infinity, max: -Infinity, count: 0, withData: 0, withoutData: 0 };
       
       itemIds.forEach(itemId => {
-        const ilvl = ilvlsDataForFilter[itemId];
-        // Include items without ilvl data ALWAYS (they may not be equipment, so no ilvl needed)
-        if (ilvl === undefined || ilvl === null) {
-          ilvlStats.withoutData++;
-          // Always include items without ilvl data (they might not be equippable)
+        const equipLevel = equipmentDataForFilter[itemId]?.level;
+        // Include items without equipment level data ALWAYS (they may not be equipment)
+        if (equipLevel === undefined || equipLevel === null) {
+          levelStats.withoutData++;
+          // Always include items without equipment data (they might not be equippable)
           filteredByLevel.add(itemId);
         } else {
-          ilvlStats.withData++;
-          ilvlStats.min = Math.min(ilvlStats.min, ilvl);
-          ilvlStats.max = Math.max(ilvlStats.max, ilvl);
-          ilvlStats.count++;
-          // Include items within ilvl range
-          if (ilvl >= minLevel && ilvl <= maxLevel) {
+          levelStats.withData++;
+          levelStats.min = Math.min(levelStats.min, equipLevel);
+          levelStats.max = Math.max(levelStats.max, equipLevel);
+          levelStats.count++;
+          // Include items within equipment level range
+          if (equipLevel >= minLevel && equipLevel <= maxLevel) {
             filteredByLevel.add(itemId);
           }
         }
       });
       itemIds = filteredByLevel;
-      console.log(`[AdvancedSearch] Step 4b - Ilvl filter (${minLevel}-${maxLevel}): ${itemIds.size} items`);
-      console.log(`  - Items with ilvl data: ${ilvlStats.withData} (min=${ilvlStats.min}, max=${ilvlStats.max})`);
-      console.log(`  - Items without ilvl data: ${ilvlStats.withoutData}`);
+      console.log(`[AdvancedSearch] Step 4b - Equip level filter (${minLevel}-${maxLevel}): ${itemIds.size} items`);
+      console.log(`  - Items with equip level data: ${levelStats.withData} (min=${levelStats.min}, max=${levelStats.max})`);
+      console.log(`  - Items without equip level data: ${levelStats.withoutData}`);
     } else {
       if (hasSetCategory) {
-        console.log(`[AdvancedSearch] Step 4b - Ilvl filter: Skipped (套裝 category selected, sets don't have ilvl)`);
+        console.log(`[AdvancedSearch] Step 4b - Equip level filter: Skipped (套裝 category selected, sets don't have equipment level)`);
       } else {
-        console.log(`[AdvancedSearch] Step 4b - Ilvl filter: Using default range (1-999), skipping filter`);
+        console.log(`[AdvancedSearch] Step 4b - Equip level filter: Using default range (1-999), skipping filter`);
       }
     }
 
@@ -4328,6 +4327,7 @@ export default function AdvancedSearch({
                 <div className="mb-6 flex flex-row items-center justify-between gap-6">
                   {/* Level Range Input */}
                   <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400 whitespace-nowrap">裝等（玩家等級）</span>
                     <div className="relative">
                       <input
                         type="number"
@@ -4361,7 +4361,7 @@ export default function AdvancedSearch({
                         className="w-40 pl-3 pr-12 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                       />
                       <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                        <span className="text-xs text-gray-400" title="ilvl">ilvl</span>
+                        <span className="text-xs text-gray-400" title="裝等（玩家等級）">裝等</span>
                       </div>
                     </div>
                     <div className="text-gray-400">~</div>
@@ -4459,9 +4459,7 @@ export default function AdvancedSearch({
               if (!raritiesData) return {};
               const counts = {};
               allResultsForRarityCount.forEach(item => {
-                const rarity = raritiesData[item.id?.toString()] !== undefined 
-                  ? raritiesData[item.id.toString()] 
-                  : 0;
+                const rarity = raritiesData[item.id] ?? raritiesData[item.id?.toString()] ?? 0;
                 counts[rarity] = (counts[rarity] || 0) + 1;
               });
               return counts;
@@ -4488,16 +4486,12 @@ export default function AdvancedSearch({
             // Multi-select: filter items that match any selected rarity
             if (selectedRarities.length > 0 && raritiesData) {
               currentResults = currentResults.filter(item => {
-                const itemRarity = raritiesData[item.id?.toString()] !== undefined 
-                  ? raritiesData[item.id.toString()] 
-                  : 0;
+                const itemRarity = raritiesData[item.id] ?? raritiesData[item.id?.toString()] ?? 0;
                 return selectedRarities.includes(itemRarity);
               });
               // Also filter filteredResults by rarity
               filteredResults = filteredResults.filter(item => {
-                const itemRarity = raritiesData[item.id?.toString()] !== undefined 
-                  ? raritiesData[item.id.toString()] 
-                  : 0;
+                const itemRarity = raritiesData[item.id] ?? raritiesData[item.id?.toString()] ?? 0;
                 return selectedRarities.includes(itemRarity);
               });
             }

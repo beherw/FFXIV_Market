@@ -27,6 +27,7 @@ const __dirname = path.dirname(__filename);
 
 const TW_ITEMS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/tw/tw-items.json');
 const EQUIPMENT_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/equipment.json');
+const ILVLS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/ilvls.json');
 const OUTPUT_DIR = path.join(__dirname, '../public/data');
 const OUTPUT_FILE = path.join(OUTPUT_DIR, 'items.msgpack');
 
@@ -34,12 +35,12 @@ const OUTPUT_FILE = path.join(OUTPUT_DIR, 'items.msgpack');
  * Load data from JSON source file
  */
 function loadDataFromJSON(jsonPath, dataName) {
-  console.log(`\n📖 Reading ${dataName} from: ${jsonPath}`);
+  console.log(`[Items] Reading ${dataName}...`);
   
   if (!fs.existsSync(jsonPath)) {
-    console.error(`❌ JSON source file not found: ${jsonPath}`);
-    console.error(`\nPlease ensure teamcraft submodule is initialized:`);
-    console.error(`  git submodule update --init --recursive\n`);
+    console.error(`[Items] ERROR: JSON source file not found: ${jsonPath}`);
+    console.error(`[Items] Please ensure teamcraft submodule is initialized`);
+    console.error(`[Items] Run: git submodule update --init --recursive`);
     process.exit(1);
   }
   
@@ -48,12 +49,12 @@ function loadDataFromJSON(jsonPath, dataName) {
   
   // Validate data
   if (!data || (Array.isArray(data) && data.length === 0)) {
-    console.error(`❌ ${dataName} JSON file is empty or invalid`);
+    console.error(`[Items] ERROR: ${dataName} JSON file is empty or invalid`);
     process.exit(1);
   }
   
   const count = Array.isArray(data) ? data.length : Object.keys(data).length;
-  console.log(`✓ Loaded ${count} records from ${dataName}`);
+  console.log(`[Items] Loaded ${count} records from ${dataName}`);
   return data;
 }
 
@@ -61,7 +62,7 @@ function loadDataFromJSON(jsonPath, dataName) {
  * Optimize data structure for smaller size
  */
 function optimizeData(data, dataName) {
-  console.log(`\n🔧 Optimizing ${dataName} structure...`);
+  console.log(`[Items] Optimizing ${dataName} structure...`);
   
   let optimized;
   
@@ -103,7 +104,7 @@ function optimizeData(data, dataName) {
   }
   
   const count = Array.isArray(optimized) ? optimized.length : Object.keys(optimized).length;
-  console.log(`✓ Optimized ${count} records in ${dataName}`);
+  console.log(`[Items] Optimized ${count} records in ${dataName}`);
   return optimized;
 }
 
@@ -111,65 +112,73 @@ function optimizeData(data, dataName) {
  * Main build function
  */
 function buildItemsData() {
-  console.log('🏗️  Building Items Data (JSON → MessagePack)\n');
-  console.log('='.repeat(60));
+  console.log('\n[Items] Building Items Data (JSON -> MessagePack)');
   
   const startTime = Date.now();
   
   // Step 1: Load data from JSON sources
   const twItems = loadDataFromJSON(TW_ITEMS_SOURCE, 'tw_items');
   const equipment = loadDataFromJSON(EQUIPMENT_SOURCE, 'equipment');
+  const ilvls = loadDataFromJSON(ILVLS_SOURCE, 'ilvls');
   
   // Step 2: Optimize structures
   const optimizedTwItems = optimizeData(twItems, 'tw_items');
   const optimizedEquipment = optimizeData(equipment, 'equipment');
+  const optimizedIlvls = optimizeData(ilvls, 'ilvls');
+
+  // Step 3: Enrich tw_items with ilvl + equipment level (player level)
+  console.log(`[Items] Enriching tw_items with ilvl + equipLevel...`);
+  const enrichedTwItems = {};
+  Object.entries(optimizedTwItems).forEach(([id, item]) => {
+    const enriched = { ...item };
+    const ilvl = optimizedIlvls[id];
+    const equipLevel = optimizedEquipment[id]?.level;
+    if (ilvl !== undefined && ilvl !== null) {
+      enriched.ilvl = ilvl;
+    }
+    if (equipLevel !== undefined && equipLevel !== null) {
+      enriched.equipLevel = equipLevel;
+    }
+    enrichedTwItems[id] = enriched;
+  });
+  console.log(`[Items] Enriched ${Object.keys(enrichedTwItems).length} items`);
   
-  // Step 3: Combine into single object
-  console.log(`\n🔗 Combining data structures...`);
+  // Step 4: Combine into single object
+  console.log(`[Items] Combining data structures...`);
   const combined = {
-    tw_items: optimizedTwItems,
+    tw_items: enrichedTwItems,
     equipment: optimizedEquipment
   };
-  console.log(`✓ Combined data ready`);
+  console.log(`[Items] Combined data ready`);
   
-  // Step 4: Encode to MessagePack
-  console.log(`\n📦 Encoding to MessagePack...`);
+  // Step 5: Encode to MessagePack
+  console.log(`[Items] Encoding to MessagePack...`);
   const packed = msgpack.encode(combined);
   
-  // Step 5: Save to public directory
-  console.log(`\n💾 Saving to ${OUTPUT_FILE}...`);
+  // Step 6: Save to public directory
+  console.log(`[Items] Saving to public/data/...`);
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
   fs.writeFileSync(OUTPUT_FILE, packed);
   
-  // Step 6: Statistics
+  // Step 7: Statistics
   const twItemsSourceSize = fs.statSync(TW_ITEMS_SOURCE).size;
   const equipmentSourceSize = fs.statSync(EQUIPMENT_SOURCE).size;
-  const totalSourceSize = twItemsSourceSize + equipmentSourceSize;
+  const ilvlsSourceSize = fs.statSync(ILVLS_SOURCE).size;
+  const totalSourceSize = twItemsSourceSize + equipmentSourceSize + ilvlsSourceSize;
   const msgpackSize = packed.length;
   const jsonSize = JSON.stringify(combined).length;
   
   const buildTime = Date.now() - startTime;
   
-  console.log('\n' + '='.repeat(60));
-  console.log('✅ Build Complete!\n');
-  console.log('📊 Size Comparison:');
-  console.log(`   tw_items source: ${(twItemsSourceSize / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`   equipment source: ${(equipmentSourceSize / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`   Total Source: ${(totalSourceSize / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`   JSON (stringified): ${(jsonSize / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`   MessagePack: ${(msgpackSize / 1024 / 1024).toFixed(2)} MB`);
-  console.log(`   Savings:    ${((1 - msgpackSize / totalSourceSize) * 100).toFixed(1)}% vs source`);
-  console.log(`\n⏱️  Build Time: ${buildTime}ms`);
-  console.log(`📍 Output: ${OUTPUT_FILE}`);
-  console.log('='.repeat(60) + '\n');
+  console.log(`[Items] Complete - ${(msgpackSize / 1024 / 1024).toFixed(2)} MB (saved ${((1 - msgpackSize / totalSourceSize) * 100).toFixed(1)}%) in ${buildTime}ms\n`);
 }
 
 // Run build
 try {
   buildItemsData();
 } catch (error) {
-  console.error('\n❌ Build failed:', error);
+  console.error('[Items] ERROR: Build failed -', error.message);
   process.exit(1);
 }

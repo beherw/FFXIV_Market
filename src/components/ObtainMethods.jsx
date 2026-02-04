@@ -449,7 +449,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     };
   }, [itemId]);
 
-  // Load sources and all required data from Supabase
+  // Load sources and all required data
   useEffect(() => {
     console.log(`[ObtainMethods] useEffect triggered for itemId: ${itemId}`);
     
@@ -487,7 +487,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Update ref immediately to prevent showing stale data during redirects
     currentItemIdRef.current = itemId;
     
-    console.log(`[ObtainMethods] Item ${itemId}: Starting to load sources from Supabase...`);
+    console.log(`[ObtainMethods] Item ${itemId}: Starting to load sources...`);
     
     // Clear sources and reset state immediately when itemId changes
     // Use functional updates to ensure atomic state changes and prevent race conditions
@@ -507,7 +507,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Step 1: Get sources from Supabase
     getItemSources(currentItemId, abortController.signal)
       .then(async sourcesData => {
-        console.log(`[ObtainMethods] Item ${currentItemId}: Received ${sourcesData?.length || 0} sources from Supabase`);
+        console.log(`[ObtainMethods] Item ${currentItemId}: Received ${sourcesData?.length || 0} sources`);
         
         // Check if request was cancelled or itemId changed
         if (abortController.signal.aborted) {
@@ -1661,18 +1661,55 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     }
   }, [itemId, sortedSources, onSourcesChange, loading]);
 
+  // Get method type display name
+  const getMethodTypeName = (type) => {
+    const methodTypeNames = {
+      [DataType.CRAFTED_BY]: '製作',
+      [DataType.TRADE_SOURCES]: '兌換',
+      [DataType.VENDORS]: 'NPC商店',
+      [DataType.TREASURES]: '寶箱/容器',
+      [DataType.INSTANCES]: '副本掉落',
+      [DataType.DESYNTHS]: '精製獲得',
+      [DataType.QUESTS]: '任務獎勵',
+      [DataType.FATES]: '危命任務',
+      [DataType.GATHERED_BY]: '採集獲得',
+      [DataType.REDUCED_FROM]: '分解獲得',
+      [DataType.VENTURES]: '遠征獲得',
+      [DataType.GARDENING]: '園藝獲得',
+      [DataType.MOGSTATION]: '商城購買',
+      [DataType.ISLAND_PASTURE]: '無人島牧場',
+      [DataType.ISLAND_CROP]: '無人島農作',
+      [DataType.VOYAGES]: '遠航探索',
+      [DataType.REQUIREMENTS]: '需求',
+      [DataType.MASTERBOOKS]: '製作書',
+      [DataType.ALARMS]: '鬧鐘提醒',
+      [DataType.DROPS]: '怪物掉落',
+      [DataType.ACHIEVEMENTS]: '成就獎勵',
+      [DataType.TRIPLE_TRIAD_DUELS]: '三重幻卡對戰',
+      [DataType.TRIPLE_TRIAD_PACK]: '三重幻卡包',
+    };
+    return methodTypeNames[type] || '未知';
+  };
+
+  const getMethodTypeLabel = (source) => {
+    if (source?.typeName) {
+      return source.typeName;
+    }
+    return getMethodTypeName(source?.type);
+  };
+
   // Filter sources by selected method type
   // OPTIMIZED: Memoized to prevent recalculation on every render
   const filteredSources = useMemo(() => {
     return filteredMethodType 
-      ? sortedSources.filter(source => source.type === filteredMethodType)
+      ? sortedSources.filter(source => getMethodTypeLabel(source) === filteredMethodType)
       : sortedSources;
   }, [sortedSources, filteredMethodType]);
 
   // Get unique method types for filter tags
   // OPTIMIZED: Memoized to prevent recalculation on every render
   const uniqueMethodTypes = useMemo(() => {
-    return [...new Set(sortedSources.map(s => s.type))];
+    return [...new Set(sortedSources.map(source => getMethodTypeLabel(source)))];
   }, [sortedSources]);
 
   // Filter sources - just return the filtered sources array (don't render here)
@@ -1737,32 +1774,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     );
   }
 
-  // Get method type display name
-  const getMethodTypeName = (type) => {
-    const methodTypeNames = {
-      [DataType.CRAFTED_BY]: '製作',
-      [DataType.TRADE_SOURCES]: '兌換',
-      [DataType.VENDORS]: 'NPC商店',
-      [DataType.TREASURES]: '寶箱/容器',
-      [DataType.INSTANCES]: '副本掉落',
-      [DataType.DESYNTHS]: '精製獲得',
-      [DataType.QUESTS]: '任務獎勵',
-      [DataType.FATES]: '危命任務',
-      [DataType.GATHERED_BY]: '採集獲得',
-      [DataType.REDUCED_FROM]: '分解獲得',
-      [DataType.VENTURES]: '遠征獲得',
-      [DataType.GARDENING]: '園藝獲得',
-      [DataType.MOGSTATION]: '商城購買',
-      [DataType.ISLAND_CROP]: '理符任務',
-      [DataType.VOYAGES]: '遠征',
-      [DataType.REQUIREMENTS]: '需求',
-      [DataType.MASTERBOOKS]: '製作書',
-      [DataType.ALARMS]: '鬧鐘提醒',
-      [DataType.DROPS]: '怪物掉落',
-      [DataType.ACHIEVEMENTS]: '成就獎勵',
-    };
-    return methodTypeNames[type] || '未知';
-  };
+  
 
   const getNpcName = (npcId) => {
     // Use ref to access latest loadedData immediately, avoiding stale state issues
@@ -2763,7 +2775,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         <div key={`instance-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/061000/061801.png" alt="Instance" className="w-6 h-6" />
-            <span className="text-ffxiv-gold font-medium">副本掉落</span>
+            <span className="text-ffxiv-gold font-medium">{source.typeName || '副本掉落'}</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
             {data.map((instanceId, instanceIndex) => {
@@ -4853,7 +4865,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               全部
             </button>
             {uniqueMethodTypes.map((methodType) => {
-              const methodName = getMethodTypeName(methodType);
+              const methodName = methodType;
               const isActive = filteredMethodType === methodType;
               return (
                 <button

@@ -2,14 +2,15 @@
  * Supabase Client Configuration
  *
  * Uses env vars only (no keys in repo). Set in .env:
- *   VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+ *   VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY
+ * Publishable Key (sb_publishable_...) is safe to expose in client-side code.
  * See .env.example for placeholders.
  */
 
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 function renderErrorPage({ title, message, detail, icon = '⚠️' }) {
   if (typeof document === 'undefined') {
@@ -36,19 +37,19 @@ function renderErrorPage({ title, message, detail, icon = '⚠️' }) {
   `;
 }
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('[Supabase] Missing env vars: VITE_SUPABASE_URL and/or VITE_SUPABASE_ANON_KEY');
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  console.error('[Supabase] Missing env vars: VITE_SUPABASE_URL and/or VITE_SUPABASE_PUBLISHABLE_KEY');
   renderErrorPage({
     title: 'Supabase 設定缺失',
     message: '缺少連線 Supabase 所需的金鑰或變數。',
-    detail: '請確認 VITE_SUPABASE_URL 與 VITE_SUPABASE_ANON_KEY 已正確設定。',
+    detail: '請確認 VITE_SUPABASE_URL 與 VITE_SUPABASE_PUBLISHABLE_KEY 已正確設定。',
   });
   throw new Error(
-    'Missing Supabase env: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env (see .env.example)'
+    'Missing Supabase env: set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env (see .env.example)'
   );
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 /**
  * Test Supabase connection with detailed logging
@@ -102,3 +103,4 @@ export async function initializeSupabaseConnection() {
   
   return connected;
 }
+

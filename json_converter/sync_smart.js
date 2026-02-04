@@ -17,16 +17,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration — no defaults; use env only (never commit keys)
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+// For GitHub Actions: use SUPABASE_URL and SUPABASE_SECRET_KEY (from GitHub Secrets)
+// For local testing: use SUPABASE_URL and SUPABASE_SECRET_KEY from .env
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('ERROR: Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.');
+if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
+  console.error('ERROR: Set SUPABASE_URL and SUPABASE_SECRET_KEY in your environment.');
+  console.error('For GitHub Actions: set these in Repository Secrets (Settings → Secrets and variables → Actions)');
+  console.error('For local testing: export SUPABASE_URL and SUPABASE_SECRET_KEY, or set in .env');
   console.error('See json_converter/README.md for setup. Never commit real keys.');
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY);
 const CSV_OUTPUT_DIR = path.join(__dirname, 'csv_output');
 const METADATA_TABLE = '_sync_metadata'; // Table to store sync metadata
 

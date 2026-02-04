@@ -10,7 +10,7 @@ Go to: `https://github.com/YOUR_REPO/settings/secrets/actions`
 
 Add:
 - `SUPABASE_URL`: your Supabase project URL (e.g. `https://xxxxx.supabase.co`)
-- `SUPABASE_SERVICE_KEY`: your **service role** key from Supabase Dashboard → Settings → API (never commit this; use GitHub Secrets only)
+- `SUPABASE_SECRET_KEY`: your **Secret Key** (format: `sb_secret_...`) from Supabase Dashboard → Settings → API → API Keys (never commit this; use GitHub Secrets only)
 
 ### 2. Setup Helper Function (One-time)
 
@@ -68,10 +68,10 @@ node json_to_csv.js
 ### Sync to Supabase (Local Test)
 ```bash
 export SUPABASE_URL="https://your-project.supabase.co"
-export SUPABASE_SERVICE_KEY="your-service-role-key-from-dashboard"
+export SUPABASE_SECRET_KEY="your-secret-key-from-dashboard"
 node sync_smart.js
 ```
-Never paste your real service key into docs or code; use env vars only.
+Never paste your real secret key into docs or code; use env vars only.
 
 ## Adding New JSON Files
 

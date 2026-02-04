@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/build-recipe-data.js && node scripts/build-items-data.js",
+    "prebuild": "node scripts/build-recipe-data.js && node scripts/build-items-data.js && node scripts/build-obtainable-methods-optimized.js",
     "build": "vite build",
     "preview": "vite preview",
     "push": "./git-push.sh",
@@ -14,7 +14,8 @@
     "setup-ocr": "npm run download-tesseract && npm run download-model",
     "build-recipe": "node scripts/build-recipe-data.js",
     "build-items": "node scripts/build-items-data.js",
-    "build-data": "npm run build-recipe && npm run build-items"
+    "build-obtainable": "node scripts/build-obtainable-methods-optimized.js",
+    "build-data": "npm run build-recipe && npm run build-items && npm run build-obtainable"
   },
   "dependencies": {
     "@msgpack/msgpack": "^3.1.3",

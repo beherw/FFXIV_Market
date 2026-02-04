@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, Suspense, lazy } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useSearchParams, useParams, useLocation } from 'react-router-dom';
 import SearchBar from './components/SearchBar';
@@ -21,6 +21,7 @@ import { addItemToHistory } from './utils/itemHistory';
 import { generateBracketPatterns } from './utils/searchNormalization';
 import { addSearchToHistory } from './utils/searchHistory';
 import { useHistory } from './hooks/useHistory';
+import { useMultiItemCombinedTree } from './hooks/useMultiItemCombinedTree';
 import { hasRecipe, buildCraftingTree, findRelatedItems } from './services/recipeDatabase';
 import { getIlvls, getItemPatch, getPatchNames, getItemSetFromDB, getTwItemsByIds } from './services/supabaseData';
 import { initializeSupabaseConnection } from './services/supabaseClient';
@@ -70,12 +71,27 @@ const RelatedItems = createLazyComponent(() => import('./components/RelatedItems
 const HistorySection = createLazyComponent(() => import('./components/HistorySection.jsx'), 'HistorySection');
 const RecentUpdatesSection = createLazyComponent(() => import('./components/RecentUpdatesSection.jsx'), 'RecentUpdatesSection');
 const ObtainMethods = createLazyComponent(() => import('./components/ObtainMethods.jsx'), 'ObtainMethods');
+const MultiItemListModal = createLazyComponent(() => import('./components/MultiItemListModal.jsx'), 'MultiItemListModal');
+const MultiItemCombinedTree = createLazyComponent(() => import('./components/MultiItemCombinedTree.jsx'), 'MultiItemCombinedTree');
 
 function App() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const params = useParams();
   const location = useLocation();
+  
+  // Check if on item info page
+  const isOnItemInfoPage = location.pathname.match(/^\/item\/(\d+)/) !== null;
+  
+  // Get current item ID from URL
+  const currentItemId = useMemo(() => {
+    if (params.id) return params.id;
+    if (location.pathname.startsWith('/item/')) {
+      const match = location.pathname.match(/^\/item\/(\d+)(?:\/(.+))?$/);
+      if (match) return match[1];
+    }
+    return null;
+  }, [params.id, location.pathname]);
   
   // Core states
   const [searchText, setSearchText] = useState('');
@@ -134,6 +150,33 @@ function App() {
   const [hasRelatedItems, setHasRelatedItems] = useState(false);
   const [isRelatedItemsExpanded, setIsRelatedItemsExpanded] = useState(false);
   const [isLoadingRelatedItems, setIsLoadingRelatedItems] = useState(false);
+  
+  // Multi-item combined tree state
+  const multiItemState = useMultiItemCombinedTree();
+  // Separate state for list modal and tree modal visibility
+  const [isMultiItemListModalOpen, setIsMultiItemListModalOpen] = useState(false);
+  const [isMultiItemCombinedTreeModalOpen, setIsMultiItemCombinedTreeModalOpen] = useState(false);
+  // Track item list changes for special effect
+  const [hasItemListChanged, setHasItemListChanged] = useState(false);
+  const prevItemListLengthRef = useRef(multiItemState.itemList.length);
+  // Shared item names map for multi-item UI (kept as stable reference)
+  const itemNamesRef = useRef({});
+  const itemNames = itemNamesRef.current;
+  
+  // Effect to detect item list changes and trigger animation
+  useEffect(() => {
+    if (multiItemState.itemList.length !== prevItemListLengthRef.current) {
+      setHasItemListChanged(true);
+      prevItemListLengthRef.current = multiItemState.itemList.length;
+      
+      // Reset after 2 seconds
+      const timer = setTimeout(() => {
+        setHasItemListChanged(false);
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [multiItemState.itemList.length]);
   
   // Obtain methods states
   const [isObtainMethodsExpanded, setIsObtainMethodsExpanded] = useState(false);
@@ -282,6 +325,7 @@ function App() {
   const [ilvlsData, setIlvlsData] = useState(null);
   const [itemPatchData, setItemPatchData] = useState(null);
   const [patchNamesData, setPatchNamesData] = useState(null);
+  const [selectedItemMeta, setSelectedItemMeta] = useState(null);
 
   // Load ilvl and patch data lazily (only when needed, not on mount)
   // This prevents unnecessary data loading on initial page load
@@ -328,6 +372,86 @@ function App() {
       });
     return () => { cancelled = true; };
   }, [selectedItem, loadIlvlsData]);
+
+  useEffect(() => {
+    const ids = new Set();
+    if (Array.isArray(multiItemState.itemList)) {
+      multiItemState.itemList.forEach(item => {
+        if (item?.id) ids.add(item.id);
+      });
+    }
+    if (Array.isArray(multiItemState.builtTree)) {
+      multiItemState.builtTree.forEach(item => {
+        if (item?.id) ids.add(item.id);
+      });
+    }
+    const itemIds = Array.from(ids);
+    if (itemIds.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const missingIlvlIds = itemIds.filter(id => !ilvlsData?.hasOwnProperty(id.toString()));
+        if (missingIlvlIds.length > 0) {
+          const data = await loadIlvlsData(missingIlvlIds);
+          if (!cancelled && data) {
+            setIlvlsData(prev => ({ ...(prev || {}), ...data }));
+          }
+        }
+
+        const missingPatchIds = itemIds.filter(id => !itemPatchData?.hasOwnProperty(id.toString()));
+        const needsPatchNames = !patchNamesData && itemIds.length > 0;
+        if (missingPatchIds.length > 0 || needsPatchNames) {
+          const { getItemPatchByIds } = await import('./services/supabaseData');
+          const [patchData, patchNames] = await Promise.all([
+            missingPatchIds.length > 0 ? getItemPatchByIds(missingPatchIds) : Promise.resolve(null),
+            needsPatchNames ? loadPatchNamesData() : Promise.resolve(patchNamesData)
+          ]);
+          if (cancelled) return;
+          if (patchData) {
+            setItemPatchData(prev => ({ ...(prev || {}), ...patchData }));
+          }
+          if (patchNames) {
+            setPatchNamesData(patchNames);
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to load ilvl/patch data for multi-item list:', err);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [
+    multiItemState.itemList,
+    multiItemState.builtTree,
+    ilvlsData,
+    itemPatchData,
+    patchNamesData,
+    loadIlvlsData,
+    loadPatchNamesData
+  ]);
+
+  useEffect(() => {
+    if (!selectedItem?.id) {
+      setSelectedItemMeta(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const meta = await getTwItemsByIds([selectedItem.id]);
+        if (cancelled) return;
+        setSelectedItemMeta(meta?.[selectedItem.id] || null);
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to load item meta for selected item:', err);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedItem]);
 
   useEffect(() => {
     if (!selectedItem?.id) return;
@@ -835,6 +959,7 @@ function App() {
           setSelectedWorld({
             region: firstDC.region,
             section: firstDC.name,
+            apiName: firstDC.name, // Store original English name for API calls
             world: firstWorld,
             dcObj: firstDC,
           });
@@ -845,6 +970,7 @@ function App() {
             setSelectedWorld({
               region: firstDC.region || '',
               section: firstDC.name,
+              apiName: firstDC.name, // Store original English name for API calls
               world: firstDC.worlds[0],
               dcObj: firstDC,
             });
@@ -3332,6 +3458,7 @@ function App() {
   useEffect(() => {
     if (!selectedItem) return;
     const ilvl = getIlvl(selectedItem.id);
+    // Skip if ilvl is null, 1, or if it's not equipment
     if (ilvl === null || ilvl === 1) return;
     if (isLoadingItemSet) return;
     if (itemSetResult && itemSetResult.seedItemId === selectedItem.id) return;
@@ -3418,6 +3545,63 @@ function App() {
     localStorage.setItem('craftingTreeExcludeCrystals', newValue.toString());
   }, []);
 
+  // Handle multi-item button click
+  const handleMultiItemClick = useCallback(() => {
+    setIsMultiItemListModalOpen(true);
+  }, []);
+
+  // Handle building combined tree
+  const handleBuildCombinedTree = useCallback((items) => {
+    (async () => {
+      try {
+        // Build tree for each item before storing
+        const treesPromises = items.map(async (item) => {
+          const tree = await buildCraftingTree(item.id, 1, new Set(), 0, excludeCrystals);
+          return {
+            itemId: item.id,
+            name: item.name,
+            tree: tree,
+          };
+        });
+        const treesArray = await Promise.all(treesPromises);
+        multiItemState.buildTree(treesArray);
+        // Close the list modal and open the tree modal
+        setIsMultiItemListModalOpen(false);
+        setIsMultiItemCombinedTreeModalOpen(true);
+      } catch (err) {
+        console.error('Failed to build combined tree:', err);
+      }
+    })();
+  }, [multiItemState, excludeCrystals]);
+
+  // Handle clearing combined tree to return to item list
+  const handleClearCombinedTree = useCallback(() => {
+    multiItemState.clearTree();
+  }, [multiItemState]);
+
+  // Handle adding item set to multi-item combined tree
+  const handleAddItemSetToCombinedTree = useCallback(() => {
+    if (!itemSetResult?.setItemIds?.length) return;
+    const items = itemSetResult.setItemIds.map((id) => ({
+      id,
+      name: itemSetNames[id] || `Item ${id}`,
+    }));
+    // Add to list instead of directly building tree
+    multiItemState.updateItemList(items);
+    // Auto-open modal
+    multiItemState.setIsModalOpen(true);
+  }, [itemSetResult, itemSetNames, multiItemState]);
+
+  // Handle tax rates modal open
+  const handleTaxRatesClick = useCallback(() => {
+    setIsTaxRatesModalOpen(true);
+  }, []);
+
+  // Handle tax rates modal close
+  const handleTaxRatesModalClose = useCallback(() => {
+    setIsTaxRatesModalOpen(false);
+  }, []);
+
   const serverOptions = selectedWorld
     ? [selectedWorld.section, ...selectedWorld.dcObj.worlds]
     : [];
@@ -3478,9 +3662,7 @@ function App() {
           searchText={searchText}
           setSearchText={setSearchText}
           isSearching={isSearching}
-          onTaxRatesClick={() => {
-            setIsTaxRatesModalOpen(true);
-          }}
+          onTaxRatesClick={handleTaxRatesClick}
           isTaxRatesModalOpen={isTaxRatesModalOpen}
           setIsTaxRatesModalOpen={setIsTaxRatesModalOpen}
           taxRates={taxRates}
@@ -3515,9 +3697,7 @@ function App() {
           searchText={searchText}
           setSearchText={setSearchText}
           isSearching={isSearching}
-          onTaxRatesClick={() => {
-            setIsTaxRatesModalOpen(true);
-          }}
+          onTaxRatesClick={handleTaxRatesClick}
           isTaxRatesModalOpen={isTaxRatesModalOpen}
           setIsTaxRatesModalOpen={setIsTaxRatesModalOpen}
           taxRates={taxRates}
@@ -3552,9 +3732,7 @@ function App() {
           isSearching={isSearching}
           isServerDataLoaded={isServerDataLoaded}
           onItemSelect={handleItemSelect}
-          onTaxRatesClick={() => {
-            setIsTaxRatesModalOpen(true);
-          }}
+          onTaxRatesClick={handleTaxRatesClick}
           isTaxRatesModalOpen={isTaxRatesModalOpen}
           setIsTaxRatesModalOpen={setIsTaxRatesModalOpen}
           taxRates={taxRates}
@@ -3591,9 +3769,7 @@ function App() {
           setSearchText('');
           navigate('/advanced-search');
         }}
-        onTaxRatesClick={() => {
-          setIsTaxRatesModalOpen(true);
-        }}
+        onTaxRatesClick={handleTaxRatesClick}
         searchResults={showUntradeable ? [...tradeableResults, ...untradeableResults] : tradeableResults}
         marketableItems={marketableItems}
       />
@@ -3630,10 +3806,9 @@ function App() {
         <div className="max-w-7xl mx-auto px-2 sm:px-4">
           {/* History Page */}
           {isOnHistoryPage && !selectedItem && (
-            <div>
-              <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-ffxiv-gold flex items-center gap-3">
+            <div className="space-y-4 sm:space-y-6">
+              <div className="flex items-center justify-between mb-2 sm:mb-4">
+                <h2 className="text-2xl sm:text-3xl font-bold text-ffxiv-gold flex items-center gap-3">
                     <svg 
                       xmlns="http://www.w3.org/2000/svg" 
                       className="h-6 w-6 sm:h-8 sm:w-8" 
@@ -3650,7 +3825,6 @@ function App() {
                     </svg>
                     歷史記錄
                   </h2>
-                </div>
                 <button
                   onClick={() => {
                     if (window.confirm('確定要清空所有歷史記錄嗎？')) {
@@ -3895,9 +4069,10 @@ function App() {
                           </svg>
                         </button>
                       </div>
-                      <div className="flex items-center gap-3 mid:gap-4 mt-1 flex-wrap">
+                      <div className="flex items-center gap-2 mid:gap-2.5 mt-1 flex-wrap">
                         {(() => {
-                          const ilvl = getIlvl(selectedItem.id);
+                          const ilvl = selectedItem?.ilvl ?? selectedItemMeta?.ilvl ?? getIlvl(selectedItem.id);
+                          const equipLevel = selectedItem?.equipLevel ?? selectedItemMeta?.equipLevel ?? null;
                           const version = getVersion(selectedItem.id);
                           return (
                             <>
@@ -3915,8 +4090,13 @@ function App() {
                                 </span>
                               )}
                               {ilvl !== null && (
-                                <span className="text-[10px] mid:text-xs text-green-400 font-semibold">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md border text-[10px] mid:text-xs font-semibold whitespace-nowrap bg-emerald-900/20 border-emerald-400/40 text-emerald-300">
                                   ilvl: {ilvl}
+                                </span>
+                              )}
+                              {equipLevel !== null && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md border text-[10px] mid:text-xs font-semibold whitespace-nowrap bg-amber-900/20 border-amber-400/40 text-amber-300">
+                                  裝等: {equipLevel}
                                 </span>
                               )}
                             </>
@@ -4006,7 +4186,13 @@ function App() {
                       if (isObtainMethodsLoading || !hasObtainMethods) {
                         return;
                       }
-                      setIsObtainMethodsExpanded(!isObtainMethodsExpanded);
+                      const willExpand = !isObtainMethodsExpanded;
+                      setIsObtainMethodsExpanded(willExpand);
+                      // Close other tabs when opening this one
+                      if (willExpand) {
+                        setIsCraftingTreeExpanded(false);
+                        setIsItemSetExpanded(false);
+                      }
                       setButtonOrder(prev => ({ ...prev, obtainMethods: Math.max(...Object.values(prev)) + 1 }));
                     }}
                     disabled={isObtainMethodsLoading || !hasObtainMethods}
@@ -4048,7 +4234,13 @@ function App() {
                         return;
                       }
                       const wasExpanded = isCraftingTreeExpanded;
-                      setIsCraftingTreeExpanded(!isCraftingTreeExpanded);
+                      const willExpand = !isCraftingTreeExpanded;
+                      setIsCraftingTreeExpanded(willExpand);
+                      // Close other tabs when opening this one
+                      if (willExpand) {
+                        setIsObtainMethodsExpanded(false);
+                        setIsItemSetExpanded(false);
+                      }
                       setButtonOrder(prev => ({ ...prev, craftingTree: Math.max(...Object.values(prev)) + 1 }));
                       // Reset flag when clicking button directly (not from ObtainMethods)
                       if (!wasExpanded) {
@@ -4096,50 +4288,61 @@ function App() {
                     <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">製作價格樹</span>
                   </button>
 
-                  {/* Related Items Button */}
-                  <button
-                    onClick={() => {
-                      setIsRelatedItemsExpanded(!isRelatedItemsExpanded);
-                      setButtonOrder(prev => ({ ...prev, relatedItems: Math.max(...Object.values(prev)) + 1 }));
-                    }}
-                    disabled={!hasRelatedItems || isLoadingRelatedItems}
-                    className={`
-                      flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300
-                      ${hasRelatedItems && !isLoadingRelatedItems
-                        ? isRelatedItemsExpanded
-                          ? 'bg-gradient-to-r from-amber-900/60 via-yellow-800/50 to-orange-900/60 border border-ffxiv-gold/60 text-ffxiv-gold'
-                          : 'bg-gradient-to-r from-purple-900/50 via-indigo-900/40 to-purple-900/50 border border-purple-400/40 text-purple-200 hover:text-ffxiv-gold hover:border-ffxiv-gold/50'
-                        : 'bg-slate-800/30 border border-slate-600/20 text-gray-600 cursor-not-allowed'
+                  {/* Related Items Button - only show if has related items */}
+                  {(hasRelatedItems || isLoadingRelatedItems) && (
+                    <button
+                      onClick={() => {
+                        setIsRelatedItemsExpanded(!isRelatedItemsExpanded);
+                        setButtonOrder(prev => ({ ...prev, relatedItems: Math.max(...Object.values(prev)) + 1 }));
+                      }}
+                      disabled={!hasRelatedItems || isLoadingRelatedItems}
+                      className={`
+                        flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300
+                        ${hasRelatedItems && !isLoadingRelatedItems
+                          ? isRelatedItemsExpanded
+                            ? 'bg-gradient-to-r from-amber-900/60 via-yellow-800/50 to-orange-900/60 border border-ffxiv-gold/60 text-ffxiv-gold'
+                            : 'bg-gradient-to-r from-purple-900/50 via-indigo-900/40 to-purple-900/50 border border-purple-400/40 text-purple-200 hover:text-ffxiv-gold hover:border-ffxiv-gold/50'
+                          : 'bg-slate-800/30 border border-slate-600/20 text-gray-600 cursor-not-allowed'
+                        }
+                      `}
+                      title={
+                        isLoadingRelatedItems 
+                          ? '載入中...' 
+                          : hasRelatedItems 
+                            ? (isRelatedItemsExpanded ? '收起可製品' : '展開可製品')
+                            : '此物品未被用作材料'
                       }
-                    `}
-                    title={
-                      isLoadingRelatedItems 
-                        ? '載入中...' 
-                        : hasRelatedItems 
-                          ? (isRelatedItemsExpanded ? '收起可製品' : '展開可製品')
-                          : '此物品未被用作材料'
-                    }
-                  >
-                    {isLoadingRelatedItems ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-400/30 border-t-purple-400"></div>
-                    ) : (
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isRelatedItemsExpanded ? 'rotate-90' : ''}`}
-                        fill="none" 
-                        viewBox="0 0 24 24" 
-                        stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                      </svg>
-                    )}
-                    <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">可製品</span>
-                  </button>
+                    >
+                      {isLoadingRelatedItems ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-400/30 border-t-purple-400"></div>
+                      ) : (
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isRelatedItemsExpanded ? 'rotate-90' : ''}`}
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                      )}
+                      <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">可製品</span>
+                    </button>
+                  )}
 
                   {/* 全套查詢 Button - auto load on entry, cache in service */}
                   {(() => {
                     const ilvl = selectedItem ? getIlvl(selectedItem.id) : null;
+                    // Hide button if: no item, no ilvl, ilvl=1, or not equipment
                     if (!selectedItem || ilvl === null || ilvl === 1) {
+                      return null;
+                    }
+                    // Also hide if loaded and confirmed not equipment
+                    if (itemSetResult && itemSetResult.seedItemId === selectedItem.id && !itemSetResult.isEquipmentSet) {
+                      return null;
+                    }
+                    // Also hide if loaded and has no other items in set (only current item)
+                    if (itemSetResult && itemSetResult.seedItemId === selectedItem.id && !hasItemSet) {
                       return null;
                     }
 
@@ -4149,10 +4352,19 @@ function App() {
                       <button
                         onClick={() => {
                           if (isLoadingItemSet) return;
+                          const willExpand = itemSetResult && itemSetResult.seedItemId === selectedItem.id ? !isItemSetExpanded : true;
                           if (itemSetResult && itemSetResult.seedItemId === selectedItem.id) {
                             setIsItemSetExpanded(!isItemSetExpanded);
+                            // Close other tabs when opening this one
+                            if (willExpand) {
+                              setIsObtainMethodsExpanded(false);
+                              setIsCraftingTreeExpanded(false);
+                            }
                           } else {
                             loadItemSetForSelectedItem(selectedItem.id, { autoExpand: true });
+                            // Close other tabs when opening this one
+                            setIsObtainMethodsExpanded(false);
+                            setIsCraftingTreeExpanded(false);
                           }
                           setButtonOrder(prev => ({ ...prev, itemSet: Math.max(...Object.values(prev)) + 1 }));
                         }}
@@ -4189,7 +4401,7 @@ function App() {
                         )}
                         <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">
                           {hasItemSet && itemSetResult?.setItemIds?.length
-                            ? `全套查詢 (${itemSetResult.setItemIds.filter((id) => id !== selectedItem?.id).length})`
+                            ? `全套查詢 (${itemSetResult.setItemIds.length})`
                             : '全套查詢'}
                         </span>
                       </button>
@@ -4229,6 +4441,7 @@ function App() {
                     </svg>
                     <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">灰機wiki</span>
                   </button>
+
                 
                 </div>
               </div>
@@ -4263,6 +4476,8 @@ function App() {
                               onItemSelect={handleItemSelect}
                               excludeCrystals={excludeCrystals}
                               onExcludeCrystalsChange={handleExcludeCrystalsChange}
+                              onMultiItemClick={handleMultiItemClick}
+                              currentItemId={selectedItem?.id}
                             />
                           </Suspense>
                         </ErrorBoundary>
@@ -4304,12 +4519,30 @@ function App() {
                         key="itemSetContainer"
                         className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-6"
                       >
-                        <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold flex items-center gap-2 mb-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                          </svg>
-                          全套查詢
-                        </h3>
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                            全套查詢
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={handleAddItemSetToCombinedTree}
+                            disabled={!itemSetResult?.setItemIds?.length}
+                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 border ${
+                              itemSetResult?.setItemIds?.length
+                                ? 'bg-emerald-900/40 border-emerald-400/40 text-emerald-200 hover:bg-emerald-800/50 hover:border-emerald-300/60'
+                                : 'bg-slate-800/30 border-slate-600/20 text-slate-500 cursor-not-allowed'
+                            }`}
+                            title="一鍵加入多物品組合樹"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            一鍵加入多物品組合樹
+                          </button>
+                        </div>
                         {(() => {
                           const itemSetVersion = itemSetResult?.seedItemId
                             ? getVersion(itemSetResult.seedItemId)
@@ -4330,7 +4563,7 @@ function App() {
                           );
                         })()}
                         <p className="text-sm text-slate-300/80 mb-4 leading-relaxed">
-                          同套裝判定：同版本、同品級（ilvl）、同裝備等級、同職業限制；下方列出同套的其他部位（不含當前這件）。
+                          同套裝判定：同版本、同品級（ilvl）、同裝備等級、同職業限制；下方列出同套的所有部位（包含當前物品，以金色邊框標示）。
                         </p>
                         {!itemSetResult.isEquipmentSet ? (
                           <p className="text-sm text-gray-400">此物品非裝備，無套裝資訊。</p>
@@ -4338,29 +4571,46 @@ function App() {
                           <p className="text-sm text-gray-400">無同套裝備資料。</p>
                         ) : (
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                            {itemSetResult.setItemIds.filter((id) => id !== selectedItem?.id).map((id) => (
-                              <button
-                                key={id}
-                                type="button"
-                                onClick={() => handleItemSelect({ id, name: itemSetNames[id] || `Item ${id}`, nameTW: itemSetNames[id] || null })}
-                                className="flex flex-col items-center gap-2 p-3 rounded-lg bg-slate-800/60 border border-purple-500/30 hover:border-ffxiv-gold/60 hover:bg-slate-700/70 transition-all duration-200"
-                              >
-                                <ItemImage
-                                  itemId={id}
-                                  alt={itemSetNames[id] || `Item ${id}`}
-                                  className="w-12 h-12 object-contain rounded border border-purple-500/30 group-hover:border-ffxiv-gold/60 transition-colors duration-200"
-                                />
-                                <span className="text-xs text-center text-gray-200 line-clamp-2 w-full">{itemSetNames[id] || `Item ${id}`}</span>
-                                <span className="text-[10px] text-slate-400">全服平均價格</span>
-                                {isLoadingItemSetPrices ? (
-                                  <span className="text-xs text-slate-500">均價載入中…</span>
-                                ) : itemSetAveragePrices[id] != null ? (
-                                  <span className="text-xs text-emerald-400">{itemSetAveragePrices[id].toLocaleString()} Gil</span>
-                                ) : (
-                                  <span className="text-xs text-slate-500">—</span>
-                                )}
-                              </button>
-                            ))}
+                            {itemSetResult.setItemIds.map((id) => {
+                              const isCurrentItem = id === selectedItem?.id;
+                              return (
+                                <button
+                                  key={id}
+                                  type="button"
+                                  onClick={() => handleItemSelect({ id, name: itemSetNames[id] || `Item ${id}`, nameTW: itemSetNames[id] || null })}
+                                  className={`flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-200 ${
+                                    isCurrentItem
+                                      ? 'bg-gradient-to-br from-amber-900/40 via-yellow-900/30 to-amber-900/40 border-2 border-ffxiv-gold shadow-[0_0_20px_rgba(255,215,0,0.3)] hover:shadow-[0_0_30px_rgba(255,215,0,0.5)]'
+                                      : 'bg-slate-800/60 border border-purple-500/30 hover:border-ffxiv-gold/60 hover:bg-slate-700/70'
+                                  }`}
+                                  disabled={isCurrentItem}
+                                >
+                                  <ItemImage
+                                    itemId={id}
+                                    alt={itemSetNames[id] || `Item ${id}`}
+                                    className={`w-12 h-12 object-contain rounded transition-colors duration-200 ${
+                                      isCurrentItem
+                                        ? 'border-2 border-ffxiv-gold'
+                                        : 'border border-purple-500/30 group-hover:border-ffxiv-gold/60'
+                                    }`}
+                                  />
+                                  <span className={`text-xs text-center line-clamp-2 w-full ${
+                                    isCurrentItem ? 'text-ffxiv-gold font-semibold' : 'text-gray-200'
+                                  }`}>
+                                    {itemSetNames[id] || `Item ${id}`}
+                                    {isCurrentItem && <span className="block text-[10px] text-amber-400/80 mt-0.5">(當前物品)</span>}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400">全服平均價格</span>
+                                  {isLoadingItemSetPrices ? (
+                                    <span className="text-xs text-slate-500">均價載入中…</span>
+                                  ) : itemSetAveragePrices[id] != null ? (
+                                    <span className="text-xs text-emerald-400">{itemSetAveragePrices[id].toLocaleString()} Gil</span>
+                                  ) : (
+                                    <span className="text-xs text-slate-500">—</span>
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -4418,12 +4668,30 @@ function App() {
                     )
                   });
                 }
+
+                // Multi-item combined tree modal is handled separately below
+                // No need to add it to sections - it's a modal popup
                 
                 // Sort by order (descending - highest order first, meaning last clicked appears on top)
                 sections.sort((a, b) => b.order - a.order);
                 
                 return (
                   <>
+                    {/* Multi-item list modal */}
+                    <Suspense fallback={null}>
+                      <MultiItemListModal
+                        isOpen={isMultiItemListModalOpen}
+                        onClose={() => setIsMultiItemListModalOpen(false)}
+                        itemList={multiItemState.itemList}
+                        onItemListChange={multiItemState.updateItemList}
+                        currentItemId={selectedItem?.id}
+                        onBuildTree={handleBuildCombinedTree}
+                        itemNames={itemNames}
+                        getVersion={getVersion}
+                        getIlvl={getIlvl}
+                        getVersionColor={getVersionColor}
+                      />
+                    </Suspense>
                     {sections.map(section => section.component)}
                   </>
                 );
@@ -4558,8 +4826,8 @@ function App() {
                 </div>
               </div>
             </div>
-            </>
-          )}
+          </>
+        )}
 
           {/* Loading Item from URL - Show loading state instead of home page */}
           {(() => {
@@ -4973,7 +5241,7 @@ function App() {
       {/* Tax Rates Modal */}
       <TaxRatesModal
         isOpen={isTaxRatesModalOpen}
-        onClose={() => setIsTaxRatesModalOpen(false)}
+        onClose={handleTaxRatesModalClose}
         taxRates={taxRates}
         worlds={worlds}
         isLoading={isLoadingTaxRates}
@@ -4981,6 +5249,51 @@ function App() {
         selectedServerOption={selectedServerOption}
         onServerOptionChange={handleServerOptionChange}
       />
+
+      {/* Multi-Item Combined Tree Modal */}
+      <ErrorBoundary fallbackMessage="多物品組合樹載入失敗，請重新整理頁面">
+        <Suspense fallback={null}>
+          <MultiItemCombinedTree
+            isOpen={isMultiItemCombinedTreeModalOpen}
+            onClose={() => setIsMultiItemCombinedTreeModalOpen(false)}
+            itemList={multiItemState.builtTree}
+            selectedServerOption={selectedServerOption}
+            selectedWorld={selectedWorld}
+            worlds={worlds}
+            onItemSelect={handleItemSelect}
+            excludeCrystals={excludeCrystals}
+            onExcludeCrystalsChange={handleExcludeCrystalsChange}
+            currentItemId={currentItemId}
+          />
+        </Suspense>
+      </ErrorBoundary>
+      
+      {/* Multi-item quick open (floating) - outside all containers - only show on item info page */}
+      {isOnItemInfoPage && (
+        <button
+          onClick={() => setIsMultiItemListModalOpen(true)}
+          className={`fixed top-[220px] rightD8 xl:right-12 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-full text-white backdrop-blur-md transition-all duration-300 ${
+            hasItemListChanged
+              ? 'bg-gradient-to-br from-amber-500/95 via-yellow-500/90 to-orange-500/95 border-2 border-ffxiv-gold animate-bounce shadow-[0_0_40px_rgba(212,175,55,0.8),0_0_80px_rgba(212,175,55,0.6),inset_0_1px_0_rgba(255,255,255,0.5)] scale-110'
+              : 'bg-gradient-to-br from-purple-600/90 via-purple-500/80 to-indigo-600/90 border-2 border-purple-400/60 hover:from-purple-500 hover:via-purple-400 hover:to-indigo-500 hover:border-ffxiv-gold hover:scale-110 shadow-[0_0_30px_rgba(168,85,247,0.5),0_0_60px_rgba(168,85,247,0.3),inset_0_1px_0_rgba(255,255,255,0.3)] animate-pulse hover:animate-none'
+          }`}
+          title="打開多物品組合樹清單"
+          style={{
+            animation: hasItemListChanged ? 'bounce 0.5s ease-in-out 0s 4 normal none running' : 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 12h14M5 16h14" />
+          </svg>
+          <span className="text-sm font-bold whitespace-nowrap tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">多物品清單</span>
+          <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-5 w-5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-5 w-5 bg-purple-500 items-center justify-center text-[10px] font-bold text-white border border-purple-300">
+              {multiItemState.itemList.length}
+            </span>
+          </span>
+        </button>
+      )}
     </div>
   );
 }

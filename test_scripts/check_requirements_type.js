@@ -7,11 +7,11 @@ import { createClient } from '@supabase/supabase-js';
 
 // 直接設定 Supabase 憑證（從 .env 檔案讀取）
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Error: Missing Supabase credentials');
-  console.error('Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env file');
+  console.error('Please set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env file');
   process.exit(1);
 }
 

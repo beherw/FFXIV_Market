@@ -2,7 +2,7 @@
 // Now uses Supabase for efficient querying - only loads data for specific item IDs
 // Never loads all extracts data at once
 
-import { getItemSourcesById } from './supabaseData';
+import { getObtainableSourcesById } from './obtainableMethodsMsgpack';
 
 /**
  * Load extracts index file (small metadata file)
@@ -61,8 +61,7 @@ export async function loadChunk(chunkIndex, signal = null) {
 
 /**
  * Load extracts data (acquisition methods for items)
- * @deprecated This function loads ALL extracts data which is inefficient.
- * Use getItemSources() instead to query only specific items from Supabase.
+ * @deprecated Loading all extracts data is disabled for performance.
  * @param {AbortSignal} signal - Optional abort signal for cancellation
  * @returns {Promise<Object>} Empty object (loading all extracts is disabled for performance)
  */
@@ -74,23 +73,15 @@ export async function loadExtracts(signal = null) {
 }
 
 /**
- * Get acquisition sources for an item by ID from Supabase
- * This is the preferred method - only queries for the specific item, never loads all data
+ * Get acquisition sources for an item by ID from local prebuilt database
  * @param {number|string} itemId - Item ID
  * @param {AbortSignal} signal - Optional abort signal for cancellation
  * @returns {Promise<Array>} Array of source objects with type and data
  */
 export async function getItemSources(itemId, signal = null) {
   try {
-    // Use Supabase to query only this specific item ID
-    // This is much more efficient than loading chunks or all data
-    const sources = await getItemSourcesById(itemId, signal);
-    
-    if (!sources || !Array.isArray(sources)) {
-      return [];
-    }
-
-    return sources;
+    const sources = await getObtainableSourcesById(itemId);
+    return Array.isArray(sources) ? sources : [];
   } catch (error) {
     // If loading fails, log the error but return empty array to prevent UI crash
     if (error.name === 'AbortError' || (signal && signal.aborted)) {
