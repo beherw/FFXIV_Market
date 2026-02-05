@@ -4304,14 +4304,20 @@ function App() {
                     
                     <svg 
                       xmlns="http://www.w3.org/2000/svg" 
-                      className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isObtainMethodsExpanded ? 'rotate-90' : ''}`}
+                      className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isObtainMethodsExpanded ? 'rotate-90' : ''} ${isObtainMethodsLoading ? 'animate-spin' : ''}`}
                       fill="none" 
                       viewBox="0 0 24 24" 
                       stroke="currentColor"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                      {isObtainMethodsLoading ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                      )}
                     </svg>
-                    <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">取得方式</span>
+                    <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">
+                      {isObtainMethodsLoading ? '載入中...' : '取得方式'}
+                    </span>
                   </button>
 
                   {/* Crafting Price Tree Button */}
