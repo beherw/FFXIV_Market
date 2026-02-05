@@ -16,6 +16,11 @@
 export function getPlaceName(zoneId, placeData = {}) {
   if (!zoneId) return '';
   
+  // Special handling for housing zone 1160 - 特殊處理住宅區 1160
+  if (zoneId === 1160 || String(zoneId) === '1160') {
+    return '個人房屋';
+  }
+  
   const { twPlaces = {}, places = {} } = placeData;
   
   // Try Traditional Chinese first
@@ -30,8 +35,8 @@ export function getPlaceName(zoneId, placeData = {}) {
     return place.en;
   }
   
-  // If still not found, return zone ID as fallback
-  return `Zone ${zoneId}`;
+  // If still not found, return empty string to hide location instead of showing "Zone xxxx"
+  return '';
 }
 
 /**

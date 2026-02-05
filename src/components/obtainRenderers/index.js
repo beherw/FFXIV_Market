@@ -124,11 +124,6 @@ export async function getRenderer(dataType) {
         rendererCache[dataType] = rendererModule.renderRequirements;
         break;
 
-      case 19: // RETAINER_TASKS (not in standard DataType enum)
-        rendererModule = await import('./retainerTasksRenderer.jsx');
-        rendererCache[dataType] = rendererModule.renderRetainerTasks;
-        break;
-
       case 21: // EXPLORATION_RESULTS (not in standard DataType enum)
         rendererModule = await import('./explorationResultsRenderer.jsx');
         rendererCache[dataType] = rendererModule.renderExplorationResults;

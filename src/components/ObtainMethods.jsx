@@ -3,7 +3,7 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getItemSources, DataType } from '../services/extractsService';
+import { getItemSources, DataType, getTypeIdFromString } from '../services/extractsService';
 import { getItemById } from '../services/itemDatabase';
 import { extractIdsFromSources } from '../utils/extractIdsFromSources';
 import { getHuijiWikiUrlForItem } from '../utils/wikiUtils';
@@ -42,6 +42,9 @@ import {
 import twNpcTitlesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-npc-titles.json';
 import twJobAbbrData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json';
 import twMobsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-mobs.json';
+// tw-places will be loaded via fetch in useEffect to handle string keys properly
+// import twPlacesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-places.json';
+// import placesData from '../../teamcraft_git/libs/data/src/lib/json/places.json';
 // tw-quests.json (256KB) - lazy loaded only when quests are needed
 import dropSourcesData from '../../teamcraft_git/libs/data/src/lib/json/drop-sources.json';
 import monstersData from '../../teamcraft_git/libs/data/src/lib/json/monsters.json';
@@ -188,6 +191,79 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       onLoadingChange(loading);
     }
   }, [loading, onLoadingChange]);
+
+  // Load place data (tw-places and places JSON files)
+  // These are small static files that should be loaded once and cached
+  useEffect(() => {
+    const loadPlaceData = async () => {
+      try {
+        const [twPlacesResponse, placesResponse] = await Promise.all([
+          fetch('/tw-places.json'),
+          fetch('/places.json')
+        ]);
+        
+        if (twPlacesResponse.ok) {
+          const twPlaces = await twPlacesResponse.json();
+          loadedDataRef.current.twPlaces = twPlaces;
+          console.log('[DEBUG] Loaded tw-places.json:', {
+            size: Object.keys(twPlaces).length,
+            has3045: !!twPlaces['3045'],
+            value3045: twPlaces['3045']
+          });
+          // Store in window for direct console access
+          window.__DEBUG_twPlaces = twPlaces;
+        }
+        
+        if (placesResponse.ok) {
+          const places = await placesResponse.json();
+          loadedDataRef.current.places = places;
+          console.log('[DEBUG] Loaded places.json:', {
+            size: Object.keys(places).length,
+            has3045: !!places['3045'],
+            value3045: places['3045']
+          });
+          window.__DEBUG_places = places;
+        }
+        
+        // Trigger re-render after place data loads
+        setPlacesLoaded(true);
+        console.log('[DEBUG] Place data loaded, triggering re-render');
+        
+      } catch (error) {
+        console.error('[ObtainMethods] Failed to load place data:', error);
+        // Try loading from teamcraft_git instead
+        try {
+          const [twPlacesResponse, placesResponse] = await Promise.all([
+            fetch('/teamcraft_git/libs/data/src/lib/json/tw/tw-places.json'),
+            fetch('/teamcraft_git/libs/data/src/lib/json/places.json')
+          ]);
+          
+          if (twPlacesResponse.ok) {
+            const twPlaces = await twPlacesResponse.json();
+            loadedDataRef.current.twPlaces = twPlaces;
+            console.log('[DEBUG] Loaded tw-places.json from fallback');
+            window.__DEBUG_twPlaces = twPlaces;
+          }
+          
+          if (placesResponse.ok) {
+            const places = await placesResponse.json();
+            loadedDataRef.current.places = places;
+            console.log('[DEBUG] Loaded places.json from fallback');
+            window.__DEBUG_places = places;
+          }
+          
+          // Trigger re-render after fallback place data loads
+          setPlacesLoaded(true);
+          console.log('[DEBUG] Place data loaded from fallback, triggering re-render');
+          
+        } catch (fallbackError) {
+          console.error('[ObtainMethods] Failed to load place data from fallback paths:', fallbackError);
+        }
+      }
+    };
+    
+    loadPlaceData();
+  }, []);
   
   const [mapModal, setMapModal] = useState({ isOpen: false, zoneName: '', x: 0, y: 0, npcName: '', mapId: null });
   const [hoveredAchievement, setHoveredAchievement] = useState(null);
@@ -224,8 +300,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     twAchievements: {},
     twAchievementDescriptions: {},
     achievements: {},
-    twPlaces: {},
-    places: {},
+    twPlaces: {}, // Will be loaded in useEffect
+    places: {}, // Will be loaded in useEffect
     twItems: {},
     fateSources: [],
     lootSources: []
@@ -278,8 +354,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         twAchievements: {},
         twAchievementDescriptions: {},
         achievements: {},
-        twPlaces: {},
-        places: {},
+        twPlaces: loadedDataRef.current.twPlaces || {}, // Preserve place data loaded asynchronously
+        places: loadedDataRef.current.places || {}, // Preserve place data loaded asynchronously
         twItems: {},
         fateSources: [],
         lootSources: []
@@ -339,6 +415,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const [isLoadingQuestsData, setIsLoadingQuestsData] = useState(false); // Track loading state for React
   const [isLoadingLevesData, setIsLoadingLevesData] = useState(false); // Track loading state for React
   const [leveNpcsLoaded, setLeveNpcsLoaded] = useState(false); // Track if NPC data for leves has been loaded
+  const [placesLoaded, setPlacesLoaded] = useState(false); // Track if place data has been loaded - triggers re-render
   
   // Lazy load tw-quests.json and tw-leves.json when quests are present but names are missing
   useEffect(() => {
@@ -770,8 +847,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         twAchievements: {},
         twAchievementDescriptions: {},
         achievements: {},
-        twPlaces: {},
-        places: {},
+        twPlaces: loadedDataRef.current.twPlaces || {}, // Preserve place data loaded asynchronously
+        places: loadedDataRef.current.places || {}, // Preserve place data loaded asynchronously
         twItems: {},
         fateSources: [],
         lootSources: []
@@ -905,22 +982,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             }
           }
           
-          // Convert type 13 (Teamcraft's DROPS) to type 20 (our DROPS) if data looks like drops
-          // Check if type 13 has drop-like data structure (array of objects with 'id' field)
-          processedSources = processedSources.map(source => {
-            if (source.type === 13 && Array.isArray(source.data) && source.data.length > 0) {
-              // Check if data looks like drops (objects with 'id' field or numbers)
-              const firstItem = source.data[0];
-              const looksLikeDrops = typeof firstItem === 'object' && firstItem !== null && 'id' in firstItem;
-              
-              if (looksLikeDrops) {
-                // Convert to DROPS type (20)
-                return { ...source, type: DataType.DROPS };
-              }
-              // Otherwise keep as MOGSTATION (13)
-            }
-            return source;
-          });
+          // No type conversion needed - all types should be correctly set from data source
           
           // Collect zoneIds from FATEs - we'll do this after processing sources
           const fateZoneIds = new Set();
@@ -1247,6 +1309,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           }
           
           // Batch query: Query place data and FATE reward items together
+          // Note: twPlaces and places are now pre-loaded, so zoneIdsToQuery should be empty
           const zoneIdsToQuery = Array.from(allZoneIds).filter(zoneId => {
             const hasTwPlace = newLoadedData.twPlaces[zoneId] || newLoadedData.twPlaces[String(zoneId)];
             const hasPlace = newLoadedData.places[zoneId] || newLoadedData.places[String(zoneId)];
@@ -1263,8 +1326,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           
           if (zoneIdsToQuery.length > 0) {
             followUpQueries.push(
-              getTwPlacesByIds(zoneIdsToQuery, abortController.signal).then(data => ({ type: 'twPlaces', data })),
-              getPlacesByIds(zoneIdsToQuery, abortController.signal).then(data => ({ type: 'places', data }))
+              getTwPlacesByIds(zoneIdsToQuery, abortController.signal).then(data => {
+                return { type: 'twPlaces', data };
+              }),
+              getPlacesByIds(zoneIdsToQuery, abortController.signal).then(data => {
+                return { type: 'places', data };
+              })
             );
           }
           
@@ -1468,6 +1535,27 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             // Use loadedDataRef.current which has the latest data including any reward item updates
             const finalLoadedData = loadedDataRef.current || newLoadedData;
             
+            // DEBUG: Log source data structure for item 27701
+            if (currentItemId === 27701) {
+              console.log(`[DEBUG] Item 27701: ========== SOURCES LOADED ==========`);
+              console.log(`[DEBUG] Item 27701: Total sources: ${processedSources.length}`);
+              processedSources.forEach((source, idx) => {
+                console.log(`[DEBUG] Item 27701: Source ${idx}:`, {
+                  type: source.type,
+                  typeStr: source.type.toString(),
+                  hasNodes: !!source.nodes,
+                  nodesLength: source.nodes?.length || 0,
+                  hasVoyages: !!source.voyages,
+                  voyagesLength: source.voyages?.length || 0,
+                  hasTasks: !!source.tasks,
+                  taskLength: source.tasks?.length || 0,
+                  firstNode: source.nodes?.[0]
+                });
+              });
+              window.__DEBUG_item27701_sources = processedSources;
+              window.__DEBUG_item27701_loadedData = finalLoadedData;
+            }
+            
             setSources(processedSources);
             setDataLoaded(true);
             setLoading(false);
@@ -1521,8 +1609,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         const uniqueNpcs = new Set(data.map(v => v.npcId));
         return uniqueNpcs.size;
       }
-      // For TRADE_SOURCES, count unique NPCs across all trade sources
+      // For TRADE_SOURCES, count unique NPCs from npcIds array (new optimized format)
       if (type === DataType.TRADE_SOURCES) {
+        // New optimized format: npcIds array directly on source
+        if (Array.isArray(source.npcIds)) {
+          return source.npcIds.length;
+        }
+        // Legacy format fallback: count NPCs from data array
         const uniqueNpcs = new Set();
         data.forEach(tradeSource => {
           tradeSource.npcs?.forEach(npc => {
@@ -1531,6 +1624,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           });
         });
         return uniqueNpcs.size;
+      }
+      // For REQUIREMENTS, count drops
+      if (type === DataType.REQUIREMENTS) {
+        return data.length;
       }
       // For other array sources, count array length
       return data.length;
@@ -1544,8 +1641,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       if (type === DataType.ALARMS && Array.isArray(data)) {
         return data.length;
       }
-      // For REQUIREMENTS (type 23) with island crop format {seed: number}, count as 1
-      if ((type === 23 || type === DataType.REQUIREMENTS) && 'seed' in data) {
+      // For ISLAND_CROP (type 23) with island crop format {seed: number}, count as 1
+      if (type === DataType.ISLAND_CROP && 'seed' in data) {
         return 1;
       }
       // Default to 1 for object sources
@@ -1579,7 +1676,14 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       // Check if this is a regular quest (has name in tw_quests or quests)
       const questData = currentLoadedData.twQuests[questId] || currentLoadedData.twQuests[String(questId)] 
         || (twQuestsStaticData && (twQuestsStaticData[questId] || twQuestsStaticData[String(questId)]));
-      const questNameRaw = questData?.tw;
+      let questNameRaw = questData?.tw;
+      
+      // Fallback to EN if TW not available
+      if (!questNameRaw) {
+        const questEn = currentLoadedData.quests[questId] || currentLoadedData.quests[String(questId)];
+        questNameRaw = questEn?.en;
+      }
+      
       // Simple check: remove invisible characters and trim (same as cleanQuestName logic)
       const questName = questNameRaw ? questNameRaw.replace(/[\uE000-\uF8FF\u200B-\u200D\uFEFF]/g, '').trim() : null;
       
@@ -1666,7 +1770,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     const methodTypeNames = {
       [DataType.CRAFTED_BY]: '製作',
       [DataType.TRADE_SOURCES]: '兌換',
-      [DataType.VENDORS]: 'NPC商店',
+      [DataType.VENDORS]: 'NPC商人',
       [DataType.TREASURES]: '寶箱/容器',
       [DataType.INSTANCES]: '副本掉落',
       [DataType.DESYNTHS]: '精製獲得',
@@ -1779,8 +1883,28 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const getNpcName = (npcId) => {
     // Use ref to access latest loadedData immediately, avoiding stale state issues
     const currentLoadedData = loadedDataRef.current;
-    const npc = currentLoadedData.twNpcs[npcId] || currentLoadedData.twNpcs[String(npcId)];
-    return npc?.tw || `NPC ${npcId}`;
+    
+    // Try TW first
+    const twNpc = currentLoadedData.twNpcs[npcId] || currentLoadedData.twNpcs[String(npcId)];
+    if (twNpc?.tw) {
+      return twNpc.tw;
+    }
+    
+    // Fallback to EN if TW data is missing (TW version may be behind)
+    const enNpc = currentLoadedData.npcs[npcId] || currentLoadedData.npcs[String(npcId)];
+    if (enNpc?.en) {
+      console.log(`[getNpcName] Using EN fallback for NPC ${npcId}: ${enNpc.en}`);
+      return enNpc.en;
+    }
+    
+    // Last fallback to database pages
+    const npcDb = currentLoadedData.npcsDatabasePages[npcId] || currentLoadedData.npcsDatabasePages[String(npcId)];
+    if (npcDb?.zh) {
+      return npcDb.zh;
+    }
+    
+    console.warn(`[getNpcName] No data found for NPC ${npcId}. Available npcs keys:`, Object.keys(currentLoadedData.npcs).slice(0, 10));
+    return `NPC ${npcId}`;
   };
 
   const getNpcTitle = (npcId) => {
@@ -1789,13 +1913,21 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     if (titleData?.tw) {
       return titleData.tw;
     }
-    // Fallback to npcs-database-pages from Supabase
+    
     // Use ref to access latest loadedData immediately, avoiding stale state issues
     const currentLoadedData = loadedDataRef.current;
+    
+    // Fallback to npcs-database-pages from Supabase (check zh first)
     const npcDb = currentLoadedData.npcsDatabasePages[npcId] || currentLoadedData.npcsDatabasePages[String(npcId)];
     if (npcDb?.title?.zh) {
       return npcDb.title.zh;
     }
+    
+    // Fallback to EN title if zh not available
+    if (npcDb?.title?.en) {
+      return npcDb.title.en;
+    }
+    
     return null;
   };
 
@@ -1811,10 +1943,117 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   // Get place name with Chinese fallback
   const getPlaceNameCN = (zoneId) => {
     const currentLoadedData = loadedDataRef.current;
-    return getPlaceNameWithFallback(zoneId, {
+    return getPlaceName(zoneId, {
       twPlaces: currentLoadedData.twPlaces,
       places: currentLoadedData.places
-    }, '區域');
+    });
+  };
+
+  /**
+   * 中心化地图位置信息管理 - 统一标准处理所有地图相关数据
+   * Centralized map location information management - unified standard handling
+   * 
+   * @param {Object} locationData - 位置数据对象
+   * @param {number} locationData.zoneId - 区域 ID
+   * @param {number} locationData.mapId - 地图 ID (可选)
+   * @param {Object} locationData.coords - 坐标 {x, y} (可选)
+   * @param {number} locationData.radius - 范围半径 (可选)
+   * @param {string} locationData.contextName - 上下文名称 (可选)
+   * @returns {Object} 返回位置信息对象
+   *   - zoneName: 地图名称（中文优先，英文其次，失败则为空）
+   *   - hasLocation: 是否有有效的地图位置（需要 mapId + coords）
+   *   - mapId: 地图 ID
+   *   - coords: 坐标对象或 null
+   *   - coordsText: 格式化的坐标文本 "X: 12.3 - Y: 45.6"
+   *   - displayText: 用于显示的完整文本
+   *   - contextName: 上下文名称
+   */
+  const getLocationInfo = (locationData) => {
+    const {
+      zoneId,
+      mapId,
+      coords,
+      radius,
+      contextName = ''
+    } = locationData;
+
+    // 1. 获取地图名称（中文优先）
+    const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
+    
+    // DEBUG
+    if (zoneId === 3045) {
+      const currentLoadedData = loadedDataRef.current;
+      console.log(`[DEBUG] getLocationInfo for zoneId 3045:`, {
+        zoneId: zoneId,
+        zoneName: zoneName,
+        twPlacesData: currentLoadedData.twPlaces?.[zoneId] || currentLoadedData.twPlaces?.[String(zoneId)],
+        twPlacesKeys: Object.keys(currentLoadedData.twPlaces || {}).slice(0, 10),
+        placesData: currentLoadedData.places?.[zoneId] || currentLoadedData.places?.[String(zoneId)]
+      });
+      window.__DEBUG_getLocationInfo_3045 = {
+        zoneId, zoneName, twPlacesData: currentLoadedData.twPlaces?.[zoneId],
+        placesData: currentLoadedData.places?.[zoneId]
+      };
+    }
+    
+    // Note: twPlaces and places are loaded via fetch in useEffect
+    
+    // 2. 检查是否有有效的坐标
+    const hasValidCoords = coords && coords.x !== undefined && coords.y !== undefined;
+    
+    // 3. 坐标文本格式
+    const coordsText = hasValidCoords ? `X: ${coords.x.toFixed(1)} - Y: ${coords.y.toFixed(1)}` : '';
+    
+    // 4. 判断是否有有效的地图位置（需要同时有 mapId 和坐标）
+    const hasLocation = hasValidCoords && mapId;
+    
+    // 5. 构建显示文本 - 标准格式：地图名称 (坐标)
+    let displayText = '';
+    if (zoneName && coordsText) {
+      // 标准情况：有地图名称和坐标
+      displayText = `${zoneName} (${coordsText})`;
+    } else if (zoneName) {
+      // 只有地图名称
+      displayText = zoneName;
+    } else if (coordsText) {
+      // 只有坐标（地图名称加载失败的降级方案）
+      displayText = coordsText;
+    } else {
+      // 都没有
+      displayText = '位置未知';
+    }
+    
+    return {
+      zoneName,           // 地图名称（可能为空）
+      hasLocation,        // 是否可以打开地图
+      mapId,
+      coords: hasValidCoords ? coords : null,
+      radius: radius || 0,
+      coordsText,         // 格式化坐标
+      displayText,        // 用于 UI 显示的完整文本
+      contextName: contextName || zoneName || '位置'
+    };
+  };
+
+  /**
+   * 打开地图模态框的辅助函数
+   * Helper function to open map modal
+   * 
+   * @param {Object} locationInfo - 位置信息（从 getLocationInfo 获取）
+   * @param {string} entityName - 实体名称（NPC、采集点等）
+   */
+  const openMapModal = (locationInfo, entityName = '') => {
+    if (!locationInfo.hasLocation) return;
+    
+    setMapModal({
+      isOpen: true,
+      zoneName: locationInfo.zoneName,
+      x: locationInfo.coords.x,
+      y: locationInfo.coords.y,
+      npcName: entityName || locationInfo.contextName,
+      mapId: locationInfo.mapId,
+      radius: locationInfo.radius || 0,
+    });
   };
 
   const getShopName = (shopId) => {
@@ -1824,6 +2063,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     if (twShop?.tw) {
       return twShop.tw;
     }
+    
+    // Fallback to EN shop name if TW is missing
+    const enShop = currentLoadedData.shops[shopId] || currentLoadedData.shops[String(shopId)];
+    if (enShop?.en) {
+      return enShop.en;
+    }
+    
     return null;
   };
 
@@ -1847,9 +2093,17 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     
     // Use ref to access latest loadedData immediately, avoiding stale state issues
     const currentLoadedData = loadedDataRef.current;
-    const currencyItem = currentLoadedData.twItems[currencyItemId] || currentLoadedData.twItems[String(currencyItemId)];
-    if (currencyItem?.tw) {
-      return currencyItem.tw;
+    
+    // Try TW first
+    const twCurrencyItem = currentLoadedData.twItems[currencyItemId] || currentLoadedData.twItems[String(currencyItemId)];
+    if (twCurrencyItem?.tw) {
+      return twCurrencyItem.tw;
+    }
+    
+    // Fallback to EN if TW is missing
+    const enCurrencyItem = currentLoadedData.items?.[currencyItemId] || currentLoadedData.items?.[String(currencyItemId)];
+    if (enCurrencyItem?.en) {
+      return enCurrencyItem.en;
     }
     
     return null;
@@ -1860,15 +2114,23 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     if (!achievementId) return null;
     const achievementIdStr = achievementId.toString();
     const currentLoadedData = loadedDataRef.current;
-    const achievement = currentLoadedData.twAchievements[achievementIdStr] || currentLoadedData.twAchievements[achievementId];
-    const description = currentLoadedData.twAchievementDescriptions[achievementIdStr] || currentLoadedData.twAchievementDescriptions[achievementId];
+    
+    // Try TW data first
+    const twAchievement = currentLoadedData.twAchievements[achievementIdStr] || currentLoadedData.twAchievements[achievementId];
+    const twDescription = currentLoadedData.twAchievementDescriptions[achievementIdStr] || currentLoadedData.twAchievementDescriptions[achievementId];
+    
+    // Get EN achievement data as fallback
     const achievementData = currentLoadedData.achievements[achievementIdStr] || currentLoadedData.achievements[achievementId];
     
-    if (achievement?.tw) {
+    // Use TW if available, otherwise fallback to EN
+    const name = twAchievement?.tw || achievementData?.en || null;
+    const description = twDescription?.tw || achievementData?.description?.en || null;
+    
+    if (name) {
       return {
         id: achievementId,
-        name: achievement.tw,
-        description: description?.tw || null,
+        name: name,
+        description: description,
         icon: achievementData?.icon ? `https://xivapi.com${achievementData.icon}` : null,
         itemReward: achievementData?.itemReward || null,
         title: achievementData?.title || null,
@@ -1877,6 +2139,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         nameJa: achievementData?.ja || null,
       };
     }
+    
     return null;
   };
 
@@ -2042,16 +2305,27 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   };
 
   const renderSource = (source, index, useFlex1 = true) => {
-    const { type, data } = source;
+    let { type } = source;
+    const { data } = source;
     // Remove flexClass since we're using grid layout now
     const flexClass = '';
     // Use ref to access latest loadedData immediately, avoiding stale state issues
     // This is critical because renderSource is now called during render (not in useMemo)
     const currentLoadedData = loadedDataRef.current;
 
-    // Crafted By (製作) - data is an array of CraftedBy objects
+    // Map string type to DataType enum if necessary
+    // New data structure uses strings like "gathering", "voyage", "venture"
+    if (typeof type === 'string') {
+      type = getTypeIdFromString(type);
+    }
+
+    // Crafted By (製作) - new structure: source has recipeId, job, level directly
     if (type === DataType.CRAFTED_BY) {
-      if (!data || data.length === 0) {
+      // Check if we have the new structure (recipeId directly in source) or old structure (data array)
+      const hasRecipeData = source.recipeId || source.job;
+      const craftData = hasRecipeData ? [source] : (data || []);
+      
+      if (!craftData || craftData.length === 0) {
         return null;
       }
 
@@ -2093,11 +2367,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             )}
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            {data.map((craft, craftIndex) => {
+            {craftData.map((craft, craftIndex) => {
               const jobId = craft.job;
               const jobName = getJobName(jobId);
               const jobIconUrl = getJobIconUrl(jobId);
-              const level = craft.lvl || craft.rlvl || 0;
+              const level = craft.level || craft.lvl || craft.rlvl || 0;
               const stars = craft.stars_tooltip || '';
               
               // Skip if no valid job data
@@ -2197,112 +2471,59 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       );
     }
 
-    // Trade Sources (兌換) - data is an array of TradeSource objects
+    // Trade Sources (兌換) - NEW FORMAT: {type, currencyItemId, currencyAmount, requiresHQ, npcIds, shopId, shopName}
     if (type === DataType.TRADE_SOURCES) {
-      if (!data || data.length === 0) {
+      // New optimized format: source properties directly on source object (not in data array)
+      // Extract from source object itself
+      const currencyItemId = source.currencyItemId;
+      const currencyAmount = source.currencyAmount || 1;
+      const requiresHQ = source.requiresHQ === true;
+      const shopId = source.shopId;
+      const shopName = source.shopName;
+      const npcIds = source.npcIds || [];
+      
+      // Early return if no currency info or no NPCs
+      if (!currencyItemId || npcIds.length === 0) {
         return null;
       }
 
-      // Process all trade sources and collect valid NPC entries
-      const validTradeEntries = [];
+      // Get currency item name from Traditional Chinese items database
+      let currencyName = getCurrencyName(currencyItemId);
       
-      data.forEach((tradeSource, tradeIndex) => {
-        // Trade source structure: { id, type, shopName: {en, ja, zh, ...}, npcs: [{id}], trades: [{currencies: [{id, amount, hq?}], items: [{id, amount}]}] }
-        const tradeEntry = tradeSource.trades?.[0];
-        const currencyItem = tradeEntry?.currencies?.[0];
-        const currencyItemId = currencyItem?.id;
-        const currencyAmount = currencyItem?.amount;
-        const requiresHQ = currencyItem?.hq === true; // Check if HQ is required
-        const shopId = tradeSource.id; // Shop ID for quest requirement lookup
-        
-        // Get currency item name from Traditional Chinese items database (tw-items.json)
-        let currencyName = getCurrencyName(currencyItemId);
-        
-        // If no lookup available, skip this trade source
-        if (!currencyName && currencyItemId) {
-          return; // Skip if we can't find the currency name
-        }
-        
-        // Get currency item data for linking
-        // Use ref to access latest loadedData immediately, avoiding stale state issues
-        const currentLoadedData = loadedDataRef.current;
-        const currencyItemData = currencyItemId ? (currentLoadedData.twItems[currencyItemId] || currentLoadedData.twItems[String(currencyItemId)]) : null;
-        const hasCurrencyItem = currencyItemData && currencyItemData.tw;
-        
-        // Get shop name - try Traditional Chinese from shopName object or tw-shops.json
-        // Only use Chinese versions (tw or zh), don't fallback to English
-        let shopName = null;
-        if (tradeSource.shopName) {
-          // shopName is an I18nName object: { en, ja, de, fr, zh, tw, ko }
-          // Only use Chinese versions, don't fallback to English
-          shopName = tradeSource.shopName.tw || tradeSource.shopName.zh || null;
-        } else if (tradeSource.id) {
-          // Try to get shop name from tw-shops.json using shop ID
-          const shopNameFromData = getShopName(tradeSource.id);
-          if (shopNameFromData) {
-            shopName = shopNameFromData;
-          }
-        }
-        
-        // Filter out null results (when currency not found)
-        const validNpcs = tradeSource.npcs?.filter(npc => {
-          const npcId = typeof npc === 'object' ? npc.id : npc;
-          const npcName = getNpcName(npcId);
-          return npcName && npcName !== `NPC ${npcId}`;
-        }) || [];
-        
-        // Skip if no valid NPCs or no currency name
-        if (validNpcs.length === 0 || !currencyName) {
-          return;
-        }
-        
-        // Add all valid NPCs from this trade source to the entries list
-        validNpcs.forEach((npc) => {
-          validTradeEntries.push({
-            npc,
-            currencyItemId,
-            currencyName,
-            currencyAmount,
-            requiresHQ,
-            hasCurrencyItem,
-            shopName,
-            shopId,
-            tradeSource,
-          });
-        });
-      });
-      
-      // Don't render if no valid entries
-      if (validTradeEntries.length === 0) {
+      // If no lookup available, skip this trade source
+      if (!currencyName) {
         return null;
       }
       
-      // Group entries by shop name, currency item, amount, and HQ requirement
-      // This groups NPCs that offer the same trade at the same shop
-      const groupedEntries = {};
-      validTradeEntries.forEach((entry) => {
-        // Create a unique key for grouping: shopName + currencyItemId + currencyAmount + requiresHQ
-        const groupKey = `${entry.shopName || 'unknown'}_${entry.currencyItemId}_${entry.currencyAmount}_${entry.requiresHQ ? 'hq' : 'nq'}`;
-        if (!groupedEntries[groupKey]) {
-          groupedEntries[groupKey] = {
-            shopName: entry.shopName,
-            currencyItemId: entry.currencyItemId,
-            currencyName: entry.currencyName,
-            currencyAmount: entry.currencyAmount,
-            requiresHQ: entry.requiresHQ,
-            hasCurrencyItem: entry.hasCurrencyItem,
-            shopId: entry.shopId,
-            tradeSource: entry.tradeSource,
-            npcs: []
-          };
+      // Get currency item data for linking
+      // Use ref to access latest loadedData immediately, avoiding stale state issues
+      const currentLoadedData = loadedDataRef.current;
+      const currencyItemData = currentLoadedData.twItems[currencyItemId] || currentLoadedData.twItems[String(currencyItemId)];
+      const hasCurrencyItem = currencyItemData && currencyItemData.tw;
+      
+      // Get shop name - try Traditional Chinese from shopName object
+      // shopName is an I18nName object: { en, ja, de, fr, zh, tw, ko }
+      let shopNameDisplay = null;
+      if (shopName) {
+        shopNameDisplay = shopName.tw || shopName.zh || null;
+      } else if (shopId) {
+        // Fallback: try to get shop name from Supabase using shop ID
+        const shopData = getShopName(shopId);
+        if (shopData) {
+          shopNameDisplay = shopData;
         }
-        groupedEntries[groupKey].npcs.push(entry.npc);
-      });
+      }
       
-      // Convert grouped entries to array
-      const tradeGroups = Object.values(groupedEntries);
+      // Get quest requirement (use first NPC for lookup)
+      const firstNpcId = npcIds[0];
+      const requiredQuestId = getShopQuestRequirement(shopId, firstNpcId, source);
+      const questData = currentLoadedData.twQuests[requiredQuestId] || currentLoadedData.twQuests[String(requiredQuestId)];
+      const questEnData = currentLoadedData.quests[requiredQuestId] || currentLoadedData.quests[String(requiredQuestId)];
+      const questName = questData?.tw || questEnData?.name?.en || questEnData?.en || null;
       
-      // Render single container with all trade entries grouped
+      // Check if this is a single NPC shop
+      const isSingleNpc = npcIds.length === 1;
+      
       return (
         <div key={`trade-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
@@ -2325,165 +2546,148 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             <span className="text-ffxiv-gold font-medium">兌換</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            {tradeGroups.map((group, groupIndex) => {
-              // Get quest requirement (check first NPC as they should all have same shop)
-              const firstNpc = group.npcs[0];
-              const firstNpcId = typeof firstNpc === 'object' ? firstNpc.id : firstNpc;
-              const requiredQuestId = getShopQuestRequirement(group.shopId, firstNpcId, group.tradeSource);
-              // Use ref to access latest loadedData immediately, avoiding stale state issues
-              const currentLoadedData = loadedDataRef.current;
-              const questData = currentLoadedData.twQuests[requiredQuestId] || currentLoadedData.twQuests[String(requiredQuestId)];
-              const questEnData = currentLoadedData.quests[requiredQuestId] || currentLoadedData.quests[String(requiredQuestId)];
-              const questName = questData?.tw || questEnData?.name?.en || questEnData?.en || null;
-              
-              // Check if this is a single NPC group
-              const isSingleNpc = group.npcs.length === 1;
-              
-              return (
-                <div key={`group-${groupIndex}`} className={`${isSingleNpc ? 'w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 flex flex-col`}>
-                  {/* Currency header - shown once per group */}
-                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-700/50">
-                    {group.hasCurrencyItem ? (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (onItemClick) {
-                            // Get item data and call onItemClick with flag indicating it's from obtainable
-                            getItemById(group.currencyItemId).then(item => {
-                              if (item) {
-                                onItemClick(item, { fromObtainable: true });
-                              } else {
-                                const itemUrl = generateItemUrl(group.currencyItemId, 'item');
-                                navigate(itemUrl);
-                              }
-                            });
+            <div className={`${isSingleNpc ? 'w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 flex flex-col`}>
+              {/* Currency header */}
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-700/50">
+                {hasCurrencyItem ? (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (onItemClick) {
+                        getItemById(currencyItemId).then(item => {
+                          if (item) {
+                            onItemClick(item, { fromObtainable: true });
                           } else {
-                            const itemUrl = generateItemUrl(group.currencyItemId, 'item');
+                            const itemUrl = generateItemUrl(currencyItemId, 'item');
                             navigate(itemUrl);
                           }
-                        }}
-                        className="flex items-center gap-1.5 font-medium text-blue-400 hover:text-ffxiv-gold transition-colors"
+                        });
+                      } else {
+                        const itemUrl = generateItemUrl(currencyItemId, 'item');
+                        navigate(itemUrl);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 font-medium text-blue-400 hover:text-ffxiv-gold transition-colors"
+                  >
+                    <ItemImage
+                      itemId={currencyItemId}
+                      alt={currencyName}
+                      className="w-7 h-7 object-contain"
+                    />
+                    <span className="hover:underline">{currencyName}</span>
+                    {requiresHQ && (
+                      <span 
+                        className="inline-flex items-center justify-center px-1.5 py-0.5 bg-yellow-500/20 border border-yellow-500/50 rounded text-[10px] font-bold text-yellow-400"
+                        title="需要高品質版本"
                       >
-                        <ItemImage
-                          itemId={group.currencyItemId}
-                          alt={group.currencyName}
-                          className="w-7 h-7 object-contain"
-                        />
-                        <span className="hover:underline">{group.currencyName}</span>
-                        {group.requiresHQ && (
-                          <span 
-                            className="inline-flex items-center justify-center px-1.5 py-0.5 bg-yellow-500/20 border border-yellow-500/50 rounded text-[10px] font-bold text-yellow-400"
-                            title="需要高品質版本"
-                          >
-                            HQ
-                          </span>
-                        )}
-                      </button>
-                    ) : (
-                      <span className="font-medium text-white flex items-center gap-1.5">
-                        {group.currencyName}
-                        {group.requiresHQ && (
-                          <span 
-                            className="inline-flex items-center justify-center px-1.5 py-0.5 bg-yellow-500/20 border border-yellow-500/50 rounded text-[10px] font-bold text-yellow-400"
-                            title="需要高品質版本"
-                          >
-                            HQ
-                          </span>
-                        )}
+                        HQ
                       </span>
                     )}
-                    <span className="text-yellow-400 text-sm">x{group.currencyAmount}</span>
-                  </div>
-                  
-                  {/* Shop name */}
-                  {group.shopName && (
-                    <div className="text-xs text-gray-400 mb-2">{group.shopName}</div>
-                  )}
-                  
-                  {/* Quest requirement */}
-                  {requiredQuestId && questName && (
-                    <div className="text-xs text-pink-400/90 mb-2 flex items-center gap-1">
-                      <span>需要完成任務：</span>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          // Navigate to quest page or show quest info
-                          const questCNName = getQuestCNName(requiredQuestId);
-                          if (questCNName) {
-                            window.open(`https://ff14.huijiwiki.com/wiki/任务:${encodeURIComponent(questCNName)}`, '_blank');
-                          }
-                        }}
-                        className="text-yellow-400/90 hover:text-yellow-300 hover:underline transition-colors"
+                  </button>
+                ) : (
+                  <span className="font-medium text-white flex items-center gap-1.5">
+                    {currencyName}
+                    {requiresHQ && (
+                      <span 
+                        className="inline-flex items-center justify-center px-1.5 py-0.5 bg-yellow-500/20 border border-yellow-500/50 rounded text-[10px] font-bold text-yellow-400"
+                        title="需要高品質版本"
                       >
-                        {questName}
-                      </button>
-                    </div>
-                  )}
-                  
-                  {/* NPCs list - grid display, 2 per row for multiple NPCs, 1 column for single NPC */}
-                  <div className={`grid ${isSingleNpc ? 'grid-cols-1' : 'grid-cols-2'} gap-1.5`}>
-                    {group.npcs.map((npc, npcIndex) => {
-                      const npcId = typeof npc === 'object' ? npc.id : npc;
-                      const npcName = getNpcName(npcId);
-                      const npcZoneId = typeof npc === 'object' ? npc.zoneId : null;
-                      const npcCoords = typeof npc === 'object' ? npc.coords : null;
-                      const npcMapId = typeof npc === 'object' ? npc.mapId : null;
-                      const zoneName = npcZoneId ? getPlaceNameCN(npcZoneId) : '';
-                      const hasLocation = npcCoords && npcCoords.x !== undefined && npcCoords.y !== undefined;
-                      
-                      return (
-                        <div key={`npc-${npcIndex}`} className="text-xs bg-slate-800/40 rounded px-2 py-1.5 border border-slate-700/30 w-full">
-                          <div className="flex items-center gap-0.5">
-                            <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-4 h-4 flex-shrink-0 grayscale opacity-70" />
-                            <div className="text-gray-300 font-medium whitespace-nowrap overflow-hidden text-ellipsis">{npcName}</div>
-                          </div>
-                          {zoneName && hasLocation && (
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setMapModal({
-                                  isOpen: true,
-                                  zoneName,
-                                  x: npcCoords.x,
-                                  y: npcCoords.y,
-                                  npcName,
-                                  mapId: npcMapId,
-                                });
-                              }}
-                              className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors text-[10px] ml-[4px]"
-                              title={`${zoneName} (${npcCoords.x.toFixed(1)}, ${npcCoords.y.toFixed(1)})`}
-                            >
-                              <svg className="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                              </svg>
-                              <span className="text-gray-400 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">
-                                {zoneName}
-                              </span>
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  {/* Show count if multiple NPCs */}
-                  {group.npcs.length > 1 && (
-                    <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-slate-700/30">
-                      {group.npcs.length} 個位置
-                    </div>
-                  )}
+                        HQ
+                      </span>
+                    )}
+                  </span>
+                )}
+                <span className="text-yellow-400 text-sm">x{currencyAmount}</span>
+              </div>
+              
+              {/* Shop name */}
+              {shopNameDisplay && (
+                <div className="text-xs text-gray-400 mb-2">{shopNameDisplay}</div>
+              )}
+              
+              {/* Quest requirement */}
+              {requiredQuestId && questName && (
+                <div className="text-xs text-pink-400/90 mb-2 flex items-center gap-1">
+                  <span>需要完成任務：</span>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const questCNName = getQuestCNName(requiredQuestId);
+                      if (questCNName) {
+                        window.open(`https://ff14.huijiwiki.com/wiki/任务:${encodeURIComponent(questCNName)}`, '_blank');
+                      }
+                    }}
+                    className="text-yellow-400/90 hover:text-yellow-300 hover:underline transition-colors"
+                  >
+                    {questName}
+                  </button>
                 </div>
-              );
-            })}
+              )}
+              
+              {/* NPCs list */}
+              <div className={`grid ${isSingleNpc ? 'grid-cols-1' : 'grid-cols-2'} gap-1.5`}>
+                {npcIds.map((npcId, npcIndex) => {
+                  const npcName = getNpcName(npcId);
+                  
+                  // Get NPC position from Supabase npcs table
+                  const npcData = currentLoadedData.npcs[npcId] || currentLoadedData.npcs[String(npcId)];
+                  const npcPosition = npcData?.position;
+                  const npcZoneId = npcPosition?.zoneid;
+                  const npcMapId = npcPosition?.map;
+                  const npcCoords = npcPosition ? { x: npcPosition.x, y: npcPosition.y } : null;
+                  
+                  // 使用中心化的地图位置管理
+                  const locationInfo = getLocationInfo({
+                    zoneId: npcZoneId,
+                    mapId: npcMapId,
+                    coords: npcCoords,
+                    contextName: npcName
+                  });
+                  
+                  return (
+                    <div key={`npc-${npcIndex}`} className="text-xs bg-slate-800/40 rounded px-2 py-1.5 border border-slate-700/30 w-full">
+                      <div className="flex items-center gap-0.5">
+                        <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-4 h-4 flex-shrink-0 grayscale opacity-70" />
+                        <div className="text-gray-300 font-medium whitespace-nowrap overflow-hidden text-ellipsis">{npcName}</div>
+                      </div>
+                      {locationInfo.hasLocation && locationInfo.zoneName && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openMapModal(locationInfo, npcName);
+                          }}
+                          className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors text-[10px] ml-[18px] mt-0.5"
+                          title="點擊查看地圖"
+                        >
+                          <svg className="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                          </svg>
+                          <span className={`text-gray-400 whitespace-nowrap overflow-hidden text-ellipsis ${!isSingleNpc ? 'max-w-[90px]' : ''}`}>
+                            {locationInfo.zoneName}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Show count if multiple NPCs */}
+              {npcIds.length > 1 && (
+                <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-slate-700/30">
+                  {npcIds.length} 個位置
+                </div>
+              )}
+            </div>
           </div>
         </div>
       );
     }
 
-    // Vendors (NPC商店) - Single box with all vendors listed inside
+    // Vendors (NPC商人) - Single box with all vendors listed inside
     if (type === DataType.VENDORS) {
       // Group vendors by NPC ID
       const vendorsByNpc = {};
@@ -2556,7 +2760,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         if (hasLocationInfo) {
           npcGroupsWithLocation.push({ ...npcGroup, zoneId, coords, mapId, zoneName, npcName });
         } else {
-          npcGroupsWithoutLocation.push({ ...npcGroup, npcName });
+          npcGroupsWithoutLocation.push({ ...npcGroup, npcName, zoneName, coords, zoneId, mapId });
         }
       });
 
@@ -2564,7 +2768,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         <div key={`vendor-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/065000/065002.png" alt="Gil" className="w-6 h-6" />
-            <span className="text-ffxiv-gold font-medium">NPC商店</span>
+            <span className="text-ffxiv-gold font-medium">NPC商人</span>
           </div>
           <div className="flex flex-col gap-3 mt-2">
             {/* NPCs with location info */}
@@ -2574,6 +2778,14 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   const npcVendors = npcGroup.vendors;
                   const firstVendor = npcVendors[0];
                   const { zoneName, coords, mapId, npcName } = npcGroup;
+                  
+                  // 使用中心化的地图位置管理
+                  const locationInfo = getLocationInfo({
+                    zoneId: firstVendor.zoneId,
+                    mapId: mapId,
+                    coords: coords,
+                    contextName: npcName
+                  });
                   
                   // Get all shop names for this NPC
                   const shopNames = npcVendors.map(v => getVendorShopName(v.shopName)).filter(Boolean);
@@ -2597,7 +2809,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   const hasPriceRange = minPrice !== null && maxPrice !== null && minPrice !== maxPrice;
                   
                   // Check if location is valid for map display (must have mapId and not be 0,0)
-                  const hasValidMapLocation = mapId && (coords.x !== 0 || coords.y !== 0);
+                  const hasValidMapLocation = locationInfo.hasLocation && (coords.x !== 0 || coords.y !== 0);
                   
                   return (
                     <div key={npcGroupIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col">
@@ -2639,39 +2851,25 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                           </div>
                         ) : null;
                       })()}
-                      {hasValidMapLocation ? (
+                      {hasValidMapLocation && (
                         <button
-                          onClick={() => setMapModal({
-                            isOpen: true,
-                            zoneName,
-                            x: coords.x,
-                            y: coords.y,
-                            npcName,
-                            mapId: mapId,
-                          })}
+                          onClick={() => openMapModal(locationInfo, npcName)}
                           className="flex items-center gap-1.5 mt-1 pt-1 border-t border-slate-700/50 text-xs text-blue-400 hover:bg-slate-800/50 hover:text-blue-300 rounded px-1 py-0.5 transition-all w-full text-left"
                         >
                           <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                           </svg>
                           <span>
-                            {zoneName}
-                            <span className="ml-2">
-                              X: {coords.x.toFixed(1)} - Y: {coords.y.toFixed(1)}
-                            </span>
+                            {locationInfo.displayText}
                           </span>
                         </button>
-                      ) : (
-                        <div className="flex items-center gap-1.5 mt-1 pt-1 border-t border-slate-700/50 text-xs text-blue-400">
+                      )}
+                      {!hasValidMapLocation && locationInfo.displayText && (
+                        <div className="flex items-center gap-1.5 mt-1 pt-1 border-t border-slate-700/50 text-xs text-gray-400">
                           <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                           </svg>
-                          <span>
-                            {zoneName}
-                            <span className="ml-2">
-                              X: {coords.x.toFixed(1)} - Y: {coords.y.toFixed(1)}
-                            </span>
-                          </span>
+                          <span>{locationInfo.displayText}</span>
                         </div>
                       )}
                     </div>
@@ -2687,23 +2885,42 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   <span>特殊 NPC 商人</span>
                   <span className="text-gray-600">({npcGroupsWithoutLocation.length} 位)</span>
                 </div>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="flex flex-col gap-1.5">
                   {npcGroupsWithoutLocation.map((npcGroup, npcGroupIndex) => {
-                    const { npcName, vendors: npcVendors } = npcGroup;
+                    const { npcName, vendors: npcVendors, zoneName, coords } = npcGroup;
                     const firstVendor = npcVendors[0];
+                    
+                    // Use npcName or fallback to shop name if available
+                    const displayName = npcName || (firstVendor.shopName?.tw ? firstVendor.shopName.tw : `NPC ${firstVendor.npcId}`);
+                    const npcTitle = getNpcTitle(firstVendor.npcId);
+                    
+                    // Get zone name and coords if available
+                    const zoneDisplay = zoneName || (firstVendor.zoneId ? getPlaceNameCN(firstVendor.zoneId) : null);
+                    const coordsDisplay = coords || (firstVendor.coords ? firstVendor.coords : null);
+                    
                     return (
                       <div
                         key={npcGroupIndex}
-                        className="flex items-center gap-1 text-xs px-2 py-1 bg-slate-800/50 rounded border border-slate-700/30 w-full"
+                        className="flex flex-col gap-1 text-xs px-2 py-1.5 bg-slate-800/50 rounded border border-slate-700/30 w-full"
                       >
-                        <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-3 h-3 flex-shrink-0 grayscale opacity-60" />
-                        <span className="text-gray-300">{npcName}</span>
-                        {(() => {
-                          const npcTitle = getNpcTitle(firstVendor.npcId);
-                          return npcTitle ? (
+                        <div className="flex items-center gap-1">
+                          <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-3 h-3 flex-shrink-0 grayscale opacity-60" />
+                          <span className="text-gray-300 font-medium">{displayName}</span>
+                          {npcTitle && (
                             <span className="text-xs text-gray-500">&lt;{npcTitle}&gt;</span>
-                          ) : null;
-                        })()}
+                          )}
+                        </div>
+                        {zoneDisplay && (
+                          <div className="text-gray-400 flex items-center gap-1 pl-4">
+                            <svg className="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                            <span>{zoneDisplay}</span>
+                            {coordsDisplay && (coordsDisplay.x !== 0 || coordsDisplay.y !== 0) && (
+                              <span className="text-gray-500">X: {coordsDisplay.x.toFixed(1)} Y: {coordsDisplay.y.toFixed(1)}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -2717,6 +2934,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
     // Treasures (藏寶圖/寶箱) - includes both treasure maps and loot sources (coffers/containers)
     if (type === DataType.TREASURES) {
+      // Defensive check: ensure data exists and is an array
+      if (!data || !Array.isArray(data)) {
+        console.warn(`[ObtainMethods] ⚠️ TREASURES source has invalid data:`, source);
+        return null;
+      }
+
       return (
         <div key={`treasure-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
@@ -2771,6 +2994,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
     // Instances (副本) - data is an array of instance IDs
     if (type === DataType.INSTANCES) {
+            // Defensive check: ensure data exists and is an array
+            if (!data || !Array.isArray(data)) {
+              console.warn(`[ObtainMethods] ⚠️ INSTANCES source has invalid data:`, source);
+              return null;
+            }
+      
       return (
         <div key={`instance-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
@@ -2890,12 +3119,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     }
 
     // DROPS (怪物掉落) - data is an array of Drop objects with {id, mapid?, zoneid?, lvl?, position?}
-    // Also check for type 13 (Teamcraft's original DROPS value) if data looks like drops
-    const isDropsType = type === DataType.DROPS || 
-      (type === 13 && Array.isArray(data) && data.length > 0 && 
-       (typeof data[0] === 'object' && 'id' in data[0]) || typeof data[0] === 'number');
-    
-    if (isDropsType) {
+    if (type === DataType.DROPS) {
       if (!data || data.length === 0) {
         return null;
       }
@@ -2991,7 +3215,14 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     const firstPosition = monster.positions && monster.positions.length > 0 
                       ? monster.positions[0] 
                       : null;
-                    const hasLocation = firstPosition && firstPosition.x !== undefined && firstPosition.y !== undefined && monster.mapId;
+                    
+                    // 使用中心化的地图位置管理
+                    const locationInfo = getLocationInfo({
+                      zoneId: zone.zoneId,
+                      mapId: monster.mapId,
+                      coords: firstPosition,
+                      contextName: monster.mobName
+                    });
                     
                     return (
                       <div key={monsterIndex} className="flex items-start gap-2 text-sm">
@@ -3004,19 +3235,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                               {monster.levelRange}
                             </div>
                           )}
-                          {hasLocation && (
+                          {locationInfo.hasLocation && (
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                setMapModal({
-                                  isOpen: true,
-                                  zoneName: zone.zoneName,
-                                  x: firstPosition.x,
-                                  y: firstPosition.y,
-                                  npcName: monster.mobName,
-                                  mapId: monster.mapId || null,
-                                });
+                                openMapModal(locationInfo, monster.mobName);
                               }}
                               className="text-xs text-blue-400 hover:text-ffxiv-gold transition-colors text-left mt-1"
                             >
@@ -3120,7 +3344,14 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         // Check if this is a regular quest (has name in tw_quests or quests)
         const questData = currentLoadedData.twQuests[questId] || currentLoadedData.twQuests[String(questId)] 
           || (twQuestsStaticData && (twQuestsStaticData[questId] || twQuestsStaticData[String(questId)]));
-        const questNameRaw = questData?.tw;
+        let questNameRaw = questData?.tw;
+        
+        // Fallback to EN if TW not available
+        if (!questNameRaw) {
+          const questEn = currentLoadedData.quests[questId] || currentLoadedData.quests[String(questId)];
+          questNameRaw = questEn?.en;
+        }
+        
         const questName = cleanQuestName(questNameRaw);
         
         // If no quest name found, check if it's a levequest
@@ -3315,20 +3546,21 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     )}
                     
                     {/* Location */}
-                    {hasLocation && zoneName && (
-                      hasValidMapLocation ? (
+                    {hasLocation && zoneName && (() => {
+                      // 使用中心化的地图位置管理
+                      const locationInfo = getLocationInfo({
+                        zoneId: zoneId,
+                        mapId: mapId,
+                        coords: coords,
+                        contextName: startingNpcName
+                      });
+                      
+                      return hasValidMapLocation && locationInfo.hasLocation ? (
                         <button
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            setMapModal({
-                              isOpen: true,
-                              zoneName,
-                              x: coords.x,
-                              y: coords.y,
-                              npcName: startingNpcName || questName,
-                              mapId: mapId,
-                            });
+                            openMapModal(locationInfo, startingNpcName);
                           }}
                           className="flex items-center gap-1.5 mt-1 pt-1 border-t border-slate-700/50 text-xs text-blue-400 hover:bg-slate-800/50 hover:text-blue-300 rounded px-1 py-0.5 transition-all w-full text-left"
                         >
@@ -3336,23 +3568,15 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                           </svg>
                           <span>
-                            {zoneName}
-                            <span className="ml-2">
-                              X: {coords.x.toFixed(1)} - Y: {coords.y.toFixed(1)}
-                            </span>
+                            {locationInfo.displayText}
                           </span>
                         </button>
                       ) : (
                         <div className="mt-1 pt-1 border-t border-slate-700/50 text-xs text-gray-400">
-                          {zoneName}
-                          {coords && coords.x !== undefined && coords.y !== undefined && (
-                            <span className="ml-2">
-                              X: {coords.x.toFixed(1)} - Y: {coords.y.toFixed(1)}
-                            </span>
-                          )}
+                          {locationInfo.displayText}
                         </div>
-                      )
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -3406,7 +3630,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               // Get FATE name - Traditional Chinese for display, Simplified Chinese for wiki link
               const twFate = currentLoadedData.twFates[fateId] || currentLoadedData.twFates[String(fateId)];
               const zhFate = currentLoadedData.zhFates[fateId] || currentLoadedData.zhFates[String(fateId)];
-              const fateName = twFate?.name?.tw || twFate?.tw || `FATE ${fateId}`;
+              const fateData = currentLoadedData.fates[fateId] || currentLoadedData.fates[String(fateId)];
+              
+              // Try TW first, then EN fallback
+              const fateName = twFate?.name?.tw || twFate?.tw || fateData?.en || `FATE ${fateId}`;
               // Use Simplified Chinese for wiki link - zh_fates table structure: { name: { zh: "..." } }
               const fateNameZh = zhFate?.name?.zh || zhFate?.zh || null;
               
@@ -3414,8 +3641,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 console.warn(`[ObtainMethods] ⚠️ FATE ${fateId} missing Simplified Chinese name. zhFate data:`, zhFate);
               }
               
-              // Get FATE icon
-              const fateData = currentLoadedData.fates[fateId] || currentLoadedData.fates[String(fateId)];
+              // Get FATE icon (fateData already loaded above)
               const fateIcon = fateData?.icon 
                 ? `https://xivapi.com${fateData.icon}` 
                 : 'https://xivapi.com/i/060000/060502.png';
@@ -3706,9 +3932,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return null;
     }
 
-    // Gathered By (採集獲得) - data is an object with { level, nodes: [...], type, stars_tooltip }
+    // Gathered By (採集獲得) - new structure: { nodes: [...], gatheringType, level }
     if (type === DataType.GATHERED_BY) {
-      if (!data || !data.nodes || !Array.isArray(data.nodes) || data.nodes.length === 0) {
+      const nodes = source.nodes || data?.nodes;
+      if (!nodes || !Array.isArray(nodes) || nodes.length === 0) {
         return null;
       }
 
@@ -3732,9 +3959,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         5: '潛水',
       };
 
-      const gatheringLevel = data.level || 0;
-      const starsTooltip = data.stars_tooltip || '';
-      const rawNodeType = data.type !== undefined ? data.type : (data.nodes[0]?.type !== undefined ? data.nodes[0].type : 0);
+      const gatheringLevel = source.level || data?.level || 0;
+      const starsTooltip = source.stars_tooltip || data?.stars_tooltip || '';
+      const rawNodeType = source.gatheringType !== undefined ? source.gatheringType : (data?.type !== undefined ? data.type : (nodes[0]?.type !== undefined ? nodes[0].type : 0));
       // Handle negative types (timed nodes) by using absolute value
       const nodeType = Math.abs(rawNodeType);
       const nodeIcon = nodeTypeIcons[nodeType] || nodeTypeIcons[0];
@@ -3747,12 +3974,37 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             <span className="text-ffxiv-gold font-medium">採集獲得</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            {data.nodes.map((node, nodeIndex) => {
+            {nodes.map((node, nodeIndex) => {
               const zoneId = node.zoneId;
-              const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
-              const mapId = node.map;
+              const mapId = node.mapId;
               const coords = node.x !== undefined && node.y !== undefined ? { x: node.x, y: node.y } : null;
-              const hasLocation = coords && mapId;
+              
+              // DEBUG
+              if (itemId === 27701 && zoneId === 3045) {
+                console.log(`[DEBUG] Item 27701: GATHERED_BY node rendering with zoneId 3045:`, {
+                  zoneId: zoneId,
+                  mapId: mapId,
+                  coords: coords,
+                  x: node.x,
+                  y: node.y,
+                  nodeKeys: Object.keys(node)
+                });
+              }
+              
+              // 使用中心化的地图位置管理
+              const locationInfo = getLocationInfo({
+                zoneId: zoneId,
+                mapId: mapId,
+                coords: coords,
+                radius: node.radius,
+                contextName: `${nodeTypeName}采集點`
+              });
+              
+              if (itemId === 27701 && zoneId === 3045) {
+                console.log(`[DEBUG] Item 27701: locationInfo after getLocationInfo:`, locationInfo);
+                window.__DEBUG_gathered_node_locationInfo = locationInfo;
+              }
+              
               const nodeLevel = node.level || gatheringLevel;
               const isLimited = node.limited === true;
               const isIslandNode = node.isIslandNode === true;
@@ -3763,7 +4015,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     <img src={nodeIcon} alt={nodeTypeName} className="w-7 h-7 object-contain" />
                     <div className="flex-1">
                       <div className="text-sm font-medium text-white">
-                        {zoneName}
+                        {locationInfo.displayText}
                       </div>
                       {!isIslandNode && nodeLevel > 0 && (
                         <div className="text-xs text-gray-400 mt-0.5">
@@ -3779,19 +4031,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     </div>
                   </div>
                   
-                  {hasLocation && (
+                  {locationInfo.hasLocation && (
                     <button
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        setMapModal({
-                          isOpen: true,
-                          zoneName,
-                          x: coords.x,
-                          y: coords.y,
-                          npcName: `${nodeTypeName}採集點`,
-                          mapId: mapId,
-                        });
+                        openMapModal(locationInfo, `${nodeTypeName}採集點`);
                       }}
                       className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-700/50 text-xs text-blue-400 hover:bg-slate-800/50 hover:text-blue-300 rounded px-1 py-0.5 transition-all w-full text-left"
                     >
@@ -3799,10 +4044,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                       </svg>
                       <span>
-                        {zoneName}
-                        <span className="ml-2">
-                          X: {coords.x.toFixed(1)} - Y: {coords.y.toFixed(1)}
-                        </span>
+                        {locationInfo.displayText}
                       </span>
                     </button>
                   )}
@@ -3880,18 +4122,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       );
     }
 
-    // Ventures (遠征獲得) - data is an array of item IDs (retainer venture items)
+    // Ventures (雇員探險) - new structure: { tasks: [{id, level, reqGathering, quantities, ...}] }
     if (type === DataType.VENTURES) {
-      if (!data || !Array.isArray(data) || data.length === 0) {
-        return null;
-      }
-
-      const validVentureItems = data.filter(itemId => {
-        const itemData = loadedData.twItems[itemId] || loadedData.twItems[String(itemId)];
-        return itemData && itemData.tw;
-      });
-      
-      if (validVentureItems.length === 0) {
+      const tasks = source.tasks || data;
+      if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
         return null;
       }
       
@@ -3899,46 +4133,33 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         <div key={`venture-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/021000/021267.png" alt="Venture" className="w-6 h-6" />
-            <span className="text-ffxiv-gold font-medium">遠征獲得</span>
+            <span className="text-ffxiv-gold font-medium">雇員探險</span>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {validVentureItems.map((ventureItemId, ventureIndex) => {
-              const ventureItemData = loadedData.twItems[ventureItemId] || loadedData.twItems[String(ventureItemId)];
-              const ventureName = ventureItemData?.tw;
-              
-              if (!ventureName) return null;
+          <div className="flex flex-col gap-2 mt-2">
+            {tasks.map((task, taskIdx) => {
+              const maxQuantity = task.quantities?.[task.quantities.length - 1]?.quantity || '?';
               
               return (
-                <button
-                  key={ventureIndex}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (onItemClick) {
-                      getItemById(ventureItemId).then(item => {
-                        if (item) {
-                          onItemClick(item, { fromObtainable: true });
-                        } else {
-                          const itemUrl = generateItemUrl(ventureItemId, 'item');
-                          navigate(itemUrl);
-                        }
-                      });
-                    } else {
-                      const itemUrl = generateItemUrl(ventureItemId, 'item');
-                      navigate(itemUrl);
-                    }
-                  }}
-                  className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
-                >
-                  <ItemImage
-                    itemId={ventureItemId}
-                    alt={ventureName}
-                    className="w-7 h-7 object-contain"
-                  />
-                  <span className="hover:underline">{ventureName}</span>
-                </button>
+                <div key={taskIdx} className="bg-slate-900/50 rounded p-2 border border-slate-700/50">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-blue-400">
+                      等級 {task.level} 雇員探險
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      最多 {maxQuantity} 個
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-1 text-xs text-gray-400">
+                    {task.reqGathering > 0 && (
+                      <span>採集力 {task.reqGathering}+</span>
+                    )}
+                    {task.reqIlvl > 0 && (
+                      <span>裝等 {task.reqIlvl}+</span>
+                    )}
+                  </div>
+                </div>
               );
-            }).filter(Boolean)}
+            })}
           </div>
         </div>
       );
@@ -4267,15 +4488,19 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         {npcNames.map((npcName, npcIndex) => {
                           const npcPosition = npcPositions[npcIndex];
                           const npcId = npcIds[npcIndex];
-                          // Check if NPC has position data (x, y, and map or zoneid)
-                          const hasLocation = npcPosition && 
-                            npcPosition.x !== undefined && 
-                            npcPosition.y !== undefined && 
-                            (npcPosition.map || npcPosition.zoneid);
                           
                           const zoneId = npcPosition?.zoneid;
                           const mapId = npcPosition?.map;
-                          const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
+                          const coords = npcPosition && npcPosition.x !== undefined && npcPosition.y !== undefined 
+                            ? { x: npcPosition.x, y: npcPosition.y } : null;
+                          
+                          // 使用中心化的地图位置管理
+                          const locationInfo = getLocationInfo({
+                            zoneId: zoneId,
+                            mapId: mapId,
+                            coords: coords,
+                            contextName: npcName
+                          });
                           
                           return (
                             <div key={`npc-${npcIndex}`} className="text-xs">
@@ -4283,27 +4508,21 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                 <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-4 h-4 flex-shrink-0 grayscale opacity-70" />
                                 <div className="text-gray-300 font-medium">{npcName}</div>
                               </div>
-                              {zoneName && hasLocation && (
+                              {locationInfo.hasLocation && (
                                 <button
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    setMapModal({
-                                      isOpen: true,
-                                      zoneName,
-                                      x: npcPosition.x,
-                                      y: npcPosition.y,
-                                      npcName: npcName,
-                                      mapId: mapId || null,
-                                    });
+                                    openMapModal(locationInfo, npcName);
                                   }}
-                                  className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors ml-[2px]"
+                                  className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors mt-0.5"
+                                  title={locationInfo.displayText}
                                 >
-                                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                                   </svg>
                                   <span className="text-gray-400">
-                                    {zoneName} ({npcPosition.x.toFixed(1)}, {npcPosition.y.toFixed(1)})
+                                    {locationInfo.displayText}
                                   </span>
                                 </button>
                               )}
@@ -4379,34 +4598,40 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       );
     }
 
-    // Voyages (遠征) - data structure similar to ventures
+    // Voyages (遠航探索) - new structure: { voyages: [{type, id, name}], totalVoyages }
     if (type === DataType.VOYAGES) {
-      if (!data || !Array.isArray(data) || data.length === 0) {
+      const voyages = source.voyages || data;
+      if (!voyages || !Array.isArray(voyages) || voyages.length === 0) {
         return null;
       }
 
       return (
         <div key={`voyage-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/021000/021267.png" alt="Voyage" className="w-6 h-6" />
-            <span className="text-ffxiv-gold font-medium">遠征</span>
+            <img src="https://xivapi.com/i/060000/060856.png" alt="Voyage" className="w-6 h-6" />
+            <span className="text-ffxiv-gold font-medium">遠航探索</span>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
-            <div className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
-              <div className="text-sm text-gray-300 text-center">
-                可通過遠征獲得
-              </div>
-            </div>
+          <div className="flex flex-col gap-2 mt-2">
+            {voyages.map((voyage, idx) => {
+              const voyageName = voyage.name?.en || `Voyage ${voyage.id}`;
+              const voyageType = voyage.type === 1 ? '潛水艇' : '飛空艇';
+              
+              return (
+                <div key={idx} className="bg-slate-900/50 rounded p-2 border border-slate-700/50">
+                  <div className="text-sm text-blue-400">
+                    <span className="text-gray-500">[{voyageType}]</span> {voyageName}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       );
     }
 
-    // Requirements (需求) - data structure varies, usually item IDs or requirements
-    // Special case: If data is an object with {seed: ...}, treat it as island crop
-    // Note: In Teamcraft's DataType enum, REQUIREMENTS = 23, but our DataType.REQUIREMENTS = 17
-    // The actual data uses type 23, so we need to check for type 23 specifically
-    if (type === 23 || type === DataType.REQUIREMENTS) {
+    // Island Crop (島嶼作物) - Special case when data has {seed: number} format
+    // Type 23 is ISLAND_CROP, not REQUIREMENTS
+    if (type === DataType.ISLAND_CROP) {
       // Check if data is an island crop format: {seed: number}
       if (data && typeof data === 'object' && !Array.isArray(data) && 'seed' in data && typeof data.seed === 'number') {
         // This is actually an island crop, display it as such
@@ -4700,7 +4925,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               if (!alarm || typeof alarm !== 'object') return null;
               
               const zoneId = alarm.zoneId;
-              const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
               const mapId = alarm.mapId;
               const coords = alarm.coords;
               const nodeType = alarm.type !== undefined ? Math.abs(alarm.type) : 0;
@@ -4709,7 +4933,14 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const duration = alarm.duration || 0;
               const spawns = alarm.spawns || [];
               const isEphemeral = alarm.ephemeral === true;
-              const hasLocation = coords && coords.x !== undefined && coords.y !== undefined && mapId;
+              
+              // 使用中心化的地图位置管理
+              const locationInfo = getLocationInfo({
+                zoneId: zoneId,
+                mapId: mapId,
+                coords: coords,
+                contextName: `${nodeTypeName}採集點`
+              });
 
               return (
                 <div key={alarmIndex} className="bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
@@ -4717,7 +4948,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     <img src={nodeIcon} alt={nodeTypeName} className="w-7 h-7 object-contain" />
                     <div className="flex-1">
                       <div className="text-sm font-medium text-white">
-                        {zoneName}
+                        {locationInfo.displayText}
                       </div>
                       <div className="text-xs text-gray-400 mt-0.5">
                         {nodeTypeName}
@@ -4728,19 +4959,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     </div>
                   </div>
                   
-                  {hasLocation && (
+                  {locationInfo.hasLocation && (
                     <button
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        setMapModal({
-                          isOpen: true,
-                          zoneName,
-                          x: coords.x,
-                          y: coords.y,
-                          npcName: `${nodeTypeName}採集點`,
-                          mapId: mapId,
-                        });
+                        openMapModal(locationInfo, `${nodeTypeName}採集點`);
                       }}
                       className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-700/50 text-xs text-blue-400 hover:bg-slate-800/50 hover:text-blue-300 rounded px-1 py-0.5 transition-all w-full text-left"
                     >
@@ -4748,10 +4972,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                       </svg>
                       <span>
-                        {zoneName}
-                        <span className="ml-2">
-                          X: {coords.x.toFixed(1)} - Y: {coords.y.toFixed(1)}
-                        </span>
+                        {locationInfo.displayText}
                       </span>
                     </button>
                   )}
@@ -4764,7 +4985,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     }
 
     // Achievements (成就獎勵) - data is an array of achievement IDs
-    if (type === DataType.ACHIEVEMENTS || type === 22) {
+    if (type === DataType.ACHIEVEMENTS) {
       if (!data || !Array.isArray(data) || data.length === 0) {
         return null;
       }
@@ -4812,6 +5033,64 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
+              );
+            }).filter(Boolean)}
+          </div>
+        </div>
+      );
+    }
+
+    // Requirements (需求材料) - data is an array of drop objects with {id, amount}
+    // This represents mob drops with specific quantities
+    if (type === DataType.REQUIREMENTS) {
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        return null;
+      }
+
+      // Get current loaded data from ref for up-to-date access
+      const currentLoadedData = loadedDataRef.current;
+
+      const validDrops = data.filter(drop => {
+        const mobId = drop.id;
+        const mobName = currentLoadedData.twMobs[mobId] || currentLoadedData.twMobs[String(mobId)];
+        return mobName;
+      });
+
+      if (validDrops.length === 0) {
+        return null;
+      }
+
+      return (
+        <div key={`requirements-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+          <div className="flex items-center gap-2 mb-2">
+            <img src="https://xivapi.com/i/060000/060881.png" alt="Requirements" className="w-6 h-6" />
+            <span className="text-ffxiv-gold font-medium">需求材料</span>
+          </div>
+          <div className="text-xs text-gray-400 mb-2">
+            從怪物掉落獲得（特定數量）
+          </div>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {validDrops.map((drop, dropIndex) => {
+              const mobId = drop.id;
+              const amount = drop.amount || 1;
+              const mobName = currentLoadedData.twMobs[mobId] || currentLoadedData.twMobs[String(mobId)];
+
+              if (!mobName) return null;
+
+              return (
+                <div
+                  key={dropIndex}
+                  className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex items-center justify-between"
+                >
+                  <div className="flex-1">
+                    <div className="text-sm text-blue-400">
+                      {mobName}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-300 bg-slate-800 px-2 py-1 rounded">
+                    x{amount}
                   </div>
                 </div>
               );
@@ -4973,6 +5252,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         y={mapModal.y}
         npcName={mapModal.npcName}
         mapId={mapModal.mapId}
+        radius={mapModal.radius}
       />
     </div>
   );

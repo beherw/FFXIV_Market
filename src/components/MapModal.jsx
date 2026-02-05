@@ -23,7 +23,7 @@ async function loadMapsData() {
   return mapsDataPromise;
 }
 
-export default function MapModal({ isOpen, onClose, zoneName, x, y, npcName, mapId }) {
+export default function MapModal({ isOpen, onClose, zoneName, x, y, npcName, mapId, radius = 0 }) {
   const [mapData, setMapData] = useState(null);
   const [markerPosition, setMarkerPosition] = useState(null);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -598,6 +598,22 @@ export default function MapModal({ isOpen, onClose, zoneName, x, y, npcName, map
                 }}
               >
                 <div className="relative">
+                  {/* 採集範圍圓圈 - 使用與Teamcraft相同的公式 */}
+                  {radius > 0 && mapData && (
+                    <div
+                      className="absolute rounded-full border-2 border-yellow-400/60 bg-yellow-400/10"
+                      style={{
+                        width: `${250 * radius / (mapData.size_factor * 20.48)}%`,
+                        height: `${250 * radius / (mapData.size_factor * 20.48)}%`,
+                        transform: 'translate(-50%, -50%)',
+                        left: '50%',
+                        top: '50%',
+                        pointerEvents: 'none',
+                        boxShadow: '0 0 10px rgba(255, 255, 0, 0.3)',
+                        zIndex: 10
+                      }}
+                    />
+                  )}
                   <div 
                     className="absolute inset-0 rounded-full bg-white"
                     style={{

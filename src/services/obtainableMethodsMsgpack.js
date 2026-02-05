@@ -5,6 +5,8 @@
  * Now 70% smaller than MessagePack version!
  */
 
+import { DataType, getTypeIdFromString } from '../constants/dataTypes.js';
+
 let dataCache = null;
 let isLoading = false;
 let loadPromise = null;
@@ -84,104 +86,12 @@ export async function getObtainableSourcesById(itemId) {
     return [];
   }
 
-  // New optimized format already has the correct structure
-  // Just convert 'type' string to numeric DataType for backward compatibility
+  // Return sources with type converted from string to numeric DataType
+  // Keep all other properties intact - renderers now access them directly (not via data field)
   return sources.map(source => ({
-    type: getTypeIdFromString(source.type),
-    typeName: source.typeName,
-    data: convertToLegacyFormat(source)
+    ...source,
+    type: getTypeIdFromString(source.type)
   }));
 }
 
-/**
- * Convert type string to DataType enum value
- */
-function getTypeIdFromString(typeStr) {
-  const typeMap = {
-    'craft': 1,
-    'specialshop': 2,
-    'vendor': 3,
-    'reduction': 4,
-    'desynth': 5,
-    'instance': 6,
-    'gathering': 7,
-    'venture': 8,
-    'treasure': 9,
-    'quest': 10,
-    'fate': 11,
-    'gardening': 12,
-    'mogstation': 13,
-    'islandpasture': 14,
-    'islandcrop': 15,
-    'voyage': 16,
-    'requirement': 17,
-    'masterbook': 18,
-    'alarm': 19,
-    'drop': 20,
-    'achievement': 22,
-    'tripleTriadDuel': 23,
-    'tripleTriadPack': 24
-  };
-  if (typeStr && typeMap[typeStr]) {
-    return typeMap[typeStr];
-  }
-  if (typeof typeStr === 'string' && typeStr.startsWith('type_')) {
-    const parsed = Number.parseInt(typeStr.slice(5), 10);
-    if (!Number.isNaN(parsed)) {
-      return parsed;
-    }
-  }
-  return 0;
-}
-
-/**
- * Convert optimized source format back to legacy format expected by UI
- */
-function convertToLegacyFormat(source) {
-  const { type, typeName, ...rest } = source;
-  
-  // For vendors and shops, the data is already in the correct format
-  if (type === 'vendor' || type === 'specialshop') {
-    if (rest.vendors) {
-      return rest.vendors.map(v => ({
-        npcName: v.npcName,
-        zoneName: v.zoneName,
-        x: v.x,
-        y: v.y,
-        aetheryteName: v.aetheryteName,
-        price: rest.price,
-        currencyId: rest.currencyItemId,
-        currency: rest.currency
-      }));
-    }
-  }
-  
-  // For instances
-  if (type === 'instance') {
-    return rest.instanceNames || [];
-  }
-  
-  // For quests
-  if (type === 'quest') {
-    return [{ id: rest.questId, name: rest.questName }];
-  }
-  
-  // For gathering
-  if (type === 'gathering') {
-    return rest.nodes || [];
-  }
-  
-  // For voyages
-  if (type === 'voyage') {
-    return rest.voyageNames || [];
-  }
-
-  // For mogstation, any non-empty array is sufficient for renderers
-  if (type === 'mogstation' || type === 'type_13') {
-    const count = Number.isFinite(rest.count) ? rest.count : 1;
-    return Array.from({ length: Math.max(1, count) }, () => 0);
-  }
-  
-  // For most other types, return the entire rest object as an array
-  return [rest];
-}
+// End of file

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Item 27701 Debug</title>
+  <style>
+    body { 
+      font-family: monospace; 
+      background: #1e1e1e; 
+      color: #d4d4d4;
+      padding: 20px;
+      margin: 0;
+    }
+    .section {
+      margin-bottom: 20px;
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #252526;
+    }
+    .title {
+      color: #4ec9b0;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .info {
+      margin: 5px 0;
+      padding: 5px;
+      background: #1e1e1e;
+    }
+    .success { color: #6a9955; }
+    .error { color: #f48771; }
+    .warn { color: #d7ba7d; }
+    .code { background: #1e1e1e; padding: 2px 4px; }
+  </style>
+</head>
+<body>
+  <div id="debug-container"></div>
+
+  <script>
+    const container = document.getElementById('debug-container');
+    
+    function addSection(title, content) {
+      const section = document.createElement('div');
+      section.className = 'section';
+      
+      const titleEl = document.createElement('div');
+      titleEl.className = 'title';
+      titleEl.textContent = title;
+      section.appendChild(titleEl);
+      
+      const contentEl = document.createElement('pre');
+      contentEl.style.margin = '0';
+      contentEl.style.overflow = 'auto';
+      contentEl.textContent = content;
+      section.appendChild(contentEl);
+      
+      container.appendChild(section);
+    }
+    
+    function formatValue(val) {
+      if (val === null) return 'null';
+      if (val === undefined) return 'undefined';
+      if (typeof val === 'object') {
+        return JSON.stringify(val, null, 2);
+      }
+      return String(val);
+    }
+    
+    // Wait for React to load and set up debug variables
+    let attempts = 0;
+    const checkDebug = setInterval(() => {
+      attempts++;
+      
+      // Check if place data loaded
+      if (window.__DEBUG_twPlaces) {
+        addSection('✓ tw-places.json Loaded', 
+          `Found: ${Object.keys(window.__DEBUG_twPlaces).length} zones\n` +
+          `Has zoneId 3045: ${!!window.__DEBUG_twPlaces['3045']}\n` +
+          `Value: ${formatValue(window.__DEBUG_twPlaces['3045'])}`
+        );
+      } else if (attempts > 50) {
+        addSection('✗ tw-places.json', 'Not loaded yet (waited 50 checks)');
+      }
+      
+      // Check if item 27701 sources loaded
+      if (window.__DEBUG_item27701_sources) {
+        let sourcesInfo = `Total sources: ${window.__DEBUG_item27701_sources.length}\n\n`;
+        window.__DEBUG_item27701_sources.forEach((source, idx) => {
+          sourcesInfo += `Source ${idx}:\n`;
+          sourcesInfo += `  type: ${source.type}\n`;
+          sourcesInfo += `  has nodes: ${!!source.nodes} (${source.nodes?.length || 0})\n`;
+          sourcesInfo += `  has voyages: ${!!source.voyages} (${source.voyages?.length || 0})\n`;
+          sourcesInfo += `  has tasks: ${!!source.tasks} (${source.tasks?.length || 0})\n`;
+          if (source.nodes?.[0]) {
+            const node = source.nodes[0];
+            sourcesInfo += `  first node: zoneId=${node.zoneId}, mapId=${node.mapId}, x=${node.x}, y=${node.y}\n`;
+          }
+          sourcesInfo += '\n';
+        });
+        addSection('✓ Item 27701 Sources', sourcesInfo);
+      } else if (attempts > 50) {
+        addSection('✗ Item 27701 Sources', 'Not loaded yet (waited 50 checks)');
+      }
+      
+      // Check location info
+      if (window.__DEBUG_gathered_node_locationInfo) {
+        addSection('✓ LocationInfo for GATHERED_BY Node', 
+          formatValue(window.__DEBUG_gathered_node_locationInfo)
+        );
+      } else if (attempts > 50) {
+        addSection('✗ LocationInfo', 'Not generated yet');
+      }
+      
+      // Check getLocationInfo debug
+      if (window.__DEBUG_getLocationInfo_3045) {
+        addSection('✓ getLocationInfo Called for zoneId 3045',
+          formatValue(window.__DEBUG_getLocationInfo_3045)
+        );
+      } else if (attempts > 50) {
+        addSection('✗ getLocationInfo for zoneId 3045', 'Not called yet');
+      }
+      
+      if (attempts > 50) {
+        clearInterval(checkDebug);
+        addSection('Info', 'Stopped checking after 50 attempts. Check React console for more details.');
+      }
+    }, 100);
+    
+    // Also show summary
+    setTimeout(() => {
+      const summary = document.createElement('div');
+      summary.style.cssText = 'position: fixed; top: 0; right: 0; background: #222; border: 1px solid #444; padding: 10px; border-radius: 4px; font-size: 12px; max-width: 300px;';
+      summary.innerHTML = `
+        <div style="color: #4ec9b0; margin-bottom: 5px;">Item 27701 Debug Checklist:</div>
+        <div>1. Place data loaded: <span id="check1">❓</span></div>
+        <div>2. Sources loaded: <span id="check2">❓</span></div>
+        <div>3. LocationInfo created: <span id="check3">❓</span></div>
+        <div>4. Zone name found: <span id="check4">❓</span></div>
+      `;
+      document.body.appendChild(summary);
+      
+      // Update checklist
+      const updateChecklist = setInterval(() => {
+        document.getElementById('check1').textContent = window.__DEBUG_twPlaces && window.__DEBUG_twPlaces['3045'] ? '✓' : '✗';
+        document.getElementById('check2').textContent = window.__DEBUG_item27701_sources?.length > 0 ? '✓' : '✗';
+        document.getElementById('check3').textContent = window.__DEBUG_gathered_node_locationInfo ? '✓' : '✗';
+        document.getElementById('check4').textContent = window.__DEBUG_getLocationInfo_3045?.zoneName ? '✓' : '✗';
+        
+        if (attempts > 50 && window.__DEBUG_item27701_sources) {
+          clearInterval(updateChecklist);
+        }
+      }, 100);
+    }, 500);
+  </script>
+</body>
+</html>

@@ -48,7 +48,7 @@ export function renderGatheredBy({
         {data.nodes.map((node, nodeIndex) => {
           const zoneId = node.zoneId;
           const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
-          const mapId = node.map;
+          const mapId = node.mapId;
           const coords = node.x !== undefined && node.y !== undefined ? { x: node.x, y: node.y } : null;
           const hasLocation = coords && mapId;
           const nodeLevel = node.level || gatheringLevel;
@@ -89,6 +89,7 @@ export function renderGatheredBy({
                       y: coords.y,
                       npcName: `${nodeTypeName}採集點`,
                       mapId: mapId,
+                      radius: node.radius || 0,
                     });
                   }}
                   className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-700/50 text-xs text-blue-400 hover:bg-slate-800/50 hover:text-blue-300 rounded px-1 py-0.5 transition-all w-full text-left"

@@ -111,30 +111,6 @@ export async function loadAllChunks(signal = null, onChunkLoaded = null) {
   return [];
 }
 
-/**
- * DataType enum values (matching Teamcraft)
- */
-export const DataType = {
-  DEPRECATED: 0,
-  CRAFTED_BY: 1,
-  TRADE_SOURCES: 2,
-  VENDORS: 3,
-  REDUCED_FROM: 4,
-  DESYNTHS: 5,
-  INSTANCES: 6,
-  GATHERED_BY: 7,
-  VENTURES: 8,
-  TREASURES: 9,
-  QUESTS: 10,
-  FATES: 11,
-  GARDENING: 12,
-  MOGSTATION: 13,
-  ISLAND_PASTURE: 14,
-  ISLAND_CROP: 15,
-  VOYAGES: 16,
-  REQUIREMENTS: 17,
-  MASTERBOOKS: 18,
-  ALARMS: 19,
-  DROPS: 20, // 怪物掉落 (Monster Drops)
-  ACHIEVEMENTS: 22,
-};
+// 导入中心化的 DataType 定义
+// 这是整个项目唯一的 DataType 定义来源
+export { DataType, TYPE_CHINESE_NAMES, getTypeIdFromString, getStringFromTypeId, getChineseName } from '../constants/dataTypes.js';

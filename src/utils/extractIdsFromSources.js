@@ -37,49 +37,67 @@ export function extractIdsFromSources(sources) {
     const { type, data } = source;
 
     // TRADE_SOURCES (type 2)
-    if (type === 2 && Array.isArray(data)) {
-      data.forEach(tradeSource => {
-        // Shop ID
-        if (tradeSource.id) {
-          ids.shopIds.add(tradeSource.id);
-        }
-        // NPC IDs
-        if (Array.isArray(tradeSource.npcs)) {
-          tradeSource.npcs.forEach(npc => {
-            const npcId = typeof npc === 'object' ? npc.id : npc;
-            if (npcId) {
-              ids.npcIds.add(npcId);
-              // Zone ID from NPC
-              if (typeof npc === 'object' && npc.zoneId) {
-                ids.zoneIds.add(npc.zoneId);
+    // New optimized format: {type, currencyItemId, npcIds, shopId}
+    // Legacy format: {type, data: [{trades, npcs}]}
+    if (type === 2) {
+      // NEW FORMAT: Properties directly on source object
+      if (source.npcIds && Array.isArray(source.npcIds)) {
+        source.npcIds.forEach(npcId => {
+          if (npcId) ids.npcIds.add(npcId);
+        });
+      }
+      if (source.shopId) {
+        ids.shopIds.add(source.shopId);
+      }
+      if (source.currencyItemId) {
+        ids.itemIds.add(source.currencyItemId);
+      }
+      
+      // LEGACY FORMAT: data array with shop objects
+      if (Array.isArray(data)) {
+        data.forEach(tradeSource => {
+          // Shop ID
+          if (tradeSource.id) {
+            ids.shopIds.add(tradeSource.id);
+          }
+          // NPC IDs
+          if (Array.isArray(tradeSource.npcs)) {
+            tradeSource.npcs.forEach(npc => {
+              const npcId = typeof npc === 'object' ? npc.id : npc;
+              if (npcId) {
+                ids.npcIds.add(npcId);
+                // Zone ID from NPC
+                if (typeof npc === 'object' && npc.zoneId) {
+                  ids.zoneIds.add(npc.zoneId);
+                }
               }
-            }
-          });
-        }
-        // Currency/item IDs from trades
-        if (Array.isArray(tradeSource.trades)) {
-          tradeSource.trades.forEach(trade => {
-            if (Array.isArray(trade.currencies)) {
-              trade.currencies.forEach(currency => {
-                if (currency.id) {
-                  ids.itemIds.add(currency.id);
-                }
-              });
-            }
-            if (Array.isArray(trade.items)) {
-              trade.items.forEach(item => {
-                if (item.id) {
-                  ids.itemIds.add(item.id);
-                }
-              });
-            }
-          });
-        }
-        // Quest requirement
-        if (tradeSource.requiredQuest) {
-          ids.questIds.add(tradeSource.requiredQuest);
-        }
-      });
+            });
+          }
+          // Currency/item IDs from trades
+          if (Array.isArray(tradeSource.trades)) {
+            tradeSource.trades.forEach(trade => {
+              if (Array.isArray(trade.currencies)) {
+                trade.currencies.forEach(currency => {
+                  if (currency.id) {
+                    ids.itemIds.add(currency.id);
+                  }
+                });
+              }
+              if (Array.isArray(trade.items)) {
+                trade.items.forEach(item => {
+                  if (item.id) {
+                    ids.itemIds.add(item.id);
+                  }
+                });
+              }
+            });
+          }
+          // Quest requirement
+          if (tradeSource.requiredQuest) {
+            ids.questIds.add(tradeSource.requiredQuest);
+          }
+        });
+      }
     }
 
     // VENDORS (type 3)

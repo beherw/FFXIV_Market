@@ -1,29 +1,14 @@
-// VENTURES renderer (Type 8 - 遠徵獲得)
+// VENTURES renderer (Type 15 - 雇員探險)
 import React from 'react';
-import ItemImage from '../ItemImage';
 import { commonClasses } from './sharedUtils.jsx';
 
 export function renderVentures({
   source,
-  index,
-  loadedData,
-  onItemClick,
-  getItemById,
-  generateItemUrl,
-  navigate
+  index
 }) {
-  const { data } = source;
+  const { tasks } = source;
   
-  if (!data || !Array.isArray(data) || data.length === 0) {
-    return null;
-  }
-
-  const validVentureItems = data.filter(itemId => {
-    const itemData = loadedData.twItems[itemId] || loadedData.twItems[String(itemId)];
-    return itemData && itemData.tw;
-  });
-  
-  if (validVentureItems.length === 0) {
+  if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
     return null;
   }
   
@@ -31,46 +16,31 @@ export function renderVentures({
     <div key={`venture-${index}`} className={commonClasses.card}>
       <div className={commonClasses.header}>
         <img src="https://xivapi.com/i/021000/021267.png" alt="Venture" className={commonClasses.icon} />
-        <span className={commonClasses.title}>遠徵獲得</span>
+        <span className={commonClasses.title}>雇員探險</span>
       </div>
-      <div className="grid grid-cols-3 gap-2 mt-2">
-        {validVentureItems.map((ventureItemId, ventureIndex) => {
-          const ventureItemData = loadedData.twItems[ventureItemId] || loadedData.twItems[String(ventureItemId)];
-          const ventureName = ventureItemData?.tw;
-          
-          if (!ventureName) return null;
+      <div className="flex flex-col gap-2 mt-2">
+        {tasks.map((task, idx) => {
+          const maxQuantity = task.quantities?.[task.quantities.length - 1]?.quantity || '?';
           
           return (
-            <button
-              key={ventureIndex}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (onItemClick) {
-                  getItemById(ventureItemId).then(item => {
-                    if (item) {
-                      onItemClick(item, { fromObtainable: true });
-                    } else {
-                      const itemUrl = generateItemUrl(ventureItemId, 'item');
-                      navigate(itemUrl);
-                    }
-                  });
-                } else {
-                  const itemUrl = generateItemUrl(ventureItemId, 'item');
-                  navigate(itemUrl);
-                }
-              }}
-              className="flex flex-col items-center gap-1.5 p-2 rounded-lg bg-slate-900/50 border border-slate-700/50 hover:border-ffxiv-gold/60 hover:bg-slate-800/70 transition-all duration-200 group"
-            >
-              <ItemImage
-                itemId={ventureItemId}
-                alt={ventureName}
-                className="w-10 h-10 object-contain rounded border border-slate-700/50 group-hover:border-ffxiv-gold/60 transition-colors duration-200"
-              />
-              <span className="text-xs text-blue-400 group-hover:text-ffxiv-gold text-center line-clamp-2 transition-colors duration-200" title={ventureName}>
-                {ventureName}
-              </span>
-            </button>
+            <div key={idx} className="bg-slate-900/50 rounded p-2 border border-slate-700/50">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-blue-400">
+                  等級 {task.level} 雇員探險
+                </div>
+                <div className="text-xs text-gray-400">
+                  最多 {maxQuantity} 個
+                </div>
+              </div>
+              <div className="flex gap-3 mt-1 text-xs text-gray-400">
+                {task.reqGathering > 0 && (
+                  <span>採集力 {task.reqGathering}+</span>
+                )}
+                {task.reqIlvl > 0 && (
+                  <span>裝等 {task.reqIlvl}+</span>
+                )}
+              </div>
+            </div>
           );
         })}
       </div>

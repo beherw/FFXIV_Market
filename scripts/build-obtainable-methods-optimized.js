@@ -12,6 +12,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { DataType, TYPE_CHINESE_NAMES, getStringFromTypeId } from '../src/constants/dataTypes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,59 +23,8 @@ const OUTPUT_DIR = path.join(__dirname, '../public/data');
 const OUTPUT_FILE_JSON = path.join(OUTPUT_DIR, 'obtainable-methods.json');
 const OUTPUT_FILE_MIN = path.join(OUTPUT_DIR, 'obtainable-methods.min.json');
 
-// DataType enum
-const DataType = {
-  DEPRECATED: 0,
-  CRAFTED_BY: 1,
-  TRADE_SOURCES: 2,
-  VENDORS: 3,
-  REDUCED_FROM: 4,
-  DESYNTHS: 5,
-  INSTANCES: 6,
-  GATHERED_BY: 7,
-  VENTURES: 8,
-  TREASURES: 9,
-  QUESTS: 10,
-  FATES: 11,
-  GARDENING: 12,
-  MOGSTATION: 13,
-  ISLAND_PASTURE: 14,
-  ISLAND_CROP: 15,
-  VOYAGES: 16,
-  REQUIREMENTS: 17,
-  MASTERBOOKS: 18,
-  ALARMS: 19,
-  DROPS: 20,
-  ACHIEVEMENTS: 22,
-  TRIPLE_TRIAD_DUELS: 23,
-  TRIPLE_TRIAD_PACK: 24
-};
-
-const TYPE_NAME_MAP = {
-  [DataType.CRAFTED_BY]: '製作',
-  [DataType.TRADE_SOURCES]: '兌換',
-  [DataType.VENDORS]: 'NPC商店',
-  [DataType.TREASURES]: '寶箱/容器',
-  [DataType.INSTANCES]: '副本掉落',
-  [DataType.DESYNTHS]: '精製獲得',
-  [DataType.QUESTS]: '任務獎勵',
-  [DataType.FATES]: '危命任務',
-  [DataType.GATHERED_BY]: '採集獲得',
-  [DataType.REDUCED_FROM]: '分解獲得',
-  [DataType.VENTURES]: '遠征獲得',
-  [DataType.GARDENING]: '園藝獲得',
-  [DataType.MOGSTATION]: '商城購買',
-  [DataType.ISLAND_PASTURE]: '無人島牧場',
-  [DataType.ISLAND_CROP]: '無人島農作',
-  [DataType.VOYAGES]: '遠航探索',
-  [DataType.REQUIREMENTS]: '需求',
-  [DataType.MASTERBOOKS]: '製作書',
-  [DataType.ALARMS]: '鬧鐘提醒',
-  [DataType.DROPS]: '怪物掉落',
-  [DataType.ACHIEVEMENTS]: '成就獎勵',
-  [DataType.TRIPLE_TRIAD_DUELS]: '三重幻卡對戰',
-  [DataType.TRIPLE_TRIAD_PACK]: '三重幻卡包'
-};
+// 使用中心化的 TYPE_CHINESE_NAMES
+const TYPE_NAME_MAP = TYPE_CHINESE_NAMES;
 
 function loadJson(jsonPath, dataName) {
   console.log(`[Obtainable] Reading ${dataName}...`);
@@ -124,14 +74,16 @@ function extractEssentialData(type, rawData, instancesMap) {
   // Only extract fields that are actually used in the UI
   switch (type) {
     case DataType.VENDORS:
-      if (Array.isArray(rawData) && rawData[0]) {
-        result.price = rawData[0].price;
-        if (rawData[0].npcName) result.vendors = rawData.map(v => ({
-          npcName: v.npcName,
-          zoneName: v.zoneName || '',
-          x: v.x,
-          y: v.y,
-          aetheryteName: v.aetheryteName || ''
+      if (Array.isArray(rawData) && rawData.length > 0) {
+        // Store full vendor data array to preserve all NPC information
+        result.data = rawData.map(v => ({
+          npcId: v.npcId,
+          price: v.price,
+          shopName: v.shopName,
+          coords: v.coords,
+          zoneId: v.zoneId,
+          mapId: v.mapId,
+          festival: v.festival
         }));
       }
       break;
@@ -139,20 +91,28 @@ function extractEssentialData(type, rawData, instancesMap) {
     case DataType.TRADE_SOURCES:
       if (Array.isArray(rawData) && rawData[0]) {
         const shop = rawData[0];
-        result.price = shop.cost?.[0]?.amount || shop.price;
-        if (shop.cost?.[0]?.id) result.currencyItemId = shop.cost[0].id;
-        else if (shop.currencyId) result.currencyItemId = shop.currencyId;
+        // Extract currency information from trades array
+        const trade = shop.trades?.[0];
+        const currency = trade?.currencies?.[0];
         
-        result.currency = shop.cost?.[0]?.currency || shop.currency || 'item';
+        if (currency) {
+          result.currencyItemId = currency.id;
+          result.currencyAmount = currency.amount;
+          if (currency.hq) result.requiresHQ = true;
+        }
         
+        result.currency = currency?.currency || 'item';
+        
+        // Store shop ID and name for quest requirement lookup
+        if (shop.id) result.shopId = shop.id;
+        if (shop.shopName) result.shopName = shop.shopName;
+        
+        // Store NPC IDs only - ObtainMethods will query NPC details from Supabase
         if (shop.npcs && Array.isArray(shop.npcs)) {
-          result.vendors = shop.npcs.map(npc => ({
-            npcName: npc.name || '',
-            zoneName: npc.zoneName || '',
-            x: npc.coords?.x || npc.x,
-            y: npc.coords?.y || npc.y,
-            aetheryteName: npc.aetheryteName || ''
-          }));
+          result.npcIds = shop.npcs.map(npc => {
+            // Handle both {id: number} and number formats
+            return typeof npc === 'object' ? npc.id : npc;
+          }).filter(id => id !== undefined && id !== null);
         }
       }
       break;
@@ -180,33 +140,62 @@ function extractEssentialData(type, rawData, instancesMap) {
 
     case DataType.FATES:
       if (Array.isArray(rawData) && rawData[0]) {
+        result.fateId = rawData[0].id;
         result.fateName = rawData[0].name || '';
-        result.zoneName = rawData[0].zoneName || '';
+        result.level = rawData[0].level;
+        result.zoneId = rawData[0].zoneId;
       }
       break;
 
     case DataType.VOYAGES:
       if (Array.isArray(rawData)) {
-        result.voyageNames = rawData.map(v => v.name || '').filter(Boolean);
+        result.voyages = rawData.map(v => ({
+          type: v.type, // 1 = submarine, 0 = airship
+          id: v.name?.id || v.id,
+          name: v.name
+        }));
         result.totalVoyages = rawData.length;
       }
       break;
 
+    case DataType.VENTURES:
+      if (Array.isArray(rawData) && rawData.length > 0) {
+        result.tasks = rawData.map(task => ({
+          id: task.id,
+          level: task.lvl,
+          reqGathering: task.reqGathering,
+          reqIlvl: task.reqIlvl,
+          exp: task.exp,
+          quantities: task.quantities,
+          category: task.category
+        }));
+      }
+      break;
+
     case DataType.ACHIEVEMENTS:
-      if (Array.isArray(rawData) && rawData[0]) {
-        result.achievementId = rawData[0].id;
-        result.achievementName = rawData[0].name || '';
+      if (Array.isArray(rawData)) {
+        result.achievementIds = rawData;
+        result.count = rawData.length;
       }
       break;
 
     case DataType.GATHERED_BY:
-      if (Array.isArray(rawData) && rawData[0]) {
-        result.gatheringType = rawData[0].type || 0;
-        result.nodes = rawData.map(node => ({
+      // rawData is an object with nodes array: { level, nodes: [...], type }
+      if (rawData && rawData.nodes && Array.isArray(rawData.nodes)) {
+        result.gatheringType = rawData.type || 0;
+        result.level = rawData.level;
+        result.nodes = rawData.nodes.map(node => ({
           level: node.level,
-          zoneName: node.zoneName || '',
-          x: node.coords?.x || node.x,
-          y: node.coords?.y || node.y
+          zoneId: node.zoneId,
+          mapId: node.map,
+          x: node.x,
+          y: node.y,
+          nodeId: node.id,
+          limited: node.limited,
+          ephemeral: node.ephemeral,
+          spawns: node.spawns,
+          duration: node.duration,
+          radius: node.radius
         }));
       }
       break;
@@ -217,6 +206,70 @@ function extractEssentialData(type, rawData, instancesMap) {
           name: m.name || '',
           zoneName: m.zoneName || ''
         }));
+      }
+      break;
+
+    case DataType.GARDENING:
+      // rawData is an object {seedItemId, duration, crossBreeds}
+      if (rawData && rawData.seedItemId) {
+        result.seedItemId = rawData.seedItemId;
+        result.duration = rawData.duration;
+        if (rawData.crossBreeds && rawData.crossBreeds.length > 0) {
+          result.crossBreeds = rawData.crossBreeds;
+        }
+      }
+      break;
+
+    case DataType.ALARMS:
+      if (Array.isArray(rawData) && rawData.length > 0) {
+        result.nodes = rawData.map(alarm => ({
+          nodeId: alarm.nodeId,
+          zoneId: alarm.zoneId,
+          mapId: alarm.mapId,
+          x: alarm.coords?.x,
+          y: alarm.coords?.y,
+          spawns: alarm.spawns,
+          duration: alarm.duration
+        }));
+      }
+      break;
+
+    case DataType.MASTERBOOKS:
+      if (Array.isArray(rawData)) {
+        result.masterbookItemIds = rawData;
+        result.count = rawData.length;
+      }
+      break;
+
+    case DataType.TREASURES:
+      if (Array.isArray(rawData)) {
+        result.productIds = rawData;
+        result.count = rawData.length;
+      }
+      break;
+
+    case DataType.REQUIREMENTS:
+      // This is actually mob drops with quantities
+      if (Array.isArray(rawData) && rawData.length > 0) {
+        result.drops = rawData.map(drop => ({
+          id: drop.id,
+          amount: drop.amount || 1
+        }));
+      }
+      break;
+
+    case DataType.MOGSTATION:
+      // rawData is an object {price, id}
+      if (rawData && rawData.id) {
+        result.productId = rawData.id;
+        result.price = rawData.price;
+      }
+      break;
+
+    case DataType.ISLAND_CROP:
+      // rawData is an object {seed}
+      if (rawData && rawData.seed) {
+        result.seedItemId = rawData.seed;
       }
       break;
 
@@ -259,7 +312,7 @@ function getTypeString(typeId) {
     [DataType.ISLAND_PASTURE]: 'islandpasture',
     [DataType.ISLAND_CROP]: 'islandcrop',
     [DataType.ALARMS]: 'alarm',
-    [DataType.REQUIREMENTS]: 'requirement',
+    [DataType.REQUIREMENTS]: 'mobdrop',
     [DataType.MASTERBOOKS]: 'masterbook',
     [DataType.TRIPLE_TRIAD_DUELS]: 'tripleTriadDuel',
     [DataType.TRIPLE_TRIAD_PACK]: 'tripleTriadPack'

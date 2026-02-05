@@ -86,9 +86,10 @@ export function renderVendors({
     
     const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
     const hasLocationInfo = zoneName && coords && coords.x !== undefined && coords.y !== undefined;
+    const hasValidCoords = hasLocationInfo && (coords.x !== 0 || coords.y !== 0) && mapId;
 
     // Categorize NPC group
-    if (hasLocationInfo) {
+    if (hasValidCoords) {
       npcGroupsWithLocation.push({ ...npcGroup, zoneId, coords, mapId, zoneName, npcName });
     } else {
       npcGroupsWithoutLocation.push({ ...npcGroup, npcName });
@@ -218,9 +219,10 @@ export function renderVendors({
         {/* NPCs without location info */}
         {npcGroupsWithoutLocation.length > 0 && (
           <div className="bg-slate-900/30 rounded p-2 border border-slate-700/50">
-            <div className="text-xs text-gray-400 mb-1.5 flex items-center gap-1">
-              <span>特殊 NPC 商人</span>
+            <div className="text-xs mb-1.5 flex items-center gap-2">
+              <span className="text-gray-400">特殊 NPC 商人</span>
               <span className="text-gray-600">({npcGroupsWithoutLocation.length} 位)</span>
+              <span className="text-gray-500 text-xs ml-auto">位於個人房屋或特殊區域，暫無地圖位置資訊</span>
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               {npcGroupsWithoutLocation.map((npcGroup, npcGroupIndex) => {
