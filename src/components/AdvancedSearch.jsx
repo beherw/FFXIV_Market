@@ -37,7 +37,10 @@ export default function AdvancedSearch({
   isTaxRatesModalOpen,
   setIsTaxRatesModalOpen,
   taxRates,
-  isLoadingTaxRates
+  isLoadingTaxRates,
+  taxSelectedWorld,
+  taxServerOption,
+  onTaxServerOptionChange
 }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -4571,9 +4574,9 @@ export default function AdvancedSearch({
         taxRates={taxRates}
         worlds={worlds}
         isLoading={isLoadingTaxRates}
-        selectedWorld={selectedWorld}
-        selectedServerOption={selectedServerOption}
-        onServerOptionChange={onServerOptionChange}
+        selectedWorld={taxSelectedWorld || selectedWorld}
+        selectedServerOption={taxServerOption ?? selectedServerOption}
+        onServerOptionChange={onTaxServerOptionChange || onServerOptionChange}
       />
     </div>
   );

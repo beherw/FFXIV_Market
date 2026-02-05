@@ -74,6 +74,8 @@ const ObtainMethods = createLazyComponent(() => import('./components/ObtainMetho
 const MultiItemListModal = createLazyComponent(() => import('./components/MultiItemListModal.jsx'), 'MultiItemListModal');
 const MultiItemCombinedTree = createLazyComponent(() => import('./components/MultiItemCombinedTree.jsx'), 'MultiItemCombinedTree');
 
+const TAX_SERVER_STORAGE_KEY = 'tax_server';
+
 function App() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -101,6 +103,13 @@ function App() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedWorld, setSelectedWorld] = useState(null);
   const [selectedServerOption, setSelectedServerOption] = useState(null);
+  const [taxServerOption, setTaxServerOption] = useState(() => {
+    const saved = localStorage.getItem(TAX_SERVER_STORAGE_KEY);
+    if (!saved) return null;
+    const asNumber = Number(saved);
+    return Number.isNaN(asNumber) ? saved : asNumber;
+  });
+  const [taxSelectedWorld, setTaxSelectedWorld] = useState(null);
   
   useEffect(() => {
     // Track selectedItem changes
@@ -225,6 +234,62 @@ function App() {
   const [isLoadingTaxRates, setIsLoadingTaxRates] = useState(false);
   const [isTaxRatesModalOpen, setIsTaxRatesModalOpen] = useState(false);
   const loadedTaxRatesDcRef = useRef(null); // Track which datacenter's tax rates are currently loaded
+
+  // Initialize tax selected world when server data is available and no cached tax server is set
+  useEffect(() => {
+    if (taxServerOption || taxSelectedWorld || !datacenters || datacenters.length === 0 || !worlds || Object.keys(worlds).length === 0) {
+      return;
+    }
+
+    const tradChineseDCs = datacenters.filter(dc => dc.region && dc.region.startsWith('繁中服'));
+    const defaultDc = tradChineseDCs.length > 0 ? tradChineseDCs[0] : datacenters[0];
+    if (!defaultDc || !defaultDc.worlds || defaultDc.worlds.length === 0) {
+      return;
+    }
+
+    const firstWorldId = defaultDc.worlds[0];
+    setTaxSelectedWorld({
+      region: defaultDc.region || '',
+      section: defaultDc.name,
+      world: worlds[firstWorldId],
+      dcObj: defaultDc,
+    });
+  }, [taxServerOption, taxSelectedWorld, datacenters, worlds]);
+
+  // Keep tax selected world in sync with tax server option (without affecting main server selection)
+  useEffect(() => {
+    if (!taxServerOption || !datacenters || datacenters.length === 0 || !worlds || Object.keys(worlds).length === 0) {
+      return;
+    }
+
+    if (typeof taxServerOption === 'number') {
+      const dc = datacenters.find(dc => dc.worlds && dc.worlds.includes(taxServerOption));
+      if (dc && dc.worlds && dc.worlds.length > 0) {
+        const worldName = worlds[taxServerOption];
+        setTaxSelectedWorld({
+          region: dc.region || '',
+          section: dc.name,
+          world: worldName,
+          dcObj: dc,
+        });
+      }
+      return;
+    }
+
+    if (typeof taxServerOption === 'string') {
+      const dc = datacenters.find(dc => dc.name === taxServerOption);
+      if (dc && dc.worlds && dc.worlds.length > 0) {
+        const firstWorldId = dc.worlds[0];
+        const firstWorldName = worlds[firstWorldId];
+        setTaxSelectedWorld({
+          region: dc.region || '',
+          section: dc.name,
+          world: firstWorldName,
+          dcObj: dc,
+        });
+      }
+    }
+  }, [taxServerOption, datacenters, worlds]);
 
   // Handle search page change
   const handleSearchPageChange = useCallback((newPage) => {
@@ -1051,7 +1116,7 @@ function App() {
     }
   }, [tradeableResults.length, untradeableResults.length, historyItems.length, marketableItems, selectedServerOption, selectedWorld]);
 
-  // Fetch tax rates when modal opens or datacenter changes
+  // Fetch tax rates when modal opens or tax datacenter changes
   useEffect(() => {
     if (!isTaxRatesModalOpen) {
       // Don't fetch if modal is not open
@@ -1060,14 +1125,14 @@ function App() {
       return;
     }
 
-    if (!selectedWorld || !selectedWorld.dcObj || !worlds) {
+    if (!taxSelectedWorld || !taxSelectedWorld.dcObj || !worlds) {
       setTaxRates({});
       setIsLoadingTaxRates(false);
       loadedTaxRatesDcRef.current = null;
       return;
     }
 
-    const currentDcName = selectedWorld.section;
+    const currentDcName = taxSelectedWorld.section;
     
     // Only fetch if we haven't loaded this datacenter's tax rates yet
     // This prevents re-fetching when switching servers within the same datacenter
@@ -1077,7 +1142,7 @@ function App() {
     }
 
     // Fetch tax rates for all worlds in the current data center
-    const worldIds = selectedWorld.dcObj.worlds || [];
+    const worldIds = taxSelectedWorld.dcObj.worlds || [];
     if (worldIds.length === 0) {
       setTaxRates({});
       setIsLoadingTaxRates(false);
@@ -1137,7 +1202,7 @@ function App() {
     return () => {
       taxRatesAbortController.abort();
     };
-  }, [selectedWorld?.section, worlds, isTaxRatesModalOpen]); // Only depend on datacenter name, not the whole selectedWorld object
+  }, [taxSelectedWorld?.section, worlds, isTaxRatesModalOpen]); // Only depend on datacenter name, not the whole taxSelectedWorld object
 
   // Sync selectedItem to ref
   useEffect(() => {
@@ -3063,6 +3128,20 @@ function App() {
     setIsServerSelectorDisabled(true);
   }, [datacenters, worlds]);
 
+  // Handle tax server option change (independent from main server selection)
+  const handleTaxServerOptionChange = useCallback((option) => {
+    setTaxServerOption(option);
+    try {
+      if (option === null || option === undefined) {
+        localStorage.removeItem(TAX_SERVER_STORAGE_KEY);
+      } else {
+        localStorage.setItem(TAX_SERVER_STORAGE_KEY, `${option}`);
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
   // Preload item icon immediately when item info page loads
   // This ensures icon request is processed before prices/obtainable methods/etc
   useEffect(() => {
@@ -3667,6 +3746,9 @@ function App() {
           setIsTaxRatesModalOpen={setIsTaxRatesModalOpen}
           taxRates={taxRates}
           isLoadingTaxRates={isLoadingTaxRates}
+          taxSelectedWorld={taxSelectedWorld}
+          taxServerOption={taxServerOption}
+          onTaxServerOptionChange={handleTaxServerOptionChange}
         />
       </Suspense>
     );
@@ -3702,6 +3784,9 @@ function App() {
           setIsTaxRatesModalOpen={setIsTaxRatesModalOpen}
           taxRates={taxRates}
           isLoadingTaxRates={isLoadingTaxRates}
+          taxSelectedWorld={taxSelectedWorld}
+          taxServerOption={taxServerOption}
+          onTaxServerOptionChange={handleTaxServerOptionChange}
         />
       </Suspense>
     );
@@ -3737,6 +3822,9 @@ function App() {
           setIsTaxRatesModalOpen={setIsTaxRatesModalOpen}
           taxRates={taxRates}
           isLoadingTaxRates={isLoadingTaxRates}
+          taxSelectedWorld={taxSelectedWorld}
+          taxServerOption={taxServerOption}
+          onTaxServerOptionChange={handleTaxServerOptionChange}
         />
       </Suspense>
     );
@@ -5245,9 +5333,9 @@ function App() {
         taxRates={taxRates}
         worlds={worlds}
         isLoading={isLoadingTaxRates}
-        selectedWorld={selectedWorld}
-        selectedServerOption={selectedServerOption}
-        onServerOptionChange={handleServerOptionChange}
+        selectedWorld={taxSelectedWorld}
+        selectedServerOption={taxServerOption}
+        onServerOptionChange={handleTaxServerOptionChange}
       />
 
       {/* Multi-Item Combined Tree Modal */}

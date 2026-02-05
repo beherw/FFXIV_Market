@@ -55,7 +55,10 @@ export default function MSQPriceChecker({
   isTaxRatesModalOpen,
   setIsTaxRatesModalOpen,
   taxRates,
-  isLoadingTaxRates
+  isLoadingTaxRates,
+  taxSelectedWorld,
+  taxServerOption,
+  onTaxServerOptionChange
 }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -380,11 +383,31 @@ export default function MSQPriceChecker({
               'quantity'
             );
 
-            const averagePrice = getValue(
-              item.nq?.averageSalePrice,
-              item.hq?.averageSalePrice,
-              'price'
-            );
+            // Average price should not change with server selection; fallback to DC when world data is missing
+            let averagePrice = null;
+            if (!isDCQuery) {
+              const nqWorld = item.nq?.averageSalePrice?.world?.price;
+              const hqWorld = item.hq?.averageSalePrice?.world?.price;
+              const nqDc = item.nq?.averageSalePrice?.dc?.price;
+              const hqDc = item.hq?.averageSalePrice?.dc?.price;
+              
+              const nqValue = nqWorld !== undefined ? nqWorld : nqDc;
+              const hqValue = hqWorld !== undefined ? hqWorld : hqDc;
+              
+              if (nqValue !== undefined && hqValue !== undefined) {
+                averagePrice = Math.min(nqValue, hqValue);
+              } else if (hqValue !== undefined) {
+                averagePrice = hqValue;
+              } else if (nqValue !== undefined) {
+                averagePrice = nqValue;
+              }
+            } else {
+              averagePrice = getValue(
+                item.nq?.averageSalePrice,
+                item.hq?.averageSalePrice,
+                'price'
+              );
+            }
 
             const minListingPrice = getValue(
               item.nq?.minListing,
@@ -531,6 +554,13 @@ export default function MSQPriceChecker({
     if (!serverChanged) {
       return;
     }
+
+    // Clear state when server changes to avoid showing stale data from previous server
+    setItemVelocities({});
+    setItemAveragePrices({});
+    setItemMinListings({});
+    setItemRecentPurchases({});
+    setItemTradability({});
 
     // Get tradeable item IDs from search results
     const tradeableItemIds = searchResults
@@ -970,9 +1000,9 @@ export default function MSQPriceChecker({
         taxRates={taxRates}
         worlds={worlds}
         isLoading={isLoadingTaxRates}
-        selectedWorld={selectedWorld}
-        selectedServerOption={selectedServerOption}
-        onServerOptionChange={onServerOptionChange}
+        selectedWorld={taxSelectedWorld || selectedWorld}
+        selectedServerOption={taxServerOption ?? selectedServerOption}
+        onServerOptionChange={onTaxServerOptionChange || onServerOptionChange}
       />
     </div>
   );

@@ -42,7 +42,10 @@ export default function CraftingJobPriceChecker({
   isTaxRatesModalOpen,
   setIsTaxRatesModalOpen,
   taxRates,
-  isLoadingTaxRates
+  isLoadingTaxRates,
+  taxSelectedWorld,
+  taxServerOption,
+  onTaxServerOptionChange
 }) {
   const navigate = useNavigate();
   const [ilvlMin, setIlvlMin] = useState(1);
@@ -320,8 +323,14 @@ export default function CraftingJobPriceChecker({
               const nqDc = nqData?.dc?.[field];
               const hqDc = hqData?.dc?.[field];
               
-              const nqValue = nqWorld !== undefined ? nqWorld : nqDc;
-              const hqValue = hqWorld !== undefined ? hqWorld : hqDc;
+              // When querying a specific server (!isDCQuery), only use world data, don't fallback to DC
+              // When querying DC (isDCQuery), use DC data
+              const nqValue = isDCQuery 
+                ? (nqDc !== undefined ? nqDc : nqWorld)
+                : (nqWorld !== undefined ? nqWorld : undefined);
+              const hqValue = isDCQuery
+                ? (hqDc !== undefined ? hqDc : hqWorld)
+                : (hqWorld !== undefined ? hqWorld : undefined);
               
               if (field === 'quantity') {
                 if (nqValue !== undefined || hqValue !== undefined) {
@@ -345,13 +354,33 @@ export default function CraftingJobPriceChecker({
               'quantity'
             );
             
-            const averagePrice = getValue(
-              item.nq?.averageSalePrice,
-              item.hq?.averageSalePrice,
-              'price'
-            );
+            // Average price should not change with server selection; fallback to DC when world data is missing
+            let averagePrice = null;
+            if (!isDCQuery) {
+              const nqWorld = item.nq?.averageSalePrice?.world?.price;
+              const hqWorld = item.hq?.averageSalePrice?.world?.price;
+              const nqDc = item.nq?.averageSalePrice?.dc?.price;
+              const hqDc = item.hq?.averageSalePrice?.dc?.price;
+              
+              const nqValue = nqWorld !== undefined ? nqWorld : nqDc;
+              const hqValue = hqWorld !== undefined ? hqWorld : hqDc;
+              
+              if (nqValue !== undefined && hqValue !== undefined) {
+                averagePrice = Math.min(nqValue, hqValue);
+              } else if (hqValue !== undefined) {
+                averagePrice = hqValue;
+              } else if (nqValue !== undefined) {
+                averagePrice = nqValue;
+              }
+            } else {
+              averagePrice = getValue(
+                item.nq?.averageSalePrice,
+                item.hq?.averageSalePrice,
+                'price'
+              );
+            }
             
-            const minListing = getValue(
+            const minListingPrice = getValue(
               item.nq?.minListing,
               item.hq?.minListing,
               'price'
@@ -363,34 +392,73 @@ export default function CraftingJobPriceChecker({
               'price'
             );
             
+            // Extract region field when querying a specific world (not DC)
+            let minListing = null;
+            if (minListingPrice !== null && minListingPrice !== undefined) {
+              if (!isDCQuery) {
+                // When world is selected, only use world data, don't fallback to DC
+                const nqWorldPrice = item.nq?.minListing?.world?.price;
+                const hqWorldPrice = item.hq?.minListing?.world?.price;
+                
+                // Determine which one (NQ or HQ) has the better price, then get its region
+                let selectedData = null;
+                if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
+                  selectedData = hqWorldPrice <= nqWorldPrice 
+                    ? item.hq?.minListing?.world
+                    : item.nq?.minListing?.world;
+                } else if (hqWorldPrice !== undefined) {
+                  selectedData = item.hq?.minListing?.world;
+                } else if (nqWorldPrice !== undefined) {
+                  selectedData = item.nq?.minListing?.world;
+                }
+                
+                // Only store minListing if world data actually exists
+                if (selectedData !== null) {
+                  // Extract region if available
+                  const region = selectedData?.region;
+                  minListing = { price: minListingPrice };
+                  if (region !== undefined) {
+                    minListing.region = region;
+                  }
+                }
+                // If selectedData is null, minListing remains null (don't store DC prices)
+              } else {
+                // When DC is selected, just store the price
+                minListing = minListingPrice;
+              }
+            }
+            
             let recentPurchase = null;
             if (recentPurchasePrice !== null && recentPurchasePrice !== undefined) {
               if (!isDCQuery) {
+                // When world is selected, only use world data, don't fallback to DC
                 const nqWorldPrice = item.nq?.recentPurchase?.world?.price;
                 const hqWorldPrice = item.hq?.recentPurchase?.world?.price;
-                const nqDcPrice = item.nq?.recentPurchase?.dc?.price;
-                const hqDcPrice = item.hq?.recentPurchase?.dc?.price;
                 
-                const nqPrice = nqWorldPrice !== undefined ? nqWorldPrice : nqDcPrice;
-                const hqPrice = hqWorldPrice !== undefined ? hqWorldPrice : hqDcPrice;
-                
+                // Determine which one (NQ or HQ) has the better price, then get its region
                 let selectedData = null;
-                if (nqPrice !== undefined && hqPrice !== undefined) {
-                  selectedData = hqPrice <= nqPrice 
-                    ? (item.hq?.recentPurchase?.world || item.hq?.recentPurchase?.dc)
-                    : (item.nq?.recentPurchase?.world || item.nq?.recentPurchase?.dc);
-                } else if (hqPrice !== undefined) {
-                  selectedData = item.hq?.recentPurchase?.world || item.hq?.recentPurchase?.dc;
-                } else if (nqPrice !== undefined) {
-                  selectedData = item.nq?.recentPurchase?.world || item.nq?.recentPurchase?.dc;
+                if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
+                  selectedData = hqWorldPrice <= nqWorldPrice 
+                    ? item.hq?.recentPurchase?.world
+                    : item.nq?.recentPurchase?.world;
+                } else if (hqWorldPrice !== undefined) {
+                  selectedData = item.hq?.recentPurchase?.world;
+                } else if (nqWorldPrice !== undefined) {
+                  selectedData = item.nq?.recentPurchase?.world;
                 }
                 
-                const region = selectedData?.region;
-                recentPurchase = { price: recentPurchasePrice };
-                if (region !== undefined) {
-                  recentPurchase.region = region;
+                // Only store recentPurchase if world data actually exists
+                if (selectedData !== null) {
+                  // Extract region if available
+                  const region = selectedData?.region;
+                  recentPurchase = { price: recentPurchasePrice };
+                  if (region !== undefined) {
+                    recentPurchase.region = region;
+                  }
                 }
+                // If selectedData is null, recentPurchase remains null (don't store DC prices)
               } else {
+                // When DC is selected, just store the price
                 recentPurchase = recentPurchasePrice;
               }
             }
@@ -760,6 +828,13 @@ export default function CraftingJobPriceChecker({
     if (!serverChanged) {
       return;
     }
+
+    // Clear state when server changes to avoid showing stale data from previous server
+    setItemVelocities({});
+    setItemAveragePrices({});
+    setItemMinListings({});
+    setItemRecentPurchases({});
+    setItemTradability({});
 
     // Get tradeable item IDs from search results
     const tradeableItemIds = searchResults
@@ -1255,9 +1330,9 @@ export default function CraftingJobPriceChecker({
         taxRates={taxRates}
         worlds={worlds}
         isLoading={isLoadingTaxRates}
-        selectedWorld={selectedWorld}
-        selectedServerOption={selectedServerOption}
-        onServerOptionChange={onServerOptionChange}
+        selectedWorld={taxSelectedWorld || selectedWorld}
+        selectedServerOption={taxServerOption ?? selectedServerOption}
+        onServerOptionChange={onTaxServerOptionChange || onServerOptionChange}
       />
     </div>
   );
