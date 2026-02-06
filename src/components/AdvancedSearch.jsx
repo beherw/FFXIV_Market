@@ -537,6 +537,34 @@ export default function AdvancedSearch({
         setIsBatchSearching(false);
         return;
       }
+
+      // Helper functions for multilingual exact matching
+      const normalizeExactMatchText = (value) => {
+        if (value === null || value === undefined) return '';
+        return value
+          .toString()
+          .replace(/^['"]+|['"]+$/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase();
+      };
+
+      const buildExactMatchTargets = (originalText, convertedText) => {
+        const targets = new Set();
+        const normalizedOriginal = normalizeExactMatchText(originalText);
+        if (normalizedOriginal) targets.add(normalizedOriginal);
+        const normalizedConverted = normalizeExactMatchText(convertedText);
+        if (normalizedConverted) targets.add(normalizedConverted);
+        return targets;
+      };
+
+      const getItemExactMatchCandidates = (item) => {
+        const candidates = [item?.name, item?.nameTW, item?.searchLanguageName];
+        return candidates
+          .filter(Boolean)
+          .map(value => normalizeExactMatchText(value))
+          .filter(Boolean);
+      };
       
       // Search for each unique item name
       const allSearchResults = [];
@@ -546,24 +574,26 @@ export default function AdvancedSearch({
             // Exact search mode: only return items with exactly matching names (case-insensitive)
             // First get potential matches using substring search (for efficiency)
             const substringResult = await searchItems(itemName, false);
+            const exactMatchTargets = buildExactMatchTargets(
+              itemName,
+              substringResult.converted ? substringResult.convertedText : null
+            );
             
             // Filter to only exact matches - item name must exactly equal search text
-            const trimmedName = itemName.trim().toLowerCase();
             let exactMatches = [];
             
             if (substringResult.results && substringResult.results.length > 0) {
               exactMatches = substringResult.results.filter(item => {
-                const itemNameLower = (item.name || '').trim().toLowerCase();
-                // Exact match: item name must exactly equal search text (case-insensitive)
-                return itemNameLower === trimmedName;
+                const itemCandidates = getItemExactMatchCandidates(item);
+                return itemCandidates.some(candidate => exactMatchTargets.has(candidate));
               });
             }
             
             // Return only exact matches, or empty array if no exact match found (no fallback)
             return exactMatches;
           } else {
-            // Fuzzy search mode: use fuzzy matching directly
-            const searchResult = await searchItems(itemName, true);
+            // Fuzzy search mode: use main search logic (includes multilingual fallback)
+            const searchResult = await searchItems(itemName, false);
             return searchResult.results || [];
           }
         } catch (error) {
@@ -610,16 +640,17 @@ export default function AdvancedSearch({
       
       setMarketableItems(marketableSet);
       const tradeableItems = allItems.filter(item => marketableSet.has(item.id));
+      const untradeableItems = allItems.filter(item => !marketableSet.has(item.id));
 
-      if (tradeableItems.length === 0) {
-        addToast('沒有可交易的物品', 'warning');
+      if (tradeableItems.length === 0 && untradeableItems.length === 0) {
+        addToast('未找到任何物品', 'warning');
         setIsBatchSearching(false);
         return;
       }
 
       // Load ilvls data and sort by ilvl (descending, highest first), then by ID if no ilvl
       // Use targeted query to load only ilvls for these specific items
-      const itemIdsForSort = tradeableItems.map(item => item.id);
+      const itemIdsForSort = allItems.map(item => item.id);
       const ilvlsData = await loadIlvlsData(itemIdsForSort);
       
       // Check if this request was superseded
@@ -627,20 +658,25 @@ export default function AdvancedSearch({
         setIsBatchSearching(false);
         return;
       }
-      const itemsSorted = tradeableItems.sort((a, b) => {
-        const aIlvl = ilvlsData[a.id?.toString()] || null;
-        const bIlvl = ilvlsData[b.id?.toString()] || null;
-        
-        // If both have ilvl, sort by ilvl descending (highest first)
-        if (aIlvl !== null && bIlvl !== null) {
-          return bIlvl - aIlvl;
-        }
-        // If only one has ilvl, prioritize it
-        if (aIlvl !== null) return -1;
-        if (bIlvl !== null) return 1;
-        // If neither has ilvl, sort by ID descending
-        return b.id - a.id;
-      });
+      const sortItemsByIlvl = (items) => {
+        return [...items].sort((a, b) => {
+          const aIlvl = ilvlsData[a.id?.toString()] || null;
+          const bIlvl = ilvlsData[b.id?.toString()] || null;
+          
+          // If both have ilvl, sort by ilvl descending (highest first)
+          if (aIlvl !== null && bIlvl !== null) {
+            return bIlvl - aIlvl;
+          }
+          // If only one has ilvl, prioritize it
+          if (aIlvl !== null) return -1;
+          if (bIlvl !== null) return 1;
+          // If neither has ilvl, sort by ID descending
+          return b.id - a.id;
+        });
+      };
+
+      const tradeableItemsSorted = sortItemsByIlvl(tradeableItems);
+      const untradeableItemsSorted = sortItemsByIlvl(untradeableItems);
 
       // Check if this request was superseded before setting results
       if (currentRequestId !== batchSearchRequestIdRef.current) {
@@ -648,15 +684,37 @@ export default function AdvancedSearch({
         return;
       }
       
-      setSearchResults(itemsSorted);
+      if (tradeableItemsSorted.length === 0 && untradeableItemsSorted.length > 0) {
+        setShowUntradeable(true);
+      } else {
+        setShowUntradeable(false);
+      }
+      setSearchResults(tradeableItemsSorted);
+      setUntradeableResults(untradeableItemsSorted);
       
       // Load rarities for search results (for rarity filter)
-      const itemIdsForRarities = itemsSorted.map(item => item.id);
+      const itemIdsForRarities = [...tradeableItemsSorted, ...untradeableItemsSorted].map(item => item.id);
       loadRaritiesData(itemIdsForRarities).then(raritiesForItems => {
         setRaritiesData(prev => ({ ...prev, ...raritiesForItems }));
       }).catch(error => {
         console.error('Error loading rarities:', error);
       });
+
+      // Mark untradeable items as non-tradable (no market data needed)
+      if (untradeableItemsSorted.length > 0) {
+        const untradeableTradability = {};
+        untradeableItemsSorted.forEach(item => {
+          untradeableTradability[item.id] = false;
+        });
+        setItemTradability(prev => ({ ...prev, ...untradeableTradability }));
+      }
+
+      // If there are no tradeable items, skip market data fetch and finish
+      if (tradeableItemsSorted.length === 0) {
+        setIsBatchSearching(false);
+        addToast(`找到 0 個可交易物品、${untradeableItemsSorted.length} 個不可交易物品`, 'success');
+        return;
+      }
 
       // Fetch market data using progressive batch sizes (20, 50, 100)
       if (!selectedWorld || !selectedServerOption) {
@@ -685,12 +743,18 @@ export default function AdvancedSearch({
 
       // Extract IDs and sort by ilvl (descending, highest first) before API query
       // itemsSorted is already sorted by ilvl, so just extract IDs
-      const tradeableItemIds = itemsSorted.map(item => item.id);
+      const tradeableItemIds = tradeableItemsSorted.map(item => item.id);
       const allVelocities = {};
       const allAveragePrices = {};
       const allMinListings = {};
       const allRecentPurchases = {};
       const allTradability = {};
+
+      if (untradeableItemsSorted.length > 0) {
+        untradeableItemsSorted.forEach(item => {
+          allTradability[item.id] = false;
+        });
+      }
 
       // Progressive batch sizes: 20, then 50, then 100 per batch
       const processBatch = async (batchNumber, startIndex) => {
@@ -958,7 +1022,7 @@ export default function AdvancedSearch({
       setIsLoadingVelocities(false);
       setIsBatchSearching(false);
       
-      addToast(`找到 ${tradeableItems.length} 個可交易物品`, 'success');
+      addToast(`找到 ${tradeableItemsSorted.length} 個可交易物品${untradeableItemsSorted.length > 0 ? `、${untradeableItemsSorted.length} 個不可交易物品` : ''}`, 'success');
     } catch (error) {
       console.error('Search error:', error);
       // Only show error if this request wasn't cancelled
@@ -4428,7 +4492,7 @@ export default function AdvancedSearch({
             const hasTradeableItems = searchResults.length > 0;
             const shouldRender = activeTab === 'filter' 
               ? (hasTradeableItems || (!hasTradeableItems && untradeableResults.length > 0) || isFilterSearching)
-              : (activeTab === 'batch' && (searchResults.length > 0 || isBatchSearching));
+              : (activeTab === 'batch' && (searchResults.length > 0 || untradeableResults.length > 0 || isBatchSearching));
             
             if (!shouldRender) return null;
             
@@ -4449,8 +4513,13 @@ export default function AdvancedSearch({
                 currentResults = searchResults;
               }
             } else if (activeTab === 'batch') {
-              allResultsForRarityCount = searchResults;
-              currentResults = searchResults;
+              if (showUntradeable) {
+                allResultsForRarityCount = [...searchResults, ...untradeableResults];
+                currentResults = [...searchResults, ...untradeableResults];
+              } else {
+                allResultsForRarityCount = searchResults;
+                currentResults = searchResults;
+              }
             } else {
               allResultsForRarityCount = [];
               currentResults = [];
@@ -4530,7 +4599,7 @@ export default function AdvancedSearch({
                 addToast={addToast}
                 title="搜索結果"
                 titleSuffix=""
-                showUntradeableButton={activeTab === 'filter' && untradeableResults.length > 0 && searchResults.length > 0}
+                showUntradeableButton={(activeTab === 'filter' || activeTab === 'batch') && untradeableResults.length > 0 && searchResults.length > 0}
                 untradeableCount={untradeableResults.length}
                 tradeableCount={searchResults.length}
                 onToggleUntradeable={setShowUntradeable}
