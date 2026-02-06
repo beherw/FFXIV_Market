@@ -3,6 +3,8 @@
  * This function analyzes sources and extracts only the IDs that are actually needed
  */
 
+import { DataType } from '../constants/dataTypes.js';
+
 /**
  * Extract all IDs needed from sources
  * @param {Array} sources - Array of source objects from extracts
@@ -36,10 +38,10 @@ export function extractIdsFromSources(sources) {
   sources.forEach(source => {
     const { type, data } = source;
 
-    // TRADE_SOURCES (type 2)
+    // TRADE_SOURCES
     // New optimized format: {type, currencyItemId, npcIds, shopId}
     // Legacy format: {type, data: [{trades, npcs}]}
-    if (type === 2) {
+    if (type === DataType.TRADE_SOURCES) {
       // NEW FORMAT: Properties directly on source object
       if (source.npcIds && Array.isArray(source.npcIds)) {
         source.npcIds.forEach(npcId => {
@@ -100,8 +102,8 @@ export function extractIdsFromSources(sources) {
       }
     }
 
-    // VENDORS (type 3)
-    if (type === 3 && Array.isArray(data)) {
+    // VENDORS
+    if (type === DataType.VENDORS && Array.isArray(data)) {
       data.forEach(vendor => {
         if (vendor.npcId) {
           ids.npcIds.add(vendor.npcId);
@@ -118,8 +120,8 @@ export function extractIdsFromSources(sources) {
       });
     }
 
-    // INSTANCES (type 6)
-    if (type === 6 && Array.isArray(data)) {
+    // INSTANCES
+    if (type === DataType.INSTANCES && Array.isArray(data)) {
       data.forEach(instanceId => {
         const id = typeof instanceId === 'object' ? instanceId.id : instanceId;
         if (id) {
@@ -131,8 +133,8 @@ export function extractIdsFromSources(sources) {
       });
     }
 
-    // QUESTS (type 10) - data can be array of quest IDs or objects with {id, mapid, zoneid, position}
-    if (type === 10 && Array.isArray(data)) {
+    // QUESTS - data can be array of quest IDs or objects with {id, mapid, zoneid, position}
+    if (type === DataType.QUESTS && Array.isArray(data)) {
       data.forEach(questItem => {
         const id = typeof questItem === 'object' && questItem !== null ? questItem.id : questItem;
         if (id) {
@@ -148,8 +150,8 @@ export function extractIdsFromSources(sources) {
       });
     }
 
-    // FATES (type 11)
-    if (type === 11 && Array.isArray(data)) {
+    // FATES
+    if (type === DataType.FATES && Array.isArray(data)) {
       data.forEach(fate => {
         const fateId = typeof fate === 'object' ? fate.id : fate;
         if (fateId) {
@@ -161,8 +163,8 @@ export function extractIdsFromSources(sources) {
       });
     }
 
-    // ACHIEVEMENTS (type 22)
-    if (type === 22 && Array.isArray(data)) {
+    // ACHIEVEMENTS
+    if (type === DataType.ACHIEVEMENTS && Array.isArray(data)) {
       data.forEach(achievementId => {
         const id = typeof achievementId === 'object' ? achievementId.id : achievementId;
         if (id) {
@@ -171,8 +173,8 @@ export function extractIdsFromSources(sources) {
       });
     }
 
-    // CRAFTED_BY (type 1) - extract item IDs from ingredients and masterbook IDs
-    if (type === 1 && Array.isArray(data)) {
+    // CRAFTED_BY - extract item IDs from ingredients and masterbook IDs
+    if (type === DataType.CRAFTED_BY && Array.isArray(data)) {
       data.forEach(craft => {
         if (Array.isArray(craft.ingredients)) {
           craft.ingredients.forEach(ingredient => {
@@ -193,8 +195,8 @@ export function extractIdsFromSources(sources) {
       });
     }
 
-    // TREASURES (type 9) - extract item IDs
-    if (type === 9 && Array.isArray(data)) {
+    // TREASURES - extract item IDs
+    if (type === DataType.TREASURES && Array.isArray(data)) {
       data.forEach(treasureId => {
         const id = typeof treasureId === 'object' ? treasureId.id : treasureId;
         if (id) {
@@ -203,8 +205,18 @@ export function extractIdsFromSources(sources) {
       });
     }
 
-    // MASTERBOOKS (type 18) - extract item IDs from CompactMasterbook objects
-    if (type === 18 && Array.isArray(data)) {
+    // TREASURES (optimized format) - productIds array
+    if (type === DataType.TREASURES && Array.isArray(source.productIds)) {
+      source.productIds.forEach(treasureId => {
+        const id = typeof treasureId === 'object' ? treasureId.id : treasureId;
+        if (id) {
+          ids.itemIds.add(id);
+        }
+      });
+    }
+
+    // MASTERBOOKS - extract item IDs from CompactMasterbook objects
+    if (type === DataType.MASTERBOOKS && Array.isArray(data)) {
       data.forEach(book => {
         // Handle both object format {id: number|string, name?: I18nName} and direct ID format
         if (typeof book === 'object' && book !== null && book.id !== undefined) {
@@ -222,8 +234,18 @@ export function extractIdsFromSources(sources) {
       });
     }
 
-    // ISLAND_CROP (type 15) - data can be array of item IDs or levequest objects
-    if (type === 15 && Array.isArray(data)) {
+    // MASTERBOOKS (optimized format) - masterbookItemIds array
+    if (type === DataType.MASTERBOOKS && Array.isArray(source.masterbookItemIds)) {
+      source.masterbookItemIds.forEach(bookId => {
+        const id = typeof bookId === 'string' ? parseInt(bookId, 10) : bookId;
+        if (id && !isNaN(id)) {
+          ids.itemIds.add(id);
+        }
+      });
+    }
+
+    // ISLAND_CROP - data can be array of item IDs or levequest objects
+    if (type === DataType.ISLAND_CROP && Array.isArray(data)) {
       data.forEach(item => {
         if (typeof item === 'object' && item !== null) {
           // Check if it's levequest format (has 'item' property)
@@ -247,8 +269,8 @@ export function extractIdsFromSources(sources) {
       });
     }
 
-    // REQUIREMENTS (type 23) - can be array of item IDs or island crop format {seed: number}
-    if (type === 23) {
+    // REQUIREMENTS - can be array of item IDs or island crop format {seed: number}
+    if (type === DataType.REQUIREMENTS) {
       // Check if it's island crop format: {seed: number}
       if (data && typeof data === 'object' && !Array.isArray(data) && 'seed' in data && typeof data.seed === 'number') {
         // Extract seed ID for island crops
@@ -262,6 +284,29 @@ export function extractIdsFromSources(sources) {
           }
         });
       }
+    }
+
+    // QUESTS (optimized format)
+    if (type === DataType.QUESTS && source.questId) {
+      ids.questIds.add(source.questId);
+    }
+
+    // FATES (optimized format)
+    if (type === DataType.FATES && source.fateId) {
+      ids.fateIds.add(source.fateId);
+      if (source.zoneId) {
+        ids.zoneIds.add(source.zoneId);
+      }
+    }
+
+    // ACHIEVEMENTS (optimized format)
+    if (type === DataType.ACHIEVEMENTS && Array.isArray(source.achievementIds)) {
+      source.achievementIds.forEach(achievementId => {
+        const id = typeof achievementId === 'object' ? achievementId.id : achievementId;
+        if (id) {
+          ids.achievementIds.add(id);
+        }
+      });
     }
   });
 

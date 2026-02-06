@@ -54,6 +54,8 @@ let twQuestsDataCache = null;
 let twQuestsDataLoading = false;
 let twLevesDataCache = null;
 let twLevesDataLoading = false;
+let retainerTasksDataCache = null;
+let retainerTasksDataLoading = false;
 
 /**
  * Lazy load tw-quests.json - only loads when quests are actually needed
@@ -115,6 +117,35 @@ async function loadTwLevesData() {
   }
 }
 
+/**
+ * Lazy load retainer-tasks.json - only loads when venture task details are needed
+ * Uses cache to avoid reloading
+ */
+async function loadRetainerTasksData() {
+  if (retainerTasksDataCache) {
+    return retainerTasksDataCache;
+  }
+  
+  if (retainerTasksDataLoading) {
+    while (retainerTasksDataLoading) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return retainerTasksDataCache;
+  }
+  
+  retainerTasksDataLoading = true;
+  try {
+    const module = await import('../../teamcraft_git/libs/data/src/lib/json/retainer-tasks.json');
+    retainerTasksDataCache = module.default || module;
+    return retainerTasksDataCache;
+  } catch (error) {
+    console.error('[ObtainMethods] Failed to load retainer-tasks.json:', error);
+    return [];
+  } finally {
+    retainerTasksDataLoading = false;
+  }
+}
+
 // All data loading now uses Supabase batch queries - no JSON file loading needed
 
 import MapModal from './MapModal';
@@ -126,6 +157,121 @@ const obtainMethodsCache = {};
 
 // Cache expiration time: 1 hour (3600000 ms) - data rarely changes
 const CACHE_EXPIRY_MS = 60 * 60 * 1000;
+
+// Eorzea time helpers (1 Eorzea day = 70 real minutes)
+const EORZEA_TIME_RATIO = 3600 / 175; // 20.57142857
+const EORZEA_MINUTES_PER_DAY = 24 * 60;
+
+function getEorzeaTime(earthMs) {
+  const eorzeaMs = earthMs * EORZEA_TIME_RATIO;
+  const eorzeaDate = new Date(eorzeaMs);
+  const hours = eorzeaDate.getUTCHours();
+  const minutes = eorzeaDate.getUTCMinutes();
+  const seconds = eorzeaDate.getUTCSeconds();
+  const totalMinutes = hours * 60 + minutes + seconds / 60;
+  return { hours, minutes, seconds, totalMinutes };
+}
+
+function formatEorzeaDuration(minutes) {
+  if (!Number.isFinite(minutes)) return '--:--';
+  const totalSeconds = Math.max(0, Math.floor(minutes * 60));
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+function formatEorzeaTimeOfDay(totalMinutes) {
+  if (!Number.isFinite(totalMinutes)) return '--:--';
+  const normalized = ((Math.floor(totalMinutes) % EORZEA_MINUTES_PER_DAY) + EORZEA_MINUTES_PER_DAY) % EORZEA_MINUTES_PER_DAY;
+  const hours = Math.floor(normalized / 60);
+  const minutes = normalized % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function getLimitedNodeTiming(spawns, durationMinutes, currentMinutes) {
+  if (!Array.isArray(spawns) || spawns.length === 0 || !Number.isFinite(durationMinutes) || durationMinutes <= 0 || !Number.isFinite(currentMinutes)) {
+    return null;
+  }
+
+  const spawnStarts = spawns
+    .map(hour => Number(hour))
+    .filter(hour => Number.isFinite(hour))
+    .map(hour => ((hour % 24) + 24) % 24)
+    .sort((a, b) => a - b)
+    .map(hour => hour * 60);
+
+  if (spawnStarts.length === 0) return null;
+
+  const minutesInDay = EORZEA_MINUTES_PER_DAY;
+
+  for (const start of spawnStarts) {
+    const end = start + durationMinutes;
+    if (end <= minutesInDay) {
+      if (currentMinutes >= start && currentMinutes < end) {
+        const remaining = end - currentMinutes;
+        return {
+          state: 'spawned',
+          remainingMinutes: remaining,
+          totalMinutes: durationMinutes,
+          nextSpawnStart: start,
+          progress: Math.min(1, Math.max(0, (durationMinutes - remaining) / durationMinutes))
+        };
+      }
+    } else {
+      const endWrapped = end - minutesInDay;
+      if (currentMinutes >= start || currentMinutes < endWrapped) {
+        const remaining = currentMinutes >= start
+          ? minutesInDay - currentMinutes + endWrapped
+          : endWrapped - currentMinutes;
+        return {
+          state: 'spawned',
+          remainingMinutes: remaining,
+          totalMinutes: durationMinutes,
+          nextSpawnStart: start,
+          progress: Math.min(1, Math.max(0, (durationMinutes - remaining) / durationMinutes))
+        };
+      }
+    }
+  }
+
+  let nextStart = null;
+  for (const start of spawnStarts) {
+    if (start > currentMinutes) {
+      nextStart = start;
+      break;
+    }
+  }
+  if (nextStart === null) {
+    nextStart = spawnStarts[0] + minutesInDay;
+  }
+
+  let prevStart = null;
+  for (let i = spawnStarts.length - 1; i >= 0; i -= 1) {
+    if (spawnStarts[i] <= currentMinutes) {
+      prevStart = spawnStarts[i];
+      break;
+    }
+  }
+  if (prevStart === null) {
+    prevStart = spawnStarts[spawnStarts.length - 1] - minutesInDay;
+  }
+
+  const prevEnd = prevStart + durationMinutes;
+  const downtimeTotal = Math.max(1, nextStart - prevEnd);
+  const remaining = Math.max(0, nextStart - currentMinutes);
+
+  return {
+    state: 'waiting',
+    remainingMinutes: remaining,
+    totalMinutes: downtimeTotal,
+    nextSpawnStart: nextStart,
+    progress: Math.min(1, Math.max(0, 1 - remaining / downtimeTotal))
+  };
+}
 
 /**
  * Get cached data for an item, or null if not cached or expired
@@ -179,11 +325,73 @@ function setCachedObtainMethodsData(itemId, sources, loadedData) {
   };
 }
 
+function getDropInfoScore(drop) {
+  if (!drop || typeof drop !== 'object') return 0;
+  const hasZone = drop.zoneid !== null && drop.zoneid !== undefined;
+  const hasMap = drop.mapid !== null && drop.mapid !== undefined;
+  const hasPosition = drop.position && typeof drop.position === 'object';
+  const hasZonePositions = Array.isArray(drop.zonePositions) && drop.zonePositions.length > 0;
+  const hasLevel = (drop.minLevel !== null && drop.minLevel !== undefined) || (drop.maxLevel !== null && drop.maxLevel !== undefined) || (drop.lvl !== null && drop.lvl !== undefined);
+
+  return (hasZone ? 2 : 0) + (hasMap ? 1 : 0) + (hasPosition ? 3 : 0) + (hasZonePositions ? 3 : 0) + (hasLevel ? 1 : 0);
+}
+
+function mergeDropSources(existingDrops, newDrops) {
+  const byKey = new Map();
+  const order = [];
+  const mobHasSpecific = new Set();
+
+  const ingest = (drop) => {
+    if (drop === null || drop === undefined) return;
+    const normalized = typeof drop === 'number' ? { id: drop } : drop;
+    const mobId = normalized.id ?? normalized.mobId;
+    if (!mobId) return;
+
+    const zoneid = normalized.zoneid ?? normalized.zoneId ?? normalized.position?.zoneid;
+    const mapid = normalized.mapid ?? normalized.mapId;
+    const key = `${mobId}|${zoneid ?? 'none'}|${mapid ?? 'none'}`;
+    const score = getDropInfoScore(normalized);
+    const isSpecific = (zoneid !== null && zoneid !== undefined) || (mapid !== null && mapid !== undefined) || (Array.isArray(normalized.zonePositions) && normalized.zonePositions.length > 0) || !!normalized.position;
+
+    if (isSpecific) {
+      mobHasSpecific.add(String(mobId));
+    }
+
+    if (!byKey.has(key)) {
+      byKey.set(key, { drop: normalized, score, mobId: String(mobId), isSpecific });
+      order.push(key);
+      return;
+    }
+
+    const existing = byKey.get(key);
+    if (score > existing.score) {
+      byKey.set(key, { drop: normalized, score, mobId: String(mobId), isSpecific });
+    }
+  };
+
+  existingDrops.forEach(ingest);
+  newDrops.forEach(ingest);
+
+  return order
+    .map(key => byKey.get(key))
+    .filter(entry => !(entry && !entry.isSpecific && mobHasSpecific.has(entry.mobId)))
+    .map(entry => entry.drop);
+}
+
 export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTree, isCraftingTreeExpanded = false, onLoadingChange, onSourcesChange }) {
   
   const navigate = useNavigate();
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [clockTick, setClockTick] = useState(() => Date.now());
+  const eorzeaTime = useMemo(() => getEorzeaTime(clockTick), [clockTick]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setClockTick(Date.now());
+    }, 1000);
+    return () => clearInterval(intervalId);
+  }, []);
   
   // Notify parent component when loading state changes
   useEffect(() => {
@@ -303,6 +511,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     twPlaces: {}, // Will be loaded in useEffect
     places: {}, // Will be loaded in useEffect
     twItems: {},
+    retainerTasksById: {},
     fateSources: [],
     lootSources: []
   });
@@ -357,6 +566,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         twPlaces: loadedDataRef.current.twPlaces || {}, // Preserve place data loaded asynchronously
         places: loadedDataRef.current.places || {}, // Preserve place data loaded asynchronously
         twItems: {},
+        retainerTasksById: loadedDataRef.current.retainerTasksById || {},
         fateSources: [],
         lootSources: []
       };
@@ -403,6 +613,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     places: {},
     // Item data (for currency names, etc.)
     twItems: {},
+    retainerTasksById: {},
     // Special sources
     fateSources: [],
     lootSources: []
@@ -414,6 +625,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const [twLevesStaticData, setTwLevesStaticData] = useState(null); // Lazy-loaded tw-leves.json data
   const [isLoadingQuestsData, setIsLoadingQuestsData] = useState(false); // Track loading state for React
   const [isLoadingLevesData, setIsLoadingLevesData] = useState(false); // Track loading state for React
+  const [isLoadingRetainerTasksData, setIsLoadingRetainerTasksData] = useState(false); // Track loading state for retainer tasks
   const [leveNpcsLoaded, setLeveNpcsLoaded] = useState(false); // Track if NPC data for leves has been loaded
   const [placesLoaded, setPlacesLoaded] = useState(false); // Track if place data has been loaded - triggers re-render
   
@@ -498,6 +710,54 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     }
     
   }, [sources, dataLoaded, twLevesStaticData]);
+
+  // Lazy load retainer task details for venture sources with missing fields
+  useEffect(() => {
+    if (!sources || sources.length === 0 || !dataLoaded) {
+      return;
+    }
+
+    const ventureSources = sources.filter(s => s.type === DataType.VENTURES);
+    if (ventureSources.length === 0) {
+      return;
+    }
+
+    const tasks = ventureSources.flatMap(source => source.tasks || source.data || []);
+    const needsRetainerTasks = tasks.some(task => {
+      if (task === null || task === undefined) return true;
+      if (typeof task !== 'object') return true;
+      if (!('id' in task)) return true;
+      const hasLevel = task.level !== undefined || task.lvl !== undefined;
+      const hasQuantities = Array.isArray(task.quantities) && task.quantities.length > 0;
+      return !hasLevel || !hasQuantities;
+    });
+
+    if (!needsRetainerTasks || isLoadingRetainerTasksData || (loadedDataRef.current.retainerTasksById && Object.keys(loadedDataRef.current.retainerTasksById).length > 0)) {
+      return;
+    }
+
+    setIsLoadingRetainerTasksData(true);
+    loadRetainerTasksData().then(data => {
+      const byId = {};
+      data.forEach(task => {
+        if (task && task.id !== undefined && task.id !== null) {
+          byId[task.id] = task;
+          byId[String(task.id)] = task;
+        }
+      });
+
+      setLoadedData(prev => ({
+        ...prev,
+        retainerTasksById: byId
+      }));
+
+      loadedDataRef.current.retainerTasksById = byId;
+      setIsLoadingRetainerTasksData(false);
+    }).catch(err => {
+      console.warn('[ObtainMethods] Failed to load retainer-tasks.json:', err);
+      setIsLoadingRetainerTasksData(false);
+    });
+  }, [sources, dataLoaded, isLoadingRetainerTasksData]);
 
   // Load Wiki URL when itemId changes (for activity content notice)
   useEffect(() => {
@@ -975,10 +1235,20 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             
             // Add DROPS source if we have valid drop data
             if (dropObjects.length > 0) {
-              processedSources.push({
-                type: DataType.DROPS,
-                data: dropObjects
-              });
+                const existingDropIndex = processedSources.findIndex(source => source.type === DataType.DROPS);
+                if (existingDropIndex >= 0) {
+                  const existingDropSource = processedSources[existingDropIndex];
+                  const existingData = Array.isArray(existingDropSource.data) ? existingDropSource.data : [];
+                  processedSources[existingDropIndex] = {
+                    ...existingDropSource,
+                    data: mergeDropSources(existingData, dropObjects)
+                  };
+                } else {
+                  processedSources.push({
+                    type: DataType.DROPS,
+                    data: dropObjects
+                  });
+                }
             }
           }
           
@@ -1720,6 +1990,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           console.log(`[ObtainMethods] Item ${itemId}: Filtering out empty QUESTS source`);
         }
         return !isEmpty;
+      }
+      // Filter out ALARMS (鬧鐘提醒) - this method is not reliable
+      if (source.type === DataType.ALARMS || source.typeName === '鬧鐘提醒' || source.typeName === '時間限定') {
+        console.log(`[ObtainMethods] Item ${itemId}: Filtering out ALARMS (Type 19) source`);
+        return false;
       }
       // Filter out DESYNTHS (精製獲得 - Type 5)
       if (source.type === DataType.DESYNTHS) {
@@ -2940,22 +3215,29 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         return null;
       }
 
+      const validTreasures = data
+        .map(entry => (typeof entry === 'object' && entry !== null ? entry.id : entry))
+        .filter(treasureId => {
+          const treasureData = loadedData.twItems[treasureId] || loadedData.twItems[String(treasureId)];
+          return treasureData && treasureData.tw;
+        });
+
+      if (validTreasures.length === 0) {
+        return null;
+      }
+
       return (
-        <div key={`treasure-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`treasure-${index}`} className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start">
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/061000/061808.png" alt="Treasure" className="w-6 h-6" />
-            <span className="text-ffxiv-gold font-medium">寶箱/容器</span>
+            <img src="https://xivapi.com/i/061000/061010.png" alt="Treasure" className="w-6 h-6" />
+            <span className="text-ffxiv-gold font-medium">{source.typeName || '寶箱/容器'}</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            {data.map((treasureId, treasureIndex) => {
-              // Check if item exists in tw-items.json
-              const treasureItemData = loadedData.twItems[treasureId] || loadedData.twItems[String(treasureId)];
-              if (!treasureItemData || !treasureItemData.tw) {
-                return null; // Skip if no lookup available
-              }
-              
-              const treasureName = treasureItemData.tw;
-              
+            {validTreasures.map((treasureId, treasureIndex) => {
+              const treasureData = loadedData.twItems[treasureId] || loadedData.twItems[String(treasureId)];
+              const treasureName = treasureData?.tw;
+              if (!treasureName) return null;
+
               return (
                 <button
                   key={treasureIndex}
@@ -2994,9 +3276,16 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
     // Instances (副本) - data is an array of instance IDs
     if (type === DataType.INSTANCES) {
-            // Defensive check: ensure data exists and is an array
-            if (!data || !Array.isArray(data)) {
-              console.warn(`[ObtainMethods] ⚠️ INSTANCES source has invalid data:`, source);
+            // Support both legacy data (IDs) and optimized data (instanceNames)
+            const instanceEntries = Array.isArray(data) && data.length > 0
+              ? data
+              : (Array.isArray(source.instanceNames)
+                ? source.instanceNames.map(name => ({ name }))
+                : []);
+
+            // Defensive check: ensure we have something to render
+            if (!instanceEntries || instanceEntries.length === 0) {
+              console.warn(`[ObtainMethods] ⚠️ INSTANCES source has no renderable entries:`, source);
               return null;
             }
       
@@ -3007,12 +3296,26 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             <span className="text-ffxiv-gold font-medium">{source.typeName || '副本掉落'}</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            {data.map((instanceId, instanceIndex) => {
-              const instanceName = getInstanceName(instanceId);
+            {instanceEntries.map((instanceEntry, instanceIndex) => {
+              const instanceId = typeof instanceEntry === 'object' && instanceEntry !== null ? instanceEntry.id : instanceEntry;
+              const fallbackName = typeof instanceEntry === 'object' && instanceEntry !== null ? instanceEntry.name : null;
+              const instanceName = fallbackName || getInstanceName(instanceId);
               
               // Skip if no lookup available (fallback name means no data)
-              if (instanceName === `副本 ${instanceId}`) {
+              if (!instanceId && !instanceName) {
                 return null;
+              }
+
+              // If we don't have a valid ID, render a minimal card with name only
+              if (!instanceId) {
+                return (
+                  <div key={instanceIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded-lg p-3 min-h-[80px] flex flex-col justify-center border border-slate-700/30">
+                    <div className="flex items-center gap-2">
+                      <img src="https://xivapi.com/i/061000/061801.png" alt="Instance" className="w-7 h-7 flex-shrink-0" />
+                      <span className="text-sm font-medium text-gray-300 leading-tight">{instanceName || '未知副本'}</span>
+                    </div>
+                  </div>
+                );
               }
               
               // Get Simplified Chinese name for Huiji Wiki link
@@ -3129,7 +3432,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       
       data.forEach((drop) => {
         const mobId = typeof drop === 'object' ? drop.id : drop;
-        const mobName = getMobName(mobId);
+        const fallbackMobName = typeof drop === 'object' ? (drop.name || drop.mobName) : null;
+        const mobName = getMobName(mobId) || fallbackMobName;
         
         // Skip if no lookup available
         if (!mobName) {
@@ -3139,6 +3443,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         // Get zone and level info from drop object (already processed from monsters.json)
         const zoneId = typeof drop === 'object' ? drop.zoneid : null;
         const mapId = typeof drop === 'object' ? drop.mapid : null;
+        const zoneNameFallback = typeof drop === 'object' ? drop.zoneName : null;
         const minLevel = typeof drop === 'object' ? drop.minLevel : null;
         const maxLevel = typeof drop === 'object' ? drop.maxLevel : null;
         const zonePositions = typeof drop === 'object' ? drop.zonePositions : [];
@@ -3149,7 +3454,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           if (!monstersByZone['unknown']) {
             monstersByZone['unknown'] = {
               zoneId: 'unknown',
-              zoneName: '未知區域',
+              zoneName: zoneNameFallback || '未知區域',
               monsters: []
             };
           }
@@ -4008,6 +4313,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const nodeLevel = node.level || gatheringLevel;
               const isLimited = node.limited === true;
               const isIslandNode = node.isIslandNode === true;
+              const timing = isLimited
+                ? getLimitedNodeTiming(node.spawns, node.duration, eorzeaTime.totalMinutes)
+                : null;
 
               return (
                 <div key={nodeIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
@@ -4030,6 +4338,28 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       )}
                     </div>
                   </div>
+
+                  {isLimited && timing && (
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className={timing.state === 'spawned' ? 'text-emerald-300' : 'text-amber-300'}>
+                          {timing.state === 'spawned' ? '可採集' : '距離下次出現'}
+                        </span>
+                        <span className="text-gray-300">{formatEorzeaDuration(timing.remainingMinutes)} ET</span>
+                      </div>
+                      <div className="mt-1 h-2 w-full rounded bg-slate-800/80 overflow-hidden">
+                        <div
+                          className={`h-full ${timing.state === 'spawned' ? 'bg-emerald-400' : 'bg-amber-400'}`}
+                          style={{ width: `${Math.round(timing.progress * 100)}%` }}
+                        />
+                      </div>
+                      <div className="mt-1 text-[11px] text-gray-400">
+                        {timing.state === 'spawned'
+                          ? `剩餘 ${formatEorzeaDuration(timing.remainingMinutes)} ET`
+                          : `下一次 ${formatEorzeaTimeOfDay(timing.nextSpawnStart)} ET`}
+                      </div>
+                    </div>
+                  )}
                   
                   {locationInfo.hasLocation && (
                     <button
@@ -4130,33 +4460,87 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`venture-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`venture-${index}`} className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start">
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/021000/021267.png" alt="Venture" className="w-6 h-6" />
             <span className="text-ffxiv-gold font-medium">雇員探險</span>
           </div>
           <div className="flex flex-col gap-2 mt-2">
             {tasks.map((task, taskIdx) => {
-              const maxQuantity = task.quantities?.[task.quantities.length - 1]?.quantity || '?';
+              const taskId = typeof task === 'object' && task !== null ? task.id : task;
+              const taskFromLookup = taskId !== undefined && taskId !== null
+                ? (loadedDataRef.current.retainerTasksById?.[taskId] || loadedDataRef.current.retainerTasksById?.[String(taskId)])
+                : null;
+              const mergedTask = taskFromLookup
+                ? { ...taskFromLookup, ...(typeof task === 'object' && task !== null ? task : {}) }
+                : (typeof task === 'object' && task !== null ? task : { id: taskId });
+              const quantities = Array.isArray(mergedTask?.quantities) ? mergedTask.quantities : [];
+              const maxQuantity = quantities.length > 0
+                ? quantities.reduce((max, entry) => Math.max(max, Number(entry?.quantity) || 0), 0)
+                : '?';
+              const level = mergedTask?.level ?? mergedTask?.lvl;
+              const reqGathering = mergedTask?.reqGathering ?? 0;
+              const reqIlvl = mergedTask?.reqIlvl ?? 0;
               
               return (
-                <div key={taskIdx} className="bg-slate-900/50 rounded p-2 border border-slate-700/50">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-blue-400">
-                      等級 {task.level} 雇員探險
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      最多 {maxQuantity} 個
-                    </div>
-                  </div>
-                  <div className="flex gap-3 mt-1 text-xs text-gray-400">
-                    {task.reqGathering > 0 && (
-                      <span>採集力 {task.reqGathering}+</span>
+                <div key={taskIdx} className="bg-slate-900/50 rounded-lg p-3 border border-slate-700/50">
+                  {/* Header */}
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-700/50">
+                    <span className="text-xs text-slate-500">需求等級</span>
+                    <span className="text-base font-semibold text-ffxiv-gold">{level ?? '?'}</span>
+                    {(reqGathering > 0 || reqIlvl > 0) && (
+                      <>
+                        <span className="text-slate-600 mx-1">|</span>
+                        {reqGathering > 0 && (
+                          <span className="text-xs text-slate-400">採集力 <span className="text-blue-400 font-medium">{reqGathering}+</span></span>
+                        )}
+                        {reqIlvl > 0 && reqGathering > 0 && <span className="text-slate-600 mx-1">·</span>}
+                        {reqIlvl > 0 && (
+                          <span className="text-xs text-slate-400">裝等 <span className="text-purple-400 font-medium">{reqIlvl}+</span></span>
+                        )}
+                      </>
                     )}
-                    {task.reqIlvl > 0 && (
-                      <span>裝等 {task.reqIlvl}+</span>
-                    )}
                   </div>
+                  
+                  {/* Quantities with arrow guidance */}
+                  {quantities.length > 0 && (
+                    <div className="space-y-2">
+                      {quantities.map((entry, qIdx) => {
+                        const statLabel = entry?.stat === 'perception' ? '感知' : '裝等';
+                        const statValue = entry?.value !== undefined && entry?.value !== null ? entry.value : null;
+                        const qty = entry?.quantity ?? '?';
+                        return (
+                          <div key={qIdx} className="flex items-center gap-3 group">
+                            {/* Condition */}
+                            <div className="flex-shrink-0 min-w-[100px] px-3 py-1.5 rounded-md bg-slate-800/70 border border-slate-700/60 group-hover:border-blue-500/40 transition-colors">
+                              {statValue !== null ? (
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-xs text-slate-500">{statLabel}</span>
+                                  <span className="text-sm font-medium text-slate-200">{statValue}</span>
+                                  <span className="text-xs text-slate-500">+</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-400">基礎屬性</span>
+                              )}
+                            </div>
+                            
+                            {/* Arrow */}
+                            <div className="flex items-center gap-1 text-slate-600 group-hover:text-ffxiv-gold transition-colors">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                              </svg>
+                            </div>
+                            
+                            {/* Result */}
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 group-hover:border-green-500/50 transition-colors">
+                              <span className="text-lg font-bold text-green-400">{qty}</span>
+                              <span className="text-xs text-green-400/70">個</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -4889,99 +5273,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return null;
     }
 
-    // Alarms (鬧鐘提醒) - data is an array of Alarm objects with node information
+    // Alarms (鬧鐘提醒) - removed from UI due to unreliable data
     if (type === DataType.ALARMS) {
-      if (!data || !Array.isArray(data) || data.length === 0) {
-        return null;
-      }
-
-      // Node type icons mapping
-      const nodeTypeIcons = {
-        0: 'https://xivapi.com/i/060000/060438.png', // Mining
-        1: 'https://xivapi.com/i/060000/060437.png', // Quarrying
-        2: 'https://xivapi.com/i/060000/060433.png', // Logging
-        3: 'https://xivapi.com/i/060000/060432.png', // Harvesting
-        4: 'https://xivapi.com/i/060000/060445.png', // Fishing
-        5: 'https://xivapi.com/i/060000/060465.png', // Spearfishing
-      };
-
-      const nodeTypeNames = {
-        0: '採礦',
-        1: '採石',
-        2: '採伐',
-        3: '割取',
-        4: '釣魚',
-        5: '潛水',
-      };
-
-      return (
-        <div key={`alarm-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
-          <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/060000/060502.png" alt="Alarm" className="w-6 h-6" />
-            <span className="text-ffxiv-gold font-medium">鬧鐘提醒</span>
-          </div>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {data.map((alarm, alarmIndex) => {
-              if (!alarm || typeof alarm !== 'object') return null;
-              
-              const zoneId = alarm.zoneId;
-              const mapId = alarm.mapId;
-              const coords = alarm.coords;
-              const nodeType = alarm.type !== undefined ? Math.abs(alarm.type) : 0;
-              const nodeIcon = nodeTypeIcons[nodeType] || nodeTypeIcons[0];
-              const nodeTypeName = nodeTypeNames[nodeType] || '採集';
-              const duration = alarm.duration || 0;
-              const spawns = alarm.spawns || [];
-              const isEphemeral = alarm.ephemeral === true;
-              
-              // 使用中心化的地图位置管理
-              const locationInfo = getLocationInfo({
-                zoneId: zoneId,
-                mapId: mapId,
-                coords: coords,
-                contextName: `${nodeTypeName}採集點`
-              });
-
-              return (
-                <div key={alarmIndex} className="bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
-                  <div className="flex items-center gap-2 mb-1">
-                    <img src={nodeIcon} alt={nodeTypeName} className="w-7 h-7 object-contain" />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-white">
-                        {locationInfo.displayText}
-                      </div>
-                      <div className="text-xs text-gray-400 mt-0.5">
-                        {nodeTypeName}
-                        {duration > 0 && <span className="ml-1">持續 {duration} 分鐘</span>}
-                        {isEphemeral && <span className="ml-1 text-yellow-400">限時</span>}
-                        {spawns.length > 0 && <span className="ml-1">出現時間: {spawns.join(', ')}</span>}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {locationInfo.hasLocation && (
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        openMapModal(locationInfo, `${nodeTypeName}採集點`);
-                      }}
-                      className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-700/50 text-xs text-blue-400 hover:bg-slate-800/50 hover:text-blue-300 rounded px-1 py-0.5 transition-all w-full text-left"
-                    >
-                      <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                      </svg>
-                      <span>
-                        {locationInfo.displayText}
-                      </span>
-                    </button>
-                  )}
-                </div>
-              );
-            }).filter(Boolean)}
-          </div>
-        </div>
-      );
+      return null;
     }
 
     // Achievements (成就獎勵) - data is an array of achievement IDs

@@ -67,7 +67,7 @@ function extractEssentialData(type, rawData, instancesMap) {
     : (TYPE_NAME_MAP[type] || '未知');
 
   const result = {
-    type: getTypeString(type),
+    type: getStringFromTypeId(type),
     typeName: typeName
   };
 
@@ -128,6 +128,8 @@ function extractEssentialData(type, rawData, instancesMap) {
           return instance?.contentType;
         }).filter(ct => ct !== undefined))];
         result.totalInstances = rawData.length;
+        // Provide instance IDs for frontend rendering and lookups
+        result.data = rawData;
       }
       break;
 
@@ -135,6 +137,8 @@ function extractEssentialData(type, rawData, instancesMap) {
       if (Array.isArray(rawData) && rawData[0]) {
         result.questId = rawData[0].id;
         result.questName = rawData[0].name || '';
+        // Preserve full quest list for frontend rendering
+        result.data = rawData;
       }
       break;
 
@@ -144,6 +148,8 @@ function extractEssentialData(type, rawData, instancesMap) {
         result.fateName = rawData[0].name || '';
         result.level = rawData[0].level;
         result.zoneId = rawData[0].zoneId;
+        // Preserve full fate list for frontend rendering
+        result.data = rawData;
       }
       break;
 
@@ -155,6 +161,8 @@ function extractEssentialData(type, rawData, instancesMap) {
           name: v.name
         }));
         result.totalVoyages = rawData.length;
+        // Provide data for frontend rendering
+        result.data = result.voyages;
       }
       break;
 
@@ -169,6 +177,8 @@ function extractEssentialData(type, rawData, instancesMap) {
           quantities: task.quantities,
           category: task.category
         }));
+        // Provide data for frontend rendering
+        result.data = result.tasks;
       }
       break;
 
@@ -176,6 +186,8 @@ function extractEssentialData(type, rawData, instancesMap) {
       if (Array.isArray(rawData)) {
         result.achievementIds = rawData;
         result.count = rawData.length;
+        // Provide data for frontend rendering
+        result.data = rawData;
       }
       break;
 
@@ -197,6 +209,12 @@ function extractEssentialData(type, rawData, instancesMap) {
           duration: node.duration,
           radius: node.radius
         }));
+        // Provide data for frontend rendering
+        result.data = {
+          type: result.gatheringType,
+          level: result.level,
+          nodes: result.nodes
+        };
       }
       break;
 
@@ -206,6 +224,8 @@ function extractEssentialData(type, rawData, instancesMap) {
           name: m.name || '',
           zoneName: m.zoneName || ''
         }));
+        // Preserve raw drop data for frontend rendering (includes IDs)
+        result.data = rawData;
       }
       break;
 
@@ -217,6 +237,12 @@ function extractEssentialData(type, rawData, instancesMap) {
         if (rawData.crossBreeds && rawData.crossBreeds.length > 0) {
           result.crossBreeds = rawData.crossBreeds;
         }
+        // Provide data for frontend rendering
+        result.data = {
+          seedItemId: result.seedItemId,
+          duration: result.duration,
+          crossBreeds: result.crossBreeds
+        };
       }
       break;
 
@@ -231,6 +257,8 @@ function extractEssentialData(type, rawData, instancesMap) {
           spawns: alarm.spawns,
           duration: alarm.duration
         }));
+        // Provide data for frontend rendering
+        result.data = result.nodes;
       }
       break;
 
@@ -238,6 +266,8 @@ function extractEssentialData(type, rawData, instancesMap) {
       if (Array.isArray(rawData)) {
         result.masterbookItemIds = rawData;
         result.count = rawData.length;
+        // Provide data for frontend rendering
+        result.data = rawData;
       }
       break;
 
@@ -245,6 +275,8 @@ function extractEssentialData(type, rawData, instancesMap) {
       if (Array.isArray(rawData)) {
         result.productIds = rawData;
         result.count = rawData.length;
+        // Provide data for frontend rendering
+        result.data = rawData;
       }
       break;
 
@@ -255,6 +287,8 @@ function extractEssentialData(type, rawData, instancesMap) {
           id: drop.id,
           amount: drop.amount || 1
         }));
+        // Provide data for frontend rendering
+        result.data = result.drops;
       }
       break;
 
@@ -263,6 +297,8 @@ function extractEssentialData(type, rawData, instancesMap) {
       if (rawData && rawData.id) {
         result.productId = rawData.id;
         result.price = rawData.price;
+        // Provide data for frontend rendering
+        result.data = { id: result.productId, price: result.price };
       }
       break;
 
@@ -270,6 +306,8 @@ function extractEssentialData(type, rawData, instancesMap) {
       // rawData is an object {seed}
       if (rawData && rawData.seed) {
         result.seedItemId = rawData.seed;
+        // Provide data for frontend rendering
+        result.data = { seed: result.seedItemId };
       }
       break;
 
@@ -278,6 +316,16 @@ function extractEssentialData(type, rawData, instancesMap) {
         result.recipeId = rawData[0].recipeId || rawData[0].id;
         result.job = rawData[0].job;
         result.level = rawData[0].level;
+        // Preserve raw data for crafting tree and ingredient lookups
+        result.data = rawData;
+      }
+      break;
+
+    case DataType.REDUCED_FROM:
+    case DataType.DESYNTHS:
+      if (Array.isArray(rawData)) {
+        result.data = rawData;
+        result.count = rawData.length;
       }
       break;
 
@@ -289,35 +337,6 @@ function extractEssentialData(type, rawData, instancesMap) {
   }
 
   return result;
-}
-
-function getTypeString(typeId) {
-  const typeNames = {
-    [DataType.CRAFTED_BY]: 'craft',
-    [DataType.TRADE_SOURCES]: 'specialshop',
-    [DataType.VENDORS]: 'vendor',
-    [DataType.INSTANCES]: 'instance',
-    [DataType.QUESTS]: 'quest',
-    [DataType.FATES]: 'fate',
-    [DataType.GATHERED_BY]: 'gathering',
-    [DataType.DROPS]: 'drop',
-    [DataType.ACHIEVEMENTS]: 'achievement',
-    [DataType.VOYAGES]: 'voyage',
-    [DataType.REDUCED_FROM]: 'reduction',
-    [DataType.DESYNTHS]: 'desynth',
-    [DataType.GARDENING]: 'gardening',
-    [DataType.VENTURES]: 'venture',
-    [DataType.TREASURES]: 'treasure',
-    [DataType.MOGSTATION]: 'mogstation',
-    [DataType.ISLAND_PASTURE]: 'islandpasture',
-    [DataType.ISLAND_CROP]: 'islandcrop',
-    [DataType.ALARMS]: 'alarm',
-    [DataType.REQUIREMENTS]: 'mobdrop',
-    [DataType.MASTERBOOKS]: 'masterbook',
-    [DataType.TRIPLE_TRIAD_DUELS]: 'tripleTriadDuel',
-    [DataType.TRIPLE_TRIAD_PACK]: 'tripleTriadPack'
-  };
-  return typeNames[typeId] || `type_${typeId}`;
 }
 
 function buildOptimizedData() {

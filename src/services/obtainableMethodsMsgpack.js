@@ -5,7 +5,7 @@
  * Now 70% smaller than MessagePack version!
  */
 
-import { DataType, getTypeIdFromString } from '../constants/dataTypes.js';
+import { DataType, getTypeIdFromString, getChineseName } from '../constants/dataTypes.js';
 
 let dataCache = null;
 let isLoading = false;
@@ -71,6 +71,140 @@ export async function loadObtainableMethodsDatabase() {
 /**
  * Get obtain-method sources by item ID
  */
+function normalizeSource(source) {
+  const normalized = { ...source };
+
+  const typeId = typeof normalized.type === 'string'
+    ? getTypeIdFromString(normalized.type)
+    : normalized.type;
+
+  normalized.type = typeId;
+
+  if (!normalized.typeName && typeId !== undefined && typeId !== null) {
+    normalized.typeName = getChineseName(typeId);
+  }
+
+  if (normalized.data === undefined || normalized.data === null) {
+    switch (typeId) {
+      case DataType.TREASURES:
+        if (Array.isArray(normalized.productIds)) {
+          normalized.data = normalized.productIds;
+        }
+        break;
+
+      case DataType.INSTANCES:
+        if (Array.isArray(normalized.instanceIds)) {
+          normalized.data = normalized.instanceIds;
+        } else if (Array.isArray(normalized.instanceNames)) {
+          normalized.data = normalized.instanceNames.map(name => ({ name }));
+        }
+        break;
+
+      case DataType.QUESTS:
+        if (normalized.questId) {
+          normalized.data = [{
+            id: normalized.questId,
+            name: normalized.questName
+          }];
+        }
+        break;
+
+      case DataType.FATES:
+        if (normalized.fateId) {
+          normalized.data = [{
+            id: normalized.fateId,
+            name: normalized.fateName,
+            level: normalized.level,
+            zoneId: normalized.zoneId
+          }];
+        }
+        break;
+
+      case DataType.ACHIEVEMENTS:
+        if (Array.isArray(normalized.achievementIds)) {
+          normalized.data = normalized.achievementIds;
+        }
+        break;
+
+      case DataType.MASTERBOOKS:
+        if (Array.isArray(normalized.masterbookItemIds)) {
+          normalized.data = normalized.masterbookItemIds;
+        }
+        break;
+
+      case DataType.GATHERED_BY:
+        if (Array.isArray(normalized.nodes)) {
+          normalized.data = {
+            level: normalized.level,
+            type: normalized.gatheringType,
+            nodes: normalized.nodes
+          };
+        }
+        break;
+
+      case DataType.ALARMS:
+        if (Array.isArray(normalized.nodes)) {
+          normalized.data = normalized.nodes;
+        }
+        break;
+
+      case DataType.VENTURES:
+        if (Array.isArray(normalized.tasks)) {
+          normalized.data = normalized.tasks;
+        }
+        break;
+
+      case DataType.VOYAGES:
+        if (Array.isArray(normalized.voyages)) {
+          normalized.data = normalized.voyages;
+        }
+        break;
+
+      case DataType.GARDENING:
+        if (normalized.seedItemId) {
+          normalized.data = {
+            seedItemId: normalized.seedItemId,
+            duration: normalized.duration,
+            crossBreeds: normalized.crossBreeds
+          };
+        }
+        break;
+
+      case DataType.DROPS:
+        if (Array.isArray(normalized.monsters)) {
+          normalized.data = normalized.monsters;
+        }
+        break;
+
+      case DataType.REQUIREMENTS:
+        if (Array.isArray(normalized.drops)) {
+          normalized.data = normalized.drops;
+        }
+        break;
+
+      case DataType.MOGSTATION:
+        if (normalized.productId) {
+          normalized.data = {
+            id: normalized.productId,
+            price: normalized.price
+          };
+        }
+        break;
+
+      case DataType.ISLAND_CROP:
+        if (normalized.seedItemId) {
+          normalized.data = { seed: normalized.seedItemId };
+        }
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  return normalized;
+}
+
 export async function getObtainableSourcesById(itemId) {
   const data = await loadObtainableMethodsDatabase();
   const key = String(itemId);
@@ -86,12 +220,8 @@ export async function getObtainableSourcesById(itemId) {
     return [];
   }
 
-  // Return sources with type converted from string to numeric DataType
-  // Keep all other properties intact - renderers now access them directly (not via data field)
-  return sources.map(source => ({
-    ...source,
-    type: getTypeIdFromString(source.type)
-  }));
+  // Normalize sources: convert type string to DataType, hydrate missing data fields
+  return sources.map(normalizeSource);
 }
 
 // End of file

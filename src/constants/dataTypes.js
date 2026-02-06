@@ -67,6 +67,7 @@ export const TYPE_STRING_TO_ID = {
   'quest': DataType.QUESTS,               // 18
   'achievement': DataType.ACHIEVEMENTS,   // 19
   'requirement': DataType.REQUIREMENTS,   // 20
+  'mobdrop': DataType.REQUIREMENTS,       // legacy alias
   'mogstation': DataType.MOGSTATION,      // 21
   'islandpasture': DataType.ISLAND_PASTURE,  // 22
   'islandcrop': DataType.ISLAND_CROP      // 23
