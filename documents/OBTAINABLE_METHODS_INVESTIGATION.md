@@ -134,7 +134,7 @@ This document tracks the investigation of all obtainable methods in the FFXIV Ma
 ```json
 {
   "type": "instance",
-  "typeName": "迷宮挑戰",
+  "typeName": "副本",
   "instanceNames": ["Instance 9", "Instance 52", ...],
   "instanceContentTypes": [2],
   "totalInstances": 6

@@ -41,6 +41,7 @@ import {
 // Small static files - keep as imports (small size)
 import twNpcTitlesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-npc-titles.json';
 import twJobAbbrData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json';
+import twJobCategoriesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-categories.json';
 import twMobsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-mobs.json';
 // tw-places will be loaded via fetch in useEffect to handle string keys properly
 // import twPlacesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-places.json';
@@ -2607,7 +2608,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`crafted-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/000000/000501.png" alt="Craft" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/000000/000501.png" alt="Craft" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">製作</span>
             {onExpandCraftingTree && (
               <button
@@ -2805,7 +2806,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 220 200"
-              className="w-6 h-6 text-ffxiv-gold"
+              className="w-8 h-8 text-ffxiv-gold"
               fill="none"
               stroke="currentColor"
               strokeWidth="9"
@@ -3042,7 +3043,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`vendor-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/065000/065002.png" alt="Gil" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/065000/065002_hr1.png" alt="Gil" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">NPC商人</span>
           </div>
           <div className="flex flex-col gap-3 mt-2">
@@ -3229,7 +3230,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`treasure-${index}`} className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start">
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/061000/061010.png" alt="Treasure" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/026000/026509_hr1.png" alt="Treasure" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">{source.typeName || '寶箱/容器'}</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
@@ -3292,7 +3293,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`instance-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/061000/061801.png" alt="Instance" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/061000/061801.png" alt="Instance" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">{source.typeName || '副本掉落'}</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
@@ -3327,20 +3328,20 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const instance = currentLoadedData.instances[instanceId] || currentLoadedData.instances[String(instanceId)];
               const iconUrl = instance?.icon 
                 ? `https://xivapi.com${instance.icon}` 
-                : 'https://xivapi.com/i/061000/061801.png';
+                : 'https://xivapi.com/i/061000/061801_hr1.png';
               
               // Determine content type icon based on contentType
               let contentTypeIcon = iconUrl;
               if (instance?.contentType) {
                 // contentType: 2 = Dungeon, 4 = Trial, 5 = Raid, 21 = Deep Dungeon, 28 = Ultimate
                 if (instance.contentType === 4) {
-                  contentTypeIcon = 'https://xivapi.com/i/061000/061804.png'; // Trial
+                  contentTypeIcon = 'https://xivapi.com/i/061000/061804_hr1.png'; // Trial
                 } else if (instance.contentType === 5) {
-                  contentTypeIcon = 'https://xivapi.com/i/061000/061802.png'; // Raid
+                  contentTypeIcon = 'https://xivapi.com/i/061000/061802_hr1.png'; // Raid
                 } else if (instance.contentType === 28) {
-                  contentTypeIcon = 'https://xivapi.com/i/061000/061832.png'; // Ultimate
+                  contentTypeIcon = 'https://xivapi.com/i/061000/061832_hr1.png'; // Ultimate
                 } else if (instance.contentType === 21) {
-                  contentTypeIcon = 'https://xivapi.com/i/061000/061824.png'; // Deep Dungeon
+                  contentTypeIcon = 'https://xivapi.com/i/061000/061824_hr1.png'; // Deep Dungeon
                 }
               }
               
@@ -3579,7 +3580,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`desynth-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/000000/000120.png" alt="Desynth" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/000000/000120.png" alt="Desynth" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">精製獲得</span>
           </div>
           <div className="grid grid-cols-3 gap-2 mt-2">
@@ -3682,7 +3683,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`quest-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/060000/060453.png" alt="Quest" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/060000/060453_hr1.png" alt="Quest" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">任務獎勵</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
@@ -3705,7 +3706,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 return (
                   <div key={questIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col">
                     <div className="flex items-center gap-2 mb-1">
-                      <img src="https://xivapi.com/i/060000/060453.png" alt="Quest" className="w-7 h-7 object-contain flex-shrink-0" />
+                      <img src="https://xivapi.com/i/060000/060453_hr1.png" alt="Quest" className="w-7 h-7 object-contain flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-gray-300">{fallbackName}</span>
                       </div>
@@ -3721,7 +3722,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const quest = currentLoadedData.quests[questId] || currentLoadedData.quests[String(questId)];
               const questIcon = quest?.icon 
                 ? `https://xivapi.com${quest.icon}` 
-                : 'https://xivapi.com/i/060000/060453.png';
+                : 'https://xivapi.com/i/060000/060453_hr1.png';
               
               // Get Simplified Chinese quest name for Huiji Wiki link
               const questCNNameRaw = getQuestCNName(questId);
@@ -3919,7 +3920,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`fate-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/060000/060502.png" alt="FATE" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/060000/060502_hr1.png" alt="FATE" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">危命任務</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
@@ -3949,7 +3950,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               // Get FATE icon (fateData already loaded above)
               const fateIcon = fateData?.icon 
                 ? `https://xivapi.com${fateData.icon}` 
-                : 'https://xivapi.com/i/060000/060502.png';
+                : 'https://xivapi.com/i/060000/060502_hr1.png';
               
               // Get zone name
               const zoneName = fateZoneId ? getPlaceNameCN(fateZoneId) : '';
@@ -4244,14 +4245,35 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         return null;
       }
 
+      const masterbooksSource = sources.find(s => s.type === DataType.MASTERBOOKS);
+      const masterbookRaw = masterbooksSource?.masterbookItemIds || masterbooksSource?.data || [];
+      const masterbookEntries = Array.isArray(masterbookRaw)
+        ? masterbookRaw.map(book => {
+            if (typeof book === 'object' && book !== null) {
+              const bookId = typeof book.id === 'string' ? parseInt(book.id, 10) : book.id;
+              const bookName = book.name?.tw || book.name?.zh || book.name?.en;
+              return { id: bookId, name: bookName };
+            }
+            const bookId = typeof book === 'string' ? parseInt(book, 10) : book;
+            return { id: bookId, name: null };
+          }).filter(entry => entry.id && !isNaN(entry.id))
+        : [];
+
+      const validMasterbooks = masterbookEntries.filter(entry => {
+        const bookData = loadedData.twItems[entry.id] || loadedData.twItems[String(entry.id)];
+        const hasItemData = bookData && bookData.tw;
+        const hasNameFromSource = entry.name;
+        return hasItemData || hasNameFromSource;
+      });
+
       // Node type icons mapping (based on NodeTypeIconPipe)
       const nodeTypeIcons = {
-        0: 'https://xivapi.com/i/060000/060438.png', // Mining
-        1: 'https://xivapi.com/i/060000/060437.png', // Quarrying
-        2: 'https://xivapi.com/i/060000/060433.png', // Logging
-        3: 'https://xivapi.com/i/060000/060432.png', // Harvesting
-        4: 'https://xivapi.com/i/060000/060445.png', // Fishing
-        5: 'https://xivapi.com/i/060000/060465.png', // Spearfishing
+        0: 'https://xivapi.com/i/060000/060438_hr1.png', // Mining
+        1: 'https://xivapi.com/i/060000/060437_hr1.png', // Quarrying
+        2: 'https://xivapi.com/i/060000/060433_hr1.png', // Logging
+        3: 'https://xivapi.com/i/060000/060432_hr1.png', // Harvesting
+        4: 'https://xivapi.com/i/060000/060445_hr1.png', // Fishing
+        5: 'https://xivapi.com/i/060000/060465_hr1.png', // Spearfishing
       };
 
       // Node type names
@@ -4273,11 +4295,54 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       const nodeTypeName = nodeTypeNames[nodeType] || '採集';
 
       return (
-        <div key={`gathered-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`gathered-${index}`} className={`bg-slate-000/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src={nodeIcon} alt={nodeTypeName} className="w-6 h-6" />
+            <img src={nodeIcon} alt={nodeTypeName} className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">採集獲得</span>
           </div>
+          {validMasterbooks.length > 0 && (
+            <div className="mb-3 bg-slate-900/40 border border-slate-700/40 rounded p-2">
+              <div className="text-xs text-gray-400 mb-1">需要秘籍：</div>
+              <div className="flex flex-wrap gap-2">
+                {validMasterbooks.map((entry, bookIndex) => {
+                  const bookId = entry.id;
+                  const bookData = loadedData.twItems[bookId] || loadedData.twItems[String(bookId)];
+                  const bookName = bookData?.tw || entry.name || `物品 ${bookId}`;
+
+                  return (
+                    <button
+                      key={`gathered-masterbook-${bookIndex}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (onItemClick) {
+                          getItemById(bookId).then(item => {
+                            if (item) {
+                              onItemClick(item, { fromObtainable: true });
+                            } else {
+                              const itemUrl = generateItemUrl(bookId, 'item');
+                              navigate(itemUrl);
+                            }
+                          });
+                        } else {
+                          const itemUrl = generateItemUrl(bookId, 'item');
+                          navigate(itemUrl);
+                        }
+                      }}
+                      className="flex items-center gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded px-2 py-1.5 hover:bg-slate-800/70"
+                    >
+                      <ItemImage
+                        itemId={bookId}
+                        alt={bookName}
+                        className="w-5 h-5 object-contain"
+                      />
+                      <span className="hover:underline">{bookName}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2 mt-2">
             {nodes.map((node, nodeIndex) => {
               const zoneId = node.zoneId;
@@ -4320,7 +4385,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               return (
                 <div key={nodeIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
                   <div className="flex items-center gap-2 mb-1">
-                    <img src={nodeIcon} alt={nodeTypeName} className="w-7 h-7 object-contain" />
+                    <img src="https://garlandtools.org/db/images/node/Mineral%20Deposit%20Limited.png" alt={nodeTypeName} className="w-9 h-9 object-contain" />
                     <div className="flex-1">
                       <div className="text-sm font-medium text-white">
                         {locationInfo.displayText}
@@ -4404,7 +4469,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`reduced-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/061000/061808.png" alt="Reduction" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/061000/061808_hr1.png" alt="Reduction" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">分解獲得</span>
           </div>
           <div className={validReductionItems.length === 1 ? "flex justify-center gap-2 mt-2" : "grid grid-cols-3 gap-2 mt-2"}>
@@ -4462,7 +4527,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`venture-${index}`} className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start">
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/021000/021267.png" alt="Venture" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/065000/065049.png" alt="Venture" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">雇員探險</span>
           </div>
           <div className="flex flex-col gap-2 mt-2">
@@ -4481,6 +4546,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const level = mergedTask?.level ?? mergedTask?.lvl;
               const reqGathering = mergedTask?.reqGathering ?? 0;
               const reqIlvl = mergedTask?.reqIlvl ?? 0;
+              const categoryId = mergedTask?.category ?? null;
+              const categoryName = categoryId !== null && categoryId !== undefined
+                ? (twJobCategoriesData[categoryId]?.tw || twJobCategoriesData[String(categoryId)]?.tw)
+                : null;
               
               return (
                 <div key={taskIdx} className="bg-slate-900/50 rounded-lg p-3 border border-slate-700/50">
@@ -4488,6 +4557,15 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-700/50">
                     <span className="text-xs text-slate-500">需求等級</span>
                     <span className="text-base font-semibold text-ffxiv-gold">{level ?? '?'}</span>
+                    {categoryName && (
+                      <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-yellow-900/30 border border-yellow-500/40 text-xs text-ffxiv-gold font-semibold whitespace-nowrap">
+                        <svg className="w-3 h-3 mr-1 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12l2 2 4-4" />
+                        </svg>
+                        {categoryName}
+                      </span>
+                    )}
                     {(reqGathering > 0 || reqIlvl > 0) && (
                       <>
                         <span className="text-slate-600 mx-1">|</span>
@@ -4568,7 +4646,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`gardening-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/061000/061808.png" alt="Gardening" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/061000/061808_hr1.png" alt="Gardening" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">園藝獲得</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
@@ -4624,7 +4702,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`mogstation-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/065000/065002.png" alt="Mogstation" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/065000/065002_hr1.png" alt="Mogstation" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">商城購買</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
@@ -4936,7 +5014,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`island-crop-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/063000/063950_hr1.png" alt="Island Crop" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/063000/063950_hr1.png" alt="Island Crop" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">島嶼作物</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
@@ -4992,7 +5070,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`voyage-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/060000/060856.png" alt="Voyage" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/027000/027841_hr1.png" alt="Voyage" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">遠航探索</span>
           </div>
           <div className="flex flex-col gap-2 mt-2">
@@ -5025,7 +5103,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         return (
           <div key={`island-crop-requirement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
             <div className="flex items-center gap-2 mb-2">
-              <img src="https://xivapi.com/i/063000/063950_hr1.png" alt="Island Crop" className="w-6 h-6" />
+              <img src="https://xivapi.com/i/063000/063950_hr1.png" alt="Island Crop" className="w-8 h-8" />
               <span className="text-ffxiv-gold font-medium">島嶼作物</span>
             </div>
             <div className="text-xs text-gray-400 mb-2">
@@ -5094,7 +5172,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`requirement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/060000/060453.png" alt="Requirement" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/060000/060453_hr1.png" alt="Requirement" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">需求</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
@@ -5142,6 +5220,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
     // Masterbooks (製作書) - data is an array of CompactMasterbook objects: [{id: number|string, name?: I18nName}]
     if (type === DataType.MASTERBOOKS) {
+      const hasGatheredBy = sources.some(s => s.type === DataType.GATHERED_BY);
+      if (hasGatheredBy) {
+        return null;
+      }
+
       if (!data || !Array.isArray(data) || data.length === 0) {
         return null;
       }
@@ -5182,7 +5265,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         return (
           <div key={`masterbook-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
             <div className="flex items-center gap-2 mb-2">
-              <img src="https://xivapi.com/i/065000/065002.png" alt="Masterbook" className="w-6 h-6" />
+              <img src="https://xivapi.com/i/065000/065002_hr1.png" alt="Masterbook" className="w-8 h-8" />
               <span className="text-ffxiv-gold font-medium">製作書</span>
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
@@ -5233,7 +5316,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         return (
           <div key={`masterbook-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
             <div className="flex items-center gap-2 mb-2">
-              <img src="https://xivapi.com/i/065000/065002.png" alt="Masterbook" className="w-6 h-6" />
+              <img src="https://xivapi.com/i/065000/065002_hr1.png" alt="Masterbook" className="w-8 h-8" />
               <span className="text-ffxiv-gold font-medium">製作書</span>
             </div>
             <div className="mt-2 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
@@ -5296,7 +5379,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`achievement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/060000/060453.png" alt="Achievement" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/060000/060453_hr1.png" alt="Achievement" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">成就獎勵</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
@@ -5359,7 +5442,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       return (
         <div key={`requirements-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
           <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/060000/060881.png" alt="Requirements" className="w-6 h-6" />
+            <img src="https://xivapi.com/i/060000/060881.png" alt="Requirements" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">需求材料</span>
           </div>
           <div className="text-xs text-gray-400 mb-2">
@@ -5438,6 +5521,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               全部
             </button>
             {uniqueMethodTypes.map((methodType) => {
+              if (methodType === '秘籍習得') return null;
               const methodName = methodType;
               const isActive = filteredMethodType === methodType;
               return (

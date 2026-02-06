@@ -114,7 +114,7 @@ export const TYPE_CHINESE_NAMES = {
   [DataType.VENDORS]: 'NPC商店',
   [DataType.REDUCED_FROM]: '分解獲得',
   [DataType.DESYNTHS]: '精製獲得',
-  [DataType.INSTANCES]: '迷宮挑戰',
+  [DataType.INSTANCES]: '副本',
   [DataType.GATHERED_BY]: '採集獲得',
   [DataType.GARDENING]: '園藝獲得',
   [DataType.VOYAGES]: '遠航探索',

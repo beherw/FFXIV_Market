@@ -588,91 +588,83 @@ export default function MapModal({ isOpen, onClose, zoneName, x, y, npcName, map
                 style={{
                   left: `${markerPosition.x}%`,
                   top: `${markerPosition.y}%`,
-                  transform: 'translate(-50%, -50%)',
-                  zIndex: 20
+                  transform: 'translate(-50%, -100%)', // Pins the "tip" to the coordinate
+                  zIndex: 20,
+                  filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.5))'
                 }}
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}
-                onWheel={(e) => {
-                  e.stopPropagation();
-                }}
               >
-                <div className="relative">
-                  {/* 採集範圍圓圈 - 使用與Teamcraft相同的公式 */}
+                <div className="relative flex flex-col items-center">
+                  
+                  {/* 1. The Pulse (Subtle under the pin) */}
+                  <div className="absolute top-[100%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-red-500 rounded-full animate-ping opacity-40" />
+
+                  {/* 2. The Pin Body */}
+                  <div className="relative group">
+                    <svg 
+                      width="32" 
+                      height="42" 
+                      viewBox="0 0 32 42" 
+                      fill="none" 
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      {/* External Border/Outline */}
+                      <path 
+                        d="M16 42L12 32C5 30 0 23.5 0 16C0 7 7 0 16 0C25 0 32 7 32 16C32 23.5 27 30 20 32L16 42Z" 
+                        fill="white" 
+                      />
+                      {/* Main Color Gradient */}
+                      <path 
+                        d="M16 39L13 31C6.5 29 2 23 2 16C2 8.5 8.5 2 16 2C23.5 2 30 8.5 30 16C30 23 25.5 29 19 31L16 39Z" 
+                        fill="url(#pinGradient)" 
+                      />
+                      {/* Center Hole (Keep map visible) */}
+                      <circle cx="16" cy="16" r="6" fill="white" fillOpacity="0.2" />
+                      <circle cx="16" cy="16" r="6" stroke="white" strokeWidth="1" />
+                      
+                      <defs>
+                        <linearGradient id="pinGradient" x1="16" y1="0" x2="16" y2="42" gradientUnits="userSpaceOnUse">
+                          <stop stopColor="#FF4B4B" />
+                          <stop offset="1" stopColor="#A50000" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </div>
+
+                  {/* 3. The Gathering Radius (Logic preserved) */}
                   {radius > 0 && mapData && (
                     <div
-                      className="absolute rounded-full border-2 border-yellow-400/60 bg-yellow-400/10"
+                      className="absolute rounded-full border-2 border-yellow-400/60 bg-yellow-400/5"
                       style={{
-                        width: `${250 * radius / (mapData.size_factor * 20.48)}%`,
-                        height: `${250 * radius / (mapData.size_factor * 20.48)}%`,
+                        width: `${(250 * radius) / (mapData.size_factor * 20.48)}%`,
+                        aspectRatio: '1 / 1',
                         transform: 'translate(-50%, -50%)',
                         left: '50%',
-                        top: '50%',
+                        top: '100%', // Centered on the tip
                         pointerEvents: 'none',
-                        boxShadow: '0 0 10px rgba(255, 255, 0, 0.3)',
-                        zIndex: 10
+                        zIndex: -1
                       }}
                     />
                   )}
-                  <div 
-                    className="absolute inset-0 rounded-full bg-white"
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      transform: 'translate(-50%, -50%)',
-                      left: '50%',
-                      top: '50%',
-                      boxShadow: '0 0 4px rgba(255, 255, 255, 0.8), 0 0 8px rgba(255, 0, 0, 0.6)'
-                    }}
-                  />
-                  <div 
-                    className="absolute rounded-full bg-red-600"
-                    style={{
-                      width: '4px',
-                      height: '4px',
-                      transform: 'translate(-50%, -50%)',
-                      left: '50%',
-                      top: '50%',
-                      boxShadow: '0 0 6px rgba(255, 0, 0, 0.9)'
-                    }}
-                  />
-                  <div 
-                    className="absolute bg-red-600"
-                    style={{
-                      width: '1px',
-                      height: '12px',
-                      transform: 'translate(-50%, -50%)',
-                      left: '50%',
-                      top: '50%',
-                      opacity: 0.7
-                    }}
-                  />
-                  <div 
-                    className="absolute bg-red-600"
-                    style={{
-                      width: '12px',
-                      height: '1px',
-                      transform: 'translate(-50%, -50%)',
-                      left: '50%',
-                      top: '50%',
-                      opacity: 0.7
-                    }}
-                  />
                 </div>
+
+                {/* Tooltip (Preserved with your styling) */}
                 {showTooltip && (
                   <div 
-                    className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium whitespace-nowrap border z-30 rounded pointer-events-none"
+                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-1.5 rounded border z-30 pointer-events-none"
                     style={{ 
-                      background: 'rgba(212, 165, 116, 0.95)',
-                      backdropFilter: 'blur(4px)',
+                      background: 'rgba(212, 165, 116, 0.98)',
                       color: '#78350f',
-                      border: '1px solid rgba(139, 69, 19, 0.6)',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.3)',
-                      textShadow: '0 1px 1px rgba(255, 255, 255, 0.5)'
+                      border: '1px solid #8b4513',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                      whiteSpace: 'nowrap'
                     }}
                   >
-                    <div className="font-semibold">{npcName || '位置'}</div>
-                    <div className="text-xs mt-0.5">({x?.toFixed(1)}, {y?.toFixed(1)})</div>
+                    <div className="font-bold text-sm leading-none">{npcName || 'Location'}</div>
+                    <div className="text-[10px] opacity-80 mt-1 tabular-nums">
+                      {x?.toFixed(1)}, {y?.toFixed(1)}
+                    </div>
                   </div>
                 )}
               </div>

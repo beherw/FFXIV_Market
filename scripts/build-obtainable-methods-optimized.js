@@ -53,7 +53,7 @@ function getInstanceTypeName(instanceIds, instancesMap) {
   if (contentTypes.has(28)) return '絕境戰';
   if (contentTypes.has(5)) return '大型任務';
   if (contentTypes.has(4)) return '討伐戰';
-  if (contentTypes.has(2)) return '迷宮挑戰';
+  if (contentTypes.has(2)) return '副本';
   return TYPE_NAME_MAP[DataType.INSTANCES];
 }
 
