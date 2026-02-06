@@ -3157,12 +3157,7 @@ export default function AdvancedSearch({
 
           {activeTab === 'filter' && (
             <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-6 mb-6">
-              {/* Bug Report Notice */}
-              <div className="bg-slate-700/80 border border-slate-500/50 rounded-lg p-4 mb-6">
-                <p className="text-sm text-gray-200 leading-relaxed">
-                  這個頁面測試量過於龐大，作者個人時間有限。各位使用大大有發現bug歡迎參考主頁上的巴哈或dc方式回報，感激感激
-                </p>
-              </div>
+             
 
               {/* Job Icons and Categories Selection - Side by Side, Height Determined by Crafting Jobs */}
               <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
