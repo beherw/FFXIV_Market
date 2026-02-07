@@ -2604,6 +2604,29 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       if (!craftData || craftData.length === 0) {
         return null;
       }
+      
+      const masterbooksSource = sources.find(s => s.type === DataType.MASTERBOOKS);
+      const masterbookRaw = masterbooksSource?.masterbookItemIds || masterbooksSource?.data || [];
+      const masterbookEntries = Array.isArray(masterbookRaw)
+        ? masterbookRaw.map(book => {
+            if (typeof book === 'object' && book !== null) {
+              const bookId = typeof book.id === 'string' ? parseInt(book.id, 10) : book.id;
+              const bookName = book.name?.tw || book.name?.zh || book.name?.en;
+              return { id: bookId, name: bookName };
+            }
+            const bookId = typeof book === 'string' ? parseInt(book, 10) : book;
+            return { id: bookId, name: null };
+          }).filter(entry => entry.id && !isNaN(entry.id))
+        : [];
+
+      const validMasterbooks = masterbookEntries.filter(entry => {
+        const bookData = loadedData.twItems[entry.id] || loadedData.twItems[String(entry.id)];
+        const hasItemData = bookData && bookData.tw;
+        const hasNameFromSource = entry.name;
+        return hasItemData || hasNameFromSource;
+      });
+
+
 
       return (
         <div key={`crafted-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
@@ -2642,6 +2665,49 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               </button>
             )}
           </div>
+          {validMasterbooks.length > 0 && (
+            <div className="mb-3 bg-slate-900/40 border border-slate-700/40 rounded p-2">
+              <div className="text-xs text-gray-400 mb-1">需要秘籍：</div>
+              <div className="flex flex-wrap gap-2">
+                {validMasterbooks.map((entry, bookIndex) => {
+                  const bookId = entry.id;
+                  const bookData = loadedData.twItems[bookId] || loadedData.twItems[String(bookId)];
+                  const bookName = bookData?.tw || entry.name || `物品 ${bookId}`;
+
+                  return (
+                    <button
+                      key={`gathered-masterbook-${bookIndex}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (onItemClick) {
+                          getItemById(bookId).then(item => {
+                            if (item) {
+                              onItemClick(item, { fromObtainable: true });
+                            } else {
+                              const itemUrl = generateItemUrl(bookId, 'item');
+                              navigate(itemUrl);
+                            }
+                          });
+                        } else {
+                          const itemUrl = generateItemUrl(bookId, 'item');
+                          navigate(itemUrl);
+                        }
+                      }}
+                      className="flex items-center gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded px-2 py-1.5 hover:bg-slate-800/70"
+                    >
+                      <ItemImage
+                        itemId={bookId}
+                        alt={bookName}
+                        className="w-5 h-5 object-contain"
+                      />
+                      <span className="hover:underline">{bookName}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2 mt-2">
             {craftData.map((craft, craftIndex) => {
               const jobId = craft.job;
@@ -4598,7 +4664,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                                   <span className="text-xs text-slate-500">+</span>
                                 </div>
                               ) : (
-                                <span className="text-xs text-slate-400">基礎屬性</span>
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-xs text-slate-500">需求</span>
+                                  <span className="text-sm font-medium text-slate-200">{reqGathering}</span>
+                                  <span className="text-xs text-slate-500">+</span>
+                                </div>
+                               
                               )}
                             </div>
                             
@@ -5221,7 +5292,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Masterbooks (製作書) - data is an array of CompactMasterbook objects: [{id: number|string, name?: I18nName}]
     if (type === DataType.MASTERBOOKS) {
       const hasGatheredBy = sources.some(s => s.type === DataType.GATHERED_BY);
-      if (hasGatheredBy) {
+      const hasCraftedBy = sources.some(s => s.type === DataType.CRAFTED_BY);
+      if (hasGatheredBy || hasCraftedBy){
         return null;
       }
 
@@ -5521,8 +5593,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               全部
             </button>
             {uniqueMethodTypes.map((methodType) => {
-              if (methodType === '秘籍習得') return null;
               const methodName = methodType;
+              if(methodName=="秘籍習得"){
+                return null
+              }
               const isActive = filteredMethodType === methodType;
               return (
                 <button
