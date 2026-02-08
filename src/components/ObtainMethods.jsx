@@ -1616,7 +1616,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             <span className="text-ffxiv-gold font-medium">兌換</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            <div className={`${isSingleNpc ? 'w-full' : getMethodCardLayoutClass(totalMethodCards)} bg-slate-900/50 rounded p-2 flex flex-col`}>
+            <div className={`${isSingleNpc ? 'w-full' : getMethodCardLayoutClass(totalMethodCards)} bg-slate-900/50 rounded flex flex-col ${totalMethodCards <= 3 ? 'p-3 min-w-0' : 'p-2'}`}>
               {/* Currency header: icon always by itemId (loads regardless of tw/zh/en); name uses fallback */}
               <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-700/50">
                 {hasCurrencyItem ? (
@@ -1701,8 +1701,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 </div>
               )}
               
-              {/* NPCs list：僅在 1–2 種取得方式時多欄橫向展開，否則維持 2 欄避免擠壓 */}
-              <div className={`grid gap-1.5 ${isSingleNpc ? 'grid-cols-1' : totalMethodCards <= 3 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' : 'grid-cols-2'}`}>
+              {/* NPCs list: when 1–3 methods use fewer columns so each NPC is readable and space is used well */}
+              <div className={`grid gap-2 ${isSingleNpc ? 'grid-cols-1' : totalMethodCards <= 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-2'}`}>
                 {npcIds.map((npcId, npcIndex) => {
                   const npcName = getNpcName(npcId);
                   
@@ -1722,10 +1722,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   });
                   
                   return (
-                    <div key={`npc-${npcIndex}`} className="text-xs bg-slate-800/40 rounded px-2 py-1.5 border border-slate-700/30 w-full min-w-0 overflow-hidden">
-                      <div className="flex items-center gap-0.5 min-w-0">
-                        <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-4 h-4 flex-shrink-0 grayscale opacity-70" />
-                        <div className="text-gray-300 font-medium whitespace-nowrap overflow-hidden text-ellipsis">{npcName}</div>
+                    <div key={`npc-${npcIndex}`} className={`bg-slate-800/40 rounded border border-slate-700/30 w-full min-w-0 overflow-hidden ${totalMethodCards <= 3 ? 'px-3 py-2.5 text-sm' : 'text-xs px-2 py-1.5'}`}>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className={`flex-shrink-0 grayscale opacity-70 ${totalMethodCards <= 3 ? 'w-5 h-5' : 'w-4 h-4'}`} />
+                        <div className="text-gray-300 font-medium min-w-0 truncate">{npcName}</div>
                       </div>
                       {locationInfo.hasLocation && locationInfo.zoneName && (
                         <button
@@ -1734,13 +1734,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                             e.stopPropagation();
                             openMapModal(locationInfo, npcName);
                           }}
-                          className="flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors text-[10px] ml-[18px] mt-0.5 min-w-0 flex-1"
+                          className={`flex items-center gap-1 text-blue-400 hover:text-blue-300 hover:underline transition-colors min-w-0 flex-1 ${totalMethodCards <= 3 ? 'text-xs mt-1 ml-7' : 'text-[10px] ml-[18px] mt-0.5'}`}
                           title={`${locationInfo.zoneName}${locationInfo.displayText && locationInfo.displayText !== locationInfo.zoneName ? ' · ' + locationInfo.displayText : ''}\n點擊查看地圖`}
                         >
                           <svg className="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                           </svg>
-                          <span className={`text-gray-400 overflow-hidden min-w-0 ${!isSingleNpc ? 'line-clamp-2 break-words' : 'text-ellipsis whitespace-nowrap'}`}>
+                          <span className={`text-gray-400 overflow-hidden min-w-0 ${!isSingleNpc ? 'line-clamp-2 break-words' : 'truncate'}`}>
                             {locationInfo.zoneName}
                           </span>
                         </button>
@@ -3398,22 +3398,38 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       );
     }
 
-    // Gardening (園藝獲得) - data is an array of objects with {id: seedItemId}
+    // Gardening (園藝獲得) - data can be object { seedItemId, crossBreeds } or array of seeds
     if (type === DataType.GARDENING) {
-      if (!data || !Array.isArray(data) || data.length === 0) {
+      let seedIds = [];
+      if (data && typeof data === 'object' && !Array.isArray(data) && (data.seedItemId != null || source.seedItemId != null)) {
+        const mainSeed = data.seedItemId ?? source.seedItemId;
+        if (mainSeed != null) seedIds.push(mainSeed);
+        const crossBreeds = data.crossBreeds ?? source.crossBreeds;
+        if (Array.isArray(crossBreeds) && crossBreeds.length > 0) {
+          crossBreeds.forEach(cb => {
+            const id = typeof cb === 'object' && cb !== null && 'id' in cb ? cb.id : cb;
+            if (id != null) seedIds.push(typeof id === 'number' ? id : parseInt(id, 10));
+          });
+        }
+      } else if (Array.isArray(data) && data.length > 0) {
+        data.forEach(seed => {
+          const seedId = typeof seed === 'object' ? seed.id : seed;
+          if (seedId != null) seedIds.push(typeof seedId === 'number' ? seedId : parseInt(seedId, 10));
+        });
+      }
+      if (seedIds.length === 0) {
         return null;
       }
 
-      const validSeeds = data.filter(seed => {
-        const seedId = typeof seed === 'object' ? seed.id : seed;
+      const validSeeds = seedIds.filter(seedId => {
         const seedData = loadedData.twItems[seedId] || loadedData.twItems[String(seedId)];
         return seedData && seedData.tw;
       });
-      
+
       if (validSeeds.length === 0) {
         return null;
       }
-      
+
       return (
         <div key={`gardening-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
@@ -3421,8 +3437,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             <span className="text-ffxiv-gold font-medium">園藝獲得</span>
           </div>
           <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
-            {validSeeds.map((seed, seedIndex) => {
-              const seedId = typeof seed === 'object' ? seed.id : seed;
+            {validSeeds.map((seedId, seedIndex) => {
               const seedData = loadedData.twItems[seedId] || loadedData.twItems[String(seedId)];
               const seedName = seedData?.tw;
               
@@ -3430,7 +3445,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               
               return (
                 <button
-                  key={seedIndex}
+                  key={seedId}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -3464,9 +3479,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       );
     }
 
-    // Mogstation (商城購買) - data is an array of item IDs
+    // Mogstation (商城購買) - data can be object { id, price } (from build) or legacy array
     if (type === DataType.MOGSTATION) {
-      if (!data || !Array.isArray(data) || data.length === 0) {
+      const hasData = data && (
+        (typeof data === 'object' && !Array.isArray(data) && (data.id != null || source.productId != null))
+        || (Array.isArray(data) && data.length > 0)
+      );
+      if (!hasData) {
         return null;
       }
 
@@ -3487,15 +3506,75 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       );
     }
 
-    // Island Crop (島嶼作物) / Levequest (理符任務) - data can be array of item IDs or levequest objects
+    // Island Crop (島嶼作物) / Levequest (理符任務) - data can be object { seed }, or array of levequest objects
     if (type === DataType.ISLAND_CROP) {
+      // Use ref to access latest loadedData immediately, avoiding stale state issues
+      const currentLoadedData = loadedDataRef.current;
+
+      // Build format: data is object { seed: number } or source.seedItemId
+      const seedIdFromObject = (data && typeof data === 'object' && !Array.isArray(data) && (data.seed != null || data.seedItemId != null))
+        ? (data.seed ?? data.seedItemId ?? source.seedItemId)
+        : null;
+      if (seedIdFromObject != null) {
+        const seedId = typeof seedIdFromObject === 'number' ? seedIdFromObject : parseInt(seedIdFromObject, 10);
+        const seedData = currentLoadedData.twItems[seedId] || currentLoadedData.twItems[String(seedId)];
+        const seedName = seedData?.tw;
+        return (
+          <div key={`island-crop-requirement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
+            <div className="flex items-center gap-2 mb-2">
+              <img src="https://xivapi.com/i/063000/063950_hr1.png" alt="Island Crop" className="w-8 h-8" />
+              <span className="text-ffxiv-gold font-medium">島嶼作物</span>
+            </div>
+            <div className="text-xs text-gray-400 mb-2">
+              在島嶼聖域種植種子獲得
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <div className="w-full">
+                <div className="text-xs text-gray-400 mb-1">所需種子：</div>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (onItemClick) {
+                      getItemById(seedId).then(item => {
+                        if (item) {
+                          onItemClick(item, { fromObtainable: true });
+                        } else {
+                          const itemUrl = generateItemUrl(seedId, 'item');
+                          navigate(itemUrl);
+                        }
+                      });
+                    } else {
+                      const itemUrl = generateItemUrl(seedId, 'item');
+                      navigate(itemUrl);
+                    }
+                  }}
+                  className="w-full flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
+                >
+                  <ItemImage
+                    itemId={seedId}
+                    alt={seedName || `種子 ${seedId}`}
+                    className="w-7 h-7 object-contain flex-shrink-0"
+                  />
+                  <div className="flex flex-col items-start flex-1 min-w-0">
+                    <span className="hover:underline font-medium truncate w-full">
+                      {seedName || `種子 (ID: ${seedId})`}
+                    </span>
+                    {!seedName && (
+                      <span className="text-xs text-gray-500 mt-0.5">資料載入中...</span>
+                    )}
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
       if (!data || !Array.isArray(data) || data.length === 0) {
         return null;
       }
 
-      // Use ref to access latest loadedData immediately, avoiding stale state issues
-      const currentLoadedData = loadedDataRef.current;
-      
       // Check if data is levequest format (has 'id', 'lvl', 'item' properties)
       const firstItem = data[0];
       const isLevequestFormat = firstItem && typeof firstItem === 'object' && 'id' in firstItem && 'lvl' in firstItem && 'item' in firstItem;

@@ -306,6 +306,21 @@ export function extractIdsFromSources(sources) {
       });
     }
 
+    // GARDENING - data is { seedItemId, duration, crossBreeds } or source has seedItemId
+    if (type === DataType.GARDENING) {
+      const seedId = source.seedItemId ?? (data && typeof data === 'object' && !Array.isArray(data) ? data.seedItemId : null);
+      if (seedId) {
+        ids.itemIds.add(typeof seedId === 'number' ? seedId : parseInt(seedId, 10));
+      }
+      const crossBreeds = source.crossBreeds ?? (data && typeof data === 'object' && Array.isArray(data.crossBreeds) ? data.crossBreeds : null);
+      if (Array.isArray(crossBreeds)) {
+        crossBreeds.forEach(cb => {
+          const id = typeof cb === 'object' && cb !== null && 'id' in cb ? cb.id : cb;
+          if (id != null) ids.itemIds.add(typeof id === 'number' ? id : parseInt(id, 10));
+        });
+      }
+    }
+
     // QUESTS (optimized format)
     if (type === DataType.QUESTS && source.questId) {
       ids.questIds.add(source.questId);
