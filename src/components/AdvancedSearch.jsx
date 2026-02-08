@@ -11,7 +11,9 @@ import ServerSelector from './ServerSelector';
 import { getMarketableItems, getMarketableItemsByIds } from '../services/universalis';
 import { searchItems, getSimplifiedChineseName, getItemById } from '../services/itemDatabase';
 import { loadRecipeDatabase, loadRecipesByJobAndLevel } from '../services/recipeDatabase';
-import { getTwJobAbbr, getTwItemUICategories, getTwItems, getIlvlsByIds, getRaritiesByIds, getEquipmentByIds, getEquipmentByJobs, getEquipmentBySlotCategories, getEquipmentByJobsAndSlotCategories, getUICategoriesByIds, getTwItemById, getTwItemsByIds, getItemIdsByCategories, getItemIdsByIlvlRange } from '../services/supabaseData';
+import { getTwJobAbbr, getTwItems, getIlvlsByIds, getRaritiesByIds, getTwItemById, getTwItemsByIds, getItemIdsByIlvlRange } from '../services/gameData';
+import { getTwItemUICategories, getUICategoriesByIds, getItemIdsByCategories } from '../services/uiCategoriesDataService';
+import { getEquipmentByIds, getEquipmentByJobs, getEquipmentBySlotCategories, getEquipmentByJobsAndSlotCategories } from '../services/itemsDatabaseMsgpack';
 import { APP_VERSION } from '../constants/version';
 import { PAGINATION_CONFIG } from '../constants/pagination';
 import VersionFooter from './VersionFooter';
@@ -77,6 +79,8 @@ export default function AdvancedSearch({
   const [maxLevel, setMaxLevel] = useState(999);
   const [minLevelFocused, setMinLevelFocused] = useState(false);
   const [maxLevelFocused, setMaxLevelFocused] = useState(false);
+  const [levelFilterMode, setLevelFilterMode] = useState('equipLevel'); // 'equipLevel' (裝等) | 'ilvls'
+  const [levelFilterAutoSwitchHighlight, setLevelFilterAutoSwitchHighlight] = useState(false); // brief highlight when auto-switched to ilvls
   const [itemNameFilter, setItemNameFilter] = useState(''); // Item name filter text
   const [filterFuzzySearch, setFilterFuzzySearch] = useState(true); // Fuzzy search toggle for filter search (true = fuzzy, false = exact) (default: fuzzy enabled)
   const [categorySearchTerm, setCategorySearchTerm] = useState(''); // Category search filter text
@@ -132,8 +136,29 @@ export default function AdvancedSearch({
       return !equipmentCategoryIds.has(catId) && !genericCategories.has(catId);
     });
   }, [selectedCategories]);
-  
-  // Cache for Supabase data
+
+  // When user selects a miscellaneous category while on 裝等, auto-switch to ilvls and clear level range; show brief highlight
+  const levelFilterAutoSwitchTimeoutRef = useRef(null);
+  useEffect(() => {
+    if (!hasMiscellaneousCategory || levelFilterMode !== 'equipLevel') return;
+    setLevelFilterMode('ilvls');
+    setMinLevel(1);
+    setMaxLevel(999);
+    setLevelFilterAutoSwitchHighlight(true);
+    if (levelFilterAutoSwitchTimeoutRef.current) clearTimeout(levelFilterAutoSwitchTimeoutRef.current);
+    levelFilterAutoSwitchTimeoutRef.current = setTimeout(() => {
+      setLevelFilterAutoSwitchHighlight(false);
+      levelFilterAutoSwitchTimeoutRef.current = null;
+    }, 2200);
+  }, [hasMiscellaneousCategory, levelFilterMode]);
+
+  useEffect(() => {
+    return () => {
+      if (levelFilterAutoSwitchTimeoutRef.current) clearTimeout(levelFilterAutoSwitchTimeoutRef.current);
+    };
+  }, []);
+
+  // Cache for game data
   const twJobAbbrDataRef = useRef(null);
   const twItemUICategoriesDataRef = useRef(null);
   const twItemsDataRef = useRef(null);
@@ -242,7 +267,7 @@ export default function AdvancedSearch({
     return disabled;
   }, []);
 
-  // Load Supabase data on mount (only small tables, not full item/rarity tables)
+  // Load game data on mount (only small tables, not full item/rarity tables)
   useEffect(() => {
     const loadAllData = async () => {
       try {
@@ -258,7 +283,7 @@ export default function AdvancedSearch({
         // Don't load getTwItems() or getRarities() on mount - load lazily when needed
         // twItemsDataRef will be loaded lazily when category filter is used
       } catch (error) {
-        console.error('Error loading Supabase data:', error);
+        console.error('Error loading game data:', error);
       }
     };
     loadAllData();
@@ -1899,31 +1924,50 @@ export default function AdvancedSearch({
       console.log(`[AdvancedSearch] After excluding categories (no category filter): ${itemIds.size} items`);
     }
 
-    // Filter by equipment level (player level)
-    // NOTE: Skip level filtering if 套裝 (112) is selected (sets don't have equipment level)
+    // Filter by level: either equipment level (裝等) or ilvls
+    // 裝等 mode: skip if 套裝 (112) or miscellaneous selected (handled by UI disable); uses equipment level (player level)
+    // ilvls mode: apply to all items, no category restriction; uses item ilvl
     const hasSetCategory = selectedCategories.includes(112);
-    console.log(`[AdvancedSearch] Step 4a - Before equip level filter: minLevel=${minLevel}, maxLevel=${maxLevel}, items=${itemIds.size}, hasSetCategory=${hasSetCategory}`);
-    
-    if (!hasSetCategory && (minLevel > 1 || maxLevel < 999)) {
+    const levelRangeActive = minLevel > 1 || maxLevel < 999;
+    console.log(`[AdvancedSearch] Step 4a - Level filter: mode=${levelFilterMode}, minLevel=${minLevel}, maxLevel=${maxLevel}, items=${itemIds.size}, hasSetCategory=${hasSetCategory}`);
+
+    if (levelFilterMode === 'ilvls' && levelRangeActive) {
       const itemIdsArray = Array.from(itemIds);
-      // Load equipment data for these items
+      const ilvlsDataForFilter = await loadIlvlsData(itemIdsArray);
+      const filteredByLevel = new Set();
+      let levelStats = { min: Infinity, max: -Infinity, withData: 0, withoutData: 0 };
+      itemIds.forEach(itemId => {
+        const ilvl = ilvlsDataForFilter[itemId?.toString() ?? itemId];
+        if (ilvl === undefined || ilvl === null) {
+          levelStats.withoutData++;
+          filteredByLevel.add(itemId);
+        } else {
+          levelStats.withData++;
+          levelStats.min = Math.min(levelStats.min, ilvl);
+          levelStats.max = Math.max(levelStats.max, ilvl);
+          if (ilvl >= minLevel && ilvl <= maxLevel) {
+            filteredByLevel.add(itemId);
+          }
+        }
+      });
+      itemIds = filteredByLevel;
+      console.log(`[AdvancedSearch] Step 4b - ilvls filter (${minLevel}-${maxLevel}): ${itemIds.size} items`);
+      console.log(`  - Items with ilvl data: ${levelStats.withData} (min=${levelStats.min}, max=${levelStats.max}), without: ${levelStats.withoutData}`);
+    } else if (levelFilterMode === 'equipLevel' && !hasSetCategory && levelRangeActive) {
+      const itemIdsArray = Array.from(itemIds);
       const equipmentDataForFilter = await loadEquipmentByIds(itemIdsArray);
       const filteredByLevel = new Set();
       let levelStats = { min: Infinity, max: -Infinity, count: 0, withData: 0, withoutData: 0 };
-      
       itemIds.forEach(itemId => {
         const equipLevel = equipmentDataForFilter[itemId]?.level;
-        // Include items without equipment level data ALWAYS (they may not be equipment)
         if (equipLevel === undefined || equipLevel === null) {
           levelStats.withoutData++;
-          // Always include items without equipment data (they might not be equippable)
           filteredByLevel.add(itemId);
         } else {
           levelStats.withData++;
           levelStats.min = Math.min(levelStats.min, equipLevel);
           levelStats.max = Math.max(levelStats.max, equipLevel);
           levelStats.count++;
-          // Include items within equipment level range
           if (equipLevel >= minLevel && equipLevel <= maxLevel) {
             filteredByLevel.add(itemId);
           }
@@ -1934,10 +1978,10 @@ export default function AdvancedSearch({
       console.log(`  - Items with equip level data: ${levelStats.withData} (min=${levelStats.min}, max=${levelStats.max})`);
       console.log(`  - Items without equip level data: ${levelStats.withoutData}`);
     } else {
-      if (hasSetCategory) {
-        console.log(`[AdvancedSearch] Step 4b - Equip level filter: Skipped (套裝 category selected, sets don't have equipment level)`);
-      } else {
-        console.log(`[AdvancedSearch] Step 4b - Equip level filter: Using default range (1-999), skipping filter`);
+      if (levelFilterMode === 'equipLevel' && hasSetCategory) {
+        console.log(`[AdvancedSearch] Step 4b - Equip level filter: Skipped (套裝 category selected)`);
+      } else if (!levelRangeActive) {
+        console.log(`[AdvancedSearch] Step 4b - Level filter: Using default range (1-999), skipping filter`);
       }
     }
 
@@ -2157,7 +2201,7 @@ export default function AdvancedSearch({
       untradeableItemIds,
       marketableSet 
     };
-  }, [selectedJobs, selectedCategories, selectedWorld, selectedServerOption, minLevel, maxLevel, itemNameFilter, filterFuzzySearch, addToast, loadRecipeDatabase, loadEquipmentByJobs, loadEquipmentByJobsAndSlotCategories, loadEquipmentByIds, loadUICategoriesByIds, loadIlvlsData, getJobAbbreviation]);
+  }, [selectedJobs, selectedCategories, selectedWorld, selectedServerOption, minLevel, maxLevel, levelFilterMode, itemNameFilter, filterFuzzySearch, addToast, loadRecipeDatabase, loadEquipmentByJobs, loadEquipmentByJobsAndSlotCategories, loadEquipmentByIds, loadUICategoriesByIds, loadIlvlsData, getJobAbbreviation]);
 
   // Handle filter search
   const handleFilterSearch = useCallback(async () => {
@@ -2324,7 +2368,7 @@ export default function AdvancedSearch({
         });
         
         // Load all items at once using batch query (optimized)
-        const { getTwItemsByIds } = await import('../services/supabaseData');
+        const { getTwItemsByIds } = await import('../services/gameData');
         const itemsData = await getTwItemsByIds(sortedItemIds);
         const allItems = sortedItemIds.map(id => {
           const itemData = itemsData[id];
@@ -3684,7 +3728,7 @@ export default function AdvancedSearch({
                                 // Load full item details synchronously for initial batch BEFORE displaying
                                 // This prevents multiple re-renders and data jumping
                                 // Use batch query instead of individual queries (optimized)
-                                const { getTwItemsByIds } = await import('../services/supabaseData');
+                                const { getTwItemsByIds } = await import('../services/gameData');
                                 const itemsData = await getTwItemsByIds(verifiedInitialBatch);
                                 const initialItems = verifiedInitialBatch.map(id => {
                                   const itemData = itemsData[id];
@@ -3748,7 +3792,7 @@ export default function AdvancedSearch({
                                 } else {
                                   // For untradeable items, use the same initialBatch
                                 // Use batch query instead of individual queries (optimized)
-                                const { getTwItemsByIds: getTwItemsByIdsUntradeable } = await import('../services/supabaseData');
+                                const { getTwItemsByIds: getTwItemsByIdsUntradeable } = await import('../services/gameData');
                                 const untradeableItemsData = await getTwItemsByIdsUntradeable(initialBatch);
                                 const untradeableInitialItems = initialBatch.map(id => {
                                   const itemData = untradeableItemsData[id];
@@ -4100,7 +4144,7 @@ export default function AdvancedSearch({
                                   }
                                   
                                   // Use batch query instead of individual queries (optimized)
-                                  const { getTwItemsByIds: getTwItemsByIdsBatch } = await import('../services/supabaseData');
+                                  const { getTwItemsByIds: getTwItemsByIdsBatch } = await import('../services/gameData');
                                   const batchItemsData = await getTwItemsByIdsBatch(batch);
                                   const batchItems = batch.map(id => {
                                     const itemData = batchItemsData[id];
@@ -4389,13 +4433,48 @@ export default function AdvancedSearch({
                 <div className="mb-6 flex flex-row items-center justify-between gap-6">
                   {/* Level Range Input */}
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-400 whitespace-nowrap">裝等（玩家等級）</span>
+                    {/* Switch: 裝等 | ilvls - same width as previous label */}
+                    <div className={`flex items-center rounded-lg border bg-slate-900/50 p-0.5 shrink-0 transition-all ${levelFilterAutoSwitchHighlight ? 'border-ffxiv-gold/80 shadow-[0_0_12px_rgba(201,161,85,0.4)]' : 'border-purple-500/30'}`} role="group" aria-label="Level filter type">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLevelFilterMode('equipLevel');
+                          setMinLevel(1);
+                          setMaxLevel(999);
+                        }}
+                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          levelFilterMode === 'equipLevel'
+                            ? 'bg-purple-600/60 text-white shadow-sm'
+                            : 'text-gray-400 hover:text-gray-300'
+                        }`}
+                        title="裝備等級（玩家等級）"
+                      >
+                        裝等
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLevelFilterMode('ilvls');
+                          setMinLevel(1);
+                          setMaxLevel(999);
+                          setLevelFilterAutoSwitchHighlight(false);
+                        }}
+                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+                          levelFilterMode === 'ilvls'
+                            ? 'bg-purple-600/60 text-white shadow-sm'
+                            : 'text-gray-400 hover:text-gray-300'
+                        } ${levelFilterAutoSwitchHighlight ? 'animate-pulse ring-2 ring-ffxiv-gold/70 ring-offset-1 ring-offset-slate-900' : ''}`}
+                        title="Item level"
+                      >
+                        ilvls
+                      </button>
+                    </div>
                     <div className="relative">
                       <input
                         type="number"
                         min="1"
                         max="999"
-                        value={minLevelFocused ? (minLevel === 1 ? '' : minLevel) : minLevel}
+                        value={(levelFilterMode === 'equipLevel' && hasMiscellaneousCategory) ? '' : (minLevelFocused ? (minLevel === 1 ? '' : minLevel) : minLevel)}
                         onChange={(e) => {
                           const inputValue = e.target.value;
                           if (inputValue === '') {
@@ -4416,14 +4495,13 @@ export default function AdvancedSearch({
                         }}
                         onBlur={() => {
                           setMinLevelFocused(false);
-                          // No need to reset on blur - let state maintain the value
                         }}
-                        disabled={isLoadingVelocities || isFilterSearching || hasMiscellaneousCategory}
-                        placeholder="1"
+                        disabled={isLoadingVelocities || isFilterSearching || (levelFilterMode === 'equipLevel' && hasMiscellaneousCategory)}
+                        placeholder={(levelFilterMode === 'equipLevel' && hasMiscellaneousCategory) ? '🔒' : (levelFilterMode === 'ilvls' ? 'ilvls' : '1')}
                         className="w-35 pl-3 pr-14 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                       />
                       <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                        <span className="text-xs text-gray-400" title="裝等（玩家等級）">裝等</span>
+                        <span className="text-xs text-gray-400">{levelFilterMode === 'ilvls' ? 'ilvls' : '裝等'}</span>
                       </div>
                     </div>
                     <div className="text-gray-400">~</div>
@@ -4431,7 +4509,7 @@ export default function AdvancedSearch({
                       type="number"
                       min="1"
                       max="999"
-                      value={maxLevelFocused ? (maxLevel === 999 ? '' : maxLevel) : maxLevel}
+                      value={(levelFilterMode === 'equipLevel' && hasMiscellaneousCategory) ? '' : (maxLevelFocused ? (maxLevel === 999 ? '' : maxLevel) : maxLevel)}
                       onChange={(e) => {
                         const inputValue = e.target.value;
                         if (inputValue === '') {
@@ -4452,11 +4530,10 @@ export default function AdvancedSearch({
                       }}
                       onBlur={() => {
                         setMaxLevelFocused(false);
-                        // No need to reset on blur - let state maintain the value
                       }}
-                      disabled={isLoadingVelocities || isFilterSearching || hasMiscellaneousCategory}
-                      placeholder="999"
-                      className="w-40 px-3 py-gibg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                      disabled={isLoadingVelocities || isFilterSearching || (levelFilterMode === 'equipLevel' && hasMiscellaneousCategory)}
+                      placeholder={(levelFilterMode === 'equipLevel' && hasMiscellaneousCategory) ? '🔒 非裝備分類' : (levelFilterMode === 'ilvls' ? 'ilvls' : '999')}
+                      className="w-40 px-3 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                     />
                   </div>
 

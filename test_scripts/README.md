@@ -19,7 +19,7 @@ node test_advanced_search_queries.js
 - Equipment slot filtering
 - Combined filters with joins
 
-**Note**: Requires Supabase connection configured in `../src/services/supabaseClient.js`
+**Note**: Uses game data from local msgpack/JSON (`../src/services/gameData.js`). No remote DB required.
 
 ---
 
@@ -37,7 +37,7 @@ node test_obtain_methods.js
 - Expected data structure verification
 - List of functions to test
 
-**Note**: This is primarily a reference/test plan document. Actual testing should be done in the browser.
+**Note**: This is primarily a reference/test plan. Actual testing should be done in the browser. ObtainMethods uses obtainableDataService (msgpack), not a remote DB.
 
 ---
 
@@ -65,5 +65,5 @@ node test_obtain_methods.js
 
 - These are **manual test scripts** for development/debugging purposes
 - They are not part of the automated test suite
-- Some scripts require Supabase connection to be configured
+- App data is local (msgpack/JSON); no Supabase required for the main app
 - Update import paths if moving files around

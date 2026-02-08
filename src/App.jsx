@@ -23,8 +23,7 @@ import { addSearchToHistory } from './utils/searchHistory';
 import { useHistory } from './hooks/useHistory';
 import { useMultiItemCombinedTree } from './hooks/useMultiItemCombinedTree';
 import { hasRecipe, buildCraftingTree, findRelatedItems } from './services/recipeDatabase';
-import { getIlvls, getItemPatch, getPatchNames, getItemSetFromDB, getTwItemsByIds } from './services/supabaseData';
-import { initializeSupabaseConnection } from './services/supabaseClient';
+import { getIlvls, getItemPatch, getPatchNames, getItemSetFromDB, getTwItemsByIds } from './services/gameData';
 import TopBar from './components/TopBar';
 import NotFound from './components/NotFound';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
@@ -352,14 +351,14 @@ function App() {
   const loadIlvlsData = useCallback(async (itemIds = null) => {
     // If itemIds provided, use targeted query
     if (itemIds && itemIds.length > 0) {
-      const { getIlvlsByIds } = await import('./services/supabaseData');
+      const { getIlvlsByIds } = await import('./services/gameData');
       return await getIlvlsByIds(itemIds);
     }
     // Fallback to full load only if no itemIds provided (should rarely happen)
     if (ilvlsDataRef.current) {
       return ilvlsDataRef.current;
     }
-    const { getIlvls } = await import('./services/supabaseData');
+    const { getIlvls } = await import('./services/gameData');
     ilvlsDataRef.current = await getIlvls();
     return ilvlsDataRef.current;
   }, []);
@@ -467,7 +466,7 @@ function App() {
         const missingPatchIds = itemIds.filter(id => !itemPatchData?.hasOwnProperty(id.toString()));
         const needsPatchNames = !patchNamesData && itemIds.length > 0;
         if (missingPatchIds.length > 0 || needsPatchNames) {
-          const { getItemPatchByIds } = await import('./services/supabaseData');
+          const { getItemPatchByIds } = await import('./services/gameData');
           const [patchData, patchNames] = await Promise.all([
             missingPatchIds.length > 0 ? getItemPatchByIds(missingPatchIds) : Promise.resolve(null),
             needsPatchNames ? loadPatchNamesData() : Promise.resolve(patchNamesData)
@@ -523,7 +522,7 @@ function App() {
     let cancelled = false;
     (async () => {
       try {
-        const { getItemPatchByIds } = await import('./services/supabaseData');
+        const { getItemPatchByIds } = await import('./services/gameData');
         const [patchData, patchNames] = await Promise.all([
           getItemPatchByIds([selectedItem.id]),
           loadPatchNamesData()

@@ -7,7 +7,7 @@
 // 方法1：檢查 extracts_unified 表中 type = 17 的記錄數量
 console.log('🔍 檢查 REQUIREMENTS (type=17) 使用情況\n');
 
-// 從瀏覽器中執行這個 SQL 查詢（在 Supabase 控制台）
+// 從瀏覽器中執行這個 SQL 查詢（若使用 Supabase 作為後端時，在 Supabase 控制台執行；主應用已改為本地 msgpack，此為可選）
 const sqlQuery = `
 -- 檢查 type = 17 的記錄數量
 SELECT COUNT(*) as count
@@ -32,12 +32,12 @@ WHERE type = 17
 LIMIT 5;
 `;
 
-console.log('請在 Supabase 控制台執行以下 SQL 查詢：');
+console.log('若使用 Supabase，請在 Supabase 控制台執行以下 SQL 查詢：');
 console.log('----------------------------------------');
 console.log(sqlQuery);
 console.log('----------------------------------------\n');
 
-console.log('或者使用此 JavaScript 代碼（需要 supabase 客戶端）：');
+console.log('或者使用此 JavaScript 代碼（需要 Supabase 客戶端，僅在可選的 Supabase 後端時使用）：');
 console.log(`
 import { createClient } from '@supabase/supabase-js';
 

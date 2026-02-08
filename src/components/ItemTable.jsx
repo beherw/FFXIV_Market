@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ItemImage from './ItemImage';
 import { generateItemUrl } from '../utils/urlSlug';
-import { getTwItemsByIds } from '../services/supabaseData';
+import { getTwItemsByIds } from '../services/gameData';
 
 // Lazy load ilvls data
 let ilvlsDataRef = null;

@@ -1,20 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * Build Items Data - Converts JSON to MessagePack binary format
- * 
- * This script:
- * 1. Reads tw-items.json and equipment.json from teamcraft source
- * 2. Converts to optimized binary format using MessagePack
- * 3. Saves to public/data/items.msgpack for distribution
- * 
- * Benefits:
- * - tw_items: 2.1MB JSON → ~1.3MB MessagePack (38% smaller)
- * - equipment: 6.2MB JSON → ~3.7MB MessagePack (40% smaller)
- * - Combined: 8.3MB → ~5MB (40% reduction)
- * - Parse time: JSON ~300ms → MessagePack ~100ms (3x faster)
- * - No database calls needed (all data in-memory)
- * - Offline support (data bundled with app)
+ * Build Items Data - Converts JSON to per-domain MessagePack files
+ *
+ * Outputs nine files: tw-items.msgpack, zh-items.msgpack, en-items.msgpack,
+ * ja-items.msgpack, ko-items.msgpack, de-items.msgpack, fr-items.msgpack,
+ * equipment.msgpack. No single items.msgpack (split for lazy loading).
+ * tw_items: names only (id → { tw }); ilvl/equipLevel merged at runtime.
  */
 
 import * as msgpack from '@msgpack/msgpack';
@@ -26,10 +18,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const TW_ITEMS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/tw/tw-items.json');
+const ZH_ITEMS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/zh/zh-items.json');
+const EN_ITEMS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/items.json');
+const KO_ITEMS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/ko/ko-items.json');
 const EQUIPMENT_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/equipment.json');
-const ILVLS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/ilvls.json');
 const OUTPUT_DIR = path.join(__dirname, '../public/data');
-const OUTPUT_FILE = path.join(OUTPUT_DIR, 'items.msgpack');
 
 /**
  * Load data from JSON source file
@@ -118,61 +111,62 @@ function buildItemsData() {
   
   // Step 1: Load data from JSON sources
   const twItems = loadDataFromJSON(TW_ITEMS_SOURCE, 'tw_items');
+  const zhItems = loadDataFromJSON(ZH_ITEMS_SOURCE, 'zh_items');
+  const enItemsRaw = loadDataFromJSON(EN_ITEMS_SOURCE, 'items (en)');
+  const koItems = loadDataFromJSON(KO_ITEMS_SOURCE, 'ko_items');
   const equipment = loadDataFromJSON(EQUIPMENT_SOURCE, 'equipment');
-  const ilvls = loadDataFromJSON(ILVLS_SOURCE, 'ilvls');
-  
-  // Step 2: Optimize structures
-  const optimizedTwItems = optimizeData(twItems, 'tw_items');
-  const optimizedEquipment = optimizeData(equipment, 'equipment');
-  const optimizedIlvls = optimizeData(ilvls, 'ilvls');
 
-  // Step 3: Enrich tw_items with ilvl + equipment level (player level)
-  console.log(`[Items] Enriching tw_items with ilvl + equipLevel...`);
-  const enrichedTwItems = {};
-  Object.entries(optimizedTwItems).forEach(([id, item]) => {
-    const enriched = { ...item };
-    const ilvl = optimizedIlvls[id];
-    const equipLevel = optimizedEquipment[id]?.level;
-    if (ilvl !== undefined && ilvl !== null) {
-      enriched.ilvl = ilvl;
-    }
-    if (equipLevel !== undefined && equipLevel !== null) {
-      enriched.equipLevel = equipLevel;
-    }
-    enrichedTwItems[id] = enriched;
+  // Step 2: Optimize structures (en/ja/de/fr from items.json; ko from ko-items.json)
+  const optimizedTwItems = optimizeData(twItems, 'tw_items');
+  const optimizedZhItems = optimizeData(zhItems, 'zh_items');
+  const optimizedEnItems = {};
+  const optimizedJaItems = {};
+  const optimizedDeItems = {};
+  const optimizedFrItems = {};
+  Object.entries(enItemsRaw).forEach(([id, row]) => {
+    if (!row) return;
+    if (row.en != null && row.en !== '') optimizedEnItems[id] = { en: row.en };
+    if (row.ja != null && row.ja !== '') optimizedJaItems[id] = { ja: row.ja };
+    if (row.de != null && row.de !== '') optimizedDeItems[id] = { de: row.de };
+    if (row.fr != null && row.fr !== '') optimizedFrItems[id] = { fr: row.fr };
   });
-  console.log(`[Items] Enriched ${Object.keys(enrichedTwItems).length} items`);
-  
-  // Step 4: Combine into single object
-  console.log(`[Items] Combining data structures...`);
-  const combined = {
-    tw_items: enrichedTwItems,
-    equipment: optimizedEquipment
-  };
-  console.log(`[Items] Combined data ready`);
-  
-  // Step 5: Encode to MessagePack
-  console.log(`[Items] Encoding to MessagePack...`);
-  const packed = msgpack.encode(combined);
-  
-  // Step 6: Save to public directory
-  console.log(`[Items] Saving to public/data/...`);
+  console.log(`[Items] Optimized en_items: ${Object.keys(optimizedEnItems).length}, ja: ${Object.keys(optimizedJaItems).length}, de: ${Object.keys(optimizedDeItems).length}, fr: ${Object.keys(optimizedFrItems).length} records`);
+  const optimizedKoItems = optimizeData(koItems, 'ko_items');
+  const optimizedEquipment = optimizeData(equipment, 'equipment');
+
+  // Step 3: tw_items = names only (no ilvl/equipLevel in file; merged at runtime)
+  const twItemsNamesOnly = optimizedTwItems;
+
+  // Step 4: Ensure output directory
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
-  fs.writeFileSync(OUTPUT_FILE, packed);
-  
-  // Step 7: Statistics
-  const twItemsSourceSize = fs.statSync(TW_ITEMS_SOURCE).size;
-  const equipmentSourceSize = fs.statSync(EQUIPMENT_SOURCE).size;
-  const ilvlsSourceSize = fs.statSync(ILVLS_SOURCE).size;
-  const totalSourceSize = twItemsSourceSize + equipmentSourceSize + ilvlsSourceSize;
-  const msgpackSize = packed.length;
-  const jsonSize = JSON.stringify(combined).length;
-  
+
+  // Step 5: Write nine MessagePack files
+  const files = [
+    ['tw-items.msgpack', twItemsNamesOnly],
+    ['zh-items.msgpack', optimizedZhItems],
+    ['en-items.msgpack', optimizedEnItems],
+    ['ja-items.msgpack', optimizedJaItems],
+    ['ko-items.msgpack', optimizedKoItems],
+    ['de-items.msgpack', optimizedDeItems],
+    ['fr-items.msgpack', optimizedFrItems],
+    ['equipment.msgpack', optimizedEquipment]
+  ];
+
+  console.log(`[Items] Encoding and writing ${files.length} MessagePack files...`);
+  let totalBytes = 0;
+  for (const [filename, data] of files) {
+    const packed = msgpack.encode(data);
+    const outPath = path.join(OUTPUT_DIR, filename);
+    fs.writeFileSync(outPath, packed);
+    const mb = (packed.length / 1024 / 1024).toFixed(2);
+    totalBytes += packed.length;
+    console.log(`[Items]   ${filename}: ${mb} MB`);
+  }
+
   const buildTime = Date.now() - startTime;
-  
-  console.log(`[Items] Complete - ${(msgpackSize / 1024 / 1024).toFixed(2)} MB (saved ${((1 - msgpackSize / totalSourceSize) * 100).toFixed(1)}%) in ${buildTime}ms\n`);
+  console.log(`[Items] Complete - ${(totalBytes / 1024 / 1024).toFixed(2)} MB total in ${files.length} files, ${buildTime}ms\n`);
 }
 
 // Run build

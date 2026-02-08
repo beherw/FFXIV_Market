@@ -224,7 +224,7 @@ const isDropsType = type === DataType.DROPS ||
 ### 立即行動
 1. **檢查 REQUIREMENTS (17) 的使用情況**
    ```sql
-   -- 在 Supabase 執行
+   -- 若使用 Supabase 時可在此執行（主應用已改為本地 msgpack，此為可選）
    SELECT COUNT(*) as count
    FROM extracts_unified
    WHERE type = 17;

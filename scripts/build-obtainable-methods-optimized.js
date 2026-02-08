@@ -89,30 +89,32 @@ function extractEssentialData(type, rawData, instancesMap) {
       break;
 
     case DataType.TRADE_SOURCES:
-      if (Array.isArray(rawData) && rawData[0]) {
-        const shop = rawData[0];
-        // Extract currency information from trades array
-        const trade = shop.trades?.[0];
-        const currency = trade?.currencies?.[0];
-        
-        if (currency) {
-          result.currencyItemId = currency.id;
-          result.currencyAmount = currency.amount;
-          if (currency.hq) result.requiresHQ = true;
-        }
-        
-        result.currency = currency?.currency || 'item';
-        
-        // Store shop ID and name for quest requirement lookup
-        if (shop.id) result.shopId = shop.id;
-        if (shop.shopName) result.shopName = shop.shopName;
-        
-        // Store NPC IDs only - ObtainMethods will query NPC details from Supabase
-        if (shop.npcs && Array.isArray(shop.npcs)) {
-          result.npcIds = shop.npcs.map(npc => {
-            // Handle both {id: number} and number formats
-            return typeof npc === 'object' ? npc.id : npc;
-          }).filter(id => id !== undefined && id !== null);
+      // Emit one entry per shop and per trade so multiple currencies (e.g. 41785 and 45690) all show
+      if (Array.isArray(rawData) && rawData.length > 0) {
+        const tradeResults = [];
+        rawData.forEach(shop => {
+          const npcIds = (shop.npcs && Array.isArray(shop.npcs))
+            ? shop.npcs.map(npc => (typeof npc === 'object' ? npc.id : npc)).filter(id => id != null)
+            : [];
+          const trades = shop.trades || [];
+          trades.forEach(trade => {
+            const currency = trade?.currencies?.[0];
+            if (!currency) return;
+            tradeResults.push({
+              type: getStringFromTypeId(DataType.TRADE_SOURCES),
+              typeName: TYPE_NAME_MAP[DataType.TRADE_SOURCES] || '兌換',
+              currencyItemId: currency.id,
+              currencyAmount: currency.amount,
+              requiresHQ: currency.hq === true || undefined,
+              currency: currency.currency || 'item',
+              shopId: shop.id,
+              shopName: shop.shopName,
+              npcIds
+            });
+          });
+        });
+        if (tradeResults.length > 0) {
+          result._tradeResults = tradeResults;
         }
       }
       break;
@@ -372,7 +374,11 @@ function buildOptimizedData() {
 
       try {
         const optimizedSource = extractEssentialData(source.type, source.data, instances);
-        sources.push(optimizedSource);
+        if (optimizedSource._tradeResults && Array.isArray(optimizedSource._tradeResults)) {
+          optimizedSource._tradeResults.forEach(s => sources.push(s));
+        } else {
+          sources.push(optimizedSource);
+        }
       } catch (err) {
         console.warn(`[Obtainable] Warning: Error processing item ${itemId}, type ${source.type}:`, err.message);
         skippedCount++;

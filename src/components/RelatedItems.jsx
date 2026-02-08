@@ -43,7 +43,7 @@ export default function RelatedItems({ itemId, onItemClick }) {
     // Use batch query instead of individual queries for better performance
     (async () => {
       try {
-        const { getTwItemsByIds } = await import('../services/supabaseData');
+        const { getTwItemsByIds } = await import('../services/gameData');
         const itemsData = await getTwItemsByIds(relatedItemIds);
         const items = relatedItemIds.map(id => {
           const itemData = itemsData[id];

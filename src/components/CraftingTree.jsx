@@ -4,7 +4,7 @@ import ItemImage from './ItemImage';
 import { getItemById } from '../services/itemDatabase';
 import { getInternalUrl } from '../utils/internalUrl.js';
 import { getAggregatedMarketData } from '../services/universalis';
-import { getTwItemsByIds } from '../services/supabaseData';
+import { getTwItemsByIds } from '../services/gameData';
 import { generateItemUrl } from '../utils/urlSlug';
 
 /**

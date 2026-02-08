@@ -15,7 +15,7 @@ import { getMarketableItems, getMarketableItemsByIds } from '../services/univers
 import { getItemById, getSimplifiedChineseName } from '../services/itemDatabase';
 import { getInternalUrl } from '../utils/internalUrl.js';
 import axios from 'axios';
-import { getTwJobAbbr, getIlvlsByIds } from '../services/supabaseData';
+import { getTwJobAbbr, getIlvlsByIds } from '../services/gameData';
 import { APP_VERSION } from '../constants/version';
 import { PAGINATION_CONFIG } from '../constants/pagination';
 import { generateItemUrl } from '../utils/urlSlug';
@@ -659,7 +659,7 @@ export default function CraftingJobPriceChecker({
       }
 
       // Fetch item details for both tradeable and untradeable items
-      const { getTwItemsByIds } = await import('../services/supabaseData');
+      const { getTwItemsByIds } = await import('../services/gameData');
       const allItemIds = tradeableItemIds.length > 0 ? tradeableItemIds : untradeableItemIds;
       const itemsData = await getTwItemsByIds(allItemIds);
       
@@ -1192,7 +1192,7 @@ export default function CraftingJobPriceChecker({
                           
                           // Fetch item details for display
                           // Use batch query instead of individual queries (optimized)
-                          const { getTwItemsByIds } = await import('../services/supabaseData');
+                          const { getTwItemsByIds } = await import('../services/gameData');
                           const itemsData = await getTwItemsByIds(tradeableItemIds);
                           const items = tradeableItemIds.map(id => {
                             const itemData = itemsData[id];

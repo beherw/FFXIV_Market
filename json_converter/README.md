@@ -1,77 +1,31 @@
-# JSON to CSV Converter & Supabase Sync
+# JSON to CSV Converter
 
-This directory contains tools to convert JSON data files to CSV format and automatically sync them to Supabase.
+This directory contains tools to convert JSON data files to CSV format. The main app uses **local msgpack/JSON only**; it does not use Supabase. The previous "sync to Supabase" workflow and `sync_smart.js` have been removed.
 
 ## Quick Start
 
-### 1. Setup GitHub Secrets (One-time)
+### Convert JSON to CSV
 
-Go to: `https://github.com/YOUR_REPO/settings/secrets/actions`
-
-Add:
-- `SUPABASE_URL`: your Supabase project URL (e.g. `https://xxxxx.supabase.co`)
-- `SUPABASE_SECRET_KEY`: your **Secret Key** (format: `sb_secret_...`) from Supabase Dashboard → Settings → API → API Keys (never commit this; use GitHub Secrets only)
-
-### 2. Setup Helper Function (One-time)
-
-Run `sql/create_helper_function.sql` in Supabase SQL Editor to enable automatic table creation.
-
-### 3. Push to GitHub
-
-That's it! The workflow will:
-- Convert JSON → CSV
-- Create tables automatically
-- Sync CSV data to Supabase
+```bash
+cd json_converter
+node json_to_csv.js
+```
 
 ## Files
 
 ### Core Scripts
 - `json_list.txt` - List of JSON files to convert
 - `json_to_csv.js` - Converts JSON files to CSV
-- `sync_smart.js` - Smart sync script (creates tables + syncs data)
 
 ### SQL Files (in `sql/` directory)
-- `sql/create_helper_function.sql` - **Required (one-time)** - Helper function for auto table creation
-- `sql/create_tables.sql` - **Optional** - SQL to create tables manually (fallback if auto-creation fails)
-- `sql/optimize_database_indexes.sql` - **Optional** - Creates composite indexes for better query performance
-- `sql/optimize_search_indexes.sql` - **Optional** - Creates trigram indexes for fast text search (ILIKE queries)
-- `sql/verify_indexes.sql` - **Optional** - Diagnostic script to verify indexes are created and being used
+
+Legacy SQL for Supabase; kept for reference only. App does not use Supabase.
+
+- `sql/create_helper_function.sql`, `create_tables.sql`, etc.
 
 ### Output
+
 - `csv_output/` - Generated CSV files (gitignored, auto-generated)
-
-## How It Works
-
-```
-Push to GitHub
-    ↓
-GitHub Actions triggers
-    ↓
-Convert JSON → CSV (json_to_csv.js)
-    ↓
-Sync CSV → Supabase (sync_smart.js)
-    - Creates tables automatically using exec_sql helper
-    - Infers column types from CSV data
-    - Syncs data in chunks
-    ↓
-Done! ✅
-```
-
-## Manual Usage
-
-### Convert JSON to CSV
-```bash
-cd json_converter
-node json_to_csv.js
-```
-
-### Sync to Supabase (Local Test)
-```bash
-export SUPABASE_URL="https://your-project.supabase.co"
-export SUPABASE_SECRET_KEY="your-secret-key-from-dashboard"
-node sync_smart.js
-```
-Never paste your real secret key into docs or code; use env vars only.
 
 ## Adding New JSON Files
 
@@ -79,7 +33,7 @@ Never paste your real secret key into docs or code; use env vars only.
    ```
    path/to/file.json|table_name|structure_type|description
    ```
-2. Push to GitHub - workflow handles the rest!
+2. Run `node json_to_csv.js` to regenerate CSV.
 
 ## Structure Types
 
@@ -91,21 +45,8 @@ Never paste your real secret key into docs or code; use env vars only.
 
 ## Troubleshooting
 
-**"Table does not exist" errors:**
-- Run `sql/create_helper_function.sql` in Supabase SQL Editor
-- Or run `sql/create_tables.sql` manually once
-
-**"Helper function not found":**
-- Verify `exec_sql` function exists in Supabase
-- Check function uses `sql_query` parameter name
-
-**CSV parsing errors:**
-- Check CSV files for malformed data
-- Verify JSON structure matches structure_type
+**CSV parsing errors:** Check CSV files for malformed data; verify JSON structure matches structure_type.
 
 ## Notes
 
-- Tables are created automatically using `exec_sql` helper function
-- Column types are inferred from CSV data (INTEGER, TEXT, JSONB, etc.)
-- Large files are processed in chunks (500 rows)
-- CSV files are regenerated on each push
+- CSV files are regenerated when you run `node json_to_csv.js`.

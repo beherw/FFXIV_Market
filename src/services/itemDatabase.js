@@ -21,10 +21,18 @@
  */
 
 import { convertSimplifiedToTraditional, convertTraditionalToSimplified, isTraditionalChinese, containsChinese } from '../utils/chineseConverter';
-// Use MessagePack for tw_items and equipment
-import { getTwItems as getTwItemsMsgpack, searchTwItems as searchTwItemsMsgpack } from './itemsDatabaseMsgpack';
-// Keep Supabase for other language searches
-import { searchCnItems, searchKoItems, searchEnItems, searchJaItems, searchDeItems, searchFrItems } from './supabaseData';
+import {
+  getTwItems as getTwItemsMsgpack,
+  searchTwItems as searchTwItemsMsgpack,
+  searchCnItems,
+  searchKoItems,
+  searchEnItems,
+  searchJaItems,
+  searchDeItems,
+  searchFrItems,
+  getTwItemById as getTwItemByIdMsgpack,
+  getLanguageItemById as getLanguageItemByIdMsgpack
+} from './itemsDatabaseMsgpack';
 
 let itemsDatabase = null;
 let shopItemsDatabase = null;
@@ -362,7 +370,7 @@ export async function loadItemDatabase(isOCRFuzzySearch = false) {
     }).filter(item => item['key: #'] && item['9: Name'].trim() !== '');
 
     itemsDatabase = items;
-    shopItemsDatabase = []; // Shop items not available in Supabase, keep empty array
+    shopItemsDatabase = []; // Shop items not in game data, keep empty array
 
     const loadDuration = performance.now() - loadStartTime;
     console.log(`[ItemDB] ✅ Loaded full item database (${itemsDatabase.length} items) in ${loadDuration.toFixed(2)}ms`);
@@ -623,7 +631,7 @@ async function loadIlvlAndVersionForResults(results, signal = null) {
   if (resultIds.length === 0) return;
   
   try {
-    const { getIlvlsByIds, getItemPatchByIds } = await import('./supabaseData');
+    const { getIlvlsByIds, getItemPatchByIds } = await import('./gameData');
     const [ilvls, patches] = await Promise.all([
       getIlvlsByIds(resultIds, signal),
       getItemPatchByIds(resultIds, signal)
@@ -662,7 +670,7 @@ async function loadIlvlAndVersionForResults(results, signal = null) {
 }
 
 /**
- * Transform Supabase search results to the format expected by performSearch
+ * Transform search results to the format expected by performSearch
  * @param {Object} searchResults - Results from search functions: {itemId: {tw: "name"}} or {itemId: {en: "name"}}, etc.
  * @param {Array} shopItems - Shop items array
  * @param {Set} shopItemIds - Set of shop item IDs
@@ -743,7 +751,7 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
   // Don't pre-load descriptions - load lazily only when needed (when displaying item details)
   // This avoids loading 19,032 descriptions on every search
 
-  // Shop items are always empty in Supabase (not available), so create empty Set directly
+  // Shop items are not in game data, so create empty Set directly
   // This avoids loading all 42,679 items just to get an empty array
   const shopItems = [];
   const shopItemIds = new Set();
@@ -759,7 +767,7 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
       return null;
     }
     try {
-      const { getMarketItemsByIds } = await import('./supabaseData');
+      const { getMarketItemsByIds } = await import('./gameData');
       return await getMarketItemsByIds(itemIds, signal);
     } catch (error) {
       console.warn(`[ItemDB] ⚠️ Failed to check marketability, will use IsUntradable field as fallback:`, error);
@@ -831,7 +839,7 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
       if (itemIds.length > 0) {
         // Check marketability for search results only (efficient - uses WHERE IN)
         try {
-          const { getMarketItemsByIds } = await import('./supabaseData');
+          const { getMarketItemsByIds } = await import('./gameData');
           marketItems = await getMarketItemsByIds(itemIds, signal);
         } catch (error) {
           console.warn(`[ItemDB] ⚠️ Failed to check marketability, will use IsUntradable field as fallback:`, error);
@@ -915,7 +923,7 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
         let twNamesCache = null;
         const itemIds = Object.keys(searchResults).map(id => parseInt(id, 10)).filter(id => !isNaN(id));
         if (itemIds.length > 0) {
-          const { getTwItemsByIds } = await import('./supabaseData');
+          const { getTwItemsByIds } = await import('./itemsDatabaseMsgpack');
           twNamesCache = await getTwItemsByIds(itemIds, signal);
         }
         
@@ -942,7 +950,7 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
           // Fetch TW names for fuzzy search results
           const fuzzyItemIds = Object.keys(fuzzyResults).map(id => parseInt(id, 10)).filter(id => !isNaN(id));
           if (fuzzyItemIds.length > 0) {
-            const { getTwItemsByIds } = await import('./supabaseData');
+            const { getTwItemsByIds } = await import('./itemsDatabaseMsgpack');
             twNamesCache = await getTwItemsByIds(fuzzyItemIds, signal);
           }
           
@@ -1057,7 +1065,7 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
         const itemsById = await Promise.all(
           matchingItemIds.map(async (itemId) => {
             try {
-              const { getTwItemById } = await import('./supabaseData');
+              const { getTwItemById } = await import('./gameData');
               const itemData = await getTwItemById(itemId);
               if (!itemData) {
                 return null;
@@ -1163,10 +1171,8 @@ export async function getItemById(itemId) {
 
   // Use targeted query instead of loading all items
   try {
-    const { getTwItemById, getLanguageItemById } = await import('./supabaseData');
-    
     // Try to get Traditional Chinese name first
-    const twItemData = await getTwItemById(itemId);
+    const twItemData = await getTwItemByIdMsgpack(itemId);
     
     if (twItemData && twItemData.tw) {
       // Found Traditional Chinese name
@@ -1184,27 +1190,52 @@ export async function getItemById(itemId) {
       };
     }
     
-    // No Traditional Chinese name found, try other languages in order: EN, JA, KO, ZH, DE, FR
+    // No Traditional Chinese name found; try EN and ZH from msgpack first, then JA/KO/DE/FR from msgpack
+    const { getZhItemsByIds, getEnItemsByIds } = await import('./itemsDatabaseMsgpack.js');
+    const [zhMap, enMap] = await Promise.all([
+      getZhItemsByIds([itemId]),
+      getEnItemsByIds([itemId])
+    ]);
+    const zhName = zhMap[itemId]?.zh || zhMap[String(itemId)]?.zh;
+    const enName = enMap[itemId]?.en || enMap[String(itemId)]?.en;
+    const msgpackFallbacks = [
+      { name: enName },
+      { name: zhName }
+    ];
+    for (const { name } of msgpackFallbacks) {
+      if (name && name.trim()) {
+        const cleanName = name.replace(/^["']|["']$/g, '').trim();
+        if (cleanName) {
+          return {
+            id: itemId,
+            name: cleanName,
+            nameTW: null,
+            searchLanguageName: cleanName,
+            itemLevel: '',
+            shopPrice: '',
+            inShop: false,
+            canBeHQ: true,
+            isTradable: true,
+          };
+        }
+      }
+    }
     const languageFallbacks = [
-      { table: 'en_items', column: 'en' },
       { table: 'ja_items', column: 'ja' },
       { table: 'ko_items', column: 'ko' },
-      { table: 'cn_items', column: 'zh' },
       { table: 'de_items', column: 'de' },
       { table: 'fr_items', column: 'fr' },
     ];
-    
     for (const lang of languageFallbacks) {
       try {
-        const langItemData = await getLanguageItemById(itemId, lang.table, lang.column);
+        const langItemData = await getLanguageItemByIdMsgpack(itemId, lang.table, lang.column);
         if (langItemData && langItemData[lang.column]) {
-          // Found name in this language
           const cleanName = langItemData[lang.column].replace(/^["']|["']$/g, '').trim();
           return {
             id: itemId,
             name: cleanName,
-            nameTW: null, // No Traditional Chinese name available
-            searchLanguageName: cleanName, // Store the found language name
+            nameTW: null,
+            searchLanguageName: cleanName,
             itemLevel: '',
             shopPrice: '',
             inShop: false,
@@ -1213,7 +1244,6 @@ export async function getItemById(itemId) {
           };
         }
       } catch (err) {
-        // Continue to next language if this one fails
         continue;
       }
     }
@@ -1221,7 +1251,7 @@ export async function getItemById(itemId) {
     // No name found in any language
     return null;
   } catch (error) {
-    console.error(`Error fetching item ${itemId} from Supabase:`, error);
+    console.error(`Error fetching item ${itemId}:`, error);
     // Don't fallback to full database load - it's too expensive
     // Just return null if the targeted query fails
     console.warn(`[ItemDB] ⚠️ Failed to fetch item ${itemId} - returning null (no fallback to avoid loading all items)`);
@@ -1235,7 +1265,7 @@ const EQUIP_SLOT_ORDER = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 /**
  * 套裝查詢（JSON 版）：根據一件裝備 ID，從本地 JSON 找出同套裝的所有裝備。
  * 僅使用 teamcraft 的 equipment.json / ilvls.json / item-patch.json，不呼叫 API。
- * @deprecated UI 請改用 supabaseData 的 getItemSetFromDB(itemId)，可共用 ilvls/item_patch 快取且不載入約 8.4 MB JSON。此函式保留作為 fallback 或離線/測試用。
+ * @deprecated UI 請改用 gameData 的 getItemSetFromDB(itemId)，可共用 ilvls/item_patch 快取且不載入約 8.4 MB JSON。此函式保留作為 fallback 或離線/測試用。
  * @param {number} itemId - 裝備道具 ID（例如 19623）
  * @returns {Promise<{ setItemIds: number[], seedItemId: number, isEquipmentSet: boolean, ilvl?: number, patch?: number, level?: number }>}
  */
@@ -1800,7 +1830,7 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
       const itemIds = items.map(item => parseInt(item['key: #'], 10)).filter(id => !isNaN(id));
       if (itemIds.length > 0) {
         try {
-          const { getMarketItemsByIds } = await import('./supabaseData');
+          const { getMarketItemsByIds } = await import('./gameData');
           marketItems = await getMarketItemsByIds(itemIds, signal);
         } catch (error) {
           console.warn(`[ItemDB] ⚠️ Failed to check marketability:`, error);
@@ -1840,7 +1870,7 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
         const itemIds = items.map(item => parseInt(item['key: #'], 10)).filter(id => !isNaN(id));
         if (itemIds.length > 0) {
           try {
-            const { getMarketItemsByIds } = await import('./supabaseData');
+            const { getMarketItemsByIds } = await import('./gameData');
             marketItems = await getMarketItemsByIds(itemIds, signal);
           } catch (err) {
             marketItems = null;
@@ -1901,7 +1931,7 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
         let marketItems = null;
         if (itemIds.length > 0) {
           try {
-            const { getMarketItemsByIds } = await import('./supabaseData');
+            const { getMarketItemsByIds } = await import('./gameData');
             marketItems = await getMarketItemsByIds(itemIds, signal);
           } catch (err) {
             marketItems = null;
@@ -1969,7 +1999,7 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
         const itemIds = ocrResults.map(({ item }) => parseInt(item['key: #'], 10)).filter(id => !isNaN(id));
         if (itemIds.length > 0) {
           try {
-            const { getMarketItemsByIds } = await import('./supabaseData');
+            const { getMarketItemsByIds } = await import('./gameData');
             marketItems = await getMarketItemsByIds(itemIds, signal);
           } catch (error) {
             console.warn(`[ItemDB] ⚠️ Failed to check marketability for OCR results:`, error);

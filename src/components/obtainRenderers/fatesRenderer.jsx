@@ -34,18 +34,18 @@ export function renderFates({
       </div>
       <div className="flex flex-wrap gap-2 mt-2">
         {data.map((fateId, fateIndex) => {
-          const fateData = loadedData.fates && (loadedData.fates[fateId] || loadedData.fates[String(fateId)]);
-          const fateName = fateData ? getFateNameCN(fateId) : `危命任務 ${fateId}`;
-          const fateLevel = fateData?.level || null;
-          const fateIcon = fateData?.icon || 'https://xivapi.com/i/060000/060958.png';
-          const zoneId = fateData?.zoneId || null;
+          const fateData = loadedData.fatesById && (loadedData.fatesById[fateId] || loadedData.fatesById[String(fateId)]);
+          const fateName = fateData?.tw || fateData?.en || fateData?.zh || (getFateNameCN ? getFateNameCN(fateId) : null) || `危命任務 ${fateId}`;
+          const fateLevel = fateData?.level ?? null;
+          const fateIcon = fateData?.icon ? `https://xivapi.com${fateData.icon}` : 'https://xivapi.com/i/060000/060958.png';
+          const zoneId = fateData?.zoneId ?? null;
           const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
-          const fateMapId = fateData?.map || null;
-          const fateCoords = (fateData?.x !== undefined && fateData?.y !== undefined) ? { x: fateData.x, y: fateData.y } : null;
+          const fateMapId = fateData?.mapId ?? null;
+          const fateCoords = (fateData?.x != null && fateData?.y != null) ? { x: fateData.x, y: fateData.y } : null;
           const hasLocation = fateCoords && fateMapId;
-          const fateNameZh = fateData?.zh || null;
+          const fateNameZh = fateData?.zh ?? null;
 
-          const rewardItemsRaw = fateData?.items || [];
+          const rewardItemsRaw = fateData?.items ?? [];
           const rewardItems = rewardItemsRaw.filter(rewardItemId => {
             const rewardItemData = loadedData.twItems[rewardItemId] || loadedData.twItems[String(rewardItemId)];
             return rewardItemData && rewardItemData.tw;

@@ -10,7 +10,8 @@ import RunningLoader from './RunningLoader';
 import { getMarketableItemsByIds } from '../services/universalis';
 import { getItemById, getSimplifiedChineseName } from '../services/itemDatabase';
 import axios from 'axios';
-import { getEquipSlotCategories, getEquipmentByIds, getItemIdsByIlvl } from '../services/supabaseData';
+import { getEquipSlotCategories, getItemIdsByIlvl } from '../services/gameData';
+import { getEquipmentByIds } from '../services/itemsDatabaseMsgpack';
 import { APP_VERSION } from '../constants/version';
 import { generateItemUrl } from '../utils/urlSlug';
 import VersionFooter from './VersionFooter';
@@ -696,7 +697,7 @@ export default function MSQPriceChecker({
 
       // Fetch item details for display (show all items, including untradeable)
       // Use batch query instead of individual queries for better performance
-      const { getTwItemsByIds } = await import('../services/supabaseData');
+      const { getTwItemsByIds } = await import('../services/gameData');
       const itemsData = await getTwItemsByIds(finalItemIds);
       const items = finalItemIds.map(id => {
         const itemData = itemsData[id];

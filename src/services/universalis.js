@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { requestManager } from '../utils/requestManager';
-import { getMarketItems, getMarketItemsByIds } from './supabaseData';
+import { getMarketItems, getMarketItemsByIds } from './gameData';
 
 const UNIVERSALIS_BASE_URL = 'https://universalis.app/api/v2';
 
@@ -9,8 +9,8 @@ let marketableItemsSet = null;
 let marketableItemsLoadPromise = null;
 
 /**
- * Get the set of marketable item IDs from Supabase
- * Falls back to empty set if Supabase is unavailable
+* Get the set of marketable item IDs from game data (local JSON)
+* Falls back to empty set if unavailable
  * @returns {Promise<Set<number>>} - Set of marketable item IDs
  */
 export async function getMarketableItems() {
@@ -24,16 +24,16 @@ export async function getMarketableItems() {
     return marketableItemsLoadPromise;
   }
 
-  // Start loading from Supabase
+  // Start loading marketable items from game data
   marketableItemsLoadPromise = (async () => {
     try {
-      console.log('Loading marketable items from Supabase...');
+      console.log('Loading marketable items from game data...');
       
-      // Fetch all marketable item IDs from Supabase
+      // Fetch all marketable item IDs from game data
       const itemIds = await getMarketItems();
       marketableItemsSet = new Set(itemIds);
       
-      console.log(`Loaded ${marketableItemsSet.size} marketable items from Supabase`);
+      console.log(`Loaded ${marketableItemsSet.size} marketable items from game data`);
       return marketableItemsSet;
     } catch (error) {
       console.error('Error loading marketable items:', error);

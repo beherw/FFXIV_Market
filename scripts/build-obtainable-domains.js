@@ -1,0 +1,211 @@
+#!/usr/bin/env node
+
+/**
+ * Build Obtainable Domain Msgpacks
+ *
+ * Reads teamcraft JSON and outputs one msgpack per domain for obtainableDataService.
+ * Output: npcs.msgpack, shops.msgpack, instances.msgpack, quests.msgpack,
+ *         achievements.msgpack, places.msgpack, leves.msgpack, loot-sources.msgpack
+ */
+
+import * as msgpack from '@msgpack/msgpack';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const JSON_PATH = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json');
+const DB_PATH = path.join(JSON_PATH, 'db');
+const TW_PATH = path.join(JSON_PATH, 'tw');
+const ZH_PATH = path.join(JSON_PATH, 'zh');
+const OUTPUT_DIR = path.join(__dirname, '../public/data');
+
+function loadJson(relativePath, name) {
+  const p = path.join(JSON_PATH, relativePath);
+  if (!fs.existsSync(p)) {
+    console.error(`[Obtainable] ERROR: ${name} not found: ${p}`);
+    process.exit(1);
+  }
+  const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
+  const count = Array.isArray(data) ? data.length : Object.keys(data).length;
+  console.log(`[Obtainable] Loaded ${name}: ${count} records`);
+  return data;
+}
+
+function loadDb(relativePath, name) {
+  const p = path.join(DB_PATH, relativePath);
+  if (!fs.existsSync(p)) {
+    console.error(`[Obtainable] ERROR: ${name} not found: ${p}`);
+    process.exit(1);
+  }
+  const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
+  console.log(`[Obtainable] Loaded ${name}: ${Object.keys(data).length} records`);
+  return data;
+}
+
+function writeMsgpack(filename, data, label) {
+  if (!fs.existsSync(OUTPUT_DIR)) {
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  }
+  const outPath = path.join(OUTPUT_DIR, filename);
+  const packed = msgpack.encode(data);
+  fs.writeFileSync(outPath, packed);
+  console.log(`[Obtainable] Written ${filename}: ${(packed.length / 1024).toFixed(1)} KB`);
+}
+
+// --- NPCs ---
+function buildNpcs() {
+  const twNpcs = loadJson('tw/tw-npcs.json', 'tw-npcs');
+  const npcs = loadJson('npcs.json', 'npcs');
+  const npcsDb = loadDb('npcs-database-pages.json', 'npcs-database-pages');
+
+  const twNpcsMap = {};
+  Object.entries(twNpcs).forEach(([id, row]) => {
+    const name = row?.name?.tw ?? row?.tw;
+    if (name != null && name !== '') twNpcsMap[id] = { tw: name };
+  });
+
+  writeMsgpack('npcs.msgpack', {
+    twNpcs: twNpcsMap,
+    npcs: typeof npcs === 'object' && !Array.isArray(npcs) ? npcs : {},
+    npcsDatabasePages: npcsDb
+  }, 'npcs');
+}
+
+// --- Shops ---
+function buildShops() {
+  const twShops = loadJson('tw/tw-shops.json', 'tw-shops');
+  const shopsArray = loadJson('shops.json', 'shops');
+  const shopsByNpc = loadJson('shops-by-npc.json', 'shops-by-npc');
+
+  const twShopsMap = {};
+  Object.entries(twShops).forEach(([id, row]) => {
+    const name = row?.name?.tw ?? row?.tw;
+    if (name != null && name !== '') twShopsMap[id] = { tw: name };
+  });
+
+  const shopsMap = {};
+  if (Array.isArray(shopsArray)) {
+    shopsArray.forEach(shop => {
+      if (shop && shop.id != null) shopsMap[String(shop.id)] = shop;
+    });
+  }
+
+  writeMsgpack('shops.msgpack', {
+    twShops: twShopsMap,
+    shops: shopsMap,
+    shopsByNpc: shopsByNpc
+  }, 'shops');
+}
+
+// --- Instances ---
+function buildInstances() {
+  const twInstances = loadJson('tw/tw-instances.json', 'tw-instances');
+  const instances = loadJson('instances.json', 'instances');
+  const zhInstances = loadJson('zh/zh-instances.json', 'zh-instances');
+
+  const twMap = {};
+  Object.entries(twInstances).forEach(([id, row]) => {
+    const name = row?.name?.tw ?? row?.tw;
+    if (name != null && name !== '') twMap[id] = { tw: name };
+  });
+
+  writeMsgpack('instances.msgpack', {
+    twInstances: twMap,
+    instances: typeof instances === 'object' && !Array.isArray(instances) ? instances : {},
+    zhInstances: typeof zhInstances === 'object' && !Array.isArray(zhInstances) ? zhInstances : {}
+  }, 'instances');
+}
+
+// --- Quests ---
+function buildQuests() {
+  const twQuests = loadJson('tw/tw-quests.json', 'tw-quests');
+  const quests = loadJson('quests.json', 'quests');
+  const zhQuests = loadJson('zh/zh-quests.json', 'zh-quests');
+  const questsDb = loadDb('quests-database-pages.json', 'quests-database-pages');
+
+  const twMap = {};
+  Object.entries(twQuests).forEach(([id, row]) => {
+    const name = row?.name?.tw ?? row?.tw;
+    if (name != null && name !== '') twMap[id] = { tw: name };
+  });
+
+  writeMsgpack('quests.msgpack', {
+    twQuests: twMap,
+    quests: typeof quests === 'object' && !Array.isArray(quests) ? quests : {},
+    zhQuests: typeof zhQuests === 'object' && !Array.isArray(zhQuests) ? zhQuests : {},
+    questsDatabasePages: questsDb
+  }, 'quests');
+}
+
+// --- Achievements ---
+function buildAchievements() {
+  const twAchievements = loadJson('tw/tw-achievements.json', 'tw-achievements');
+  const twAchievementDescriptions = loadJson('tw/tw-achievement-descriptions.json', 'tw-achievement-descriptions');
+  const achievements = loadJson('achievements.json', 'achievements');
+
+  const twMap = {};
+  Object.entries(twAchievements).forEach(([id, row]) => {
+    const name = row?.name?.tw ?? row?.tw;
+    if (name != null && name !== '') twMap[id] = { tw: name };
+  });
+
+  writeMsgpack('achievements.msgpack', {
+    twAchievements: twMap,
+    twAchievementDescriptions: typeof twAchievementDescriptions === 'object' ? twAchievementDescriptions : {},
+    achievements: typeof achievements === 'object' && !Array.isArray(achievements) ? achievements : {}
+  }, 'achievements');
+}
+
+// --- Places ---
+function buildPlaces() {
+  const twPlaces = loadJson('tw/tw-places.json', 'tw-places');
+  const places = loadJson('places.json', 'places');
+
+  const twMap = {};
+  Object.entries(twPlaces).forEach(([id, row]) => {
+    const name = row?.name?.tw ?? row?.tw ?? row?.name;
+    if (name != null && name !== '') twMap[id] = typeof name === 'string' ? { tw: name } : { tw: name?.tw ?? name };
+  });
+
+  writeMsgpack('places.msgpack', {
+    twPlaces: twMap,
+    places: typeof places === 'object' && !Array.isArray(places) ? places : {}
+  }, 'places');
+}
+
+// --- Leves ---
+function buildLeves() {
+  const levesDb = loadDb('leves-database-pages.json', 'leves-database-pages');
+  writeMsgpack('leves.msgpack', { levesDatabasePages: levesDb }, 'leves');
+}
+
+// --- Loot sources ---
+function buildLootSources() {
+  const lootSources = loadJson('loot-sources.json', 'loot-sources');
+  const lootSourcesByItemId = {};
+  Object.entries(lootSources).forEach(([itemId, arr]) => {
+    if (Array.isArray(arr) && arr.length > 0) {
+      lootSourcesByItemId[itemId] = arr;
+    }
+  });
+  writeMsgpack('loot-sources.msgpack', { lootSourcesByItemId }, 'loot-sources');
+}
+
+function main() {
+  console.log('\n[Obtainable] Building domain msgpacks...\n');
+  const start = Date.now();
+  buildNpcs();
+  buildShops();
+  buildInstances();
+  buildQuests();
+  buildAchievements();
+  buildPlaces();
+  buildLeves();
+  buildLootSources();
+  console.log(`\n[Obtainable] Done in ${Date.now() - start}ms\n`);
+}
+
+main();

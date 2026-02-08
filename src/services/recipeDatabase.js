@@ -17,12 +17,8 @@ const recipesByResultCache = new Map();
 
 /**
  * Load recipes database from local MessagePack binary file
- * This replaces the Supabase query with a single file fetch
- * Benefits:
- * - Much faster: ~100ms vs 500ms+ for Supabase query
- * - Smaller file: ~2-3MB vs 13MB JSON
- * - No database calls: reduces load on Supabase
- * - Works offline: data is bundled with the app
+ * Loads from local recipes.msgpack (single file fetch).
+ * Benefits: fast, smaller than JSON, no remote DB, works offline.
  */
 export async function loadRecipeDatabase() {
   // Return cached data if available

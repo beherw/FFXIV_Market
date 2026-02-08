@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { getTwItems } from '../services/supabaseData';
+import { getTwItems } from '../services/gameData';
 import { cropBlackBorders } from '../utils/ocr/imageUtils';
 import { getTesseractConfig, ocrDebugLog, TESSERACT_INIT_CONFIG, type TesseractFiltersConfig } from '../utils/ocr/tesseractConfig';
 
@@ -1506,7 +1506,7 @@ async function buildItemtwCharWhitelist(): Promise<string> {
     const buildStartTime = Date.now();
     
     try {
-      // 從 supabaseData 獲取 itemtw 數據（使用已緩存的數據）
+      // 從 gameData 獲取 item tw 數據（使用已緩存的數據）
       const twItemsData = await getTwItems();
       
       // 提取所有唯一字符、bigram 和 trigram

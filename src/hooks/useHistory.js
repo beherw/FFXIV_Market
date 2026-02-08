@@ -61,8 +61,8 @@ export function useHistory() {
       
       try {
         // Use batch query instead of individual queries for better performance
-        const { getTwItemsByIds } = await import('../services/supabaseData');
-        const itemsData = await getTwItemsByIds(historyIds);
+        const { getTwItemsByIds } = await import('../services/gameData');
+        const itemsData = await getTwItemsByIds(historyIds, undefined, { includeEquipLevel: false });
         
         // Convert batch query results to item format
         const items = historyIds.map(id => {

@@ -103,13 +103,6 @@
 
 ## 🛠️ 開發者資訊
 
-### 技術堆疊
-
-- **React** - 現代化 UI 框架
-- **Vite** - 快速建置工具與開發伺服器
-- **Tailwind CSS** - 工具優先的 CSS 框架
-- **React Router** - 客戶端路由
-
 ### API 與資料來源
 
 - **[Universalis API](https://universalis.app/)** - 即時市場看板數據
@@ -118,10 +111,10 @@
 
 ### 開發環境設定
 
-1. **環境變數**：複製 `.env.example` 為 `.env`，填入 `VITE_SUPABASE_URL` 與 `VITE_SUPABASE_PUBLISHABLE_KEY`（勿將 `.env` 或真實金鑰提交至版本庫）。
+1. **環境變數**：主應用使用本地 msgpack/JSON 資料，無需遠端資料庫。複製 `.env.example` 為 `.env` 僅在需要時使用（例如 json_converter 同步工具）。勿將 `.env` 或真實金鑰提交至版本庫。
 
 ```bash
-# 安裝依賴套件
+# 安裝套件
 npm install
 
 # 啟動開發伺服器

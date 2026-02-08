@@ -33,10 +33,10 @@ export default function RecentUpdatesSection({ onItemSelect, selectedDcName }) {
         return;
       }
       
-      // Fetch item names directly from Supabase (without loading full item objects or descriptions)
+      // Fetch item names from game data (without loading full item objects or descriptions)
       // RecentUpdatesSection only needs item names for display
       // Use batch query instead of individual queries for better performance
-      const { getTwItemsByIds } = await import('../services/supabaseData');
+      const { getTwItemsByIds } = await import('../services/gameData');
       const itemIds = items.map(item => item.itemID);
       const itemsData = await getTwItemsByIds(itemIds);
       const itemsWithDetails = items.map((item) => {

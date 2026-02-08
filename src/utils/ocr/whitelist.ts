@@ -2,7 +2,7 @@
  * OCR 白名單管理
  */
 
-import { getTwItems } from '../../services/supabaseData';
+import { getTwItems } from '../../services/gameData';
 import { OCR_CONFIG } from './config';
 import type { WhitelistCache } from './types';
 

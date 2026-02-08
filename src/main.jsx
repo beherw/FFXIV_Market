@@ -3,12 +3,10 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import './styles/main.css'
-import { initializeSupabaseConnection } from './services/supabaseClient'
-
-// Initialize Supabase connection immediately on page load (before React renders)
+// Data is loaded from local msgpack/JSON. No remote DB on startup.
 console.log('[App] 🚀 Starting application initialization...');
 const appStartTime = performance.now();
-initializeSupabaseConnection().then(() => {
+Promise.resolve().then(() => {
   const appInitTime = performance.now() - appStartTime;
   console.log(`[App] ⚡ Application ready (init time: ${appInitTime.toFixed(2)}ms)`);
 });

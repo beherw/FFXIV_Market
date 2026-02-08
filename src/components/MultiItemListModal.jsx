@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ItemImage from './ItemImage';
-import { getTwItemsByIds } from '../services/supabaseData';
+import { getTwItemsByIds } from '../services/gameData';
 import { hasRecipe } from '../services/recipeDatabase';
 
 /**
@@ -73,10 +73,10 @@ export default function MultiItemListModal({
       return;
     }
 
-    // Get item name from cache or fetch from Supabase
+    // Get item name from cache or fetch from game data
     let itemName = itemNames[currentItemId] || itemMetaById[currentItemId]?.tw;
     
-    // If not in cache, fetch from Supabase
+    // If not in cache, fetch from game data
     if (!itemName) {
       try {
         const meta = await getTwItemsByIds([currentItemId]);

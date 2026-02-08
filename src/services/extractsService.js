@@ -1,16 +1,16 @@
 // Service to load and parse extracts.json for item acquisition methods
-// Now uses Supabase for efficient querying - only loads data for specific item IDs
+// Uses obtainable msgpack for specific item IDs (local, no remote DB)
 // Never loads all extracts data at once
 
 import { getObtainableSourcesById } from './obtainableMethodsMsgpack';
 
 /**
  * Load extracts index file (small metadata file)
- * @deprecated No longer needed - Supabase queries don't require an index
+ * @deprecated No longer needed - targeted queries use msgpack
  * @returns {Promise<Object>} Empty index object for backward compatibility
  */
 export async function loadExtractsIndex() {
-  // No longer needed with Supabase - return empty object for backward compatibility
+  // No longer needed - return empty object for backward compatibility
   return { chunkCount: 0, totalRecords: 0, idRanges: [] };
 }
 
@@ -49,13 +49,13 @@ function getChunkIndex(itemId, index) {
 
 /**
  * Load a specific chunk by index
- * @deprecated No longer needed - Supabase queries don't use chunks
+ * @deprecated No longer needed - msgpack doesn't use chunks
  * @param {number} chunkIndex - Chunk index to load
  * @param {AbortSignal} signal - Optional abort signal for cancellation
  * @returns {Promise<Object>} Empty object for backward compatibility
  */
 export async function loadChunk(chunkIndex, signal = null) {
-  // No longer needed with Supabase - return empty object for backward compatibility
+  // No longer needed - return empty object for backward compatibility
   return {};
 }
 
@@ -99,7 +99,7 @@ export async function getItemSources(itemId, signal = null) {
 
 /**
  * Get all chunks for searching through all items
- * @deprecated Loading all extracts is inefficient. Use targeted Supabase queries instead.
+ * @deprecated Loading all extracts is inefficient. Use getItemSources(itemId) instead.
  * @param {AbortSignal} signal - Optional abort signal for cancellation
  * @param {Function} onChunkLoaded - Optional callback called when each chunk loads (chunkIndex, chunk)
  * @returns {Promise<Array<Object>>} Empty array (loading all chunks is disabled for performance)
@@ -107,7 +107,7 @@ export async function getItemSources(itemId, signal = null) {
 export async function loadAllChunks(signal = null, onChunkLoaded = null) {
   // DISABLED - Loading all extracts is inefficient and not needed
   // Components should use targeted queries instead
-  console.warn('[extractsService] loadAllChunks() is deprecated. Use targeted Supabase queries instead.');
+  console.warn('[extractsService] loadAllChunks() is deprecated. Use getItemSources(itemId) instead.');
   return [];
 }
 

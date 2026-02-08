@@ -220,6 +220,7 @@
         <button onclick="testItem(5)" style="padding: 5px 10px; margin: 0 5px; font-size: 13px;">5</button>
         <button onclick="testItem(36111)" style="padding: 5px 10px; margin: 0 5px; font-size: 13px;">36111</button>
         <button onclick="testItem(2)" style="padding: 5px 10px; margin: 0 5px; font-size: 13px;">2</button>
+        <button onclick="testItem(43858)" style="padding: 5px 10px; margin: 0 5px; font-size: 13px;">43858（兌換對照）</button>
       </div>
     </div>
 
@@ -229,6 +230,7 @@
 
   <script type="module">
     import { getItemSourcesById } from '/src/services/supabaseData.js';
+    import { getObtainableSourcesById } from '/src/services/obtainableMethodsMsgpack.js';
     import { 
       getTwNpcsByIds,
       getNpcsByIds,
@@ -288,26 +290,32 @@
       resultsDiv.innerHTML = '';
 
       try {
-        // Step 1: Get sources using project's service
-        const sources = await getItemSourcesById(itemId);
-        
+        // Step 1: Get sources from BOTH data sources for comparison
+        statusDiv.innerHTML = '<div class="status loading">⏳ Loading both data sources...</div>';
+        const [sourcesExtracts, sourcesApp] = await Promise.all([
+          getItemSourcesById(itemId),
+          getObtainableSourcesById(itemId).then(s => s || [])
+        ]);
+        // This page primarily shows Supabase "extracts" (raw); app uses obtainable-methods.json
+        const sources = sourcesExtracts && sourcesExtracts.length > 0 ? sourcesExtracts : sourcesApp;
+
         if (!sources || sources.length === 0) {
-          statusDiv.innerHTML = '<div class="status error">❌ No sources found for this item</div>';
+          statusDiv.innerHTML = '<div class="status error">❌ No sources found for this item in either source</div>';
           analyzeBtn.disabled = false;
           return;
         }
 
         statusDiv.innerHTML = '<div class="status loading">⏳ Extracting IDs and loading related data...</div>';
 
-        // Step 2: Extract all IDs from sources
+        // Step 2: Extract all IDs from sources (include currencyItemId for type 2)
         const extractedIds = extractIdsFromSources(sources);
 
         // Step 3: Fetch related data
         const relatedData = await fetchRelatedData(extractedIds);
 
-        // Display results
+        // Display results (pass both for comparison)
         statusDiv.innerHTML = '<div class="status success">✅ Analysis Complete!</div>';
-        displayResults(itemId, sources, extractedIds, relatedData);
+        displayResults(itemId, sources, extractedIds, relatedData, sourcesExtracts, sourcesApp);
 
       } catch (error) {
         console.error('Error:', error);
@@ -332,6 +340,10 @@
       sources.forEach(source => {
         const type = source.type;
         const data = source.data;
+        // TRADE_SOURCES / specialshop (type 2): top-level currencyItemId
+        if (type === 2 && source.currencyItemId) {
+          ids.itemIds.add(source.currencyItemId);
+        }
 
         if (type === 1 && Array.isArray(data)) { // VENDORS
           data.forEach(item => {
@@ -483,10 +495,20 @@
       return relatedData;
     }
 
-    function displayResults(itemId, sources, extractedIds, relatedData) {
+    function displayResults(itemId, sources, extractedIds, relatedData, sourcesExtracts, sourcesApp) {
       const resultsDiv = document.getElementById('results');
+      const fromExtracts = sourcesExtracts && sourcesExtracts.length > 0;
+      const fromApp = sourcesApp && sourcesApp.length > 0;
       
       let html = `
+        <div class="relationship-box" style="margin-bottom: 20px;">
+          <strong>📌 資料來源說明</strong>
+          <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
+            <li><b>Supabase extracts</b>：資料表 extracts，可能是舊版或不同管線（例如兌換會出現 currency 41785）。</li>
+            <li><b>主站取得方式</b>：使用 <code>obtainable-methods.json</code>（getObtainableSourcesById），兌換用 <code>currencyItemId</code>（例如 45690）。</li>
+            <li>若兩邊 currency 不同（41785 vs 45690），代表兩套資料不一致，主站以 obtainable-methods 為準。</li>
+          </ul>
+        </div>
         <div class="data-section">
           <h2>📊 Summary</h2>
           <div class="summary-box">
@@ -495,8 +517,8 @@
               <span class="summary-value">${itemId}</span>
             </div>
             <div class="summary-item">
-              <span class="summary-label">Total Source Types:</span>
-              <span class="summary-value">${sources.length}</span>
+              <span class="summary-label">目前顯示來源:</span>
+              <span class="summary-value">${fromExtracts ? 'Supabase extracts' : 'obtainable-methods.json'}（${sources.length} 筆）</span>
             </div>
             <div class="summary-item">
               <span class="summary-label">NPC IDs:</span>
@@ -522,11 +544,27 @@
         </div>
 
         <div class="data-section">
-          <h2 onclick="toggleSection(this)">📦 Raw Sources Data</h2>
+          <h2 onclick="toggleSection(this)">📦 Raw Sources Data（目前顯示）</h2>
           <div class="collapsible-content">
             <div class="json-display">${JSON.stringify(sources, null, 2)}</div>
           </div>
         </div>
+        ${(fromExtracts && fromApp) ? `
+        <div class="data-section">
+          <h2 onclick="toggleSection(this)">📋 主站用 obtainable-methods.json 同一物品</h2>
+          <div class="collapsible-content">
+            <p style="margin-bottom:10px; color:#666;">主站「取得方式」實際讀取的是這份資料，可對照上方 Raw 的 currency/currencyItemId。</p>
+            <div class="json-display">${JSON.stringify(sourcesApp, null, 2)}</div>
+          </div>
+        </div>
+        ` : (fromApp ? `
+        <div class="data-section">
+          <h2 onclick="toggleSection(this)">📋 主站用 obtainable-methods.json</h2>
+          <div class="collapsible-content">
+            <div class="json-display">${JSON.stringify(sourcesApp, null, 2)}</div>
+          </div>
+        </div>
+        ` : '')}
 
         <div class="data-section">
           <h2 onclick="toggleSection(this)">🔗 Source Type Breakdown</h2>
