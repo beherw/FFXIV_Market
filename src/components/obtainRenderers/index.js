@@ -1,6 +1,7 @@
 /**
- * Dynamic renderer loader for obtainable methods
- * This allows lazy-loading only the renderers needed for a specific item
+ * Dynamic renderer loader for obtainable methods.
+ * NOTE: ObtainMethods.jsx currently uses inline rendering and does not call getRenderer().
+ * These renderers are available for future adoption (see obtainRenderers/README.md).
  */
 
 import { DataType } from '../../services/extractsService';

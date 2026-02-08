@@ -60,7 +60,12 @@ async function loadDomain(name, signal) {
   return p;
 }
 
-function emptyLoadedDataSkeleton() {
+/**
+ * Empty loadedData shape used by ObtainMethods and loadDataForRequiredIds.
+ * @param {Object} [preserve] - Optional keys to preserve from previous loadedData (e.g. twPlaces, places, retainerTasksById)
+ * @returns {Object} loadedData skeleton
+ */
+export function getEmptyLoadedData(preserve = {}) {
   return {
     twNpcs: {},
     npcs: {},
@@ -80,14 +85,19 @@ function emptyLoadedDataSkeleton() {
     twAchievements: {},
     twAchievementDescriptions: {},
     achievements: {},
-    twPlaces: {},
-    places: {},
+    twPlaces: preserve.twPlaces || {},
+    places: preserve.places || {},
     twItems: {},
     zhItems: {},
     items: {},
+    retainerTasksById: preserve.retainerTasksById || {},
     fateSources: [],
     lootSources: []
   };
+}
+
+function emptyLoadedDataSkeleton() {
+  return getEmptyLoadedData();
 }
 
 /**

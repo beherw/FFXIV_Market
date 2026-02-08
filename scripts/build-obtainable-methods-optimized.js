@@ -26,6 +26,14 @@ const OUTPUT_FILE_MSGPACK = path.join(OUTPUT_DIR, 'obtainable-methods.msgpack');
 // 使用中心化的 TYPE_CHINESE_NAMES
 const TYPE_NAME_MAP = TYPE_CHINESE_NAMES;
 
+// Instance contentType -> display name (build script only; not in dataTypes)
+const INSTANCE_CONTENT_TYPE_NAMES = {
+  28: '絕境戰',
+  5: '大型任務',
+  4: '討伐戰',
+  2: '副本'
+};
+
 function loadJson(jsonPath, dataName) {
   console.log(`[Obtainable] Reading ${dataName}...`);
   if (!fs.existsSync(jsonPath)) {
@@ -50,10 +58,10 @@ function getInstanceTypeName(instanceIds, instancesMap) {
       contentTypes.add(instance.contentType);
     }
   });
-  if (contentTypes.has(28)) return '絕境戰';
-  if (contentTypes.has(5)) return '大型任務';
-  if (contentTypes.has(4)) return '討伐戰';
-  if (contentTypes.has(2)) return '副本';
+  const priority = [28, 5, 4, 2];
+  for (const ct of priority) {
+    if (contentTypes.has(ct)) return INSTANCE_CONTENT_TYPE_NAMES[ct];
+  }
   return TYPE_NAME_MAP[DataType.INSTANCES];
 }
 
@@ -89,7 +97,8 @@ function extractEssentialData(type, rawData, instancesMap) {
       break;
 
     case DataType.TRADE_SOURCES:
-      // Emit one entry per shop and per trade so multiple currencies (e.g. 41785 and 45690) all show
+      // Emit one entry per unique exchange (currency+amount+HQ); merge NPCs from all shops that offer the same trade.
+      // So e.g. item 36244 with same "26807 x2 → 36244" in 3 shops becomes 1 entry with 3 NPCs (like item 44123).
       if (Array.isArray(rawData) && rawData.length > 0) {
         const tradeResults = [];
         rawData.forEach(shop => {
@@ -113,8 +122,24 @@ function extractEssentialData(type, rawData, instancesMap) {
             });
           });
         });
+        // Merge entries with same exchange (same currency+amount+HQ): combine npcIds, keep first shopId/shopName
         if (tradeResults.length > 0) {
-          result._tradeResults = tradeResults;
+          const key = (e) => `${e.currencyItemId}|${e.currencyAmount}|${!!e.requiresHQ}|${e.currency || 'item'}`;
+          const merged = new Map();
+          tradeResults.forEach(entry => {
+            const k = key(entry);
+            if (!merged.has(k)) {
+              merged.set(k, {
+                ...entry,
+                npcIds: [...entry.npcIds]
+              });
+            } else {
+              const existing = merged.get(k);
+              const seen = new Set(existing.npcIds);
+              entry.npcIds.forEach(id => { if (!seen.has(id)) { seen.add(id); existing.npcIds.push(id); } });
+            }
+          });
+          result._tradeResults = Array.from(merged.values());
         }
       }
       break;

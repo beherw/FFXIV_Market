@@ -1,5 +1,8 @@
 // Shared utilities for obtain method renderers
+// Name/lookup helpers delegate to obtainableHelpers for single source of truth
 import React from 'react';
+import * as obtainableHelpers from '../../utils/obtainableHelpers';
+import { FALLBACK_MESSAGE } from '../../constants/obtainableConstants';
 
 /**
  * Get job name from job ID
@@ -37,69 +40,36 @@ export function getMasterbookName(masterbookId, twItemsData) {
   return itemData?.tw || null;
 }
 
-/**
- * Get currency name from currency item ID
- */
+/** Get currency name – delegates to obtainableHelpers (returns null when not found for renderer compat) */
 export function getCurrencyName(currencyItemId, twItemsData) {
   if (!currencyItemId || !twItemsData) return null;
-  const itemData = twItemsData[currencyItemId] || twItemsData[String(currencyItemId)];
-  return itemData?.tw || null;
+  const name = obtainableHelpers.getCurrencyName(currencyItemId, { twItems: twItemsData, zhItems: {}, items: {} });
+  return name === FALLBACK_MESSAGE ? null : name;
 }
 
-/**
- * Get shop name from shop ID
- */
+/** Get shop name – delegates to obtainableHelpers */
 export function getShopName(shopId, twShopsData, shopsData) {
   if (!shopId) return null;
-  
-  // Try tw-shops first
-  if (twShopsData) {
-    const shopName = twShopsData[shopId];
-    if (shopName) return shopName;
-  }
-  
-  // Try shops (en) as fallback
-  if (shopsData) {
-    const shopData = shopsData[shopId];
-    if (shopData && shopData.en) return shopData.en;
-  }
-  
-  return null;
+  return obtainableHelpers.getShopName(shopId, { twShops: twShopsData || {}, shops: shopsData || {} });
 }
 
-/**
- * Get NPC name from NPC ID
- */
+/** Get NPC name – delegates to obtainableHelpers (returns null when not found for renderer compat) */
 export function getNpcName(npcId, twNpcsData, npcsData, npcsDatabasePagesData) {
   if (!npcId) return null;
-  
-  // Try tw-npcs first
-  if (twNpcsData) {
-    const npcData = twNpcsData[npcId] || twNpcsData[String(npcId)];
-    if (npcData && npcData.tw) return npcData.tw;
-  }
-  
-  // Try npcs (en) as fallback
-  if (npcsData) {
-    const npcData = npcsData[npcId];
-    if (npcData && npcData.en) return npcData.en;
-  }
-  
-  // Try npcs-database-pages as last fallback
-  if (npcsDatabasePagesData) {
-    const npcDbData = npcsDatabasePagesData[npcId] || npcsDatabasePagesData[String(npcId)];
-    if (npcDbData && npcDbData.tw) return npcDbData.tw;
-  }
-  
-  return null;
+  const name = obtainableHelpers.getNpcName(npcId, {
+    twNpcs: twNpcsData || {},
+    npcs: npcsData || {},
+    npcsDatabasePages: npcsDatabasePagesData || {}
+  });
+  return name === FALLBACK_MESSAGE ? null : name;
 }
 
 /**
- * Get NPC title from NPC ID
+ * Get NPC title from NPC ID (delegates to obtainableHelpers with optional titles data)
  */
 export function getNpcTitle(npcId, twNpcTitlesData) {
-  if (!npcId || !twNpcTitlesData) return null;
-  return twNpcTitlesData[npcId] || null;
+  if (!npcId) return null;
+  return obtainableHelpers.getNpcTitle(npcId, {}, twNpcTitlesData);
 }
 
 /**
@@ -107,19 +77,10 @@ export function getNpcTitle(npcId, twNpcTitlesData) {
  */
 export function getZoneName(zoneId, twPlacesData, placesData) {
   if (!zoneId) return null;
-  
-  // Try tw-places first
-  if (twPlacesData) {
-    const placeData = twPlacesData[zoneId] || twPlacesData[String(zoneId)];
-    if (placeData && placeData.tw) return placeData.tw;
-  }
-  
-  // Try places (en) as fallback
-  if (placesData) {
-    const placeData = placesData[zoneId];
-    if (placeData && placeData.en) return placeData.en;
-  }
-  
+  const tw = (twPlacesData || {})[zoneId] || (twPlacesData || {})[String(zoneId)];
+  if (tw?.tw) return tw.tw;
+  const place = (placesData || {})[zoneId] || (placesData || {})[String(zoneId)];
+  if (place?.en) return place.en;
   return null;
 }
 
@@ -153,6 +114,8 @@ export function renderLoadingSpinner(size = 'h-4 w-4') {
  */
 export const commonClasses = {
   card: 'bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start',
+  /** Inner item block (280px, slate background + border) – use for method sub-cards so all methods look consistent. */
+  innerItemBlock: 'w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center border border-slate-700/50',
   header: 'flex items-center gap-2 mb-2',
   title: 'text-ffxiv-gold font-medium',
   button: 'px-2 py-1 text-xs border rounded transition-all duration-200 flex items-center gap-1',

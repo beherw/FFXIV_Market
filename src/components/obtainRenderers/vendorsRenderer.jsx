@@ -136,7 +136,7 @@ export function renderVendors({
               const hasValidMapLocation = mapId && (coords.x !== 0 || coords.y !== 0);
               
               return (
-                <div key={npcGroupIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col">
+                <div key={npcGroupIndex} className={`${commonClasses.innerItemBlock} justify-start`}>
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-0.5">
                       <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-5 h-5 flex-shrink-0 grayscale opacity-70" />

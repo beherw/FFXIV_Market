@@ -9,7 +9,19 @@ import { extractIdsFromSources } from '../utils/extractIdsFromSources';
 import { getHuijiWikiUrlForItem } from '../utils/wikiUtils';
 import { getPlaceName as getPlaceNameUtil, getPlaceNameWithFallback } from '../utils/placeUtils';
 import { generateItemUrl } from '../utils/urlSlug';
-import { loadDataForRequiredIds, loadPlaceDataForZoneIds } from '../services/obtainableDataService';
+import { loadDataForRequiredIds, loadPlaceDataForZoneIds, getEmptyLoadedData } from '../services/obtainableDataService';
+import { getChineseName } from '../constants/dataTypes';
+import { FALLBACK_MESSAGE } from '../constants/obtainableConstants';
+import * as obtainableHelpers from '../utils/obtainableHelpers';
+import { filterAndSortSources } from '../utils/obtainableSourceUtils';
+import {
+  buildDropObjectsFromDropSources,
+  applyDropsToProcessedSources,
+  convertIslandPastureToFates,
+  filterInvalidFates,
+  mergeFateSourcesFromTable,
+  collectAllZoneIds
+} from '../utils/obtainableSourceProcessing';
 import { getFateSourcesByItemId } from '../services/fatesData';
 import { getTwItemsByIds } from '../services/itemsDatabaseMsgpack';
 // Small static files - keep as imports (small size)
@@ -20,108 +32,11 @@ import twMobsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-mobs.js
 // tw-places will be loaded via fetch in useEffect to handle string keys properly
 // import twPlacesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-places.json';
 // import placesData from '../../teamcraft_git/libs/data/src/lib/json/places.json';
-// tw-quests.json (256KB) - lazy loaded only when quests are needed
+// tw-quests / tw-leves / retainer-tasks - lazy loaded via loadJsonOnce
 import dropSourcesData from '../../teamcraft_git/libs/data/src/lib/json/drop-sources.json';
 import monstersData from '../../teamcraft_git/libs/data/src/lib/json/monsters.json';
-
-// Cache for lazy-loaded quest data
-let twQuestsDataCache = null;
-let twQuestsDataLoading = false;
-let twLevesDataCache = null;
-let twLevesDataLoading = false;
-let retainerTasksDataCache = null;
-let retainerTasksDataLoading = false;
-
-/**
- * Lazy load tw-quests.json - only loads when quests are actually needed
- * Uses cache to avoid reloading
- */
-async function loadTwQuestsData() {
-  if (twQuestsDataCache) {
-    return twQuestsDataCache;
-  }
-  
-  if (twQuestsDataLoading) {
-    // Wait for ongoing load
-    while (twQuestsDataLoading) {
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    return twQuestsDataCache;
-  }
-  
-  twQuestsDataLoading = true;
-  try {
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/tw/tw-quests.json');
-    twQuestsDataCache = module.default || module;
-    return twQuestsDataCache;
-  } catch (error) {
-    console.error('[ObtainMethods] Failed to load tw-quests.json:', error);
-    return {};
-  } finally {
-    twQuestsDataLoading = false;
-  }
-}
-
-/**
- * Lazy load tw-leves.json - only loads when levequests are actually needed
- * Uses cache to avoid reloading
- */
-async function loadTwLevesData() {
-  if (twLevesDataCache) {
-    return twLevesDataCache;
-  }
-  
-  if (twLevesDataLoading) {
-    // Wait for ongoing load
-    while (twLevesDataLoading) {
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    return twLevesDataCache;
-  }
-  
-  twLevesDataLoading = true;
-  try {
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/tw/tw-leves.json');
-    twLevesDataCache = module.default || module;
-    return twLevesDataCache;
-  } catch (error) {
-    console.error('[ObtainMethods] Failed to load tw-leves.json:', error);
-    return {};
-  } finally {
-    twLevesDataLoading = false;
-  }
-}
-
-/**
- * Lazy load retainer-tasks.json - only loads when venture task details are needed
- * Uses cache to avoid reloading
- */
-async function loadRetainerTasksData() {
-  if (retainerTasksDataCache) {
-    return retainerTasksDataCache;
-  }
-  
-  if (retainerTasksDataLoading) {
-    while (retainerTasksDataLoading) {
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    return retainerTasksDataCache;
-  }
-  
-  retainerTasksDataLoading = true;
-  try {
-    const module = await import('../../teamcraft_git/libs/data/src/lib/json/retainer-tasks.json');
-    retainerTasksDataCache = module.default || module;
-    return retainerTasksDataCache;
-  } catch (error) {
-    console.error('[ObtainMethods] Failed to load retainer-tasks.json:', error);
-    return [];
-  } finally {
-    retainerTasksDataLoading = false;
-  }
-}
-
-// All data loading uses obtainableDataService (msgpack) and local JSON
+import { loadJsonOnce } from '../utils/lazyJsonLoader';
+import { getEorzeaTime, formatEorzeaDuration, formatEorzeaTimeOfDay, getLimitedNodeTiming } from '../utils/eorzeaTimeUtils';
 
 import MapModal from './MapModal';
 import ItemImage from './ItemImage';
@@ -132,123 +47,6 @@ const obtainMethodsCache = {};
 
 // Cache expiration time: 1 hour (3600000 ms) - data rarely changes
 const CACHE_EXPIRY_MS = 60 * 60 * 1000;
-/** Shown when item/NPC/currency name is not in tw/zh/en data (fallback for obtainable methods) */
-const FALLBACK_MESSAGE = '內含無法查詢的資料，請查閱灰機並考慮回報給開發者，謝謝你';
-
-// Eorzea time helpers (1 Eorzea day = 70 real minutes)
-const EORZEA_TIME_RATIO = 3600 / 175; // 20.57142857
-const EORZEA_MINUTES_PER_DAY = 24 * 60;
-
-function getEorzeaTime(earthMs) {
-  const eorzeaMs = earthMs * EORZEA_TIME_RATIO;
-  const eorzeaDate = new Date(eorzeaMs);
-  const hours = eorzeaDate.getUTCHours();
-  const minutes = eorzeaDate.getUTCMinutes();
-  const seconds = eorzeaDate.getUTCSeconds();
-  const totalMinutes = hours * 60 + minutes + seconds / 60;
-  return { hours, minutes, seconds, totalMinutes };
-}
-
-function formatEorzeaDuration(minutes) {
-  if (!Number.isFinite(minutes)) return '--:--';
-  const totalSeconds = Math.max(0, Math.floor(minutes * 60));
-  const hours = Math.floor(totalSeconds / 3600);
-  const mins = Math.floor((totalSeconds % 3600) / 60);
-  const secs = totalSeconds % 60;
-  if (hours > 0) {
-    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  }
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-}
-
-function formatEorzeaTimeOfDay(totalMinutes) {
-  if (!Number.isFinite(totalMinutes)) return '--:--';
-  const normalized = ((Math.floor(totalMinutes) % EORZEA_MINUTES_PER_DAY) + EORZEA_MINUTES_PER_DAY) % EORZEA_MINUTES_PER_DAY;
-  const hours = Math.floor(normalized / 60);
-  const minutes = normalized % 60;
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-}
-
-function getLimitedNodeTiming(spawns, durationMinutes, currentMinutes) {
-  if (!Array.isArray(spawns) || spawns.length === 0 || !Number.isFinite(durationMinutes) || durationMinutes <= 0 || !Number.isFinite(currentMinutes)) {
-    return null;
-  }
-
-  const spawnStarts = spawns
-    .map(hour => Number(hour))
-    .filter(hour => Number.isFinite(hour))
-    .map(hour => ((hour % 24) + 24) % 24)
-    .sort((a, b) => a - b)
-    .map(hour => hour * 60);
-
-  if (spawnStarts.length === 0) return null;
-
-  const minutesInDay = EORZEA_MINUTES_PER_DAY;
-
-  for (const start of spawnStarts) {
-    const end = start + durationMinutes;
-    if (end <= minutesInDay) {
-      if (currentMinutes >= start && currentMinutes < end) {
-        const remaining = end - currentMinutes;
-        return {
-          state: 'spawned',
-          remainingMinutes: remaining,
-          totalMinutes: durationMinutes,
-          nextSpawnStart: start,
-          progress: Math.min(1, Math.max(0, (durationMinutes - remaining) / durationMinutes))
-        };
-      }
-    } else {
-      const endWrapped = end - minutesInDay;
-      if (currentMinutes >= start || currentMinutes < endWrapped) {
-        const remaining = currentMinutes >= start
-          ? minutesInDay - currentMinutes + endWrapped
-          : endWrapped - currentMinutes;
-        return {
-          state: 'spawned',
-          remainingMinutes: remaining,
-          totalMinutes: durationMinutes,
-          nextSpawnStart: start,
-          progress: Math.min(1, Math.max(0, (durationMinutes - remaining) / durationMinutes))
-        };
-      }
-    }
-  }
-
-  let nextStart = null;
-  for (const start of spawnStarts) {
-    if (start > currentMinutes) {
-      nextStart = start;
-      break;
-    }
-  }
-  if (nextStart === null) {
-    nextStart = spawnStarts[0] + minutesInDay;
-  }
-
-  let prevStart = null;
-  for (let i = spawnStarts.length - 1; i >= 0; i -= 1) {
-    if (spawnStarts[i] <= currentMinutes) {
-      prevStart = spawnStarts[i];
-      break;
-    }
-  }
-  if (prevStart === null) {
-    prevStart = spawnStarts[spawnStarts.length - 1] - minutesInDay;
-  }
-
-  const prevEnd = prevStart + durationMinutes;
-  const downtimeTotal = Math.max(1, nextStart - prevEnd);
-  const remaining = Math.max(0, nextStart - currentMinutes);
-
-  return {
-    state: 'waiting',
-    remainingMinutes: remaining,
-    totalMinutes: downtimeTotal,
-    nextSpawnStart: nextStart,
-    progress: Math.min(1, Math.max(0, 1 - remaining / downtimeTotal))
-  };
-}
 
 /**
  * Get cached data for an item, or null if not cached or expired
@@ -302,59 +100,6 @@ function setCachedObtainMethodsData(itemId, sources, loadedData) {
   };
 }
 
-function getDropInfoScore(drop) {
-  if (!drop || typeof drop !== 'object') return 0;
-  const hasZone = drop.zoneid !== null && drop.zoneid !== undefined;
-  const hasMap = drop.mapid !== null && drop.mapid !== undefined;
-  const hasPosition = drop.position && typeof drop.position === 'object';
-  const hasZonePositions = Array.isArray(drop.zonePositions) && drop.zonePositions.length > 0;
-  const hasLevel = (drop.minLevel !== null && drop.minLevel !== undefined) || (drop.maxLevel !== null && drop.maxLevel !== undefined) || (drop.lvl !== null && drop.lvl !== undefined);
-
-  return (hasZone ? 2 : 0) + (hasMap ? 1 : 0) + (hasPosition ? 3 : 0) + (hasZonePositions ? 3 : 0) + (hasLevel ? 1 : 0);
-}
-
-function mergeDropSources(existingDrops, newDrops) {
-  const byKey = new Map();
-  const order = [];
-  const mobHasSpecific = new Set();
-
-  const ingest = (drop) => {
-    if (drop === null || drop === undefined) return;
-    const normalized = typeof drop === 'number' ? { id: drop } : drop;
-    const mobId = normalized.id ?? normalized.mobId;
-    if (!mobId) return;
-
-    const zoneid = normalized.zoneid ?? normalized.zoneId ?? normalized.position?.zoneid;
-    const mapid = normalized.mapid ?? normalized.mapId;
-    const key = `${mobId}|${zoneid ?? 'none'}|${mapid ?? 'none'}`;
-    const score = getDropInfoScore(normalized);
-    const isSpecific = (zoneid !== null && zoneid !== undefined) || (mapid !== null && mapid !== undefined) || (Array.isArray(normalized.zonePositions) && normalized.zonePositions.length > 0) || !!normalized.position;
-
-    if (isSpecific) {
-      mobHasSpecific.add(String(mobId));
-    }
-
-    if (!byKey.has(key)) {
-      byKey.set(key, { drop: normalized, score, mobId: String(mobId), isSpecific });
-      order.push(key);
-      return;
-    }
-
-    const existing = byKey.get(key);
-    if (score > existing.score) {
-      byKey.set(key, { drop: normalized, score, mobId: String(mobId), isSpecific });
-    }
-  };
-
-  existingDrops.forEach(ingest);
-  newDrops.forEach(ingest);
-
-  return order
-    .map(key => byKey.get(key))
-    .filter(entry => !(entry && !entry.isSpecific && mobHasSpecific.has(entry.mobId)))
-    .map(entry => entry.drop);
-}
-
 export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTree, isCraftingTreeExpanded = false, onLoadingChange, onSourcesChange }) {
   
   const navigate = useNavigate();
@@ -390,29 +135,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         if (twPlacesResponse.ok) {
           const twPlaces = await twPlacesResponse.json();
           loadedDataRef.current.twPlaces = twPlaces;
-          console.log('[DEBUG] Loaded tw-places.json:', {
-            size: Object.keys(twPlaces).length,
-            has3045: !!twPlaces['3045'],
-            value3045: twPlaces['3045']
-          });
-          // Store in window for direct console access
-          window.__DEBUG_twPlaces = twPlaces;
         }
-        
         if (placesResponse.ok) {
           const places = await placesResponse.json();
           loadedDataRef.current.places = places;
-          console.log('[DEBUG] Loaded places.json:', {
-            size: Object.keys(places).length,
-            has3045: !!places['3045'],
-            value3045: places['3045']
-          });
-          window.__DEBUG_places = places;
         }
-        
-        // Trigger re-render after place data loads
         setPlacesLoaded(true);
-        console.log('[DEBUG] Place data loaded, triggering re-render');
         
       } catch (error) {
         console.error('[ObtainMethods] Failed to load place data:', error);
@@ -426,20 +154,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           if (twPlacesResponse.ok) {
             const twPlaces = await twPlacesResponse.json();
             loadedDataRef.current.twPlaces = twPlaces;
-            console.log('[DEBUG] Loaded tw-places.json from fallback');
-            window.__DEBUG_twPlaces = twPlaces;
           }
-          
           if (placesResponse.ok) {
             const places = await placesResponse.json();
             loadedDataRef.current.places = places;
-            console.log('[DEBUG] Loaded places.json from fallback');
-            window.__DEBUG_places = places;
           }
-          
-          // Trigger re-render after fallback place data loads
           setPlacesLoaded(true);
-          console.log('[DEBUG] Place data loaded from fallback, triggering re-render');
           
         } catch (fallbackError) {
           console.error('[ObtainMethods] Failed to load place data from fallback paths:', fallbackError);
@@ -461,36 +181,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const prevItemIdRef = useRef(itemId);
   // Track itemId for useLayoutEffect - this ref is NOT updated during render
   const layoutEffectPrevItemIdRef = useRef(itemId);
+  // When set, we cleared sources for this item but haven't received final data yet - don't notify parent with [] to avoid disabling the button
+  const loadClearedSourcesForItemIdRef = useRef(null);
   // Use ref to store latest loadedData so renderSource can access it immediately
   // This avoids the issue where renderSource uses stale loadedData state due to async state updates
-  const loadedDataRef = useRef({
-    twNpcs: {},
-    npcs: {},
-    npcsDatabasePages: {},
-    twShops: {},
-    shops: {},
-    shopsByNpc: {},
-    twInstances: {},
-    instances: {},
-    zhInstances: {},
-    twQuests: {},
-    quests: {},
-    zhQuests: {},
-    questsDatabasePages: {},
-    fatesById: {},
-    levesDatabasePages: {},
-    twAchievements: {},
-    twAchievementDescriptions: {},
-    achievements: {},
-    twPlaces: {}, // Will be loaded in useEffect
-    places: {}, // Will be loaded in useEffect
-    twItems: {},
-    zhItems: {},
-    items: {},
-    retainerTasksById: {},
-    fateSources: [],
-    lootSources: []
-  });
+  const loadedDataRef = useRef(getEmptyLoadedData());
   
   // Sync refs with itemId prop on every render to catch prop changes before useEffect runs
   // This ensures we show loading state immediately when itemId changes, even before useEffect executes
@@ -517,34 +212,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       // This is especially important for TRADE_SOURCES which relies on loadedData.twItems for currency names
       // Without resetting loadedData, getCurrencyName() may return null because it looks up currency names
       // from loadedData.twItems, which might still contain old data from previous item
-      const emptyLoadedData = {
-        twNpcs: {},
-        npcs: {},
-        npcsDatabasePages: {},
-        twShops: {},
-        shops: {},
-        shopsByNpc: {},
-        twInstances: {},
-        instances: {},
-        zhInstances: {},
-        twQuests: {},
-        quests: {},
-        zhQuests: {},
-        questsDatabasePages: {},
-        fatesById: {},
-        levesDatabasePages: {},
-        twAchievements: {},
-        twAchievementDescriptions: {},
-        achievements: {},
-        twPlaces: loadedDataRef.current.twPlaces || {}, // Preserve place data loaded asynchronously
-        places: loadedDataRef.current.places || {}, // Preserve place data loaded asynchronously
-        twItems: {},
-        zhItems: {},
-        items: {},
-        retainerTasksById: loadedDataRef.current.retainerTasksById || {},
-        fateSources: [],
-        lootSources: []
-      };
+      const emptyLoadedData = getEmptyLoadedData({
+        twPlaces: loadedDataRef.current.twPlaces || {},
+        places: loadedDataRef.current.places || {},
+        retainerTasksById: loadedDataRef.current.retainerTasksById || {}
+      });
       setLoadedData(emptyLoadedData);
       // Also update ref to ensure renderSource can access the reset data immediately
       // OPTIMIZED: Direct assignment is fine for empty object (no deep copy needed)
@@ -555,41 +227,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   }, [itemId]);
   
   // Data loaded from obtainableDataService - organized by type for efficient access
-  const [loadedData, setLoadedData] = useState({
-    // NPC data
-    twNpcs: {},
-    npcs: {},
-    npcsDatabasePages: {},
-    // Shop data
-    twShops: {},
-    shops: {},
-    shopsByNpc: {},
-    // Instance data
-    twInstances: {},
-    instances: {},
-    zhInstances: {},
-    // Quest data
-    twQuests: {},
-    quests: {},
-    zhQuests: {},
-    questsDatabasePages: {},
-    // FATE data
-    fatesById: {},
-    levesDatabasePages: {},
-    // Achievement data
-    twAchievements: {},
-    twAchievementDescriptions: {},
-    achievements: {},
-    // Place data
-    twPlaces: {},
-    places: {},
-    // Item data (for currency names, etc.)
-    twItems: {},
-    retainerTasksById: {},
-    // Special sources
-    fateSources: [],
-    lootSources: []
-  });
+  const [loadedData, setLoadedData] = useState(() => getEmptyLoadedData());
   
   const [dataLoaded, setDataLoaded] = useState(false);
   const [wikiUrl, setWikiUrl] = useState(null); // Store Wiki URL for activity content notice
@@ -602,7 +240,23 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const [placesLoaded, setPlacesLoaded] = useState(false); // Track if place data has been loaded - triggers re-render
   const [methodHeights, setMethodHeights] = useState([]); // 各 method 卡片高度，用於排序（矮的排最後）
   const methodCardsContainerRef = useRef(null);
-  
+
+  /** Centralized card width: when there are 1–3 method types, cards flex to fill space; otherwise fixed 280px. Used by all method types. */
+  const getMethodCardLayoutClass = useCallback((totalMethodCards) => {
+    return totalMethodCards <= 3 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0';
+  }, []);
+
+  /** Inner grid: equal-width columns (no stretch on last row). w-full min-w-0 so card content fills and extends in 1–3 method layout. */
+  const INNER_GRID_CLASS_FLEX = 'w-full min-w-0 grid gap-2 mt-2 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]';
+  const INNER_GRID_CLASS_FLEX_NO_MT = 'w-full min-w-0 grid gap-2 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]';
+  /** Inner item: fill grid cell with same width as others (min-w-0 for overflow). When 4+ method cards, w-full. */
+  const getInnerItemLayoutClass = useCallback((totalMethodCards) => {
+    return totalMethodCards <= 3 ? 'min-w-0' : 'w-full min-w-0';
+  }, []);
+
+  /** Fixed width for items inside a single method card when totalMethodCards > 3 (e.g. treasure buttons, instance cards). */
+  const INNER_ITEM_LAYOUT_CLASS = 'min-w-[280px] w-[280px] flex-grow-0';
+
   // Lazy load tw-quests.json and tw-leves.json when quests are present but names are missing
   useEffect(() => {
     if (!sources || sources.length === 0 || !dataLoaded) {
@@ -641,7 +295,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Load tw-quests.json if needed
     if (needsQuestData && !twQuestsStaticData && !isLoadingQuestsData) {
       setIsLoadingQuestsData(true);
-      loadTwQuestsData().then(data => {
+      loadJsonOnce('tw-quests', () => import('../../teamcraft_git/libs/data/src/lib/json/tw/tw-quests.json'), {}).then(data => {
         setTwQuestsStaticData(data);
         setIsLoadingQuestsData(false);
         // Update loadedData with static data
@@ -676,15 +330,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Note: Levequest data (tw-leves.json) is now loaded upfront in the main useEffect
   }, [sources, loadedData.twQuests, twQuestsStaticData, dataLoaded, isLoadingQuestsData]);
 
-  // Fallback: Load levequest data if it wasn't loaded upfront (should rarely trigger)
-  // This is a safety net in case sources change after initial load or if upfront loading failed
-  useEffect(() => {
-    if (!sources || sources.length === 0 || !dataLoaded) {
-      return;
-    }
-    
-  }, [sources, dataLoaded, twLevesStaticData]);
-
   // Lazy load retainer task details for venture sources with missing fields
   useEffect(() => {
     if (!sources || sources.length === 0 || !dataLoaded) {
@@ -711,7 +356,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     }
 
     setIsLoadingRetainerTasksData(true);
-    loadRetainerTasksData().then(data => {
+    loadJsonOnce('retainer-tasks', () => import('../../teamcraft_git/libs/data/src/lib/json/retainer-tasks.json'), []).then(data => {
       const byId = {};
       data.forEach(task => {
         if (task && task.id !== undefined && task.id !== null) {
@@ -762,10 +407,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
   // Load sources and all required data
   useEffect(() => {
-    console.log(`[ObtainMethods] useEffect triggered for itemId: ${itemId}`);
-    
     if (!itemId) {
-      console.log(`[ObtainMethods] No itemId, skipping load`);
       // Don't clear sources or change loading state when itemId is undefined
       // This prevents showing "no obtainable methods" when itemId is temporarily undefined during redirects
       // The component will show loading state due to the !itemId check in the render logic
@@ -775,7 +417,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Check cache first - if data exists and is not expired, use it immediately
     const cached = getCachedObtainMethodsData(itemId);
     if (cached) {
-      console.log(`[ObtainMethods] Item ${itemId}: Using cached data with ${cached.sources.length} sources`);
       // Update ref immediately
       currentItemIdRef.current = itemId;
       // Restore cached data - clone to avoid mutating cache
@@ -792,14 +433,18 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       // Update refs
       prevItemIdRef.current = itemId;
       layoutEffectPrevItemIdRef.current = itemId;
+      // Notify parent immediately so the obtainable-methods button is enabled (avoids it staying disabled when returning to a cached item)
+      loadClearedSourcesForItemIdRef.current = null; // we have final data
+      if (onLoadingChange) onLoadingChange(false);
+      if (onSourcesChange) onSourcesChange(cached.sources, itemId);
       return; // Skip loading
     }
 
     // Update ref immediately to prevent showing stale data during redirects
     currentItemIdRef.current = itemId;
-    
-    console.log(`[ObtainMethods] Item ${itemId}: Starting to load sources...`);
-    
+    // Mark that we're clearing sources for this item - don't notify parent with [] until we have final data
+    loadClearedSourcesForItemIdRef.current = itemId;
+
     // Clear sources and reset state immediately when itemId changes
     // Use functional updates to ensure atomic state changes and prevent race conditions
     // Set loading state FIRST to prevent showing empty state during redirects
@@ -818,11 +463,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     // Step 1: Get sources from obtainable data
     getItemSources(currentItemId, abortController.signal)
       .then(async sourcesData => {
-        console.log(`[ObtainMethods] Item ${currentItemId}: Received ${sourcesData?.length || 0} sources`);
-        
-        // Check if request was cancelled or itemId changed
         if (abortController.signal.aborted) {
-          console.log(`[ObtainMethods] Item ${currentItemId}: Request was aborted`);
           return;
         }
         
@@ -837,6 +478,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         if (!sourcesData || !Array.isArray(sourcesData)) {
           console.warn(`[ObtainMethods] ⚠️ Invalid sources data for item ${currentItemId}:`, sourcesData);
           if (!abortController.signal.aborted) {
+            loadClearedSourcesForItemIdRef.current = null;
             setSources([]);
             setLoading(false);
             setDataLoaded(true);
@@ -878,7 +520,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         const questSourcesWithData = questSources.filter(s => Array.isArray(s.data) && s.data.length > 0);
         if (questSourcesWithData.length > 0 || levequestIds.length > 0) {
           // Load tw-leves.json to identify which quests are actually levequests
-          twLevesDataForState = await loadTwLevesData();
+          twLevesDataForState = await loadJsonOnce('tw-leves', () => import('../../teamcraft_git/libs/data/src/lib/json/tw/tw-leves.json'), {});
           if (twLevesDataForState && questSourcesWithData.length > 0) {
             questSourcesWithData.forEach(source => {
               if (Array.isArray(source.data)) {
@@ -949,6 +591,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           if (err?.name === 'AbortError' || abortController.signal.aborted) return;
           console.error(`[ObtainMethods] ❌ Error loading obtainable data:`, err);
           if (currentItemId === itemId) {
+            loadClearedSourcesForItemIdRef.current = null;
             setSources([]);
             setLoading(false);
             setDataLoaded(true);
@@ -983,6 +626,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           if (!sourcesData || !Array.isArray(sourcesData)) {
             console.warn(`[ObtainMethods] ⚠️ Invalid sourcesData in processing step for item ${currentItemId}:`, sourcesData);
             if (!abortController.signal.aborted && currentItemId === itemId) {
+              loadClearedSourcesForItemIdRef.current = null;
               setSources([]);
               setLoading(false);
               setDataLoaded(true);
@@ -992,358 +636,32 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           
           let processedSources = [...sourcesData];
           const currentItemIdNum = parseInt(currentItemId, 10);
-          
-          // Query drop-sources.json for monster drops (reuse dropSourceMonsterIds from Step 2.7 above)
-          if (Array.isArray(dropSourceMonsterIds) && dropSourceMonsterIds.length > 0) {
-            // Convert monster IDs to Drop objects with full position data from monsters.json
-            const dropObjects = [];
-            
-            dropSourceMonsterIds.forEach(monsterId => {
-              const monster = monstersData[monsterId] || monstersData[String(monsterId)];
-              if (monster && Array.isArray(monster.positions) && monster.positions.length > 0) {
-                // Group positions by zone
-                const positionsByZone = {};
-                monster.positions.forEach(position => {
-                  const zoneid = position.zoneid;
-                  if (!positionsByZone[zoneid]) {
-                    positionsByZone[zoneid] = [];
-                  }
-                  positionsByZone[zoneid].push(position);
-                });
-                
-                // Create a drop object for each zone this monster appears in
-                Object.keys(positionsByZone).forEach(zoneid => {
-                  const zonePositions = positionsByZone[zoneid];
-                  const firstPosition = zonePositions[0];
-                  const mapid = firstPosition.map;
-                  
-                  // Calculate average position
-                  let avgX = 0, avgY = 0;
-                  zonePositions.forEach(p => {
-                    avgX += p.x;
-                    avgY += p.y;
-                  });
-                  avgX /= zonePositions.length;
-                  avgY /= zonePositions.length;
-                  
-                  // Calculate radius based on spread
-                  const spreadX = Math.max(...zonePositions.map(p => p.x)) - Math.min(...zonePositions.map(p => p.x));
-                  const spreadY = Math.max(...zonePositions.map(p => p.y)) - Math.min(...zonePositions.map(p => p.y));
-                  const maxRadius = Math.max(spreadX, spreadY) * 41 || 100;
-                  
-                  // Get level range
-                  const levels = zonePositions.map(p => p.level).filter(l => l > 0);
-                  const minLevel = levels.length > 0 ? Math.min(...levels) : null;
-                  const maxLevel = levels.length > 0 ? Math.max(...levels) : null;
-                  
-                  dropObjects.push({
-                    id: monsterId,
-                    mapid: mapid,
-                    zoneid: parseInt(zoneid, 10),
-                    lvl: minLevel, // Store min level, we'll calculate range in render
-                    minLevel: minLevel,
-                    maxLevel: maxLevel,
-                    zonePositions: zonePositions, // Store all positions for this zone
-                    position: {
-                      x: avgX,
-                      y: avgY,
-                      radius: maxRadius,
-                      zoneid: parseInt(zoneid, 10)
-                    }
-                  });
-                });
-              } else {
-                // No position data, but still add the monster (will show without location info)
-                console.warn(`[ObtainMethods] Monster ${monsterId} has no position data`);
-                dropObjects.push({
-                  id: monsterId,
-                  zoneid: null,
-                  mapid: null,
-                  minLevel: null,
-                  maxLevel: null,
-                  zonePositions: []
-                });
-              }
-            });
-            
-            // Add DROPS source if we have valid drop data
-            if (dropObjects.length > 0) {
-                const existingDropIndex = processedSources.findIndex(source => source.type === DataType.DROPS);
-                if (existingDropIndex >= 0) {
-                  const existingDropSource = processedSources[existingDropIndex];
-                  const existingData = Array.isArray(existingDropSource.data) ? existingDropSource.data : [];
-                  processedSources[existingDropIndex] = {
-                    ...existingDropSource,
-                    data: mergeDropSources(existingData, dropObjects)
-                  };
-                } else {
-                  processedSources.push({
-                    type: DataType.DROPS,
-                    data: dropObjects
-                  });
-                }
-            }
-          }
-          
-          // No type conversion needed - all types should be correctly set from data source
-          
-          // Collect zoneIds from FATEs - we'll do this after processing sources
-          const fateZoneIds = new Set();
-          
-          // Handle ISLAND_PASTURE sources that are actually FATEs
-          // Some FATEs are incorrectly classified as ISLAND_PASTURE (type 14) but have FATE data structure
-          const islandPastureFates = [];
-          const existingFateIdsFromSources = new Set(); // Track FATE IDs that already have full data in sources
-          
-          processedSources = processedSources.filter(source => {
-            if (source.type === DataType.ISLAND_PASTURE && Array.isArray(source.data)) {
-              // Check if this looks like a FATE (has id, level, zoneId, etc.)
-              const looksLikeFate = source.data.some(item => {
-                if (typeof item === 'object' && item.id && typeof item.id === 'number') {
-                  // Has numeric id and other FATE-like properties
-                  return item.level !== undefined || item.zoneId !== undefined || item.coords !== undefined;
-                }
-                return false;
-              });
-              
-              if (looksLikeFate) {
-                // Convert to FATE source - preserve all data including zoneId, mapId, coords
-                islandPastureFates.push({
-                  type: DataType.FATES,
-                  data: source.data.map(fate => {
-                    // Ensure we preserve all FATE data including zoneId
-                    if (typeof fate === 'object' && fate.id) {
-                      existingFateIdsFromSources.add(fate.id);
-                      // Collect zoneId for place data query
-                      if (fate.zoneId) {
-                        fateZoneIds.add(fate.zoneId);
-                      }
-                      return fate; // Return as-is to preserve zoneId, mapId, coords
-                    }
-                    return fate;
-                  })
-                });
-                return false; // Remove from processedSources, will add as FATE below
-              }
-            }
-            // Also track FATE IDs from existing FATES sources
-            if (source.type === DataType.FATES && Array.isArray(source.data)) {
-              source.data.forEach(fate => {
-                if (typeof fate === 'object' && fate.id) {
-                  existingFateIdsFromSources.add(fate.id);
-                  if (fate.zoneId) {
-                    fateZoneIds.add(fate.zoneId);
-                  }
-                }
-              });
-            }
-            return source.type !== DataType.ISLAND_PASTURE;
-          });
-          
-          // Add converted FATEs
-          if (islandPastureFates.length > 0) {
-            const existingFatesSource = processedSources.find(s => s.type === DataType.FATES);
-            if (existingFatesSource) {
-              // Merge with existing FATES source
-              islandPastureFates.forEach(fateSource => {
-                existingFatesSource.data = [...(existingFatesSource.data || []), ...(fateSource.data || [])];
-              });
-            } else {
-              // Add as new FATES source
-              processedSources.push(...islandPastureFates);
-            }
-          }
-          
-          // Filter out invalid FATE sources (gathering nodes misclassified as FATEs)
-          // Accept any FATE with valid numeric id from obtainable-methods (do not require name data)
-          processedSources = processedSources.filter(source => {
-            if (source.type === DataType.FATES && Array.isArray(source.data)) {
-              const hasValidFate = source.data.some(fate => {
-                if (typeof fate === 'object') {
-                  if ((fate.nodeId !== undefined || fate.itemId !== undefined) && fate.id === undefined) {
-                    return false; // This is a gathering node, not a FATE
-                  }
-                }
-                const fateId = typeof fate === 'object' ? fate.id : fate;
-                return fateId && typeof fateId === 'number';
-              });
-              return hasValidFate;
-            }
-            return true;
-          });
-          
-          // Check again before processing sources
-          if (abortController.signal.aborted || currentItemId !== itemId) {
-            return;
-          }
-          
-          // Merge FATE sources from fate_sources table
+
+          const dropObjects = buildDropObjectsFromDropSources(
+            currentItemId,
+            dropSourcesData,
+            monstersData,
+            msg => console.warn('[ObtainMethods]', msg)
+          );
+          applyDropsToProcessedSources(processedSources, dropObjects);
+
+          const { fateZoneIds, existingFateIdsFromSources } = convertIslandPastureToFates(processedSources);
+          filterInvalidFates(processedSources);
+
+          if (abortController.signal.aborted || currentItemId !== itemId) return;
+
           const fateSourcesForItem = newLoadedData.fateSources || [];
-          
-          if (fateSourcesForItem.length > 0) {
-            const hasFates = processedSources.some(source => source.type === DataType.FATES);
-            const existingFateIds = new Set();
-            
-            // Collect existing FATE IDs from sources
-            if (hasFates) {
-              const fatesSource = processedSources.find(s => s.type === DataType.FATES);
-              if (fatesSource && Array.isArray(fatesSource.data)) {
-                fatesSource.data.forEach(fate => {
-                  const fateId = typeof fate === 'object' ? fate.id : fate;
-                  if (fateId) existingFateIds.add(fateId);
-                  // Collect zoneId from existing FATEs
-                  if (typeof fate === 'object' && fate.zoneId) {
-                    fateZoneIds.add(fate.zoneId);
-                  }
-                });
-              }
-            }
-            
-            // Find missing FATE IDs that need to be added
-            const missingFateIds = fateSourcesForItem.filter(fateId => !existingFateIds.has(fateId) && !existingFateIdsFromSources.has(fateId));
-            
-            if (missingFateIds.length > 0) {
-              const newFateSources = missingFateIds.map(fateId => {
-                const fate = newLoadedData.fatesById[fateId] || newLoadedData.fatesById[String(fateId)];
-                if (!fate) {
-                  console.warn(`[ObtainMethods] ⚠️ No data found for FATE ${fateId}`);
-                  return null;
-                }
-                const zoneId = fate.zoneId ?? null;
-                const mapId = fate.mapId ?? null;
-                const coords = (fate.x != null && fate.y != null) ? { x: fate.x, y: fate.y } : null;
-                if (zoneId) fateZoneIds.add(zoneId);
-                return {
-                  id: fateId,
-                  level: fate.level ?? 0,
-                  zoneId,
-                  mapId,
-                  coords
-                };
-              }).filter(Boolean);
-              
-              if (newFateSources.length > 0) {
-                if (hasFates) {
-                  const fatesSource = processedSources.find(s => s.type === DataType.FATES);
-                  if (fatesSource) {
-                    fatesSource.data = [...(fatesSource.data || []), ...newFateSources];
-                  }
-                } else {
-                  processedSources.push({
-                    type: DataType.FATES,
-                    data: newFateSources
-                  });
-                }
-              }
-            }
-            
-          }
-          
-          // Unified zoneId collection: Collect zoneIds from all possible sources
-          // This ensures we load place data for all zoneIds used by any obtainable method
-          const allZoneIds = new Set();
-          
-          // 0. Add initial zoneIds from requiredIds (from sources extraction)
-          requiredIds.zoneIds.forEach(zoneId => allZoneIds.add(zoneId));
-          
-          // 1. Collect zoneIds from FATE sources (already collected in fateZoneIds)
-          fateZoneIds.forEach(zoneId => allZoneIds.add(zoneId));
-          
-          // 2. Collect zoneIds from instances (from loaded data and source data)
-          const instancesData = newLoadedData.instances || {};
-          Object.keys(instancesData).forEach(instanceIdStr => {
-            const instance = instancesData[instanceIdStr];
-            if (instance?.position?.zoneid) {
-              allZoneIds.add(instance.position.zoneid);
-            }
-          });
-          const instancesSource = processedSources.find(s => s.type === DataType.INSTANCES);
-          if (instancesSource && Array.isArray(instancesSource.data)) {
-            instancesSource.data.forEach(instanceId => {
-              if (typeof instanceId === 'object' && instanceId.zoneId) {
-                allZoneIds.add(instanceId.zoneId);
-              }
-            });
-          }
-          
-          // 3. Collect zoneIds from quests (from questsDatabasePages startingPoint and npcs array)
-          const questsDatabasePages = newLoadedData.questsDatabasePages || {};
-          Object.keys(questsDatabasePages).forEach(questIdStr => {
-            const questDb = questsDatabasePages[questIdStr];
-            // Collect zoneId from startingPoint
-            if (questDb?.startingPoint?.zoneid) {
-              allZoneIds.add(questDb.startingPoint.zoneid);
-            }
-            // Also collect zoneIds from NPCs in quest's npcs array (these NPCs might be used for location fallback)
-            if (Array.isArray(questDb?.npcs)) {
-              questDb.npcs.forEach(npcId => {
-                // These NPCs will have their zoneIds collected from npcsData below
-                // But we need to ensure these NPCs are in the loaded npcs data
-                // The zoneIds will be collected from npcsData in step 4
-              });
-            }
-          });
-          
-          // 4. Collect zoneIds from NPCs (from npcs position and npcsDatabasePages)
-          const npcsData = newLoadedData.npcs || {};
-          Object.keys(npcsData).forEach(npcIdStr => {
-            const npc = npcsData[npcIdStr];
-            if (npc?.position?.zoneid) {
-              allZoneIds.add(npc.position.zoneid);
-            }
-          });
-          const npcsDatabasePages = newLoadedData.npcsDatabasePages || {};
-          Object.keys(npcsDatabasePages).forEach(npcIdStr => {
-            const npcDb = npcsDatabasePages[npcIdStr];
-            if (npcDb?.position?.zoneid) {
-              allZoneIds.add(npcDb.position.zoneid);
-            }
-          });
-          
-          // 5. Collect zoneIds from gathered nodes (from GATHERED_BY sources)
-          const gatheredBySource = processedSources.find(s => s.type === DataType.GATHERED_BY);
-          if (gatheredBySource && gatheredBySource.data?.nodes) {
-            gatheredBySource.data.nodes.forEach(node => {
-              if (node?.zoneId) {
-                allZoneIds.add(node.zoneId);
-              }
-            });
-          }
-          
-          // 6. Collect zoneIds from alarms (from ALARMS sources)
-          const alarmsSource = processedSources.find(s => s.type === DataType.ALARMS);
-          if (alarmsSource && Array.isArray(alarmsSource.data)) {
-            alarmsSource.data.forEach(alarm => {
-              if (alarm?.zoneId) {
-                allZoneIds.add(alarm.zoneId);
-              }
-            });
-          }
-          
-          // 7. Collect zoneIds from vendors (from VENDORS sources)
-          const vendorsSource = processedSources.find(s => s.type === DataType.VENDORS);
-          if (vendorsSource && Array.isArray(vendorsSource.data)) {
-            vendorsSource.data.forEach(vendor => {
-              if (vendor?.zoneId) {
-                allZoneIds.add(vendor.zoneId);
-              }
-            });
-          }
-          
-          // 8. Collect zoneIds from trade sources (from TRADE_SOURCES)
-          const tradeSourcesSource = processedSources.find(s => s.type === DataType.TRADE_SOURCES);
-          if (tradeSourcesSource && Array.isArray(tradeSourcesSource.data)) {
-            tradeSourcesSource.data.forEach(tradeSource => {
-              if (Array.isArray(tradeSource.npcs)) {
-                tradeSource.npcs.forEach(npc => {
-                  if (typeof npc === 'object' && npc.zoneId) {
-                    allZoneIds.add(npc.zoneId);
-                  }
-                });
-              }
-            });
-          }
-          
+          mergeFateSourcesFromTable(
+            processedSources,
+            fateSourcesForItem,
+            newLoadedData,
+            fateZoneIds,
+            existingFateIdsFromSources,
+            msg => console.warn('[ObtainMethods]', msg)
+          );
+
+          const allZoneIds = collectAllZoneIds(processedSources, newLoadedData, requiredIds, fateZoneIds);
+
           // Extract FATE reward item IDs from fatesById (do this before querying)
           const fateRewardItemIds = new Set();
           const fatesById = newLoadedData.fatesById || {};
@@ -1564,28 +882,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             // Get the final loadedData state (may have been updated with reward items)
             // Use loadedDataRef.current which has the latest data including any reward item updates
             const finalLoadedData = loadedDataRef.current || newLoadedData;
-            
-            // DEBUG: Log source data structure for item 27701
-            if (currentItemId === 27701) {
-              console.log(`[DEBUG] Item 27701: ========== SOURCES LOADED ==========`);
-              console.log(`[DEBUG] Item 27701: Total sources: ${processedSources.length}`);
-              processedSources.forEach((source, idx) => {
-                console.log(`[DEBUG] Item 27701: Source ${idx}:`, {
-                  type: source.type,
-                  typeStr: source.type.toString(),
-                  hasNodes: !!source.nodes,
-                  nodesLength: source.nodes?.length || 0,
-                  hasVoyages: !!source.voyages,
-                  voyagesLength: source.voyages?.length || 0,
-                  hasTasks: !!source.tasks,
-                  taskLength: source.tasks?.length || 0,
-                  firstNode: source.nodes?.[0]
-                });
-              });
-              window.__DEBUG_item27701_sources = processedSources;
-              window.__DEBUG_item27701_loadedData = finalLoadedData;
-            }
-            
+
+            loadClearedSourcesForItemIdRef.current = null; // final state - allow notify
             setSources(processedSources);
             setDataLoaded(true);
             setLoading(false);
@@ -1603,6 +901,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         }
         
         console.error(`[ObtainMethods] ❌ Failed to load sources for item ${currentItemId}:`, err);
+        loadClearedSourcesForItemIdRef.current = null; // final state - allow notify with []
         setSources([]);
         setDataLoaded(true);
         setLoading(false);
@@ -1625,215 +924,30 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   // All hooks (useCallback, useMemo) must be defined here before any early returns
   // to prevent "Rendered more hooks than during the previous render" errors
   
-  // Get source item count function (used in sorting)
-  const getSourceItemCount = useCallback((source) => {
-    const { type, data } = source;
-    
-    if (!data) return 0;
-    
-    // For array-based sources, count array length
-    if (Array.isArray(data)) {
-      // For VENDORS, count unique NPCs (since we group by NPC)
-      if (type === DataType.VENDORS) {
-        const uniqueNpcs = new Set(data.map(v => v.npcId));
-        return uniqueNpcs.size;
-      }
-      // For TRADE_SOURCES, count unique NPCs from npcIds array (new optimized format)
-      if (type === DataType.TRADE_SOURCES) {
-        // New optimized format: npcIds array directly on source
-        if (Array.isArray(source.npcIds)) {
-          return source.npcIds.length;
-        }
-        // Legacy format fallback: count NPCs from data array
-        const uniqueNpcs = new Set();
-        data.forEach(tradeSource => {
-          tradeSource.npcs?.forEach(npc => {
-            const npcId = typeof npc === 'object' ? npc.id : npc;
-            if (npcId) uniqueNpcs.add(npcId);
-          });
-        });
-        return uniqueNpcs.size;
-      }
-      // For REQUIREMENTS, count drops
-      if (type === DataType.REQUIREMENTS) {
-        return data.length;
-      }
-      // For other array sources, count array length
-      return data.length;
-    }
-    
-    // For object-based sources (like GATHERED_BY), count nodes or other properties
-    if (typeof data === 'object') {
-      if (type === DataType.GATHERED_BY && data.nodes) {
-        return data.nodes.length;
-      }
-      if (type === DataType.ALARMS && Array.isArray(data)) {
-        return data.length;
-      }
-      // For ISLAND_CROP (type 23) with island crop format {seed: number}, count as 1
-      if (type === DataType.ISLAND_CROP && 'seed' in data) {
-        return 1;
-      }
-      // Default to 1 for object sources
-      return 1;
-    }
-    
-    return 0;
-  }, []); // No dependencies - pure function
-
-  // Helper function to check if a QUESTS source only contains levequests (would render empty)
-  // This checks the same logic as renderSource does for QUESTS type
-  const isQuestsSourceEmpty = useCallback((source) => {
-    if (source.type !== DataType.QUESTS || !Array.isArray(source.data)) {
-      return false;
-    }
-    
-    const currentLoadedData = loadedDataRef.current;
-    const questIds = source.data.map(item => {
-      if (typeof item === 'object' && item !== null && 'id' in item) {
-        return item.id;
-      }
-      return item;
-    }).filter(questId => questId !== null && questId !== undefined);
-    
-    if (questIds.length === 0) {
-      return true; // Empty source
-    }
-    
-    // Check if all quests are levequests (same logic as in renderSource)
-    const allAreLevequests = questIds.every(questId => {
-      // Check if this is a regular quest (has name in tw_quests or quests)
-      const questData = currentLoadedData.twQuests[questId] || currentLoadedData.twQuests[String(questId)] 
-        || (twQuestsStaticData && (twQuestsStaticData[questId] || twQuestsStaticData[String(questId)]));
-      let questNameRaw = questData?.tw;
-      
-      // Fallback to EN if TW not available
-      if (!questNameRaw) {
-        const questEn = currentLoadedData.quests[questId] || currentLoadedData.quests[String(questId)];
-        questNameRaw = questEn?.en;
-      }
-      
-      // Simple check: remove invisible characters and trim (same as cleanQuestName logic)
-      const questName = questNameRaw ? questNameRaw.replace(/[\uE000-\uF8FF\u200B-\u200D\uFEFF]/g, '').trim() : null;
-      
-      // If no quest name found, check if it's a levequest
-      if (!questName) {
-        const leveData = twLevesStaticData && (twLevesStaticData[questId] || twLevesStaticData[String(questId)]);
-        const leveNameRaw = leveData?.tw;
-        // Simple check: remove invisible characters and trim
-        const leveName = leveNameRaw ? leveNameRaw.replace(/[\uE000-\uF8FF\u200B-\u200D\uFEFF]/g, '').trim() : null;
-        
-        // If it's a levequest, this source would be empty
-        return !!leveName;
-      }
-      
-      return false; // Has quest name, so it's a regular quest
-    });
-    
-    return allAreLevequests;
-  }, [twQuestsStaticData, twLevesStaticData]); // Dependencies for static data
-
-  // Sort sources by item count (descending) - more items appear first (on the left)
-  // Filter out QUESTS sources that only contain levequests (they will be shown in 理符任務 instead)
-  // Filter out DESYNTHS sources (精製獲得) - these should not be displayed
-  // OPTIMIZED: Memoized to prevent recalculation on every render
   const sortedSources = useMemo(() => {
-    console.log(`[ObtainMethods] Item ${itemId}: Processing ${sources.length} raw sources`);
-    
-    // Filter out empty QUESTS sources (only contain levequests)
-    // Filter out DESYNTHS sources (精製獲得)
-    const filteredSources = sources.filter(source => {
-      if (source.type === DataType.QUESTS) {
-        const isEmpty = isQuestsSourceEmpty(source);
-        if (isEmpty) {
-          console.log(`[ObtainMethods] Item ${itemId}: Filtering out empty QUESTS source`);
-        }
-        return !isEmpty;
-      }
-      // Filter out ALARMS (鬧鐘提醒) - this method is not reliable
-      if (source.type === DataType.ALARMS || source.typeName === '鬧鐘提醒' || source.typeName === '時間限定') {
-        console.log(`[ObtainMethods] Item ${itemId}: Filtering out ALARMS (Type 19) source`);
-        return false;
-      }
-      // Filter out DESYNTHS (精製獲得 - Type 5)
-      if (source.type === DataType.DESYNTHS) {
-        console.log(`[ObtainMethods] Item ${itemId}: Filtering out DESYNTHS (Type 5) source`);
-        return false;
-      }
-      return true;
+    return filterAndSortSources(sources, {
+      loadedData: loadedDataRef.current,
+      twQuestsStaticData,
+      twLevesStaticData
     });
-    
-    console.log(`[ObtainMethods] Item ${itemId}: After filtering: ${filteredSources.length} sources remain`);
-    
-    return filteredSources.sort((a, b) => {
-      // DROPS (怪物掉落) always comes first
-      if (a.type === DataType.DROPS && b.type !== DataType.DROPS) {
-        return -1;
-      }
-      if (a.type !== DataType.DROPS && b.type === DataType.DROPS) {
-        return 1;
-      }
-      
-      // For other types, sort by item count (descending)
-      const countA = getSourceItemCount(a);
-      const countB = getSourceItemCount(b);
-      return countB - countA;
-    });
-  }, [sources, getSourceItemCount, isQuestsSourceEmpty]); // Added isQuestsSourceEmpty dependency
+  }, [sources, twQuestsStaticData, twLevesStaticData, loadedData.twQuests, loadedData.quests]);
 
   // Notify parent component when sources change (for button disable state)
   // This determines if the obtainable methods button should be enabled/disabled
   useEffect(() => {
     if (onSourcesChange) {
-      // Log for debugging
-      console.log(`[ObtainMethods] Item ${itemId}: Notifying parent. Loading: ${loading}, Raw sources: ${sources.length}, Filtered sources: ${sortedSources.length}`);
-      if (sortedSources.length > 0) {
-        console.log(`[ObtainMethods] Item ${itemId}: Source types:`, sortedSources.map(s => `Type ${s.type}`).join(', '));
-      }
-      
-      // Always notify parent when loading completes or sources change
-      // This ensures hasObtainMethods is always up-to-date
-      if (!loading) {
-        onSourcesChange(sortedSources);
+      // Only notify when we have final state: not loading, and not in "cleared but waiting for load" state
+      // (avoids notifying with [] when setSources([]) was applied before setLoading(true), which would disable the button)
+      const clearedButNoDataYet = sortedSources.length === 0 && loadClearedSourcesForItemIdRef.current === itemId;
+      if (!loading && !clearedButNoDataYet) {
+        onSourcesChange(sortedSources, itemId);
       }
     }
   }, [itemId, sortedSources, onSourcesChange, loading]);
 
-  // Get method type display name
-  const getMethodTypeName = (type) => {
-    const methodTypeNames = {
-      [DataType.CRAFTED_BY]: '製作',
-      [DataType.TRADE_SOURCES]: '兌換',
-      [DataType.VENDORS]: 'NPC商人',
-      [DataType.TREASURES]: '寶箱/容器',
-      [DataType.INSTANCES]: '副本掉落',
-      [DataType.DESYNTHS]: '精製獲得',
-      [DataType.QUESTS]: '任務獎勵',
-      [DataType.FATES]: '危命任務',
-      [DataType.GATHERED_BY]: '採集獲得',
-      [DataType.REDUCED_FROM]: '分解獲得',
-      [DataType.VENTURES]: '遠征獲得',
-      [DataType.GARDENING]: '園藝獲得',
-      [DataType.MOGSTATION]: '商城購買',
-      [DataType.ISLAND_PASTURE]: '無人島牧場',
-      [DataType.ISLAND_CROP]: '無人島農作',
-      [DataType.VOYAGES]: '遠航探索',
-      [DataType.REQUIREMENTS]: '需求',
-      [DataType.MASTERBOOKS]: '製作書',
-      [DataType.ALARMS]: '鬧鐘提醒',
-      [DataType.DROPS]: '怪物掉落',
-      [DataType.ACHIEVEMENTS]: '成就獎勵',
-      [DataType.TRIPLE_TRIAD_DUELS]: '三重幻卡對戰',
-      [DataType.TRIPLE_TRIAD_PACK]: '三重幻卡包',
-    };
-    return methodTypeNames[type] || '未知';
-  };
-
   const getMethodTypeLabel = (source) => {
-    if (source?.typeName) {
-      return source.typeName;
-    }
-    return getMethodTypeName(source?.type);
+    if (source?.typeName) return source.typeName;
+    return getChineseName(source?.type) || '未知';
   };
 
   // Filter sources by selected method type
@@ -1850,12 +964,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     return [...new Set(sortedSources.map(source => getMethodTypeLabel(source)))];
   }, [sortedSources]);
 
-  // Filter sources - just return the filtered sources array (don't render here)
-  // Rendering will happen in JSX using renderSource function
-  // This hook must be before any early returns to maintain hooks order
-  const validSources = useMemo(() => {
-    return filteredSources; // Just return filtered sources, rendering happens in JSX
-  }, [filteredSources, loadedData.twNpcs, loadedData.npcsDatabasePages, leveNpcsLoaded]); // Re-render when NPC data is loaded
+  const validSources = useMemo(() => filteredSources, [filteredSources]);
 
   // 依各 method 卡片高度排序：高的在前、矮的排最後（只填補尚未測到的，避免重排後又重測造成閃爍）
   const methodOrderByHeight = useMemo(() => {
@@ -1963,54 +1072,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
   
 
-  const getNpcName = (npcId) => {
-    // Use ref to access latest loadedData immediately, avoiding stale state issues
-    const currentLoadedData = loadedDataRef.current;
-    
-    // Try TW first
-    const twNpc = currentLoadedData.twNpcs[npcId] || currentLoadedData.twNpcs[String(npcId)];
-    if (twNpc?.tw) {
-      return twNpc.tw;
-    }
-    
-    // Fallback: ZH (simplified Chinese) then EN then message
-    const npcDb = currentLoadedData.npcsDatabasePages[npcId] || currentLoadedData.npcsDatabasePages[String(npcId)];
-    if (npcDb?.zh) {
-      return npcDb.zh;
-    }
-    const enNpc = currentLoadedData.npcs[npcId] || currentLoadedData.npcs[String(npcId)];
-    if (enNpc?.en) {
-      return enNpc.en;
-    }
-    
-    return FALLBACK_MESSAGE;
-  };
+  const getNpcName = (npcId) => obtainableHelpers.getNpcName(npcId, loadedDataRef.current);
+  const getNpcTitle = (npcId) => obtainableHelpers.getNpcTitle(npcId, loadedDataRef.current, twNpcTitlesData);
 
-  const getNpcTitle = (npcId) => {
-    // Try tw-npc-titles.json first (static import)
-    const titleData = twNpcTitlesData[npcId] || twNpcTitlesData[String(npcId)];
-    if (titleData?.tw) {
-      return titleData.tw;
-    }
-    
-    // Use ref to access latest loadedData immediately, avoiding stale state issues
-    const currentLoadedData = loadedDataRef.current;
-    
-    // Fallback to npcs-database-pages from loaded data (check zh first)
-    const npcDb = currentLoadedData.npcsDatabasePages[npcId] || currentLoadedData.npcsDatabasePages[String(npcId)];
-    if (npcDb?.title?.zh) {
-      return npcDb.title.zh;
-    }
-    
-    // Fallback to EN title if zh not available
-    if (npcDb?.title?.en) {
-      return npcDb.title.en;
-    }
-    
-    return null;
-  };
-
-  // Use centralized place name utility
+  // Thin wrapper: pass current loadedData (from ref) into centralized placeUtils
   const getPlaceName = (zoneId) => {
     const currentLoadedData = loadedDataRef.current;
     return getPlaceNameUtil(zoneId, {
@@ -2018,15 +1083,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       places: currentLoadedData.places
     });
   };
-  
-  // Get place name with Chinese fallback
-  const getPlaceNameCN = (zoneId) => {
-    const currentLoadedData = loadedDataRef.current;
-    return getPlaceName(zoneId, {
-      twPlaces: currentLoadedData.twPlaces,
-      places: currentLoadedData.places
-    });
-  };
+  const getPlaceNameCN = getPlaceName;
 
   /**
    * 中心化地图位置信息管理 - 统一标准处理所有地图相关数据
@@ -2058,25 +1115,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
     // 1. 获取地图名称（中文优先）
     const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
-    
-    // DEBUG
-    if (zoneId === 3045) {
-      const currentLoadedData = loadedDataRef.current;
-      console.log(`[DEBUG] getLocationInfo for zoneId 3045:`, {
-        zoneId: zoneId,
-        zoneName: zoneName,
-        twPlacesData: currentLoadedData.twPlaces?.[zoneId] || currentLoadedData.twPlaces?.[String(zoneId)],
-        twPlacesKeys: Object.keys(currentLoadedData.twPlaces || {}).slice(0, 10),
-        placesData: currentLoadedData.places?.[zoneId] || currentLoadedData.places?.[String(zoneId)]
-      });
-      window.__DEBUG_getLocationInfo_3045 = {
-        zoneId, zoneName, twPlacesData: currentLoadedData.twPlaces?.[zoneId],
-        placesData: currentLoadedData.places?.[zoneId]
-      };
-    }
-    
-    // Note: twPlaces and places are loaded via fetch in useEffect
-    
+
     // 2. 检查是否有有效的坐标
     const hasValidCoords = coords && coords.x !== undefined && coords.y !== undefined;
     
@@ -2135,101 +1174,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     });
   };
 
-  const getShopName = (shopId) => {
-    // Try Traditional Chinese shop names from loaded data
-    const currentLoadedData = loadedDataRef.current;
-    const twShop = currentLoadedData.twShops[shopId] || currentLoadedData.twShops[String(shopId)];
-    if (twShop?.tw) {
-      return twShop.tw;
-    }
-    
-    // Fallback to EN shop name if TW is missing
-    const enShop = currentLoadedData.shops[shopId] || currentLoadedData.shops[String(shopId)];
-    if (enShop?.en) {
-      return enShop.en;
-    }
-    
-    return null;
-  };
-
-  // Get shop name from vendor.shopName by matching English name to shop ID
-  const getVendorShopName = (shopName) => {
-    if (!shopName) return null;
-    
-    // First try to get tw or zh directly from shopName
-    if (shopName.tw) return shopName.tw;
-    if (shopName.zh) return shopName.zh;
-    
-    // If not available, try to find shop ID by matching English name
-    // Note: gil_shop_names table might need to be queried if needed
-    // For now, just return null if not in shopName object
-    return null;
-  };
-
-  const getCurrencyName = (currencyItemId) => {
-    // Get currency name: TW first, then ZH (simplified), then EN, then fallback message
-    if (!currencyItemId) return '貨幣';
-    
-    const currentLoadedData = loadedDataRef.current;
-    
-    const twCurrencyItem = currentLoadedData.twItems[currencyItemId] || currentLoadedData.twItems[String(currencyItemId)];
-    if (twCurrencyItem?.tw) return twCurrencyItem.tw;
-    
-    const zhCurrencyItem = currentLoadedData.zhItems?.[currencyItemId] || currentLoadedData.zhItems?.[String(currencyItemId)];
-    if (zhCurrencyItem?.zh) return zhCurrencyItem.zh;
-    
-    const enCurrencyItem = currentLoadedData.items?.[currencyItemId] || currentLoadedData.items?.[String(currencyItemId)];
-    if (enCurrencyItem?.en) return enCurrencyItem.en;
-    
-    return FALLBACK_MESSAGE;
-  };
-
-  /** Item name with fallback: TW → ZH → EN → FALLBACK_MESSAGE (for display in obtainable methods) */
-  const getItemNameWithFallback = (itemId) => {
-    if (!itemId) return FALLBACK_MESSAGE;
-    const currentLoadedData = loadedDataRef.current;
-    const twItem = currentLoadedData.twItems[itemId] || currentLoadedData.twItems[String(itemId)];
-    if (twItem?.tw) return twItem.tw;
-    const zhItem = currentLoadedData.zhItems?.[itemId] || currentLoadedData.zhItems?.[String(itemId)];
-    if (zhItem?.zh) return zhItem.zh;
-    const enItem = currentLoadedData.items?.[itemId] || currentLoadedData.items?.[String(itemId)];
-    if (enItem?.en) return enItem.en;
-    return FALLBACK_MESSAGE;
-  };
-
-  // Get achievement info by achievement ID
-  const getAchievementInfo = (achievementId) => {
-    if (!achievementId) return null;
-    const achievementIdStr = achievementId.toString();
-    const currentLoadedData = loadedDataRef.current;
-    
-    // Try TW data first
-    const twAchievement = currentLoadedData.twAchievements[achievementIdStr] || currentLoadedData.twAchievements[achievementId];
-    const twDescription = currentLoadedData.twAchievementDescriptions[achievementIdStr] || currentLoadedData.twAchievementDescriptions[achievementId];
-    
-    // Get EN achievement data as fallback
-    const achievementData = currentLoadedData.achievements[achievementIdStr] || currentLoadedData.achievements[achievementId];
-    
-    // Use TW if available, otherwise fallback to EN
-    const name = twAchievement?.tw || achievementData?.en || null;
-    const description = twDescription?.tw || achievementData?.description?.en || null;
-    
-    if (name) {
-      return {
-        id: achievementId,
-        name: name,
-        description: description,
-        icon: achievementData?.icon ? `https://xivapi.com${achievementData.icon}` : null,
-        itemReward: achievementData?.itemReward || null,
-        title: achievementData?.title || null,
-        // English name for reference
-        nameEn: achievementData?.en || null,
-        nameJa: achievementData?.ja || null,
-      };
-    }
-    
-    return null;
-  };
+  const getShopName = (shopId) => obtainableHelpers.getShopName(shopId, loadedDataRef.current);
+  const getVendorShopName = (shopName) => obtainableHelpers.getVendorShopName(shopName);
+  const getCurrencyName = (currencyItemId) => obtainableHelpers.getCurrencyName(currencyItemId, loadedDataRef.current);
+  const getItemNameWithFallback = (itemId) => obtainableHelpers.getItemNameWithFallback(itemId, loadedDataRef.current);
+  const getAchievementInfo = (achievementId) => obtainableHelpers.getAchievementInfo(achievementId, loadedDataRef.current);
 
   // Handle mouse enter for achievement tooltip
   const handleAchievementMouseEnter = (e, achievementId) => {
@@ -2281,37 +1230,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     return null;
   };
 
-  const getInstanceName = (instanceId) => {
-    // Use ref to access latest loadedData immediately, avoiding stale state issues
-    const currentLoadedData = loadedDataRef.current;
-    // Try Traditional Chinese first
-    const twInstance = currentLoadedData.twInstances[instanceId] || currentLoadedData.twInstances[String(instanceId)];
-    if (twInstance?.tw) {
-      return twInstance.tw;
-    }
-    // Fallback to English instances from loaded data
-    const instance = currentLoadedData.instances[instanceId] || currentLoadedData.instances[String(instanceId)];
-    if (instance?.en) {
-      return instance.en;
-    }
-    return `副本 ${instanceId}`;
-  };
-
-  const getInstanceCNName = (instanceId) => {
-    // Use ref to access latest loadedData immediately, avoiding stale state issues
-    const currentLoadedData = loadedDataRef.current;
-    // Get Simplified Chinese name from loaded data
-    const zhInstance = currentLoadedData.zhInstances[instanceId] || currentLoadedData.zhInstances[String(instanceId)];
-    return zhInstance?.zh || null;
-  };
-
-  const getQuestCNName = (questId) => {
-    // Use ref to access latest loadedData immediately, avoiding stale state issues
-    const currentLoadedData = loadedDataRef.current;
-    // Get Simplified Chinese quest name from loaded data
-    const zhQuest = currentLoadedData.zhQuests[questId] || currentLoadedData.zhQuests[String(questId)];
-    return zhQuest?.zh || null;
-  };
+  const getInstanceName = (instanceId) => obtainableHelpers.getInstanceName(instanceId, loadedDataRef.current);
+  const getInstanceCNName = (instanceId) => obtainableHelpers.getInstanceCNName(instanceId, loadedDataRef.current);
+  const getQuestCNName = (questId) => obtainableHelpers.getQuestCNName(questId, loadedDataRef.current);
 
   // Clean quest name by removing invisible/special characters (like U+E0FE)
   const cleanQuestName = (name) => {
@@ -2440,7 +1361,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
 
       return (
-        <div key={`crafted-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`crafted-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/000000/000501.png" alt="Craft" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">製作</span>
@@ -2519,7 +1440,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               </div>
             </div>
           )}
-          <div className="flex flex-wrap gap-2 mt-2">
+          <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
             {craftData.map((craft, craftIndex) => {
               const jobId = craft.job;
               const jobName = getJobName(jobId);
@@ -2543,7 +1464,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       onExpandCraftingTree();
                     }
                   }}
-                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} rounded p-2 min-h-[70px] flex flex-col justify-center transition-all duration-200 ${
+                  className={`${getInnerItemLayoutClass(totalMethodCards)} rounded p-2 min-h-[70px] flex flex-col justify-center transition-all duration-200 ${
                     !dataLoaded
                       ? 'bg-gray-900/40 border border-gray-700/40 text-gray-500 cursor-not-allowed opacity-50'
                       : isCraftingTreeExpanded
@@ -2674,7 +1595,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       const isSingleNpc = npcIds.length === 1;
       
       return (
-        <div key={`trade-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`trade-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -2695,7 +1616,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             <span className="text-ffxiv-gold font-medium">兌換</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            <div className={`${isSingleNpc ? 'w-full' : totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 flex flex-col`}>
+            <div className={`${isSingleNpc ? 'w-full' : getMethodCardLayoutClass(totalMethodCards)} bg-slate-900/50 rounded p-2 flex flex-col`}>
               {/* Currency header: icon always by itemId (loads regardless of tw/zh/en); name uses fallback */}
               <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-700/50">
                 {hasCurrencyItem ? (
@@ -2781,7 +1702,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               )}
               
               {/* NPCs list：僅在 1–2 種取得方式時多欄橫向展開，否則維持 2 欄避免擠壓 */}
-              <div className={`grid gap-1.5 ${isSingleNpc ? 'grid-cols-1' : totalMethodCards <= 2 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' : 'grid-cols-2'}`}>
+              <div className={`grid gap-1.5 ${isSingleNpc ? 'grid-cols-1' : totalMethodCards <= 3 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' : 'grid-cols-2'}`}>
                 {npcIds.map((npcId, npcIndex) => {
                   const npcName = getNpcName(npcId);
                   
@@ -2919,7 +1840,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       });
 
       return (
-        <div key={`vendor-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`vendor-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/065000/065002_hr1.png" alt="Gil" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">NPC商人</span>
@@ -2927,7 +1848,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           <div className="flex flex-col gap-3 mt-2">
             {/* NPCs with location info */}
             {npcGroupsWithLocation.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX_NO_MT : 'grid gap-2 grid-cols-1'}>
                 {npcGroupsWithLocation.map((npcGroup, npcGroupIndex) => {
                   const npcVendors = npcGroup.vendors;
                   const firstVendor = npcVendors[0];
@@ -2966,11 +1887,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   const hasValidMapLocation = locationInfo.hasLocation && (coords.x !== 0 || coords.y !== 0);
                   
                   return (
-                    <div key={npcGroupIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col`}>
+                    <div key={npcGroupIndex} className={`${getInnerItemLayoutClass(totalMethodCards)} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col`}>
                       <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-0.5">
+                        <div className="flex items-center gap-0.5 min-w-0">
                           <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-5 h-5 flex-shrink-0 grayscale opacity-70" />
-                          <span className="text-sm font-medium text-white">{npcName}</span>
+                          <span className="text-sm font-medium text-white truncate">{npcName}</span>
                           {(() => {
                             const npcTitle = getNpcTitle(firstVendor.npcId);
                             return npcTitle ? (
@@ -3106,12 +2027,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
 
       return (
-        <div key={`treasure-${index}`} className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start">
+        <div key={`treasure-${index}`} className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start">
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/026000/026509_hr1.png" alt="Treasure" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">{source.typeName || '寶箱/容器'}</span>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
+          <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
             {validTreasures.map((treasureId, treasureIndex) => {
               const treasureData = loadedData.twItems[treasureId] || loadedData.twItems[String(treasureId)];
               const treasureName = treasureData?.tw;
@@ -3137,7 +2058,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       navigate(itemUrl);
                     }
                   }}
-                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
+                  className={`${getInnerItemLayoutClass(totalMethodCards)} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
                 >
                   <ItemImage
                     itemId={treasureId}
@@ -3169,12 +2090,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             }
       
       return (
-        <div key={`instance-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`instance-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/061000/061801.png" alt="Instance" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">{source.typeName || '副本掉落'}</span>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
+          <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
             {instanceEntries.map((instanceEntry, instanceIndex) => {
               const instanceId = typeof instanceEntry === 'object' && instanceEntry !== null ? instanceEntry.id : instanceEntry;
               const fallbackName = typeof instanceEntry === 'object' && instanceEntry !== null ? instanceEntry.name : null;
@@ -3188,7 +2109,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               // If we don't have a valid ID, render a minimal card with name only
               if (!instanceId) {
                 return (
-                  <div key={instanceIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded-lg p-3 min-h-[80px] flex flex-col justify-center border border-slate-700/30`}>
+                  <div key={instanceIndex} className={`${getInnerItemLayoutClass(totalMethodCards)} bg-slate-900/50 rounded-lg p-3 min-h-[80px] flex flex-col justify-center border border-slate-700/30`}>
                     <div className="flex items-center gap-2">
                       <img src="https://xivapi.com/i/061000/061801.png" alt="Instance" className="w-7 h-7 flex-shrink-0" />
                       <span className="text-sm font-medium text-gray-300 leading-tight">{instanceName || '未知副本'}</span>
@@ -3229,7 +2150,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const sync = instance?.sync;
               
               return (
-                <div key={instanceIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded-lg p-3 min-h-[80px] flex flex-col justify-between border border-slate-700/30 hover:border-slate-600/50 transition-colors`}>
+                <div key={instanceIndex} className={`${getInnerItemLayoutClass(totalMethodCards)} bg-slate-900/50 rounded-lg p-3 min-h-[80px] flex flex-col justify-between border border-slate-700/30 hover:border-slate-600/50 transition-colors`}>
                   {instanceCNName && (
                     <a
                       href={`https://ff14.huijiwiki.com/wiki/${encodeURIComponent(instanceCNName)}`}
@@ -3380,7 +2301,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
 
       return (
-        <div key={`drops-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`drops-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-3">
             <img src="https://xivapi.com/c/BNpcName.png" alt="Monster" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">怪物掉落</span>
@@ -3456,12 +2377,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`desynth-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`desynth-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/000000/000120.png" alt="Desynth" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">精製獲得</span>
           </div>
-          <div className={`grid gap-2 mt-2 ${totalMethodCards <= 2 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' : 'grid-cols-3'}`}>
+          <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
             {validDesynthItems.map((desynthItemId, desynthIndex) => {
               const desynthItemData = loadedData.twItems[desynthItemId] || loadedData.twItems[String(desynthItemId)];
               const desynthName = desynthItemData?.tw;
@@ -3559,12 +2480,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`quest-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`quest-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/060000/060453_hr1.png" alt="Quest" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">任務獎勵</span>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
+          <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
             {validQuestIds.map((questId, questIndex) => {
               // Try loaded data first, then static JSON fallback
               const questData = currentLoadedData.twQuests[questId] || currentLoadedData.twQuests[String(questId)] 
@@ -3582,7 +2503,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 
                 // Still render even without Traditional Chinese name
                 return (
-                  <div key={questIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col`}>
+                  <div key={questIndex} className={`${getInnerItemLayoutClass(totalMethodCards)} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col`}>
                     <div className="flex items-center gap-2 mb-1">
                       <img src="https://xivapi.com/i/060000/060453_hr1.png" alt="Quest" className="w-7 h-7 object-contain flex-shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -3693,7 +2614,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const hasValidMapLocation = hasLocation && mapId && (coords.x !== 0 || coords.y !== 0);
               
               return (
-                <div key={questIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col`}>
+                <div key={questIndex} className={`${getInnerItemLayoutClass(totalMethodCards)} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col`}>
                   <div className="flex items-center gap-2 mb-1">
                     <img src={questIcon} alt="Quest" className="w-7 h-7 object-contain flex-shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -3791,12 +2712,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`fate-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`fate-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/060000/060502_hr1.png" alt="FATE" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">危命任務</span>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
+          <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
             {validFates.map((fate, fateIndex) => {
               const fateId = typeof fate === 'object' ? fate.id : fate;
               const fateLevel = typeof fate === 'object' ? fate.level : null;
@@ -3857,10 +2778,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const wikiUrl = fateNameZh ? `https://ff14.huijiwiki.com/wiki/临危受命:${encodeURIComponent(fateNameZh)}` : null;
               
               return (
-                <div key={fateIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}>
+                <div key={fateIndex} className={`${getInnerItemLayoutClass(totalMethodCards)} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}>
                   <div className="flex items-center gap-2 mb-1">
                     <img src={fateIcon} alt="FATE" className="w-7 h-7 object-contain" />
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       {wikiUrl ? (
                         <a
                           href={wikiUrl}
@@ -4149,7 +3070,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       const nodeTypeName = nodeTypeNames[nodeType] || '採集';
 
       return (
-        <div key={`gathered-${index}`} className={`bg-slate-000/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`gathered-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src={nodeIcon} alt={nodeTypeName} className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">採集獲得</span>
@@ -4197,25 +3118,11 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               </div>
             </div>
           )}
-          <div className="flex flex-wrap gap-2 mt-2">
+          <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
             {nodes.map((node, nodeIndex) => {
               const zoneId = node.zoneId;
               const mapId = node.mapId;
               const coords = node.x !== undefined && node.y !== undefined ? { x: node.x, y: node.y } : null;
-              
-              // DEBUG
-              if (itemId === 27701 && zoneId === 3045) {
-                console.log(`[DEBUG] Item 27701: GATHERED_BY node rendering with zoneId 3045:`, {
-                  zoneId: zoneId,
-                  mapId: mapId,
-                  coords: coords,
-                  x: node.x,
-                  y: node.y,
-                  nodeKeys: Object.keys(node)
-                });
-              }
-              
-              // 使用中心化的地图位置管理
               const locationInfo = getLocationInfo({
                 zoneId: zoneId,
                 mapId: mapId,
@@ -4223,12 +3130,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 radius: node.radius,
                 contextName: `${nodeTypeName}采集點`
               });
-              
-              if (itemId === 27701 && zoneId === 3045) {
-                console.log(`[DEBUG] Item 27701: locationInfo after getLocationInfo:`, locationInfo);
-                window.__DEBUG_gathered_node_locationInfo = locationInfo;
-              }
-              
               const nodeLevel = node.level || gatheringLevel;
               const isLimited = node.limited === true;
               const isIslandNode = node.isIslandNode === true;
@@ -4237,10 +3138,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 : null;
 
               return (
-                <div key={nodeIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}>
+                <div key={nodeIndex} className={`${getInnerItemLayoutClass(totalMethodCards)} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}>
                   <div className="flex items-center gap-2 mb-1">
                     <img src="https://garlandtools.org/db/images/node/Mineral%20Deposit%20Limited.png" alt={nodeTypeName} className="w-9 h-9 object-contain" />
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-white">
                         {locationInfo.displayText}
                       </div>
@@ -4321,12 +3222,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`reduced-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`reduced-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/061000/061808_hr1.png" alt="Reduction" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">分解獲得</span>
           </div>
-          <div className={validReductionItems.length === 1 ? "flex justify-center gap-2 mt-2" : `grid gap-2 mt-2 ${totalMethodCards <= 2 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' : 'grid-cols-3'}`}>
+          <div className={validReductionItems.length === 1 ? "flex justify-center gap-2 mt-2" : (totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1')}>
             {validReductionItems.map((reductionItemId, reductionIndex) => {
               const reductionItemData = loadedData.twItems[reductionItemId] || loadedData.twItems[String(reductionItemId)];
               const reductionName = reductionItemData?.tw;
@@ -4377,14 +3278,21 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
         return null;
       }
-      
+
       return (
-        <div key={`venture-${index}`} className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start">
-          <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/065000/065049.png" alt="Venture" className="w-8 h-8" />
-            <span className="text-ffxiv-gold font-medium">雇員探險</span>
+        <div key={`venture-${index}`} className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start">
+          {/* Card header */}
+          <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-700/50">
+            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-slate-900/60 border border-slate-600/50">
+              <img src="https://xivapi.com/i/065000/065049.png" alt="Venture" className="w-7 h-7 object-contain" />
+            </div>
+            <div>
+              <span className="text-ffxiv-gold font-semibold text-base tracking-wide">雇員探險</span>
+              <p className="text-xs text-slate-400 mt-0.5">派遣雇員進行探險以獲得道具</p>
+            </div>
           </div>
-          <div className="flex flex-col gap-2 mt-2">
+
+          <div className="flex flex-col gap-3">
             {tasks.map((task, taskIdx) => {
               const taskId = typeof task === 'object' && task !== null ? task.id : task;
               const taskFromLookup = taskId !== undefined && taskId !== null
@@ -4394,9 +3302,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 ? { ...taskFromLookup, ...(typeof task === 'object' && task !== null ? task : {}) }
                 : (typeof task === 'object' && task !== null ? task : { id: taskId });
               const quantities = Array.isArray(mergedTask?.quantities) ? mergedTask.quantities : [];
-              const maxQuantity = quantities.length > 0
-                ? quantities.reduce((max, entry) => Math.max(max, Number(entry?.quantity) || 0), 0)
-                : '?';
               const level = mergedTask?.level ?? mergedTask?.lvl;
               const reqGathering = mergedTask?.reqGathering ?? 0;
               const reqIlvl = mergedTask?.reqIlvl ?? 0;
@@ -4404,74 +3309,81 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const categoryName = categoryId !== null && categoryId !== undefined
                 ? (twJobCategoriesData[categoryId]?.tw || twJobCategoriesData[String(categoryId)]?.tw)
                 : null;
-              
+
               return (
-                <div key={taskIdx} className="bg-slate-900/50 rounded-lg p-3 border border-slate-700/50">
-                  {/* Header */}
-                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-700/50">
-                    <span className="text-xs text-slate-500">需求等級</span>
-                    <span className="text-base font-semibold text-ffxiv-gold">{level ?? '?'}</span>
+                <div
+                  key={taskIdx}
+                  className={`${getMethodCardLayoutClass(tasks.length)} rounded-xl p-4 flex flex-col gap-3 bg-slate-900/50 border border-slate-700/50 hover:border-slate-600/60 transition-all duration-200`}
+                >
+                  {/* Level & category row */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ffxiv-gold/15 border border-ffxiv-gold/40 text-ffxiv-gold font-semibold text-sm">
+                      Lv.{level ?? '?'}
+                    </span>
                     {categoryName && (
-                      <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-yellow-900/30 border border-yellow-500/40 text-xs text-ffxiv-gold font-semibold whitespace-nowrap">
-                        <svg className="w-3 h-3 mr-1 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12l2 2 4-4" />
-                        </svg>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-700/50 border border-slate-600/50 text-xs text-slate-300 font-medium">
                         {categoryName}
                       </span>
                     )}
-                    {(reqGathering > 0 || reqIlvl > 0) && (
-                      <>
-                        <span className="text-slate-600 mx-1">|</span>
-                        {reqGathering > 0 && (
-                          <span className="text-xs text-slate-400">採集力 <span className="text-blue-400 font-medium">{reqGathering}+</span></span>
-                        )}
-                        {reqIlvl > 0 && reqGathering > 0 && <span className="text-slate-600 mx-1">·</span>}
-                        {reqIlvl > 0 && (
-                          <span className="text-xs text-slate-400">裝等 <span className="text-purple-400 font-medium">{reqIlvl}+</span></span>
-                        )}
-                      </>
+                    {reqGathering > 0 && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/30 text-xs text-blue-400 font-medium">
+                        採集力 {reqGathering}+
+                      </span>
+                    )}
+                    {reqIlvl > 0 && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-violet-500/10 border border-violet-500/30 text-xs text-violet-400 font-medium">
+                        裝等 {reqIlvl}+
+                      </span>
                     )}
                   </div>
-                  
-                  {/* Quantities with arrow guidance */}
+
+                  {/* Quantity tiers - one row per tier, with icon and labels */}
                   {quantities.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">獲得數量</div>
                       {quantities.map((entry, qIdx) => {
                         const statLabel = entry?.stat === 'perception' ? '感知' : '裝等';
                         const statValue = entry?.value !== undefined && entry?.value !== null ? entry.value : null;
                         const qty = entry?.quantity ?? '?';
+                        const conditionText = statValue !== null
+                          ? `${statLabel} ${statValue}+`
+                          : `需求 ${reqGathering}+`;
+                        const isPerception = entry?.stat === 'perception';
+                        const isIlvl = entry?.stat !== 'perception' && statValue != null;
                         return (
-                          <div key={qIdx} className="flex items-center gap-3 group">
-                            {/* Condition */}
-                            <div className="flex-shrink-0 min-w-[100px] px-3 py-1.5 rounded-md bg-slate-800/70 border border-slate-700/60 group-hover:border-blue-500/40 transition-colors">
-                              {statValue !== null ? (
-                                <div className="flex items-baseline gap-1">
-                                  <span className="text-xs text-slate-500">{statLabel}</span>
-                                  <span className="text-sm font-medium text-slate-200">{statValue}</span>
-                                  <span className="text-xs text-slate-500">+</span>
-                                </div>
+                          <div
+                            key={qIdx}
+                            className="flex items-stretch overflow-hidden rounded-lg border border-slate-600/50 bg-slate-800/40"
+                          >
+                            <div className="flex items-center justify-center w-10 shrink-0 border-r border-slate-600/50 bg-slate-700/30">
+                              {isPerception ? (
+                                <svg className="w-5 h-5 text-amber-400/90" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              ) : isIlvl ? (
+                                <svg className="w-5 h-5 text-violet-400/90" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
                               ) : (
-                                <div className="flex items-baseline gap-1">
-                                  <span className="text-xs text-slate-500">需求</span>
-                                  <span className="text-sm font-medium text-slate-200">{reqGathering}</span>
-                                  <span className="text-xs text-slate-500">+</span>
-                                </div>
-                               
+                                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
                               )}
                             </div>
-                            
-                            {/* Arrow */}
-                            <div className="flex items-center gap-1 text-slate-600 group-hover:text-ffxiv-gold transition-colors">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                              </svg>
+                            <div className="flex min-w-0 flex-1 items-center py-2.5 px-3">
+                              <div>
+                                <div className="text-[11px] uppercase tracking-wider text-slate-500">條件</div>
+                                <div className="text-sm font-medium text-slate-200">{conditionText}</div>
+                              </div>
                             </div>
-                            
-                            {/* Result */}
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 group-hover:border-green-500/50 transition-colors">
-                              <span className="text-lg font-bold text-green-400">{qty}</span>
-                              <span className="text-xs text-green-400/70">個</span>
+                            <div className="w-px bg-slate-600/60 shrink-0" aria-hidden />
+                            <div className="flex shrink-0 flex-col items-center justify-center border-l border-emerald-500/30 bg-emerald-500/10 py-2.5 px-4 min-w-[4.5rem]">
+                              <div className="text-[11px] uppercase tracking-wider text-emerald-400/70">數量</div>
+                              <div className="flex items-baseline gap-0.5">
+                                <span className="font-bold text-emerald-400 text-lg tabular-nums">{qty}</span>
+                                <span className="text-xs text-emerald-400/80">個</span>
+                              </div>
                             </div>
                           </div>
                         );
@@ -4503,12 +3415,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`gardening-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`gardening-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/061000/061808_hr1.png" alt="Gardening" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">園藝獲得</span>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
+          <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
             {validSeeds.map((seed, seedIndex) => {
               const seedId = typeof seed === 'object' ? seed.id : seed;
               const seedData = loadedData.twItems[seedId] || loadedData.twItems[String(seedId)];
@@ -4536,7 +3448,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       navigate(itemUrl);
                     }
                   }}
-                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
+                  className={`${getInnerItemLayoutClass(totalMethodCards)} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
                 >
                   <ItemImage
                     itemId={seedId}
@@ -4559,13 +3471,13 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
 
       return (
-        <div key={`mogstation-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`mogstation-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/065000/065002_hr1.png" alt="Mogstation" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">商城購買</span>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
-            <div className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}>
+          <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
+            <div className={`${getInnerItemLayoutClass(totalMethodCards)} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}>
               <div className="text-sm text-gray-300 text-center">
                 可在 Mog Station 商城購買
               </div>
@@ -4623,12 +3535,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         const allLevequests = [...data, ...questLevequests];
         
         return (
-          <div key={`levequest-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+          <div key={`levequest-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
             <div className="flex items-center gap-2 mb-2">
               <img src="https://xivapi.com/c/Leve.png" alt="Levequest" className="w-10 h-10" />
               <span className="text-ffxiv-gold font-medium">理符任務</span>
             </div>
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
               {allLevequests.map((leve, leveIndex) => {
                 if (!leve || typeof leve !== 'object') return null;
                 
@@ -4701,7 +3613,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 const hasDetailSections = requiredItems.length > 0 || rewards.length > 0 || npcNames.length > 0;
 
                 return (
-                  <div key={leveIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[320px] flex-grow-0'} bg-slate-900/50 rounded p-3 ${hasDetailSections ? 'min-h-[100px] gap-2' : 'gap-1' } flex flex-col`}>
+                  <div key={leveIndex} className={`${getInnerItemLayoutClass(totalMethodCards)} bg-slate-900/50 rounded p-3 ${hasDetailSections ? 'min-h-[100px] gap-2' : 'gap-1' } flex flex-col`}>
                     {/* Leve name with wiki link - same style as FATE */}
                     <div className="flex items-center gap-2 mb-1">
                       <div className="flex-1 min-w-0">
@@ -4871,12 +3783,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`island-crop-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`island-crop-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/063000/063950_hr1.png" alt="Island Crop" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">島嶼作物</span>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
+          <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
             {validCrops.map((cropId, cropIndex) => {
               const cropData = currentLoadedData.twItems[cropId] || currentLoadedData.twItems[String(cropId)];
               const cropName = cropData?.tw;
@@ -4903,7 +3815,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       navigate(itemUrl);
                     }
                   }}
-                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
+                  className={`${getInnerItemLayoutClass(totalMethodCards)} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
                 >
                   <ItemImage
                     itemId={cropId}
@@ -4927,7 +3839,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
 
       return (
-        <div key={`voyage-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`voyage-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/027000/027841_hr1.png" alt="Voyage" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">遠航探索</span>
@@ -4960,7 +3872,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         const seedData = currentLoadedData.twItems[seedId] || currentLoadedData.twItems[String(seedId)];
         const seedName = seedData?.tw;
         return (
-          <div key={`island-crop-requirement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+          <div key={`island-crop-requirement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
             <div className="flex items-center gap-2 mb-2">
               <img src="https://xivapi.com/i/063000/063950_hr1.png" alt="Island Crop" className="w-8 h-8" />
               <span className="text-ffxiv-gold font-medium">島嶼作物</span>
@@ -5029,12 +3941,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`requirement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`requirement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/060000/060453_hr1.png" alt="Requirement" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">需求</span>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
+          <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
             {validRequirements.map((reqId, reqIndex) => {
               const reqData = loadedData.twItems[reqId] || loadedData.twItems[String(reqId)];
               const reqName = reqData?.tw;
@@ -5061,7 +3973,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       navigate(itemUrl);
                     }
                   }}
-                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
+                  className={`${getInnerItemLayoutClass(totalMethodCards)} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
                 >
                   <ItemImage
                     itemId={reqId}
@@ -5123,12 +4035,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         const huijiUrl = `https://ff14.huijiwiki.com/wiki/物品:${encodeURIComponent(itemId)}`;
         
         return (
-          <div key={`masterbook-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+          <div key={`masterbook-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
             <div className="flex items-center gap-2 mb-2">
               <img src="https://xivapi.com/i/065000/065002_hr1.png" alt="Masterbook" className="w-8 h-8" />
               <span className="text-ffxiv-gold font-medium">製作書</span>
             </div>
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
               {validMasterbooks.map((entry, bookIndex) => {
                 const bookId = entry.id;
                 const bookData = loadedData.twItems[bookId] || loadedData.twItems[String(bookId)];
@@ -5155,7 +4067,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         navigate(itemUrl);
                       }
                     }}
-                    className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
+                    className={`${getInnerItemLayoutClass(totalMethodCards)} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
                   >
                     <ItemImage
                       itemId={bookId}
@@ -5174,7 +4086,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       // If all masterbooks are missing, show activity content notice
       if (allMissing) {
         return (
-          <div key={`masterbook-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+          <div key={`masterbook-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
             <div className="flex items-center gap-2 mb-2">
               <img src="https://xivapi.com/i/065000/065002_hr1.png" alt="Masterbook" className="w-8 h-8" />
               <span className="text-ffxiv-gold font-medium">製作書</span>
@@ -5237,12 +4149,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
       
       return (
-        <div key={`achievement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`achievement-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/060000/060453_hr1.png" alt="Achievement" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">成就獎勵</span>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
+          <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
             {validAchievements.map((achievementId, achievementIndex) => {
               const achievementInfo = getAchievementInfo(achievementId);
               
@@ -5251,7 +4163,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               return (
                 <div
                   key={achievementIndex}
-                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}
+                  className={`${getInnerItemLayoutClass(totalMethodCards)} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}
                   onMouseEnter={(e) => handleAchievementMouseEnter(e, achievementId)}
                   onMouseMove={handleAchievementMouseMove}
                   onMouseLeave={handleAchievementMouseLeave}
@@ -5260,7 +4172,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     {achievementInfo.icon && (
                       <img src={achievementInfo.icon} alt={achievementInfo.name} className="w-7 h-7 object-contain" />
                     )}
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-yellow-400 cursor-help underline decoration-dotted decoration-yellow-400/50 hover:decoration-yellow-400 transition-colors">
                         {achievementInfo.name}
                       </div>
@@ -5300,7 +4212,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
 
       return (
-        <div key={`requirements-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full self-start`}>
+        <div key={`requirements-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
           <div className="flex items-center gap-2 mb-2">
             <img src="https://xivapi.com/i/060000/060881.png" alt="Requirements" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">需求材料</span>
@@ -5308,7 +4220,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           <div className="text-xs text-gray-400 mb-2">
             從怪物掉落獲得（特定數量）
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
+          <div className={totalMethodCards <= 3 ? INNER_GRID_CLASS_FLEX : 'grid gap-2 mt-2 grid-cols-1'}>
             {validDrops.map((drop, dropIndex) => {
               const mobId = drop.id;
               const amount = drop.amount || 1;
@@ -5319,7 +4231,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               return (
                 <div
                   key={dropIndex}
-                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex items-center justify-between`}
+                  className={`${getInnerItemLayoutClass(totalMethodCards)} bg-slate-900/50 rounded p-2 min-h-[70px] flex items-center justify-between`}
                 >
                   <div className="flex-1">
                     <div className="text-sm text-blue-400">
@@ -5415,7 +4327,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         }`}
       >
         {methodOrderByHeight.map((origIdx) => (
-          <div key={origIdx} data-original-index={origIdx}>
+          <div key={origIdx} data-original-index={origIdx} className="w-full min-w-0">
             {renderSource(validSources[origIdx], origIdx, false, validSources.length)}
           </div>
         ))}

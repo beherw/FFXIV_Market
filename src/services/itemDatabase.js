@@ -1171,12 +1171,13 @@ export async function getItemById(itemId) {
 
   // Use targeted query instead of loading all items
   try {
-    // Try to get Traditional Chinese name first
+    // Try to get Traditional Chinese name first (getTwItemById returns string | null, not { tw })
     const twItemData = await getTwItemByIdMsgpack(itemId);
-    
-    if (twItemData && twItemData.tw) {
+    const twName = typeof twItemData === 'string' ? twItemData : (twItemData?.tw ?? null);
+
+    if (twName && twName.trim()) {
       // Found Traditional Chinese name
-      const cleanName = twItemData.tw.replace(/^["']|["']$/g, '').trim();
+      const cleanName = twName.replace(/^["']|["']$/g, '').trim();
       return {
         id: itemId,
         name: cleanName,

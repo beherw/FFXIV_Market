@@ -129,6 +129,10 @@ function App() {
   const [isLoadingDB, setIsLoadingDB] = useState(true);
   const [isServerDataLoaded, setIsServerDataLoaded] = useState(false);
   const [isLoadingItemFromURL, setIsLoadingItemFromURL] = useState(false);
+  /** When on item page and getItemById failed (e.g. no cache/network), show retry UI instead of redirecting home */
+  const [itemLoadError, setItemLoadError] = useState(false);
+  /** Increment to force re-run URL sync effect for item page (e.g. user clicked retry) */
+  const [itemPageRetryTrigger, setItemPageRetryTrigger] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [toasts, setToasts] = useState([]);
   const [rateLimitMessage, setRateLimitMessage] = useState(null);
@@ -347,6 +351,8 @@ function App() {
   const toastIdCounterRef = useRef(0);
   const lastProcessedURLRef = useRef('');
   const isInitializingFromURLRef = useRef(false);
+  /** Item ID we already auto-retried for (avoid retry loop on item page) */
+  const itemPageAutoRetriedForRef = useRef(null);
   const velocityFetchAbortControllerRef = useRef(null);
   const velocityFetchRequestIdRef = useRef(0);
   const velocityFetchInProgressRef = useRef(false);
@@ -2488,6 +2494,7 @@ function App() {
         if (!currentSelectedItem || currentSelectedItem.id !== id) {
           const foundItem = searchResultsRef.current.find(item => item.id === id);
           if (foundItem) {
+            setItemLoadError(null);
             // Generate correct slug using preferred language name
             const itemNameForUrl = getItemNameForUrl(foundItem, preferredLang);
             const correctSlug = generateItemSlug(itemNameForUrl);
@@ -2546,14 +2553,19 @@ function App() {
                     const finalUrl = queryString ? `${correctUrl}?${queryString}` : correctUrl;
                     navigate(finalUrl, { replace: true });
                     setIsLoadingItemFromURL(false);
+                    isInitializingFromURLRef.current = false;
                     return; // Exit early after redirect
                   }
                   
                   setSelectedItem(item);
                   selectedItemRef.current = item;
+                  setItemLoadError(null);
                   setIsLoadingItemFromURL(false);
+                  lastProcessedURLRef.current = currentURLKey;
+                  isInitializingFromURLRef.current = false;
                 } else {
                   setIsLoadingItemFromURL(false);
+                  isInitializingFromURLRef.current = false;
                   addToast('找不到該物品', 'error');
                   navigate('/');
                 }
@@ -2564,8 +2576,10 @@ function App() {
                   return;
                 }
                 console.error('Failed to load item:', error);
-                addToast('載入物品失敗', 'error');
-                navigate('/');
+                setItemLoadError(true);
+                lastProcessedURLRef.current = '';
+                isInitializingFromURLRef.current = false;
+                addToast('載入物品失敗，請重試或檢查網路', 'error');
               });
           }
         } else {
@@ -2838,7 +2852,7 @@ function App() {
 
     lastProcessedURLRef.current = currentURLKey;
     isInitializingFromURLRef.current = false;
-  }, [location.pathname, location.search, isServerDataLoaded, params.id, searchParams, searchText, navigate, addToast, isLoadingDB, datacenters, worlds, handleItemSelect]);
+  }, [location.pathname, location.search, isServerDataLoaded, params.id, searchParams, searchText, navigate, addToast, isLoadingDB, datacenters, worlds, handleItemSelect, itemPageRetryTrigger]);
 
   // Handle return to home page
   const handleReturnHome = useCallback(() => {
@@ -3410,6 +3424,27 @@ function App() {
     };
   }, [isLoadingDB, selectedItem, selectedServerOption, listSize, hqOnly, worlds, refreshKey, addToast, selectedWorld]);
 
+  // Clear item load error when leaving item page
+  useEffect(() => {
+    if (!currentItemId) {
+      setItemLoadError(null);
+      itemPageAutoRetriedForRef.current = null;
+    }
+  }, [currentItemId]);
+
+  // Auto-retry loading item once when load failed (e.g. msgpack not cached yet)
+  useEffect(() => {
+    if (!itemLoadError || !currentItemId) return;
+    if (itemPageAutoRetriedForRef.current === currentItemId) return;
+    itemPageAutoRetriedForRef.current = currentItemId;
+    const t = setTimeout(() => {
+      setItemLoadError(false);
+      setIsLoadingItemFromURL(true);
+      setItemPageRetryTrigger(prev => prev + 1);
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [itemLoadError, currentItemId]);
+
   // Pre-fetch Simplified Chinese name when entering item info page
   useEffect(() => {
     if (!selectedItem) {
@@ -3447,10 +3482,14 @@ function App() {
   }, [selectedItem]);
 
   // Load crafting recipe when item changes
-  // Callback to handle obtainable methods sources change
-  const handleObtainMethodsSourcesChange = useCallback((sortedSources) => {
-    const hasMethod = sortedSources.length > 0;
-    console.log(`[App] Obtainable methods callback: ${sortedSources.length} sources, hasObtainMethods = ${hasMethod}`);
+  // Callback to handle obtainable methods sources change (itemId optional; when provided, only update if it matches selected item to avoid stale callbacks)
+  const handleObtainMethodsSourcesChange = useCallback((sortedSources, itemId) => {
+    const hasMethod = Array.isArray(sortedSources) && sortedSources.length > 0;
+    // Ignore callbacks for a different item (e.g. late async result after switching items)
+    if (itemId !== undefined && selectedItem?.id !== itemId) {
+      return;
+    }
+    console.log(`[App] Obtainable methods callback: ${sortedSources?.length ?? 0} sources, hasObtainMethods = ${hasMethod}`);
     setHasObtainMethods(hasMethod);
     
     // If no methods available and panel is expanded, collapse it to prevent stuck UI
@@ -3458,7 +3497,7 @@ function App() {
       console.log(`[App] No obtainable methods available, collapsing panel`);
       setIsObtainMethodsExpanded(false);
     }
-  }, [isObtainMethodsExpanded]);
+  }, [isObtainMethodsExpanded, selectedItem?.id]);
 
   useEffect(() => {
     if (!selectedItem) {
@@ -4966,11 +5005,34 @@ function App() {
           </>
         )}
 
+          {/* Item page load error - no cache / network failed: show retry instead of redirecting home */}
+          {(() => {
+            const isOnItemPage = location.pathname.startsWith('/item/');
+            const showItemLoadError = isOnItemPage && !selectedItem && itemLoadError && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker';
+            return showItemLoadError && (
+              <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-red-500/30 p-12 text-center">
+                <p className="text-gray-300 mb-2">無法載入物品資料（可能為快取已清或網路異常）</p>
+                <p className="text-sm text-gray-500 mb-6">請檢查網路後點擊下方按鈕重新載入</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setItemLoadError(false);
+                    setIsLoadingItemFromURL(true);
+                    setItemPageRetryTrigger(t => t + 1);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-ffxiv-gold/20 text-ffxiv-gold border border-ffxiv-gold/40 hover:bg-ffxiv-gold/30 transition-colors"
+                >
+                  重新載入
+                </button>
+              </div>
+            );
+          })()}
+
           {/* Loading Item from URL - Show loading state instead of home page */}
           {(() => {
             const isOnItemPage = location.pathname.startsWith('/item/');
-            // Show loading if explicitly loading OR if on item page but item not loaded yet
-            const shouldShowLoading = (isLoadingItemFromURL || (isOnItemPage && !selectedItem && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker'));
+            // Show loading if explicitly loading OR if on item page but item not loaded yet (and no load error)
+            const shouldShowLoading = (isLoadingItemFromURL || (isOnItemPage && !selectedItem && !itemLoadError && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker'));
             return shouldShowLoading && (
               <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-12 text-center">
                 <div className="relative inline-block">

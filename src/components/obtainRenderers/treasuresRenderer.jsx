@@ -49,7 +49,7 @@ export function renderTreasures({
                   navigate(itemUrl);
                 }
               }}
-              className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
+              className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px] border border-slate-700/50"
             >
               <ItemImage
                 itemId={treasureId}

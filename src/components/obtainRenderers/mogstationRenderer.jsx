@@ -19,7 +19,7 @@ export function renderMogstation({
         <span className={commonClasses.title}>商城購買</span>
       </div>
       <div className="flex flex-wrap gap-2 mt-2">
-        <div className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
+        <div className={commonClasses.innerItemBlock}>
           <div className="text-sm text-gray-300 text-center">
             可在 Mog Station 商城購買
           </div>

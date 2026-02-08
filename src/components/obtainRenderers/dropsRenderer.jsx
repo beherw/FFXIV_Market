@@ -88,7 +88,7 @@ export function renderDrops({
       
       <div className="space-y-4">
         {zoneEntries.map((zone, zoneIndex) => (
-          <div key={zoneIndex} className="bg-slate-900/50 rounded p-3">
+          <div key={zoneIndex} className="bg-slate-900/50 rounded p-3 border border-slate-700/50">
             <div className="text-sm font-semibold text-white mb-2 border-b border-slate-700/50 pb-1">
               {zone.zoneName}
             </div>

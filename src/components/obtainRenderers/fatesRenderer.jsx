@@ -59,7 +59,7 @@ export function renderFates({
           const wikiUrl = fateNameZh ? `https://ff14.huijiwiki.com/wiki/临危受命:${encodeURIComponent(fateNameZh)}` : null;
 
           return (
-            <div key={fateIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
+            <div key={fateIndex} className={commonClasses.innerItemBlock}>
               <div className="flex items-center gap-2 mb-1">
                 <img src={fateIcon} alt="FATE" className="w-7 h-7 object-contain" />
                 <div className="flex-1">

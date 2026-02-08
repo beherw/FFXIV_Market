@@ -141,7 +141,7 @@ export function renderTradeSources({
           const isSingleNpc = group.npcs.length === 1;
           
           return (
-            <div key={`group-${groupIndex}`} className={`${isSingleNpc ? 'w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 flex flex-col`}>
+            <div key={`group-${groupIndex}`} className={`${isSingleNpc ? 'w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 flex flex-col border border-slate-700/50`}>
               {/* Currency header */}
               <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-700/50">
                 {group.hasCurrencyItem ? (

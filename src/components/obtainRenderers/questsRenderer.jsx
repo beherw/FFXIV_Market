@@ -74,7 +74,7 @@ export function renderQuests({
             const fallbackName = quest?.en || questDb?.en || `任務 ${questId}`;
             
             return (
-              <div key={questIndex} className=\"w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col\">
+              <div key={questIndex} className={`${commonClasses.innerItemBlock} justify-start`}>
                 <div className=\"flex items-center gap-2 mb-1\">
                   <img src=\"https://xivapi.com/i/060000/060453.png\" alt=\"Quest\" className=\"w-7 h-7 object-contain flex-shrink-0\" />
                   <div className=\"flex-1 min-w-0\">
@@ -175,7 +175,7 @@ export function renderQuests({
           const hasValidMapLocation = hasLocation && mapId && (coords.x !== 0 || coords.y !== 0);
           
           return (
-            <div key={questIndex} className=\"w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col\">
+            <div key={questIndex} className={`${commonClasses.innerItemBlock} justify-start`}>
               <div className=\"flex items-center gap-2 mb-1\">
                 <img src={questIcon} alt=\"Quest\" className=\"w-7 h-7 object-contain flex-shrink-0\" />
                 <div className=\"flex-1 min-w-0\">

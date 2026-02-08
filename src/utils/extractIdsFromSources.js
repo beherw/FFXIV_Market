@@ -286,6 +286,26 @@ export function extractIdsFromSources(sources) {
       }
     }
 
+    // REDUCED_FROM (分解獲得) - data is array of item IDs that can be reduced to get this item
+    if (type === DataType.REDUCED_FROM && Array.isArray(data)) {
+      data.forEach(itemId => {
+        const id = typeof itemId === 'object' ? itemId.id : itemId;
+        if (id != null && id !== '') {
+          ids.itemIds.add(typeof id === 'number' ? id : parseInt(id, 10));
+        }
+      });
+    }
+
+    // DESYNTHS (精製獲得) - data is array of item IDs that can be desynthed to get this item
+    if (type === DataType.DESYNTHS && Array.isArray(data)) {
+      data.forEach(itemId => {
+        const id = typeof itemId === 'object' ? itemId.id : itemId;
+        if (id != null && id !== '') {
+          ids.itemIds.add(typeof id === 'number' ? id : parseInt(id, 10));
+        }
+      });
+    }
+
     // QUESTS (optimized format)
     if (type === DataType.QUESTS && source.questId) {
       ids.questIds.add(source.questId);

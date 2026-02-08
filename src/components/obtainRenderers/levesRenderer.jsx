@@ -112,7 +112,7 @@ export function renderLeves({
           const hasDetailSections = requiredItems.length > 0 || rewards.length > 0 || npcNames.length > 0;
 
           return (
-            <div key={leveIndex} className={`w-[320px] flex-grow-0 bg-slate-900/50 rounded p-3 ${hasDetailSections ? 'min-h-[100px] gap-2' : 'gap-1' } flex flex-col`}>
+            <div key={leveIndex} className={`w-[320px] flex-grow-0 bg-slate-900/50 rounded p-3 border border-slate-700/50 ${hasDetailSections ? 'min-h-[100px] gap-2' : 'gap-1' } flex flex-col`}>
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex-1 min-w-0">
                   {wikiUrl ? (

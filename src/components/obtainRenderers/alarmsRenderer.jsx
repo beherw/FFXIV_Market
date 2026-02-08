@@ -55,7 +55,7 @@ export function renderAlarms({
           const hasLocation = coords && coords.x !== undefined && coords.y !== undefined && mapId;
 
           return (
-            <div key={alarmIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
+            <div key={alarmIndex} className={commonClasses.innerItemBlock}>
               <div className="flex items-center gap-2 mb-1">
                 <img src={nodeIcon} alt={nodeTypeName} className="w-7 h-7 object-contain" />
                 <div className="flex-1">

@@ -1,5 +1,9 @@
 # Obtainable Methods Renderer System
 
+## Current usage (Option B)
+
+**The main app does not use these renderers.** `ObtainMethods.jsx` implements all rendering inline in a single `renderSource()` function. This folder contains renderer modules and `getRenderer()` for future adoption (Option A: refactor `renderSource()` to call `getRenderer(type)` and pass props). The renderers are kept for reference and to avoid maintaining two rendering paths until a deliberate migration is done.
+
 ## Overview
 
 The obtainable methods rendering system has been refactored to separate different obtainable method types into individual renderer files. This improves:

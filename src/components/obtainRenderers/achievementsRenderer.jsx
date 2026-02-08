@@ -40,7 +40,7 @@ export function renderAchievements({
           return (
             <div
               key={achievementIndex}
-              className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center"
+              className={commonClasses.innerItemBlock}
               onMouseEnter={(e) => handleAchievementMouseEnter(e, achievementId)}
               onMouseMove={handleAchievementMouseMove}
               onMouseLeave={handleAchievementMouseLeave}
