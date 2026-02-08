@@ -4420,7 +4420,7 @@ export default function AdvancedSearch({
                         }}
                         disabled={isLoadingVelocities || isFilterSearching || hasMiscellaneousCategory}
                         placeholder="1"
-                        className="w-40 pl-3 pr-12 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                        className="w-35 pl-3 pr-14 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                       />
                       <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
                         <span className="text-xs text-gray-400" title="裝等（玩家等級）">裝等</span>
@@ -4456,7 +4456,7 @@ export default function AdvancedSearch({
                       }}
                       disabled={isLoadingVelocities || isFilterSearching || hasMiscellaneousCategory}
                       placeholder="999"
-                      className="w-40 px-3 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                      className="w-40 px-3 py-gibg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                     />
                   </div>
 
