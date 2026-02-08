@@ -15,6 +15,27 @@ let loadPromise = null;
 // Cache for recipes by result (for targeted queries)
 const recipesByResultCache = new Map();
 
+// In-memory cache for built crafting trees (avoids rebuild + API spam on expand/collapse)
+// TTL 5 min so prices can refresh on page load; same session reuse is cached
+const TREE_CACHE_TTL_MS = 5 * 60 * 1000;
+const craftingTreeCache = new Map(); // key -> { value, expires }
+
+function getCraftingTreeCacheKey(itemId, amount, excludeCrystals) {
+  return `${itemId}:${amount}:${excludeCrystals}`;
+}
+
+function getCachedTree(itemId, amount, excludeCrystals) {
+  const key = getCraftingTreeCacheKey(itemId, amount, excludeCrystals);
+  const entry = craftingTreeCache.get(key);
+  if (!entry || Date.now() > entry.expires) return null;
+  return entry.value;
+}
+
+function setCachedTree(itemId, amount, excludeCrystals, tree) {
+  const key = getCraftingTreeCacheKey(itemId, amount, excludeCrystals);
+  craftingTreeCache.set(key, { value: tree, expires: Date.now() + TREE_CACHE_TTL_MS });
+}
+
 /**
  * Load recipes database from local MessagePack binary file
  * Loads from local recipes.msgpack (single file fetch).
@@ -176,6 +197,10 @@ const CRYSTAL_ITEM_IDS = new Set([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 export async function buildCraftingTree(itemId, amount = 1, visited = new Set(), depth = 0, excludeCrystals = true, recipesByResultMap = null) {
   // If recipesByResultMap is not provided, this is the root call - load all recipes once
   if (recipesByResultMap === null) {
+    // Return cached tree if valid (avoids rebuild + downstream API spam when user toggles section)
+    const cached = getCachedTree(itemId, amount, excludeCrystals);
+    if (cached) return cached;
+
     // Load all recipes from MessagePack (fast - single file fetch + in-memory index)
     const { byResult } = await loadRecipeDatabase();
     recipesByResultMap = byResult;
@@ -285,7 +310,7 @@ export async function buildCraftingTree(itemId, amount = 1, visited = new Set(),
   // Wait for all children to be built
   const resolvedChildren = await Promise.all(children);
 
-  return {
+  const result = {
     itemId,
     amount,
     recipeId: recipe.id,
@@ -296,6 +321,12 @@ export async function buildCraftingTree(itemId, amount = 1, visited = new Set(),
     children: resolvedChildren,
     isBaseMaterial: false,
   };
+
+  // Cache root-level tree so re-opening the section doesn't rebuild or re-fetch
+  if (depth === 0) {
+    setCachedTree(itemId, amount, excludeCrystals, result);
+  }
+  return result;
 }
 
 /**

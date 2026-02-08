@@ -2,13 +2,14 @@
 
 /**
  * Build Optimized Obtainable Methods Data
- * 
+ *
  * Key optimizations:
  * 1. Store only essential fields (like ffxiv-item-search-tc does)
- * 2. Use plain JSON instead of MessagePack (better compression for this data shape)
+ * 2. Output MessagePack for production (smaller + faster parse); keep JSON for debugging
  * 3. Remove redundant data and deeply nested structures
  */
 
+import * as msgpack from '@msgpack/msgpack';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -20,8 +21,7 @@ const __dirname = path.dirname(__filename);
 const EXTRACTS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/extracts/extracts.json');
 const INSTANCES_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/instances.json');
 const OUTPUT_DIR = path.join(__dirname, '../public/data');
-const OUTPUT_FILE_JSON = path.join(OUTPUT_DIR, 'obtainable-methods.json');
-const OUTPUT_FILE_MIN = path.join(OUTPUT_DIR, 'obtainable-methods.min.json');
+const OUTPUT_FILE_MSGPACK = path.join(OUTPUT_DIR, 'obtainable-methods.msgpack');
 
 // 使用中心化的 TYPE_CHINESE_NAMES
 const TYPE_NAME_MAP = TYPE_CHINESE_NAMES;
@@ -396,27 +396,21 @@ function buildOptimizedData() {
   console.log(`[Obtainable] Total sources: ${sourceCount}`);
   console.log(`[Obtainable] Skipped empty/invalid: ${skippedCount}`);
 
-  // Save regular JSON (for debugging)
-  console.log('[Obtainable] Saving JSON files...');
+  // Save MessagePack (production - smaller and faster to parse)
+  console.log('[Obtainable] Saving msgpack...');
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
-  const jsonString = JSON.stringify(result, null, 2);
-  fs.writeFileSync(OUTPUT_FILE_JSON, jsonString);
-  const jsonSize = Buffer.byteLength(jsonString);
-  console.log(`[Obtainable] Saved obtainable-methods.json (${(jsonSize / 1024 / 1024).toFixed(2)} MB)`);
-
-  // Save minified JSON (production)
-  const minString = JSON.stringify(result);
-  fs.writeFileSync(OUTPUT_FILE_MIN, minString);
-  const minSize = Buffer.byteLength(minString);
-  console.log(`[Obtainable] Saved obtainable-methods.min.json (${(minSize / 1024 / 1024).toFixed(2)} MB)`);
+  const msgpackBytes = msgpack.encode(result);
+  fs.writeFileSync(OUTPUT_FILE_MSGPACK, new Uint8Array(msgpackBytes));
+  const msgpackSize = msgpackBytes.length;
+  console.log(`[Obtainable] Saved obtainable-methods.msgpack (${(msgpackSize / 1024 / 1024).toFixed(2)} MB)`);
 
   const extractsSize = fs.statSync(EXTRACTS_SOURCE).size;
   const buildTime = Date.now() - startTime;
 
-  console.log(`[Obtainable] Complete - ${(minSize / 1024 / 1024).toFixed(2)} MB (reduced ${((1 - minSize / extractsSize) * 100).toFixed(1)}%) in ${buildTime}ms\n`);
+  console.log(`[Obtainable] Complete - msgpack ${(msgpackSize / 1024 / 1024).toFixed(2)} MB (reduced ${((1 - msgpackSize / extractsSize) * 100).toFixed(1)}%) in ${buildTime}ms\n`);
 }
 
 try {

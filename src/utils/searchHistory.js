@@ -38,7 +38,6 @@ export function addSearchToHistory(keyword) {
     // Keep only the most recent MAX_SEARCH_HISTORY
     history = history.slice(0, MAX_SEARCH_HISTORY);
     
-    // Save back to localStorage
     localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
   } catch (error) {
     console.error('Failed to add search to history:', error);
@@ -54,8 +53,6 @@ export function removeSearchFromHistory(keyword) {
     let history = getSearchHistory();
     history = history.filter(k => k !== keyword);
     localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
-    
-    // Dispatch custom event for same-tab updates
     window.dispatchEvent(new Event('searchHistoryChanged'));
   } catch (error) {
     console.error('Failed to remove search from history:', error);
@@ -68,8 +65,6 @@ export function removeSearchFromHistory(keyword) {
 export function clearSearchHistory() {
   try {
     localStorage.removeItem(SEARCH_HISTORY_KEY);
-    
-    // Dispatch custom event for same-tab updates
     window.dispatchEvent(new Event('searchHistoryChanged'));
   } catch (error) {
     console.error('Failed to clear search history:', error);

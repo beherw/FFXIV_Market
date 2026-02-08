@@ -991,6 +991,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           }
           
           let processedSources = [...sourcesData];
+          const currentItemIdNum = parseInt(currentItemId, 10);
           
           // Query drop-sources.json for monster drops (reuse dropSourceMonsterIds from Step 2.7 above)
           if (Array.isArray(dropSourceMonsterIds) && dropSourceMonsterIds.length > 0) {
@@ -1526,7 +1527,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
           const hasVendors = processedSources.some(source => source.type === DataType.VENDORS);
           const shopsByNpc = newLoadedData.shopsByNpc || {};
           const twShops = newLoadedData.twShops || {};
-          const currentItemIdNum = parseInt(currentItemId, 10);
           
           if (!hasTradeSources && !hasVendors && Object.keys(shopsByNpc).length > 0) {
             // Note: We can't fully reconstruct TRADE_SOURCES from shopsByNpc alone
@@ -1890,9 +1890,15 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       if (prev.length !== n) return nextHeights;
       const next = [...prev];
       let changed = false;
+      const HEIGHT_EPS = 2; // ignore sub-2px changes to avoid thrash
       for (let i = 0; i < n; i++) {
-        if (next[i] == null && nextHeights[i] != null) {
-          next[i] = nextHeights[i];
+        const newH = nextHeights[i];
+        if (newH == null) continue;
+        const prevH = next[i];
+        const prevNull = prevH == null;
+        const diff = prevNull ? newH : Math.abs((prevH ?? 0) - newH);
+        if (prevNull || diff > HEIGHT_EPS) {
+          next[i] = newH;
           changed = true;
         }
       }
@@ -2537,7 +2543,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       onExpandCraftingTree();
                     }
                   }}
-                  className={`w-[280px] flex-grow-0 rounded p-2 min-h-[70px] flex flex-col justify-center transition-all duration-200 ${
+                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} rounded p-2 min-h-[70px] flex flex-col justify-center transition-all duration-200 ${
                     !dataLoaded
                       ? 'bg-gray-900/40 border border-gray-700/40 text-gray-500 cursor-not-allowed opacity-50'
                       : isCraftingTreeExpanded
@@ -2960,7 +2966,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                   const hasValidMapLocation = locationInfo.hasLocation && (coords.x !== 0 || coords.y !== 0);
                   
                   return (
-                    <div key={npcGroupIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col">
+                    <div key={npcGroupIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col`}>
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-0.5">
                           <img src="https://xivapi.com/c/ENpcResident.png" alt="NPC" className="w-5 h-5 flex-shrink-0 grayscale opacity-70" />
@@ -3131,7 +3137,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       navigate(itemUrl);
                     }
                   }}
-                  className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
+                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
                 >
                   <ItemImage
                     itemId={treasureId}
@@ -3182,7 +3188,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               // If we don't have a valid ID, render a minimal card with name only
               if (!instanceId) {
                 return (
-                  <div key={instanceIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded-lg p-3 min-h-[80px] flex flex-col justify-center border border-slate-700/30">
+                  <div key={instanceIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded-lg p-3 min-h-[80px] flex flex-col justify-center border border-slate-700/30`}>
                     <div className="flex items-center gap-2">
                       <img src="https://xivapi.com/i/061000/061801.png" alt="Instance" className="w-7 h-7 flex-shrink-0" />
                       <span className="text-sm font-medium text-gray-300 leading-tight">{instanceName || '未知副本'}</span>
@@ -3223,7 +3229,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const sync = instance?.sync;
               
               return (
-                <div key={instanceIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded-lg p-3 min-h-[80px] flex flex-col justify-between border border-slate-700/30 hover:border-slate-600/50 transition-colors">
+                <div key={instanceIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded-lg p-3 min-h-[80px] flex flex-col justify-between border border-slate-700/30 hover:border-slate-600/50 transition-colors`}>
                   {instanceCNName && (
                     <a
                       href={`https://ff14.huijiwiki.com/wiki/${encodeURIComponent(instanceCNName)}`}
@@ -3455,7 +3461,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             <img src="https://xivapi.com/i/000000/000120.png" alt="Desynth" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">精製獲得</span>
           </div>
-          <div className="grid grid-cols-3 gap-2 mt-2">
+          <div className={`grid gap-2 mt-2 ${totalMethodCards <= 2 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' : 'grid-cols-3'}`}>
             {validDesynthItems.map((desynthItemId, desynthIndex) => {
               const desynthItemData = loadedData.twItems[desynthItemId] || loadedData.twItems[String(desynthItemId)];
               const desynthName = desynthItemData?.tw;
@@ -3576,7 +3582,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 
                 // Still render even without Traditional Chinese name
                 return (
-                  <div key={questIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col">
+                  <div key={questIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col`}>
                     <div className="flex items-center gap-2 mb-1">
                       <img src="https://xivapi.com/i/060000/060453_hr1.png" alt="Quest" className="w-7 h-7 object-contain flex-shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -3687,7 +3693,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const hasValidMapLocation = hasLocation && mapId && (coords.x !== 0 || coords.y !== 0);
               
               return (
-                <div key={questIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col">
+                <div key={questIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col`}>
                   <div className="flex items-center gap-2 mb-1">
                     <img src={questIcon} alt="Quest" className="w-7 h-7 object-contain flex-shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -3851,7 +3857,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const wikiUrl = fateNameZh ? `https://ff14.huijiwiki.com/wiki/临危受命:${encodeURIComponent(fateNameZh)}` : null;
               
               return (
-                <div key={fateIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
+                <div key={fateIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}>
                   <div className="flex items-center gap-2 mb-1">
                     <img src={fateIcon} alt="FATE" className="w-7 h-7 object-contain" />
                     <div className="flex-1">
@@ -4231,7 +4237,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 : null;
 
               return (
-                <div key={nodeIndex} className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
+                <div key={nodeIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}>
                   <div className="flex items-center gap-2 mb-1">
                     <img src="https://garlandtools.org/db/images/node/Mineral%20Deposit%20Limited.png" alt={nodeTypeName} className="w-9 h-9 object-contain" />
                     <div className="flex-1">
@@ -4320,7 +4326,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             <img src="https://xivapi.com/i/061000/061808_hr1.png" alt="Reduction" className="w-8 h-8" />
             <span className="text-ffxiv-gold font-medium">分解獲得</span>
           </div>
-          <div className={validReductionItems.length === 1 ? "flex justify-center gap-2 mt-2" : "grid grid-cols-3 gap-2 mt-2"}>
+          <div className={validReductionItems.length === 1 ? "flex justify-center gap-2 mt-2" : `grid gap-2 mt-2 ${totalMethodCards <= 2 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' : 'grid-cols-3'}`}>
             {validReductionItems.map((reductionItemId, reductionIndex) => {
               const reductionItemData = loadedData.twItems[reductionItemId] || loadedData.twItems[String(reductionItemId)];
               const reductionName = reductionItemData?.tw;
@@ -4530,7 +4536,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       navigate(itemUrl);
                     }
                   }}
-                  className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
+                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
                 >
                   <ItemImage
                     itemId={seedId}
@@ -4559,7 +4565,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             <span className="text-ffxiv-gold font-medium">商城購買</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            <div className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center">
+            <div className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}>
               <div className="text-sm text-gray-300 text-center">
                 可在 Mog Station 商城購買
               </div>
@@ -4695,7 +4701,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 const hasDetailSections = requiredItems.length > 0 || rewards.length > 0 || npcNames.length > 0;
 
                 return (
-                  <div key={leveIndex} className={`w-[320px] flex-grow-0 bg-slate-900/50 rounded p-3 ${hasDetailSections ? 'min-h-[100px] gap-2' : 'gap-1' } flex flex-col`}>
+                  <div key={leveIndex} className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[320px] flex-grow-0'} bg-slate-900/50 rounded p-3 ${hasDetailSections ? 'min-h-[100px] gap-2' : 'gap-1' } flex flex-col`}>
                     {/* Leve name with wiki link - same style as FATE */}
                     <div className="flex items-center gap-2 mb-1">
                       <div className="flex-1 min-w-0">
@@ -4897,7 +4903,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       navigate(itemUrl);
                     }
                   }}
-                  className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
+                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
                 >
                   <ItemImage
                     itemId={cropId}
@@ -5055,7 +5061,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       navigate(itemUrl);
                     }
                   }}
-                  className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
+                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
                 >
                   <ItemImage
                     itemId={reqId}
@@ -5149,7 +5155,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         navigate(itemUrl);
                       }
                     }}
-                    className="w-[280px] flex-grow-0 flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]"
+                    className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} flex items-center justify-start gap-2 text-left text-sm text-blue-400 hover:text-ffxiv-gold transition-colors bg-slate-900/50 rounded p-2 hover:bg-slate-800/70 min-h-[70px]`}
                   >
                     <ItemImage
                       itemId={bookId}
@@ -5245,7 +5251,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               return (
                 <div
                   key={achievementIndex}
-                  className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center"
+                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}
                   onMouseEnter={(e) => handleAchievementMouseEnter(e, achievementId)}
                   onMouseMove={handleAchievementMouseMove}
                   onMouseLeave={handleAchievementMouseLeave}
@@ -5313,7 +5319,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               return (
                 <div
                   key={dropIndex}
-                  className="w-[280px] flex-grow-0 bg-slate-900/50 rounded p-2 min-h-[70px] flex items-center justify-between"
+                  className={`${totalMethodCards <= 2 ? 'min-w-[280px] flex-1 w-full' : 'w-[280px] flex-grow-0'} bg-slate-900/50 rounded p-2 min-h-[70px] flex items-center justify-between`}
                 >
                   <div className="flex-1">
                     <div className="text-sm text-blue-400">

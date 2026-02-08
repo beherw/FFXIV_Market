@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { getValidatedCache, setCache, removeCache } from '../utils/cacheStorage.js';
 
 const STORAGE_KEY = 'ffxiv_multi_item_state';
 
@@ -11,37 +12,22 @@ export function useMultiItemCombinedTree() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const prevItemListRef = useRef(null);
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount (only if cache is valid/versioned)
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const data = JSON.parse(saved);
-        // Load both itemList and builtTree from storage
-        if (data.itemList && data.itemList.length > 0) {
-          setItemList(data.itemList);
-        }
-        if (data.builtTree && data.builtTree.length > 0) {
-          setBuiltTree(data.builtTree);
-        }
+    const data = getValidatedCache(STORAGE_KEY);
+    if (data) {
+      if (data.itemList && data.itemList.length > 0) {
+        setItemList(data.itemList);
       }
-    } catch (err) {
-      console.error('Failed to load multi-item state from localStorage:', err);
+      if (data.builtTree && data.builtTree.length > 0) {
+        setBuiltTree(data.builtTree);
+      }
     }
   }, []);
 
-  // Save to localStorage whenever state changes
+  // Save to localStorage whenever state changes (with timestamp for validation)
   useEffect(() => {
-    try {
-      const data = {
-        itemList,
-        builtTree,
-        timestamp: Date.now(),
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (err) {
-      console.error('Failed to save multi-item state to localStorage:', err);
-    }
+    setCache(STORAGE_KEY, { itemList, builtTree });
   }, [itemList, builtTree]);
 
   // Clear built tree when item list changes (after initial load)
@@ -81,7 +67,7 @@ export function useMultiItemCombinedTree() {
   const clearAll = useCallback(() => {
     setItemList([]);
     setBuiltTree(null);
-    localStorage.removeItem(STORAGE_KEY);
+    removeCache(STORAGE_KEY);
   }, []);
 
   return {

@@ -154,14 +154,14 @@
   align-items: center;
   gap: 0.25rem;
   backdrop-filter: none;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   width: 100%;
+  min-width: 0;
 }
 
 @media (min-width: 890px) {
   .topbar-first-row {
     gap: 0.5rem;
-    flex-wrap: nowrap;
   }
 }
 

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
-import { flushSync } from 'react-dom';
+import { flushSync, createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, useParams, useLocation } from 'react-router-dom';
 import SearchBar from './components/SearchBar';
 import ServerSelector from './components/ServerSelector';
@@ -201,6 +201,26 @@ function App() {
     itemSet: 0
   });
 
+  // Container "just opened" effect: which section key to highlight for 2.5s (取得方式 / 製作價格樹 / 可製品)
+  const [recentlyOpenedSection, setRecentlyOpenedSection] = useState(null);
+  const recentlyOpenedTimeoutRef = useRef(null);
+  const triggerContainerJustOpened = useCallback((sectionKey) => {
+    if (recentlyOpenedTimeoutRef.current) {
+      clearTimeout(recentlyOpenedTimeoutRef.current);
+      recentlyOpenedTimeoutRef.current = null;
+    }
+    setRecentlyOpenedSection(sectionKey);
+    recentlyOpenedTimeoutRef.current = setTimeout(() => {
+      setRecentlyOpenedSection(null);
+      recentlyOpenedTimeoutRef.current = null;
+    }, 2500);
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (recentlyOpenedTimeoutRef.current) clearTimeout(recentlyOpenedTimeoutRef.current);
+    };
+  }, []);
+
   // 全套查詢 states - lazy load on first expand, cache per itemId in service
   const [hasItemSet, setHasItemSet] = useState(false);
   const [isItemSetExpanded, setIsItemSetExpanded] = useState(false);
@@ -390,6 +410,8 @@ function App() {
   const [itemPatchData, setItemPatchData] = useState(null);
   const [patchNamesData, setPatchNamesData] = useState(null);
   const [selectedItemMeta, setSelectedItemMeta] = useState(null);
+  /** True after we've attempted to load TW name for selected item (so we don't show "查無此物" before load completes, e.g. on reload with empty cache) */
+  const [twNameLoadAttempted, setTwNameLoadAttempted] = useState(false);
 
   // Load ilvl and patch data lazily (only when needed, not on mount)
   // This prevents unnecessary data loading on initial page load
@@ -500,8 +522,10 @@ function App() {
   useEffect(() => {
     if (!selectedItem?.id) {
       setSelectedItemMeta(null);
+      setTwNameLoadAttempted(false);
       return;
     }
+    setTwNameLoadAttempted(false);
     let cancelled = false;
     (async () => {
       try {
@@ -512,6 +536,8 @@ function App() {
         if (!cancelled) {
           console.error('Failed to load item meta for selected item:', err);
         }
+      } finally {
+        if (!cancelled) setTwNameLoadAttempted(true);
       }
     })();
     return () => { cancelled = true; };
@@ -612,6 +638,7 @@ function App() {
       setHasItemSet(hasSet);
       if (autoExpand && hasSet) {
         setIsItemSetExpanded(true);
+        triggerContainerJustOpened('itemSet');
       }
       if (result.setItemIds?.length) {
         getTwItemsByIds(result.setItemIds).then(namesData => {
@@ -633,7 +660,7 @@ function App() {
     } finally {
       setIsLoadingItemSet(false);
     }
-  }, [addToast]);
+  }, [addToast, triggerContainerJustOpened]);
 
   // Remove toast function
   const removeToast = useCallback((id) => {
@@ -884,16 +911,15 @@ function App() {
 
   // Connection is initialized in main.jsx before React renders - no need to duplicate here
 
-  // Update document title based on selected item
-  // Note: This will override the fallback title in index.html
+  // Update document title based on selected item (use meta.tw when item loaded from URL with no nameTW yet)
   useEffect(() => {
     if (selectedItem) {
-      const itemName = selectedItem.nameTW || selectedItem.name || '未知物品';
+      const itemName = selectedItem.nameTW || selectedItemMeta?.tw || selectedItem.name || '未知物品';
       document.title = `${itemName} - 繁中XIV市場 - FF14 Market`;
     } else {
       document.title = '繁中XIV市場 - FF14 Market - 貝爾的市場小屋';
     }
-  }, [selectedItem]);
+  }, [selectedItem, selectedItemMeta]);
 
   // Load data centers and worlds on mount
   useEffect(() => {
@@ -4086,25 +4112,29 @@ function App() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1 mid:gap-2 flex-wrap">
                         <div className="flex flex-col gap-1">
-                          {selectedItem.searchLanguageName && selectedItem.nameTW && selectedItem.searchLanguageName !== selectedItem.nameTW
-                            ? (
-                                <>
+                          {(() => {
+                            const effectiveNameTW = selectedItem.nameTW || selectedItemMeta?.tw || null;
+                            const displayName = effectiveNameTW || selectedItem.name;
+                            const showDual = selectedItem.searchLanguageName && effectiveNameTW && selectedItem.searchLanguageName !== effectiveNameTW;
+                            return showDual
+                              ? (
+                                  <>
+                                    <h2 className="text-lg mid:text-xl font-bold text-ffxiv-gold break-words line-clamp-2">
+                                      {selectedItem.searchLanguageName}
+                                    </h2>
+                                    <h3 className="text-slate-300/80 font-medium text-sm mid:text-base break-words line-clamp-2 mt-0.5 italic">
+                                      {effectiveNameTW}
+                                    </h3>
+                                  </>
+                                )
+                              : (
                                   <h2 className="text-lg mid:text-xl font-bold text-ffxiv-gold break-words line-clamp-2">
-                                    {selectedItem.searchLanguageName}
+                                    {displayName}
                                   </h2>
-                                  <h3 className="text-slate-300/80 font-medium text-sm mid:text-base break-words line-clamp-2 mt-0.5 italic">
-                                    {selectedItem.nameTW}
-                                  </h3>
-                                </>
-                              )
-                            : (
-                                <h2 className="text-lg mid:text-xl font-bold text-ffxiv-gold break-words line-clamp-2">
-                                  {selectedItem.name}
-                                </h2>
-                              )
-                          }
-                          {/* Show tag if item doesn't have Traditional Chinese name */}
-                          {!selectedItem.nameTW && (
+                                );
+                          })()}
+                          {/* Show tag only after we've tried to load TW data and still have no 繁中 name (avoids showing on reload with empty cache) */}
+                          {twNameLoadAttempted && !(selectedItem.nameTW || selectedItemMeta?.tw) && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-900/40 border border-amber-500/50 rounded text-xs font-medium text-amber-300 w-fit mt-1">
                               <svg 
                                 xmlns="http://www.w3.org/2000/svg" 
@@ -4127,9 +4157,10 @@ function App() {
                         <button
                           onClick={async () => {
                             try {
-                              const nameToCopy = selectedItem.searchLanguageName && selectedItem.nameTW && selectedItem.searchLanguageName !== selectedItem.nameTW
-                                ? `${selectedItem.searchLanguageName} (${selectedItem.nameTW})`
-                                : selectedItem.name;
+                              const effectiveNameTW = selectedItem.nameTW || selectedItemMeta?.tw || null;
+                              const nameToCopy = selectedItem.searchLanguageName && effectiveNameTW && selectedItem.searchLanguageName !== effectiveNameTW
+                                ? `${selectedItem.searchLanguageName} (${effectiveNameTW})`
+                                : (effectiveNameTW || selectedItem.name);
                               await navigator.clipboard.writeText(nameToCopy);
                               addToast('已複製物品名稱', 'success');
                             } catch (err) {
@@ -4279,6 +4310,7 @@ function App() {
                       if (willExpand) {
                         setIsCraftingTreeExpanded(false);
                         setIsItemSetExpanded(false);
+                        triggerContainerJustOpened('obtainMethods');
                       }
                       setButtonOrder(prev => ({ ...prev, obtainMethods: Math.max(...Object.values(prev)) + 1 }));
                     }}
@@ -4333,6 +4365,7 @@ function App() {
                       if (willExpand) {
                         setIsObtainMethodsExpanded(false);
                         setIsItemSetExpanded(false);
+                        triggerContainerJustOpened('craftingTree');
                       }
                       setButtonOrder(prev => ({ ...prev, craftingTree: Math.max(...Object.values(prev)) + 1 }));
                       // Reset flag when clicking button directly (not from ObtainMethods)
@@ -4385,7 +4418,9 @@ function App() {
                   {(hasRelatedItems || isLoadingRelatedItems) && (
                     <button
                       onClick={() => {
-                        setIsRelatedItemsExpanded(!isRelatedItemsExpanded);
+                        const willExpand = !isRelatedItemsExpanded;
+                        if (willExpand) triggerContainerJustOpened('relatedItems');
+                        setIsRelatedItemsExpanded(willExpand);
                         setButtonOrder(prev => ({ ...prev, relatedItems: Math.max(...Object.values(prev)) + 1 }));
                       }}
                       disabled={!hasRelatedItems || isLoadingRelatedItems}
@@ -4452,12 +4487,14 @@ function App() {
                             if (willExpand) {
                               setIsObtainMethodsExpanded(false);
                               setIsCraftingTreeExpanded(false);
+                              triggerContainerJustOpened('itemSet');
                             }
                           } else {
                             loadItemSetForSelectedItem(selectedItem.id, { autoExpand: true });
                             // Close other tabs when opening this one
                             setIsObtainMethodsExpanded(false);
                             setIsCraftingTreeExpanded(false);
+                            triggerContainerJustOpened('itemSet');
                           }
                           setButtonOrder(prev => ({ ...prev, itemSet: Math.max(...Object.values(prev)) + 1 }));
                         }}
@@ -4552,7 +4589,7 @@ function App() {
                       <div 
                         key="craftingTreeContainer" 
                         ref={craftingTreeRef}
-                        className="scroll-mt-20"
+                        className={`scroll-mt-20 rounded-lg border border-transparent ${recentlyOpenedSection === 'craftingTree' ? 'container-just-opened' : ''}`}
                       >
                         <ErrorBoundary fallbackMessage="製作價格樹載入失敗，請重新整理頁面">
                           <Suspense fallback={
@@ -4585,7 +4622,8 @@ function App() {
                     key: 'relatedItems',
                     order: buttonOrder.relatedItems,
                     component: (
-                      <ErrorBoundary key="relatedItems" fallbackMessage="可製品載入失敗，請重新整理頁面">
+                      <div key="relatedItemsWrapper" className={`rounded-lg border border-transparent ${recentlyOpenedSection === 'relatedItems' ? 'container-just-opened' : ''}`}>
+                      <ErrorBoundary fallbackMessage="可製品載入失敗，請重新整理頁面">
                         <Suspense fallback={
                           <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 text-center">
                             <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400/30 border-t-purple-400 mx-auto"></div>
@@ -4598,6 +4636,7 @@ function App() {
                           />
                         </Suspense>
                       </ErrorBoundary>
+                      </div>
                     )
                   });
                 }
@@ -4610,7 +4649,7 @@ function App() {
                     component: (
                       <div
                         key="itemSetContainer"
-                        className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-6"
+                        className={`bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-6 ${recentlyOpenedSection === 'itemSet' ? 'container-just-opened' : ''}`}
                       >
                         <div className="flex items-center justify-between gap-3 mb-2">
                           <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold flex items-center gap-2">
@@ -4719,10 +4758,13 @@ function App() {
                     key: 'obtainMethods',
                     order: buttonOrder.obtainMethods,
                     component: (
-                      <div 
-                        key="obtainMethods" 
-                        className={`relative bg-gradient-to-br from-slate-900/95 via-indigo-950/20 to-slate-900/95 rounded-xl border border-indigo-600/20 shadow-[0_0_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(99,102,241,0.1)] p-4 sm:p-6 mt-4 overflow-hidden backdrop-blur-sm ${(!isObtainMethodsExpanded || !hasObtainMethods) ? 'hidden' : ''}`}
+                      <div
+                        key="obtainMethods"
+                        className={`mt-4 rounded-xl ${(!isObtainMethodsExpanded || !hasObtainMethods) ? 'hidden' : ''} ${recentlyOpenedSection === 'obtainMethods' ? 'container-just-opened' : ''}`}
                       >
+                        <div 
+                          className="relative bg-gradient-to-br from-slate-900/95 via-indigo-950/20 to-slate-900/95 rounded-xl border border-indigo-600/20 shadow-[0_0_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(99,102,241,0.1)] p-4 sm:p-6 overflow-hidden backdrop-blur-sm"
+                        >
                         <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
                           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2/3 h-2/3 bg-indigo-500 rounded-full blur-3xl"></div>
                         </div>
@@ -4750,12 +4792,14 @@ function App() {
                                 // Set flag if expanding (not collapsing)
                                 if (!wasExpanded) {
                                   setExpandedFromObtainMethods(true);
+                                  triggerContainerJustOpened('craftingTree');
                                 }
                               }}
                               isCraftingTreeExpanded={isCraftingTreeExpanded}
                             />
                           </Suspense>
                           </ErrorBoundary>
+                        </div>
                         </div>
                       </div>
                     )
@@ -5361,11 +5405,11 @@ function App() {
         </Suspense>
       </ErrorBoundary>
       
-      {/* Multi-item quick open (floating) - outside all containers - only show on item info page */}
-      {isOnItemInfoPage && (
+      {/* Multi-item quick open (floating) - portaled to body so fixed is always viewport-relative; only show on item info page */}
+      {isOnItemInfoPage && createPortal(
         <button
           onClick={() => setIsMultiItemListModalOpen(true)}
-          className={`fixed top-[220px] rightD8 xl:right-12 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-full text-white backdrop-blur-md transition-all duration-300 ${
+          className={`fixed top-[180px] sm:top-[200px] xl:top-[220px] right-2 sm:right-4 xl:right-12 z-50 flex items-center gap-1.5 sm:gap-2.5 px-2.5 py-1.5 sm:px-3 sm:py-2 xl:px-4 xl:py-2.5 rounded-full text-white backdrop-blur-md transition-all duration-300 ${
             hasItemListChanged
               ? 'bg-gradient-to-br from-amber-500/95 via-yellow-500/90 to-orange-500/95 border-2 border-ffxiv-gold animate-bounce shadow-[0_0_40px_rgba(212,175,55,0.8),0_0_80px_rgba(212,175,55,0.6),inset_0_1px_0_rgba(255,255,255,0.5)] scale-110'
               : 'bg-gradient-to-br from-purple-600/90 via-purple-500/80 to-indigo-600/90 border-2 border-purple-400/60 hover:from-purple-500 hover:via-purple-400 hover:to-indigo-500 hover:border-ffxiv-gold hover:scale-110 shadow-[0_0_30px_rgba(168,85,247,0.5),0_0_60px_rgba(168,85,247,0.3),inset_0_1px_0_rgba(255,255,255,0.3)] animate-pulse hover:animate-none'
@@ -5375,17 +5419,18 @@ function App() {
             animation: hasItemListChanged ? 'bounce 0.5s ease-in-out 0s 4 normal none running' : 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
           }}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 12h14M5 16h14" />
           </svg>
-          <span className="text-sm font-bold whitespace-nowrap tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">多物品清單</span>
-          <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-5 w-5">
+          <span className="text-xs sm:text-sm font-bold whitespace-nowrap tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">多物品清單</span>
+          <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-4 w-4 sm:h-5 sm:w-5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-5 w-5 bg-purple-500 items-center justify-center text-[10px] font-bold text-white border border-purple-300">
+            <span className="relative inline-flex rounded-full h-4 w-4 sm:h-5 sm:w-5 bg-purple-500 items-center justify-center text-[9px] sm:text-[10px] font-bold text-white border border-purple-300">
               {multiItemState.itemList.length}
             </span>
           </span>
-        </button>
+        </button>,
+        document.body
       )}
     </div>
   );

@@ -1,10 +1,10 @@
 /**
  * Obtainable Methods Database Service
  *
- * Loads prebuilt obtain-method sources from optimized JSON format.
- * Now 70% smaller than MessagePack version!
+ * Loads prebuilt obtain-method sources from MessagePack format (smaller + faster parse).
  */
 
+import { decode } from '@msgpack/msgpack';
 import { DataType, getTypeIdFromString, getChineseName } from '../constants/dataTypes.js';
 
 let dataCache = null;
@@ -12,7 +12,7 @@ let isLoading = false;
 let loadPromise = null;
 
 /**
- * Load obtainable methods database from optimized JSON file
+ * Load obtainable methods database from MessagePack file
  */
 export async function loadObtainableMethodsDatabase() {
   if (dataCache) {
@@ -29,26 +29,26 @@ export async function loadObtainableMethodsDatabase() {
     try {
       const loadStartTime = performance.now();
 
-      console.log('[Obtainable] 📦 Loading optimized database...');
+      console.log('[Obtainable] 📦 Loading database (msgpack)...');
       const baseUrl = import.meta.env.BASE_URL || '/';
-      const response = await fetch(`${baseUrl}data/obtainable-methods.min.json`);
+      const response = await fetch(`${baseUrl}data/obtainable-methods.msgpack`);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.status}`);
       }
 
       const fetchTime = performance.now() - loadStartTime;
-      
+
       const parseStartTime = performance.now();
-      const data = await response.json();
+      const arrayBuffer = await response.arrayBuffer();
+      const data = decode(new Uint8Array(arrayBuffer));
       const parseTime = performance.now() - parseStartTime;
-      
-      // Calculate size from Content-Length header
-      const sizeBytes = parseInt(response.headers.get('content-length') || '0', 10);
+
+      const sizeBytes = arrayBuffer.byteLength;
       const sizeMB = (sizeBytes / 1024 / 1024).toFixed(2);
-      
+
       console.log(`[Obtainable] ✓ Fetched ${sizeMB} MB in ${fetchTime.toFixed(2)}ms`);
-      console.log(`[Obtainable] ✓ Parsed in ${parseTime.toFixed(2)}ms`);
+      console.log(`[Obtainable] ✓ Decoded in ${parseTime.toFixed(2)}ms`);
 
       dataCache = data;
 

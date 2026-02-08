@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="/favicon_bear.png" />
+  <title>Obtainable Data (Msgpack) – Debug</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .container { max-width: 1600px; margin: 0 auto; }
+    h1 {
+      color: #38bdf8;
+      margin-bottom: 24px;
+      font-size: 28px;
+      border-bottom: 2px solid #334155;
+      padding-bottom: 12px;
+    }
+    .controls {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+      border: 1px solid #334155;
+    }
+    .input-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    label { font-weight: 600; color: #94a3b8; min-width: 80px; }
+    input {
+      flex: 1;
+      max-width: 200px;
+      padding: 10px 14px;
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 16px;
+    }
+    input:focus { outline: none; border-color: #38bdf8; }
+    button {
+      padding: 10px 24px;
+      background: #0ea5e9;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #0284c7; }
+    button:disabled { background: #475569; cursor: not-allowed; }
+    .quick-tests { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .quick-tests button { padding: 6px 14px; font-size: 13px; }
+    .status {
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-weight: 500;
+      border-left: 4px solid;
+    }
+    .status.loading { background: rgba(251,191,36,0.12); color: #fbbf24; border-color: #fbbf24; }
+    .status.success { background: rgba(34,197,94,0.12); color: #22c55e; border-color: #22c55e; }
+    .status.error { background: rgba(239,68,68,0.12); color: #ef4444; border-color: #ef4444; }
+    .step {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      border: 1px solid #334155;
+    }
+    .step h2 {
+      color: #38bdf8;
+      font-size: 18px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .step-badge {
+      background: rgba(56,189,248,0.2);
+      color: #38bdf8;
+      padding: 2px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .step-meta { color: #94a3b8; font-size: 13px; margin-bottom: 10px; }
+    .step-meta strong { color: #cbd5e1; }
+    .json-box {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 14px;
+      margin-top: 10px;
+      max-height: 420px;
+      overflow: auto;
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .json-box summary { cursor: pointer; color: #94a3b8; margin-bottom: 8px; }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+      margin: 10px 0;
+    }
+    .stat-card {
+      background: rgba(56,189,248,0.08);
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(56,189,248,0.2);
+    }
+    .stat-label { color: #94a3b8; font-size: 12px; }
+    .stat-value { color: #38bdf8; font-size: 18px; font-weight: 700; }
+    .data-section { margin-top: 24px; }
+    .data-section h3 {
+      color: #a78bfa;
+      font-size: 16px;
+      margin-bottom: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #334155;
+    }
+    .empty-note { color: #64748b; font-style: italic; }
+    .err-block { background: rgba(239,68,68,0.15); padding: 12px; border-radius: 8px; color: #fca5a5; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Obtainable Data (Msgpack) – Debug</h1>
+    <p style="color: #94a3b8; margin-bottom: 20px;">
+      Uses the same flow as the app: obtainable-methods (sources) → extract IDs → load domain msgpacks (npcs, shops, instances, quests, fates, leves, achievements, places, items, loot-sources) via <code>obtainableDataService</code>.
+    </p>
+
+    <div class="controls">
+      <div class="input-row">
+        <label for="itemId">Item ID</label>
+        <input type="number" id="itemId" placeholder="e.g. 5" value="5" min="1">
+        <button id="runBtn" type="button">Run</button>
+      </div>
+      <div class="quick-tests">
+        <span style="color: #94a3b8; font-size: 13px; margin-right: 8px;">Quick:</span>
+        <button type="button" data-id="5">5</button>
+        <button type="button" data-id="36111">36111</button>
+        <button type="button" data-id="2">2</button>
+        <button type="button" data-id="43858">43858</button>
+        <button type="button" data-id="5333">5333</button>
+      </div>
+    </div>
+
+    <div id="status"></div>
+    <div id="out"></div>
+  </div>
+
+  <script type="module">
+    import { getObtainableSourcesById } from '/src/services/obtainableMethodsMsgpack.js';
+    import { extractIdsFromSources } from '/src/utils/extractIdsFromSources.js';
+    import { loadDataForRequiredIds, loadPlaceDataForZoneIds } from '/src/services/obtainableDataService.js';
+    import { getFateSourcesByItemId } from '/src/services/fatesData.js';
+    import { DataType, getChineseName } from '/src/constants/dataTypes.js';
+
+    const itemIdEl = document.getElementById('itemId');
+    const runBtn = document.getElementById('runBtn');
+    const statusEl = document.getElementById('status');
+    const outEl = document.getElementById('out');
+
+    function setStatus(type, msg) {
+      statusEl.innerHTML = `<div class="status ${type}">${msg}</div>`;
+    }
+
+    function typeLabel(typeId) {
+      if (typeId == null) return '?';
+      const name = getChineseName(typeId);
+      return name ? `${name} (${typeId})` : `Type ${typeId}`;
+    }
+
+    document.querySelectorAll('.quick-tests button[data-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        itemIdEl.value = btn.dataset.id;
+        run();
+      });
+    });
+
+    runBtn.addEventListener('click', run);
+
+    async function run() {
+      const itemId = itemIdEl.value?.trim();
+      if (!itemId) {
+        setStatus('error', 'Please enter an item ID.');
+        return;
+      }
+
+      runBtn.disabled = true;
+      outEl.innerHTML = '';
+      const t0 = performance.now();
+      const steps = [];
+
+      try {
+        setStatus('loading', 'Loading sources and building required IDs…');
+
+        // Step 1: Sources (obtainable-methods.msgpack via getObtainableSourcesById)
+        const t1 = performance.now();
+        let sources = await getObtainableSourcesById(itemId);
+        const t1End = performance.now();
+        sources = Array.isArray(sources) ? sources : [];
+        steps.push({
+          title: '1. Sources (getObtainableSourcesById)',
+          meta: `obtainable-methods.msgpack → ${sources.length} source(s) in ${(t1End - t1).toFixed(0)} ms`,
+          stats: { 'Source count': sources.length },
+          raw: sources,
+        });
+
+        if (sources.length === 0) {
+          setStatus('success', `No sources for item ${itemId}. (${((performance.now() - t0) / 1000).toFixed(2)} s)`);
+          renderSteps(steps);
+          runBtn.disabled = false;
+          return;
+        }
+
+        // Step 2: Extract required IDs
+        const requiredIds = extractIdsFromSources(sources);
+        steps.push({
+          title: '2. Required IDs (extractIdsFromSources)',
+          meta: 'IDs to request from msgpack domains',
+          stats: {
+            'npcIds': requiredIds.npcIds.length,
+            'shopIds': requiredIds.shopIds.length,
+            'instanceIds': requiredIds.instanceIds.length,
+            'questIds': requiredIds.questIds.length,
+            'fateIds': requiredIds.fateIds.length,
+            'achievementIds': requiredIds.achievementIds.length,
+            'itemIds': requiredIds.itemIds.length,
+            'zoneIds': requiredIds.zoneIds.length,
+          },
+          raw: requiredIds,
+        });
+
+        // Step 2b: FATE IDs from fate_sources (msgpack)
+        const t2b = performance.now();
+        const fateSourceIds = await getFateSourcesByItemId(itemId);
+        const t2bEnd = performance.now();
+        const fateIdsArr = Array.isArray(fateSourceIds) ? fateSourceIds : [];
+        const allFateIds = [...new Set([...requiredIds.fateIds, ...fateIdsArr])];
+        if (fateIdsArr.length > 0) {
+          requiredIds.fateIds = allFateIds;
+          steps.push({
+            title: '2b. FATE IDs from fate_sources (fates.msgpack)',
+            meta: `${fateIdsArr.length} FATE(s) for this item in ${(t2bEnd - t2b).toFixed(0)} ms`,
+            stats: { 'FATE IDs from table': fateIdsArr.length, 'All FATE IDs': allFateIds.length },
+            raw: { fateSourcesByItemId: fateIdsArr, mergedFateIds: allFateIds },
+          });
+        }
+
+        // Leve IDs from sources (for loadDataForRequiredIds) – same idea as ObtainMethods
+        const leveIds = [];
+        const islandCrop = sources.filter(s => s.type === DataType.ISLAND_CROP);
+        islandCrop.forEach(s => {
+          if (!Array.isArray(s.data)) return;
+          s.data.forEach(item => {
+            if (item && typeof item === 'object' && 'id' in item && 'lvl' in item && 'item' in item) {
+              const id = item.id;
+              if (!leveIds.includes(id)) leveIds.push(id);
+            }
+          });
+        });
+        if (leveIds.length > 0) {
+          steps.push({
+            title: '2c. Leve IDs (from ISLAND_CROP source data)',
+            meta: 'Passed to loadDataForRequiredIds as leveIds',
+            stats: { 'Leve count': leveIds.length },
+            raw: leveIds,
+          });
+        }
+
+        // Step 3: Load lookup data (obtainableDataService – domain msgpacks)
+        setStatus('loading', 'Loading domain msgpacks (npcs, shops, instances, quests, fates, leves, achievements, items, loot-sources)…');
+        const t3 = performance.now();
+        let loadedData;
+        try {
+          loadedData = await loadDataForRequiredIds(requiredIds, {
+            leveIds,
+            itemId,
+            signal: null,
+          });
+        } catch (err) {
+          steps.push({
+            title: '3. loadDataForRequiredIds (ERROR)',
+            error: err.message,
+            stack: err.stack,
+          });
+          setStatus('error', `Load failed: ${err.message}`);
+          renderSteps(steps);
+          runBtn.disabled = false;
+          return;
+        }
+        const t3End = performance.now();
+        const domainStats = {};
+        [
+          'twNpcs', 'npcs', 'twShops', 'shops', 'shopsByNpc',
+          'twInstances', 'instances', 'zhInstances',
+          'twQuests', 'quests', 'zhQuests',
+          'fatesById', 'levesDatabasePages',
+          'twAchievements', 'achievements',
+          'twPlaces', 'places', 'twItems', 'zhItems', 'items',
+          'fateSources', 'lootSources',
+        ].forEach(k => {
+          const v = loadedData[k];
+          if (Array.isArray(v)) domainStats[k] = v.length;
+          else if (v && typeof v === 'object') domainStats[k] = Object.keys(v).length;
+          else domainStats[k] = 0;
+        });
+        steps.push({
+          title: '3. loadDataForRequiredIds (domain msgpacks)',
+          meta: `Loaded in ${(t3End - t3).toFixed(0)} ms`,
+          stats: domainStats,
+          raw: loadedData,
+        });
+
+        // Step 4: Place data for zone IDs (if any)
+        const zoneIds = requiredIds.zoneIds || [];
+        if (zoneIds.length > 0) {
+          const t4 = performance.now();
+          const placeData = await loadPlaceDataForZoneIds(zoneIds, null);
+          const t4End = performance.now();
+          steps.push({
+            title: '4. loadPlaceDataForZoneIds (places.msgpack)',
+            meta: `${zoneIds.length} zone(s) in ${(t4End - t4).toFixed(0)} ms`,
+            stats: {
+              'twPlaces': Object.keys(placeData.twPlaces || {}).length,
+              'places': Object.keys(placeData.places || {}).length,
+            },
+            raw: placeData,
+          });
+        }
+
+        const totalSec = ((performance.now() - t0) / 1000).toFixed(2);
+        setStatus('success', `Done in ${totalSec} s. Check raw data below to debug obtainable methods.`);
+        renderSteps(steps);
+      } catch (err) {
+        console.error(err);
+        setStatus('error', err.message);
+        outEl.innerHTML = `<div class="err-block"><strong>Error</strong><pre>${err.stack || err.message}</pre></div>`;
+      } finally {
+        runBtn.disabled = false;
+      }
+    }
+
+    function renderSteps(steps) {
+      let html = '';
+      steps.forEach((step, i) => {
+        html += '<div class="step">';
+        html += `<h2><span class="step-badge">Step ${i + 1}</span>${step.title}</h2>`;
+        if (step.meta) html += `<div class="step-meta">${step.meta}</div>`;
+        if (step.error) {
+          html += `<div class="err-block"><strong>${step.error}</strong>${step.stack ? `<pre>${step.stack}</pre>` : ''}</div>`;
+        } else {
+          if (step.stats && Object.keys(step.stats).length) {
+            html += '<div class="stat-grid">';
+            for (const [k, v] of Object.entries(step.stats)) {
+              html += `<div class="stat-card"><div class="stat-label">${k}</div><div class="stat-value">${v}</div></div>`;
+            }
+            html += '</div>';
+          }
+          if (step.raw !== undefined) {
+            const str = JSON.stringify(step.raw, null, 2);
+            html += `<details open><summary>Raw data</summary><div class="json-box">${escapeHtml(str)}</div></details>`;
+          }
+        }
+        html += '</div>';
+      });
+
+      // Source type breakdown
+      const firstStep = steps.find(s => s.raw && Array.isArray(s.raw));
+      if (firstStep && firstStep.raw.length) {
+        html += '<div class="data-section">';
+        html += '<h3>Source type breakdown</h3>';
+        firstStep.raw.forEach((src, idx) => {
+          const label = typeLabel(src.type);
+          html += `<div class="step" style="margin-bottom:12px;">`;
+          html += `<div class="step-meta"><strong>#${idx + 1}</strong> ${label}</div>`;
+          html += `<details><summary>data</summary><div class="json-box">${escapeHtml(JSON.stringify(src.data, null, 2))}</div></details>`;
+          if (Object.keys(src).filter(k => !['type', 'data', 'typeName'].includes(k)).length) {
+            html += `<details><summary>other fields</summary><div class="json-box">${escapeHtml(JSON.stringify(Object.fromEntries(Object.entries(src).filter(([k]) => !['type', 'data'].includes(k))), null, 2))}</div></details>`;
+          }
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
+      outEl.innerHTML = html;
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    // Optional: run on load with default ID
+    setTimeout(() => run(), 100);
+  </script>
+</body>
+</html>

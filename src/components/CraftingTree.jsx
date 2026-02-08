@@ -7,6 +7,16 @@ import { getAggregatedMarketData } from '../services/universalis';
 import { getTwItemsByIds } from '../services/gameData';
 import { generateItemUrl } from '../utils/urlSlug';
 
+// In-memory cache for tree names + prices (avoids API spam when user toggles section)
+// TTL 5 min so data refreshes on page load; same-session expand/collapse reuses cache
+const TREE_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
+const treeDataCache = new Map(); // key -> { itemNames, itemPrices, queriedItemIds (array), expires }
+
+function getTreeDataCacheKey(itemIds, selectedServerOption) {
+  const sorted = [...itemIds].sort((a, b) => a - b).join(',');
+  return `${String(selectedServerOption)}:${sorted}`;
+}
+
 /**
  * Format number with rounding to integer and locale string
  */
@@ -1390,103 +1400,96 @@ export default function CraftingTree({
     return ids;
   }, []);
 
-  // Load item names using batch query (much faster than individual queries)
+  // Load item names + market prices (with short-lived cache to avoid API spam on expand/collapse)
   useEffect(() => {
     if (!tree) return;
 
-    const itemIds = Array.from(getAllItemIds(tree));
+    const itemIdsSet = getAllItemIds(tree);
+    const itemIds = [...new Set(Array.from(itemIdsSet))];
     if (itemIds.length === 0) {
       setIsLoadingNames(false);
+      setIsLoadingPrices(false);
+      return;
+    }
+
+    const cacheKey = getTreeDataCacheKey(itemIds, selectedServerOption);
+    const cached = treeDataCache.get(cacheKey);
+    if (cached && Date.now() < cached.expires) {
+      setItemNames(cached.itemNames);
+      setItemPrices(cached.itemPrices);
+      setQueriedItemIds(new Set(cached.queriedItemIds));
+      setIsLoadingNames(false);
+      setIsLoadingPrices(false);
+      setError(null);
       return;
     }
 
     setIsLoadingNames(true);
-
-    // Use batch query instead of individual queries for much better performance
-    getTwItemsByIds(itemIds)
-      .then((itemsData) => {
-        const names = {};
-        itemIds.forEach((id) => {
-          // Extract name from batch query result
-          const itemData = itemsData[id];
-          if (itemData && itemData.tw) {
-            // Clean name (remove quotes)
-            names[id] = itemData.tw.replace(/^["']|["']$/g, '').trim();
-          } else {
-            // Fallback if item not found
-            names[id] = `物品 ${id}`;
-          }
-        });
-        setItemNames(names);
-        setIsLoadingNames(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load item names:', err);
-        setError('載入物品名稱失敗');
-        setIsLoadingNames(false);
-      });
-  }, [tree, getAllItemIds]);
-
-  // Load market prices using aggregated API (faster, batch request)
-  useEffect(() => {
-    // Wait for worlds to be populated before fetching prices
-    const worldsReady = worlds && Object.keys(worlds).length > 0;
-    if (!tree || !selectedServerOption || !worldsReady) return;
-
-    // Get all item IDs and ensure they are unique (no duplicates)
-    const itemIdsSet = getAllItemIds(tree);
-    const itemIds = Array.from(itemIdsSet);
-    
-    // Double-check: ensure no duplicates in the array
-    const uniqueItemIds = [...new Set(itemIds)];
-    
     setIsLoadingPrices(true);
     setQueriedItemIds(new Set());
     setItemPrices({});
     setError(null);
 
-    // Fetch prices for all items using aggregated API (up to 100 items at once)
-    const fetchPrices = async () => {
+    const worldsReady = worlds && Object.keys(worlds).length > 0;
+    let cancelled = false;
+
+    (async () => {
       try {
-        // Batch items into groups of 100 (API limit)
-        const batches = [];
-        for (let i = 0; i < uniqueItemIds.length; i += 100) {
-          batches.push(uniqueItemIds.slice(i, i + 100));
+        const itemsData = await getTwItemsByIds(itemIds);
+        if (cancelled) return;
+        const itemNames = {};
+        itemIds.forEach((id) => {
+          const itemData = itemsData[id];
+          if (itemData && itemData.tw) {
+            itemNames[id] = itemData.tw.replace(/^["']|["']$/g, '').trim();
+          } else {
+            itemNames[id] = `物品 ${id}`;
+          }
+        });
+        setItemNames(itemNames);
+        setIsLoadingNames(false);
+
+        if (!selectedServerOption || !worldsReady) {
+          setIsLoadingPrices(false);
+          return;
         }
 
-        // Determine the worldDcRegion to pass to API:
-        // - DC selected: selectedServerOption equals DC name (string like "陸行鳥")
-        // - Specific server selected: selectedServerOption is world ID (number like 4031)
-        // Pass selectedServerOption directly - the Universalis API accepts both
-        // Process batches sequentially but with minimal delay to avoid rate limiting
+        const itemPrices = {};
+        const batches = [];
+        for (let i = 0; i < itemIds.length; i += 100) {
+          batches.push(itemIds.slice(i, i + 100));
+        }
         for (let i = 0; i < batches.length; i++) {
+          if (cancelled) return;
           const batch = batches[i];
-          const batchResults = await getAggregatedMarketData(
-            selectedServerOption,
-            batch,
-            worlds
-          );
-
-          // Update prices and queried IDs for this batch
+          const batchResults = await getAggregatedMarketData(selectedServerOption, batch, worlds);
+          Object.assign(itemPrices, batchResults);
           setItemPrices(prev => ({ ...prev, ...batchResults }));
           setQueriedItemIds(prev => new Set([...prev, ...batch]));
-
-          // Reduced delay between batches (from 100ms to 50ms) for faster loading
-          // Only add delay if not the last batch
           if (i < batches.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 50));
           }
         }
+        if (cancelled) return;
+        setIsLoadingPrices(false);
+        treeDataCache.set(cacheKey, {
+          itemNames,
+          itemPrices,
+          queriedItemIds: itemIds,
+          expires: Date.now() + TREE_DATA_CACHE_TTL_MS,
+        });
       } catch (err) {
-        console.error('Failed to fetch prices:', err);
-        // Mark all items as queried even on error
-        setQueriedItemIds(new Set(uniqueItemIds));
+        if (!cancelled) {
+          console.error('Failed to load tree data:', err);
+          setError('載入物品名稱或價格失敗');
+          setIsLoadingNames(false);
+          setIsLoadingPrices(false);
+          setQueriedItemIds(new Set(itemIds));
+        }
       }
-      
-      setIsLoadingPrices(false);
-    };
+    })();
 
-    fetchPrices();
+    return () => { cancelled = true; };
   }, [tree, selectedServerOption, worlds, getAllItemIds]);
 
   // Handle item click - open item page in new tab

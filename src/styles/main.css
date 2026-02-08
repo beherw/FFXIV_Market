@@ -328,6 +328,31 @@
   }
 }
 
+/* Container just-opened highlight (2.5s then idle) - for 取得方式 / 製作價格樹 / 可製品 */
+@keyframes containerJustOpenedGlow {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.container-just-opened {
+  position: relative;
+}
+
+.container-just-opened::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.55), 0 0 28px rgba(99, 102, 241, 0.3);
+  animation: containerJustOpenedGlow 2.5s ease-out forwards;
+}
+
 /* Table hover effects */
 table tbody tr {
   transition: all 0.2s ease;

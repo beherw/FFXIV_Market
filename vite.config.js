@@ -37,7 +37,8 @@ export default defineConfig({
         }
       }
     },
-    chunkSizeWarningLimit: 600
+    // ObtainMethods + data deps are ~4.5MB; index/main bundle ~1.6MB. Avoid warning when code-split is already applied.
+    chunkSizeWarningLimit: 5000
   },
   logLevel: 'info',
   customLogger: {
@@ -48,6 +49,8 @@ export default defineConfig({
       console.log(`[Vite] ${msg}`);
     },
     warn(msg) {
+      // Suppress "dynamically imported ... but also statically imported ... will not move module" - known mixed-import pattern, no UX gain from refactor
+      if (msg.includes('dynamically imported') && msg.includes('statically imported') && msg.includes('will not move module')) return;
       console.warn(`[Vite] Warning: ${msg}`);
     },
     error(msg) {

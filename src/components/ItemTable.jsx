@@ -2,51 +2,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ItemImage from './ItemImage';
 import { generateItemUrl } from '../utils/urlSlug';
-import { getTwItemsByIds } from '../services/gameData';
-
-// Lazy load ilvls data
-let ilvlsDataRef = null;
-const loadIlvlsData = async () => {
-  if (ilvlsDataRef) {
-    return ilvlsDataRef;
-  }
-  const ilvlsModule = await import('../../teamcraft_git/libs/data/src/lib/json/ilvls.json');
-  ilvlsDataRef = ilvlsModule.default;
-  return ilvlsDataRef;
-};
-
-// Lazy load rarities data
-let raritiesDataRef = null;
-const loadRaritiesData = async () => {
-  if (raritiesDataRef) {
-    return raritiesDataRef;
-  }
-  const raritiesModule = await import('../../teamcraft_git/libs/data/src/lib/json/rarities.json');
-  raritiesDataRef = raritiesModule.default;
-  return raritiesDataRef;
-};
-
-// Lazy load item-patch data
-let itemPatchDataRef = null;
-const loadItemPatchData = async () => {
-  if (itemPatchDataRef) {
-    return itemPatchDataRef;
-  }
-  const patchModule = await import('../../teamcraft_git/libs/data/src/lib/json/item-patch.json');
-  itemPatchDataRef = patchModule.default;
-  return itemPatchDataRef;
-};
-
-// Lazy load patch-names data
-let patchNamesDataRef = null;
-const loadPatchNamesData = async () => {
-  if (patchNamesDataRef) {
-    return patchNamesDataRef;
-  }
-  const patchNamesModule = await import('../../teamcraft_git/libs/data/src/lib/json/patch-names.json');
-  patchNamesDataRef = patchNamesModule.default;
-  return patchNamesDataRef;
-};
+import { getTwItemsByIds, getIlvls, getRarities, getItemPatch, getPatchNames } from '../services/gameData';
 
 // Version color palette - colors are assigned sequentially by major version number
 // This ensures consistent colors across sessions and automatic color assignment for new versions
@@ -171,11 +127,9 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
   const setSelectedRarities = externalSetSelectedRarities !== undefined ? externalSetSelectedRarities : setInternalSelectedRarities;
   const raritiesDataToUse = externalRaritiesData || raritiesData;
   
-  // Load ilvls data
+  // Load ilvls data (via gameData - single source for JSON, avoids duplicate chunk warnings)
   useEffect(() => {
-    loadIlvlsData().then(data => {
-      setIlvlsData(data);
-    });
+    getIlvls().then(data => setIlvlsData(data));
   }, []);
 
   // Load item meta (ilvl + equipLevel) for displayed items from MessagePack
@@ -199,11 +153,10 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     loadItemMeta();
   }, [items, itemMetaById]);
 
-  // Load rarities data (only if not provided externally)
+  // Load rarities data (only if not provided externally; via gameData)
   useEffect(() => {
-    // Only load if external data is not provided (undefined or null) and internal data is not loaded yet
     if ((externalRaritiesData === undefined || externalRaritiesData === null) && !raritiesData) {
-      loadRaritiesData().then(data => {
+      getRarities().then(data => {
         setRaritiesData(data);
         console.log('[ItemTable] Loaded rarities data:', Object.keys(data).length, 'items');
       }).catch(err => {
@@ -213,12 +166,9 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalRaritiesData]);
 
-  // Load item-patch and patch-names data
+  // Load item-patch and patch-names data (via gameData)
   useEffect(() => {
-    Promise.all([
-      loadItemPatchData(),
-      loadPatchNamesData()
-    ]).then(([patchData, patchNames]) => {
+    Promise.all([getItemPatch(), getPatchNames()]).then(([patchData, patchNames]) => {
       setItemPatchData(patchData);
       setPatchNamesData(patchNames);
     });

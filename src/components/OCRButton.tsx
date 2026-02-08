@@ -3365,7 +3365,7 @@ export default function OCRButton({
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-300 font-bold drop-shadow-[0_0_8px_rgba(251,191,36,0.6)] [text-shadow:0_0_10px_rgba(251,191,36,0.5)]">光之戰士</span>，懶得打字？
               </p>
               <p className="text-xs text-gray-200 whitespace-nowrap font-medium">
-                直接截圖物品名稱，讓 OCR 幫你識別！
+                從遊戲裡直接截圖物品名稱，讓 OCR 幫你識別！
               </p>
             </div>
           </div>

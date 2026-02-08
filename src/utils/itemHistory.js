@@ -56,10 +56,7 @@ export function addItemToHistory(itemId) {
     // Keep only the most recent MAX_HISTORY_ITEMS
     history = history.slice(0, MAX_HISTORY_ITEMS);
     
-    // Save back to localStorage
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-    
-    // Notify listeners
     notifyChange();
   } catch (error) {
     console.error('Failed to add item to history:', error);
@@ -75,8 +72,6 @@ export function removeItemFromHistory(itemId) {
     let history = getItemHistory();
     history = history.filter(id => id !== itemId);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-    
-    // Notify listeners
     notifyChange();
   } catch (error) {
     console.error('Failed to remove item from history:', error);
@@ -89,8 +84,6 @@ export function removeItemFromHistory(itemId) {
 export function clearItemHistory() {
   try {
     localStorage.removeItem(HISTORY_KEY);
-    
-    // Notify listeners
     notifyChange();
   } catch (error) {
     console.error('Failed to clear item history:', error);
