@@ -532,9 +532,10 @@ function performSearch(items, shopItems, shopItemIds, searchText, fuzzy = false,
         const fuzzyScores = words.map(word => fuzzyMatch(word, cleanName));
         matches = fuzzyScores.every(score => score > 0);
       } else {
-        // Exact matching: check if all words are substrings
+        // Exact matching: check if all words are substrings (case-insensitive for TW names like "陳舊的地圖G1")
+        const cleanNameLower = cleanName.toLowerCase();
         matches = words.every(word => {
-          return cleanName.includes(word);
+          return cleanNameLower.includes(word.toLowerCase());
         });
       }
       
