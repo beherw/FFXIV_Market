@@ -204,8 +204,8 @@ export default function ServerUploadTimes({ worldUploadTimes, worlds, dcWorlds }
     <>
       {createPortal(tooltipContent, document.body)}
       <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-2 sm:p-4 relative z-10">
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-2 sm:mb-3">
+        {/* Header - cursor-default so hover tooltip doesn't imply clickability */}
+        <div className="flex items-center gap-2 mb-2 sm:mb-3 cursor-default">
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
             className="h-4 w-4 sm:h-5 sm:w-5 text-ffxiv-gold flex-shrink-0" 
@@ -245,7 +245,7 @@ export default function ServerUploadTimes({ worldUploadTimes, worlds, dcWorlds }
                       {/* Server name */}
                       <div
                         data-cell-id={nameCellId}
-                        className={`group relative py-1.5 sm:py-2 px-1 sm:px-2 text-xs font-medium text-gray-200 text-center truncate transition-colors hover:text-ffxiv-gold active:text-ffxiv-gold cursor-pointer select-none ${
+                        className={`group relative py-1.5 sm:py-2 px-1 sm:px-2 text-xs font-medium text-gray-200 text-center truncate transition-colors hover:text-ffxiv-gold active:text-ffxiv-gold cursor-default select-none ${
                           isNameActive ? 'text-ffxiv-gold' : ''
                         }`}
                         style={{ touchAction: 'manipulation' }}
@@ -259,7 +259,7 @@ export default function ServerUploadTimes({ worldUploadTimes, worlds, dcWorlds }
                       {/* Time */}
                       <div
                         data-cell-id={timeCellId}
-                        className={`group relative py-1.5 sm:py-2 px-1 sm:px-2 text-xs text-center font-medium transition-colors cursor-pointer select-none ${
+                        className={`group relative py-1.5 sm:py-2 px-1 sm:px-2 text-xs text-center font-medium transition-colors cursor-default select-none ${
                           isTimeActive ? 'text-ffxiv-gold' : timeColorClass
                         } hover:text-ffxiv-gold active:text-ffxiv-gold`}
                         style={{ touchAction: 'manipulation' }}
