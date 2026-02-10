@@ -29,9 +29,7 @@ import twNpcTitlesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-np
 import twJobAbbrData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json';
 import twJobCategoriesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-categories.json';
 import twMobsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-mobs.json';
-// tw-places will be loaded via fetch in useEffect to handle string keys properly
-// import twPlacesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-places.json';
-// import placesData from '../../teamcraft_git/libs/data/src/lib/json/places.json';
+// tw-places / places: loaded from data/places.msgpack via loadPlaceDataForZoneIds
 // tw-quests / tw-leves / retainer-tasks - lazy loaded via loadJsonOnce
 import dropSourcesData from '../../teamcraft_git/libs/data/src/lib/json/drop-sources.json';
 import monstersData from '../../teamcraft_git/libs/data/src/lib/json/monsters.json';
@@ -122,54 +120,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
     }
   }, [loading, onLoadingChange]);
 
-  // Load place data (tw-places and places JSON files)
-  // These are small static files that should be loaded once and cached
-  useEffect(() => {
-    const loadPlaceData = async () => {
-      try {
-        const [twPlacesResponse, placesResponse] = await Promise.all([
-          fetch('/tw-places.json'),
-          fetch('/places.json')
-        ]);
-        
-        if (twPlacesResponse.ok) {
-          const twPlaces = await twPlacesResponse.json();
-          loadedDataRef.current.twPlaces = twPlaces;
-        }
-        if (placesResponse.ok) {
-          const places = await placesResponse.json();
-          loadedDataRef.current.places = places;
-        }
-        setPlacesLoaded(true);
-        
-      } catch (error) {
-        console.error('[ObtainMethods] Failed to load place data:', error);
-        // Try loading from teamcraft_git instead
-        try {
-          const [twPlacesResponse, placesResponse] = await Promise.all([
-            fetch('/teamcraft_git/libs/data/src/lib/json/tw/tw-places.json'),
-            fetch('/teamcraft_git/libs/data/src/lib/json/places.json')
-          ]);
-          
-          if (twPlacesResponse.ok) {
-            const twPlaces = await twPlacesResponse.json();
-            loadedDataRef.current.twPlaces = twPlaces;
-          }
-          if (placesResponse.ok) {
-            const places = await placesResponse.json();
-            loadedDataRef.current.places = places;
-          }
-          setPlacesLoaded(true);
-          
-        } catch (fallbackError) {
-          console.error('[ObtainMethods] Failed to load place data from fallback paths:', fallbackError);
-        }
-      }
-    };
-    
-    loadPlaceData();
-  }, []);
-  
+  // Place data (twPlaces, places) is loaded per-item via loadPlaceDataForZoneIds from data/places.msgpack
   const [mapModal, setMapModal] = useState({ isOpen: false, zoneName: '', x: 0, y: 0, npcName: '', mapId: null });
   const [hoveredAchievement, setHoveredAchievement] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
@@ -237,7 +188,6 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const [isLoadingLevesData, setIsLoadingLevesData] = useState(false); // Track loading state for React
   const [isLoadingRetainerTasksData, setIsLoadingRetainerTasksData] = useState(false); // Track loading state for retainer tasks
   const [leveNpcsLoaded, setLeveNpcsLoaded] = useState(false); // Track if NPC data for leves has been loaded
-  const [placesLoaded, setPlacesLoaded] = useState(false); // Track if place data has been loaded - triggers re-render
   const [methodHeights, setMethodHeights] = useState([]); // 各 method 卡片高度，用於排序（矮的排最後）
   const methodCardsContainerRef = useRef(null);
 

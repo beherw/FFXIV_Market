@@ -11,7 +11,14 @@
       gtag('config', 'G-HP5TD08HLV');
     </script>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="./favicon_bear.png" />
+    <link rel="icon" type="image/png" id="favicon-link" />
+    <script>
+      (function(){
+        var base = document.location.pathname.indexOf('/FFXIV_Market') === 0 ? '/FFXIV_Market/' : '/';
+        var link = document.getElementById('favicon-link');
+        if (link) link.href = base.replace(/\/?$/, '/') + 'favicon_bear.png';
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- Primary Meta Tags -->
