@@ -21,6 +21,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getTwJsonPath } from './tw-json-paths.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -126,14 +127,14 @@ function loadReferenceData() {
     // Quest sources (canonical source for quest rewards)
     questSources: loadJson(QUEST_SOURCES_PATH),
     
-    // Traditional Chinese locale data
-    twNpcs: loadJson(path.join(JSON_PATH, 'tw/tw-npcs.json')),
-    twPlaces: loadJson(path.join(JSON_PATH, 'tw/tw-places.json')),
-    twQuests: loadJson(path.join(JSON_PATH, 'tw/tw-quests.json')),
-    twMobs: loadJson(path.join(JSON_PATH, 'tw/tw-mobs.json')),
-    twFates: loadJson(path.join(JSON_PATH, 'tw/tw-fates.json')),
-    twItems: loadJson(path.join(JSON_PATH, 'tw/tw-items.json')),
-    twAchievements: loadJson(path.join(JSON_PATH, 'tw/tw-achievements.json')),
+    // Traditional Chinese locale data (resolved: teamcraft vs tw_dataminer by mtime)
+    twNpcs: loadJson(getTwJsonPath('tw-npcs.json')),
+    twPlaces: loadJson(getTwJsonPath('tw-places.json')),
+    twQuests: loadJson(getTwJsonPath('tw-quests.json')),
+    twMobs: loadJson(getTwJsonPath('tw-mobs.json')),
+    twFates: loadJson(getTwJsonPath('tw-fates.json')),
+    twItems: loadJson(getTwJsonPath('tw-items.json')),
+    twAchievements: loadJson(getTwJsonPath('tw-achievements.json')),
     
     // Simplified Chinese for fallback
     zhNpcs: loadJson(path.join(JSON_PATH, 'zh/zh-npcs.json')),

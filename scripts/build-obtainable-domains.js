@@ -12,18 +12,30 @@ import * as msgpack from '@msgpack/msgpack';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getTwJsonPath } from './tw-json-paths.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const JSON_PATH = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json');
 const DB_PATH = path.join(JSON_PATH, 'db');
-const TW_PATH = path.join(JSON_PATH, 'tw');
 const ZH_PATH = path.join(JSON_PATH, 'zh');
 const OUTPUT_DIR = path.join(__dirname, '../public/data');
 
 function loadJson(relativePath, name) {
   const p = path.join(JSON_PATH, relativePath);
+  if (!fs.existsSync(p)) {
+    console.error(`[Obtainable] ERROR: ${name} not found: ${p}`);
+    process.exit(1);
+  }
+  const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
+  const count = Array.isArray(data) ? data.length : Object.keys(data).length;
+  console.log(`[Obtainable] Loaded ${name}: ${count} records`);
+  return data;
+}
+
+function loadTwJson(filename, name) {
+  const p = getTwJsonPath(filename);
   if (!fs.existsSync(p)) {
     console.error(`[Obtainable] ERROR: ${name} not found: ${p}`);
     process.exit(1);
@@ -57,7 +69,7 @@ function writeMsgpack(filename, data, label) {
 
 // --- NPCs ---
 function buildNpcs() {
-  const twNpcs = loadJson('tw/tw-npcs.json', 'tw-npcs');
+  const twNpcs = loadTwJson('tw-npcs.json', 'tw-npcs');
   const npcs = loadJson('npcs.json', 'npcs');
   const npcsDb = loadDb('npcs-database-pages.json', 'npcs-database-pages');
 
@@ -76,7 +88,7 @@ function buildNpcs() {
 
 // --- Shops ---
 function buildShops() {
-  const twShops = loadJson('tw/tw-shops.json', 'tw-shops');
+  const twShops = loadTwJson('tw-shops.json', 'tw-shops');
   const shopsArray = loadJson('shops.json', 'shops');
   const shopsByNpc = loadJson('shops-by-npc.json', 'shops-by-npc');
 
@@ -102,7 +114,7 @@ function buildShops() {
 
 // --- Instances ---
 function buildInstances() {
-  const twInstances = loadJson('tw/tw-instances.json', 'tw-instances');
+  const twInstances = loadTwJson('tw-instances.json', 'tw-instances');
   const instances = loadJson('instances.json', 'instances');
   const zhInstances = loadJson('zh/zh-instances.json', 'zh-instances');
 
@@ -121,7 +133,7 @@ function buildInstances() {
 
 // --- Quests ---
 function buildQuests() {
-  const twQuests = loadJson('tw/tw-quests.json', 'tw-quests');
+  const twQuests = loadTwJson('tw-quests.json', 'tw-quests');
   const quests = loadJson('quests.json', 'quests');
   const zhQuests = loadJson('zh/zh-quests.json', 'zh-quests');
   const questsDb = loadDb('quests-database-pages.json', 'quests-database-pages');
@@ -142,8 +154,8 @@ function buildQuests() {
 
 // --- Achievements ---
 function buildAchievements() {
-  const twAchievements = loadJson('tw/tw-achievements.json', 'tw-achievements');
-  const twAchievementDescriptions = loadJson('tw/tw-achievement-descriptions.json', 'tw-achievement-descriptions');
+  const twAchievements = loadTwJson('tw-achievements.json', 'tw-achievements');
+  const twAchievementDescriptions = loadTwJson('tw-achievement-descriptions.json', 'tw-achievement-descriptions');
   const achievements = loadJson('achievements.json', 'achievements');
 
   const twMap = {};
@@ -161,7 +173,7 @@ function buildAchievements() {
 
 // --- Places ---
 function buildPlaces() {
-  const twPlaces = loadJson('tw/tw-places.json', 'tw-places');
+  const twPlaces = loadTwJson('tw-places.json', 'tw-places');
   const places = loadJson('places.json', 'places');
 
   const twMap = {};

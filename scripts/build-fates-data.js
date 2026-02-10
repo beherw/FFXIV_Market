@@ -18,12 +18,13 @@ import * as msgpack from '@msgpack/msgpack';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getTwJsonPath } from './tw-json-paths.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const JSON_PATH = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json');
-const TW_FATES = path.join(JSON_PATH, 'tw/tw-fates.json');
+const TW_FATES = getTwJsonPath('tw-fates.json');
 const ZH_FATES = path.join(JSON_PATH, 'zh/zh-fates.json');
 const FATES = path.join(JSON_PATH, 'fates.json');
 const FATES_DB = path.join(JSON_PATH, 'db/fates-database-pages.json');

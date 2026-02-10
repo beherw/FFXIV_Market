@@ -1,10 +1,24 @@
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Resolved TW JSON dir (newer of teamcraft vs tw_dataminer); run "npm run resolve-tw-json" before build
+const TW_JSON_DIR = path.resolve(__dirname, '.tw-json')
+const TC_TW_JSON_DIR = path.resolve(__dirname, 'teamcraft_git/libs/data/src/lib/json/tw')
 
 // https://vitejs.dev/config/
 export default defineConfig({
   base: process.env.GITHUB_PAGES === 'true' ? '/FFXIV_Market/' : '/',
   plugins: [react()],
+  resolve: {
+    alias: [
+      // Prefer resolved tw-*.json (by mtime) over teamcraft so deploy uses ours when newer
+      { find: TC_TW_JSON_DIR, replacement: TW_JSON_DIR },
+    ],
+  },
   build: {
     rollupOptions: {
       output: {
@@ -26,8 +40,8 @@ export default defineConfig({
             // Other node_modules go into vendor chunk
             return 'vendor';
           }
-          // Teamcraft data chunks (large JSON files) - note: recipes.json no longer used
-          if (id.includes('teamcraft_git') && (id.includes('tw-items.json') || id.includes('tw-item-descriptions.json'))) {
+          // Teamcraft / resolved TW data chunks (large JSON files)
+          if ((id.includes('teamcraft_git') || id.includes('.tw-json')) && (id.includes('tw-items.json') || id.includes('tw-item-descriptions.json'))) {
             return 'teamcraft-data';
           }
           // Services that import large data files

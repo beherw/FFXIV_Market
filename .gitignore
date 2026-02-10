@@ -31,3 +31,12 @@ dist-ssr
 .cursor/*
 
 playground/*
+
+# Resolved TW JSON (newer of teamcraft vs tw_dataminer); populated at build
+.tw-json
+
+# TW dataminer: ignore extracted CSVs (large, regeneratable); push only final tw-*.json in output/
+tw_dataminer/library/*.csv
+tw_dataminer/csv/*
+!tw_dataminer/csv/.gitkeep
+!tw_dataminer/library/.gitkeep

@@ -1,0 +1,6 @@
+{
+  "name": "tw-dataminer",
+  "private": true,
+  "type": "commonjs",
+  "description": "Production TW data extract: CSV → tw-*.json into tw_dataminer/output/"
+}

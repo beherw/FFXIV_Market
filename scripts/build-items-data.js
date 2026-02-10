@@ -13,11 +13,12 @@ import * as msgpack from '@msgpack/msgpack';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getTwJsonPath } from './tw-json-paths.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const TW_ITEMS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/tw/tw-items.json');
+const TW_ITEMS_SOURCE = getTwJsonPath('tw-items.json');
 const ZH_ITEMS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/zh/zh-items.json');
 const EN_ITEMS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/items.json');
 const KO_ITEMS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/ko/ko-items.json');

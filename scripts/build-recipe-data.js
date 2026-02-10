@@ -19,11 +19,12 @@ import * as msgpack from '@msgpack/msgpack';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getTwJsonPath } from './tw-json-paths.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const JSON_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/tw/tw-recipes.json');
+const JSON_SOURCE = getTwJsonPath('tw-recipes.json');
 const OUTPUT_DIR = path.join(__dirname, '../public/data');
 const OUTPUT_FILE = path.join(OUTPUT_DIR, 'recipes.msgpack');
 
