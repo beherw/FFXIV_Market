@@ -4474,7 +4474,7 @@ export default function AdvancedSearch({
                         type="number"
                         min="1"
                         max="999"
-                        value={(levelFilterMode === 'equipLevel' && hasMiscellaneousCategory) ? '' : (minLevelFocused ? (minLevel === 1 ? '' : minLevel) : minLevel)}
+                        value={(levelFilterMode === 'equipLevel' && hasMiscellaneousCategory) ? '' : minLevel}
                         onChange={(e) => {
                           const inputValue = e.target.value;
                           if (inputValue === '') {
@@ -4509,7 +4509,7 @@ export default function AdvancedSearch({
                       type="number"
                       min="1"
                       max="999"
-                      value={(levelFilterMode === 'equipLevel' && hasMiscellaneousCategory) ? '' : (maxLevelFocused ? (maxLevel === 999 ? '' : maxLevel) : maxLevel)}
+                      value={(levelFilterMode === 'equipLevel' && hasMiscellaneousCategory) ? '' : maxLevel}
                       onChange={(e) => {
                         const inputValue = e.target.value;
                         if (inputValue === '') {
