@@ -3927,8 +3927,8 @@ function App() {
       />
 
 
-      {/* Toast Notifications */}
-      <div className="fixed right-2 mid:right-4 left-2 mid:left-auto z-50 space-y-2 max-w-sm mid:max-w-none top-[60px] mid:top-4">
+      {/* Toast Notifications - z-[100] so they appear above modals (z-50 / z-[60]) */}
+      <div className="fixed right-2 mid:right-4 left-2 mid:left-auto z-[100] space-y-2 max-w-sm mid:max-w-none top-[60px] mid:top-4">
         {toasts.map(toast => (
           <Toast
             key={toast.id}
@@ -4866,6 +4866,7 @@ function App() {
                         getVersion={getVersion}
                         getIlvl={getIlvl}
                         getVersionColor={getVersionColor}
+                        addToast={addToast}
                       />
                     </Suspense>
                     {sections.map(section => section.component)}

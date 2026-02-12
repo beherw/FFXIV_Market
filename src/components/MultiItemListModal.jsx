@@ -18,6 +18,7 @@ export default function MultiItemListModal({
   getVersion = () => null,
   getIlvl = () => null,
   getVersionColor = () => '#9CA3AF',
+  addToast,
 }) {
   const navigate = useNavigate();
   const [items, setItems] = useState(itemList || []);
@@ -69,7 +70,9 @@ export default function MultiItemListModal({
     // Check if item has recipe
     const itemHasRecipe = await hasRecipe(currentItemId);
     if (!itemHasRecipe) {
-      // Don't add items without recipes
+      if (addToast) {
+        addToast('此物品沒有製作配方，無法加入組合樹清單', 'warning');
+      }
       return;
     }
 
