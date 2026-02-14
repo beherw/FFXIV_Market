@@ -213,7 +213,6 @@
   background: linear-gradient(to right, rgba(88, 28, 135, 0.4), rgba(131, 24, 67, 0.3), rgba(55, 48, 163, 0.4));
   border: 1px solid rgba(168, 85, 247, 0.3);
   border-radius: 0.5rem;
-  backdrop-filter: blur(4px);
   white-space: nowrap;
   display: flex;
   align-items: center;
@@ -493,9 +492,9 @@
   }
 }
 
-/* Logo glow effect when server data loaded */
+/* Logo glow effect when server data loaded - single drop-shadow for GPU efficiency */
 .topbar-logo-loaded {
-  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6)) drop-shadow(0 0 16px rgba(251, 191, 36, 0.4));
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.5));
   opacity: 1;
 }
 

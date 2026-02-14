@@ -966,7 +966,7 @@ export default function CraftingJobPriceChecker({
           </div>
 
         {/* Search Controls */}
-        <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-6 mb-6">
+        <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-4 sm:p-6 mb-6">
           {/* Job Selector */}
           <div className="mb-6">
             <label className="block text-sm font-semibold text-ffxiv-gold mb-2">

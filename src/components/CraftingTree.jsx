@@ -1669,7 +1669,7 @@ export default function CraftingTree({
   }
 
   return (
-    <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4">
+    <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -1696,8 +1696,7 @@ export default function CraftingTree({
               }`}
               onClick={(e) => e.stopPropagation()}
               style={!excludeCrystals ? {
-                boxShadow: '0 0 8px rgba(147, 51, 234, 0.3)',
-                animation: 'crystalShimmer 3s ease-in-out infinite'
+                boxShadow: '0 0 8px rgba(147, 51, 234, 0.3)'
               } : {}}
             >
               {/* Subtle shimmer effect - only when enabled */}
@@ -1777,113 +1776,46 @@ export default function CraftingTree({
           )}
           
           {/* Add CSS animations for crystal effects */}
+          {/* Crystal animations - simplified for GPU efficiency: removed expensive
+              multi-layer drop-shadow filters and reduced to single animation per element */}
           <style>{`
-            @keyframes crystalShimmer {
-              0%, 100% {
-                box-shadow: 0 0 8px rgba(147, 51, 234, 0.3);
-              }
-              50% {
-                box-shadow: 0 0 12px rgba(147, 51, 234, 0.5), 0 0 20px rgba(147, 51, 234, 0.2);
-              }
-            }
             @keyframes crystalPulse {
-              0%, 100% {
-                transform: scale(1);
-                filter: drop-shadow(0 0 4px rgba(147,51,234,0.9)) drop-shadow(0 0 8px rgba(147,51,234,0.5));
-              }
-              50% {
-                transform: scale(1.08);
-                filter: drop-shadow(0 0 6px rgba(147,51,234,1)) drop-shadow(0 0 12px rgba(147,51,234,0.7)) drop-shadow(0 0 16px rgba(147,51,234,0.4));
-              }
+              0%, 100% { transform: scale(1); opacity: 1; }
+              50% { transform: scale(1.06); opacity: 0.9; }
             }
             @keyframes crystalPulseInactive {
-              0%, 100% {
-                transform: scale(1);
-                filter: drop-shadow(0 0 3px rgba(99,102,241,0.6)) drop-shadow(0 0 6px rgba(99,102,241,0.4));
-              }
-              50% {
-                transform: scale(1.05);
-                filter: drop-shadow(0 0 4px rgba(99,102,241,0.8)) drop-shadow(0 0 8px rgba(99,102,241,0.5));
-              }
-            }
-            @keyframes crystalShimmerGlow {
-              0%, 100% {
-                filter: drop-shadow(0 0 4px rgba(147,51,234,0.9)) drop-shadow(0 0 8px rgba(147,51,234,0.5));
-              }
-              50% {
-                filter: drop-shadow(0 0 6px rgba(147,51,234,1)) drop-shadow(0 0 12px rgba(147,51,234,0.7)) drop-shadow(0 0 16px rgba(147,51,234,0.4));
-              }
-            }
-            @keyframes crystalShimmerGlowInactive {
-              0%, 100% {
-                filter: drop-shadow(0 0 3px rgba(99,102,241,0.6)) drop-shadow(0 0 6px rgba(99,102,241,0.4));
-              }
-              50% {
-                filter: drop-shadow(0 0 4px rgba(99,102,241,0.8)) drop-shadow(0 0 8px rgba(99,102,241,0.5));
-              }
+              0%, 100% { transform: scale(1); opacity: 0.8; }
+              50% { transform: scale(1.04); opacity: 0.7; }
             }
             @keyframes highlightShimmer {
-              0% {
-                fill-opacity: 0.2;
-              }
-              50% {
-                fill-opacity: 0.6;
-              }
-              100% {
-                fill-opacity: 0.2;
-              }
-            }
-            @keyframes highlightShimmerInactive {
-              0% {
-                fill-opacity: 0.1;
-              }
-              50% {
-                fill-opacity: 0.3;
-              }
-              100% {
-                fill-opacity: 0.1;
-              }
+              0%, 100% { fill-opacity: 0.2; }
+              50% { fill-opacity: 0.5; }
             }
             @keyframes sparkle {
-              0%, 100% {
-                opacity: 0.8;
-                transform: scale(0.8) rotate(0deg);
-              }
-              50% {
-                opacity: 1;
-                transform: scale(1.2) rotate(180deg);
-              }
-            }
-            @keyframes sparkleInactive {
-              0%, 100% {
-                opacity: 0.3;
-                transform: scale(0.8) rotate(0deg);
-              }
-              50% {
-                opacity: 0.5;
-                transform: scale(1.1) rotate(180deg);
-              }
+              0%, 100% { opacity: 0.8; transform: scale(0.8) rotate(0deg); }
+              50% { opacity: 1; transform: scale(1.2) rotate(180deg); }
             }
             .crystal-icon-active {
-              animation: crystalPulse 2s ease-in-out infinite, crystalShimmerGlow 3s ease-in-out infinite;
+              animation: crystalPulse 2.5s ease-in-out infinite;
+              filter: drop-shadow(0 0 4px rgba(147,51,234,0.7));
             }
             .crystal-icon-inactive {
-              animation: crystalPulseInactive 2.5s ease-in-out infinite, crystalShimmerGlowInactive 3.5s ease-in-out infinite;
+              animation: crystalPulseInactive 3s ease-in-out infinite;
+              filter: drop-shadow(0 0 3px rgba(99,102,241,0.5));
             }
-            .crystal-highlight {
-              fill-opacity: 0.3;
-            }
+            .crystal-highlight { fill-opacity: 0.3; }
             .crystal-icon-active .crystal-highlight {
-              animation: highlightShimmer 2s ease-in-out infinite;
+              animation: highlightShimmer 2.5s ease-in-out infinite;
             }
             .crystal-icon-inactive .crystal-highlight {
-              animation: highlightShimmerInactive 2.5s ease-in-out infinite;
+              animation: highlightShimmer 3s ease-in-out infinite;
             }
             .crystal-sparkle-active {
-              animation: sparkle 1.5s ease-in-out infinite;
+              animation: sparkle 2s ease-in-out infinite;
             }
             .crystal-sparkle-inactive {
-              animation: sparkleInactive 2s ease-in-out infinite;
+              animation: sparkle 2.5s ease-in-out infinite;
+              opacity: 0.4;
             }
           `}</style>
         </div>

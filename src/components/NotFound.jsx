@@ -43,7 +43,7 @@ function NotFound() {
         </div>
 
         {/* Error Message */}
-        <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-8 sm:p-12 mb-8 card-glow">
+        <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 sm:p-12 mb-8 card-glow">
           <div className="text-6xl mb-6">🔍</div>
           <h2 className="text-2xl sm:text-3xl font-bold text-ffxiv-gold mb-4">
             頁面未找到

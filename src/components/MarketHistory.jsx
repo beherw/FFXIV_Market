@@ -12,7 +12,7 @@ export default function MarketHistory({ history }) {
   const sortedHistory = [...history].sort((a, b) => b.timestamp - a.timestamp);
 
   return (
-    <div className="flex-1 flex flex-col overflow-x-auto bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20">
+    <div className="flex-1 flex flex-col overflow-x-auto bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20">
       <table className="w-full border-collapse text-sm min-w-[600px]">
         <thead>
           <tr className="bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border-b border-purple-500/30">

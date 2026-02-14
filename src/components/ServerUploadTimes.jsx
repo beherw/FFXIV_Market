@@ -163,7 +163,7 @@ export default function ServerUploadTimes({ worldUploadTimes, worlds, dcWorlds }
     <div 
       ref={tooltipRef}
       className="fixed px-3 py-2.5 rounded-xl pointer-events-auto sm:pointer-events-none z-[999999] max-w-[90vw] sm:max-w-none sm:min-w-max
-        bg-slate-900/95 backdrop-blur-md border border-slate-600/50
+        bg-slate-900/95 border border-slate-600/50
         shadow-[0_4px_24px_rgba(0,0,0,0.4),0_0_1px_rgba(255,255,255,0.08)_inset]
         text-white"
       style={{
@@ -203,7 +203,7 @@ export default function ServerUploadTimes({ worldUploadTimes, worlds, dcWorlds }
   return (
     <>
       {createPortal(tooltipContent, document.body)}
-      <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-2 sm:p-4 relative z-10">
+      <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-2 sm:p-4 relative z-10">
         {/* Header - cursor-default so hover tooltip doesn't imply clickability */}
         <div className="flex items-center gap-2 mb-2 sm:mb-3 cursor-default">
           <svg 

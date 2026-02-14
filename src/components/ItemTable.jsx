@@ -698,7 +698,7 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
   ];
 
   return (
-    <div className="overflow-x-auto bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20">
+    <div className="overflow-x-auto bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20">
       {/* Rarity Legend Filter and Version Filter */}
       {(raritiesDataToUse || (availableVersions.length > 0 && itemPatchData && patchNamesData)) && (
         <div className="px-4 py-2 bg-purple-900/20 border-b border-purple-500/20">

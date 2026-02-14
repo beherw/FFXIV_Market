@@ -3113,7 +3113,7 @@ export default function AdvancedSearch({
 
           {/* Tab Content */}
           {activeTab === 'batch' && (
-            <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-6 mb-6">
+            <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-4 sm:p-6 mb-6">
               {/* Batch Input */}
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-ffxiv-gold mb-2">
@@ -3200,7 +3200,7 @@ export default function AdvancedSearch({
           )}
 
           {activeTab === 'filter' && (
-            <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-6 mb-6">
+            <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-4 sm:p-6 mb-6">
              
 
               {/* Job Icons and Categories Selection - Side by Side, Height Determined by Crafting Jobs */}
@@ -3419,7 +3419,7 @@ export default function AdvancedSearch({
                           value={categorySearchTerm}
                           onChange={(e) => setCategorySearchTerm(e.target.value)}
                           placeholder="篩選搜尋分類"
-                          className="w-full pl-9 pr-3 py-2 bg-slate-800/60 backdrop-blur-sm border border-purple-500/20 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:border-ffxiv-gold focus:ring-ffxiv-gold/50 transition-all text-xs"
+                          className="w-full pl-9 pr-3 py-2 bg-slate-800/60 border border-purple-500/20 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:border-ffxiv-gold focus:ring-ffxiv-gold/50 transition-all text-xs"
                         />
                         {categorySearchTerm && (
                           <button
@@ -4317,7 +4317,7 @@ export default function AdvancedSearch({
                     }}
                     placeholder="物品名篩選（多關鍵詞用空格分隔）"
                     disabled={isFilterSearching || isSearching}
-                    className={`w-full py-3 pl-10 pr-20 rounded-lg bg-slate-900/90 backdrop-blur-sm border text-white placeholder-gray-400 focus:outline-none focus:ring-1 transition-all text-sm shadow-lg ${
+                    className={`w-full py-3 pl-10 pr-20 rounded-lg bg-slate-900/90 border text-white placeholder-gray-400 focus:outline-none focus:ring-1 transition-all text-sm shadow-lg ${
                       isFilterSearching || isSearching
                         ? 'border-slate-700/30 cursor-not-allowed opacity-60'
                         : 'border-purple-500/40 focus:border-ffxiv-gold focus:ring-ffxiv-gold/50 shadow-purple-500/20'

@@ -428,26 +428,28 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
 
   // No longer using Intersection Observer - simplified sequential loading
 
+  // Lightweight loading indicator - single pulse dot instead of 3 bouncing dots
+  // This significantly reduces GPU usage when many images load simultaneously
+  const loadingDot = (
+    <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
+  );
+  const loadingDotYellow = (
+    <div className="w-2 h-2 bg-yellow-400/70 rounded-full animate-pulse"></div>
+  );
+
   // Show placeholder while loading or on error - always reserve space
   if (!shouldLoad) {
-    // 尚未开始加载，显示loading indicator
     return (
       <div ref={imgRef} className={containerClasses}>
-        <div className="flex gap-1">
-          <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1s' }}></span>
-          <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '200ms', animationDuration: '1s' }}></span>
-          <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '400ms', animationDuration: '1s' }}></span>
-        </div>
+        {loadingDot}
       </div>
     );
   }
 
   // If we have an image URL (calculated or API), show it only when loaded
-  // Hide image until it successfully loads to prevent broken image placeholder
   if (imageUrl) {
     return (
       <div ref={imgRef} className={`${containerClasses} relative`}>
-        {/* Only show image when it has successfully loaded */}
         {imageLoaded && (
           <img
             src={imageUrl}
@@ -458,7 +460,6 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
             {...props}
           />
         )}
-        {/* Hidden image used to preload and detect when it's ready */}
         {!imageLoaded && (
           <img
             src={imageUrl}
@@ -470,14 +471,9 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
             {...props}
           />
         )}
-        {/* Loading indicator: three animated dots - show while loading or not loaded yet */}
         {(iconIsLoading || !imageLoaded) && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded pointer-events-none">
-            <div className="flex gap-1">
-              <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1s' }}></span>
-              <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-bounce" style={{ animationDelay: '200ms', animationDuration: '1s' }}></span>
-              <span className="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-bounce" style={{ animationDelay: '400ms', animationDuration: '1s' }}></span>
-            </div>
+            {loadingDotYellow}
           </div>
         )}
       </div>
@@ -485,39 +481,18 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
   }
 
   // No image URL yet - show loading or error state
-  if (iconIsLoading) {
+  if (iconIsLoading || hasError) {
     return (
       <div ref={imgRef} className={containerClasses}>
-        <div className="flex gap-1">
-          <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1s' }}></span>
-          <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '200ms', animationDuration: '1s' }}></span>
-          <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '400ms', animationDuration: '1s' }}></span>
-        </div>
+        {loadingDot}
       </div>
     );
   }
 
-  if (hasError) {
-    // Show loading indicator even on error - cleaner UI
-    return (
-      <div ref={imgRef} className={containerClasses}>
-        <div className="flex gap-1">
-          <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1s' }}></span>
-          <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '200ms', animationDuration: '1s' }}></span>
-          <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '400ms', animationDuration: '1s' }}></span>
-        </div>
-      </div>
-    );
-  }
-
-  // Fallback (shouldn't reach here) - show loading indicator
+  // Fallback
   return (
     <div ref={imgRef} className={containerClasses}>
-      <div className="flex gap-1">
-        <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1s' }}></span>
-        <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '200ms', animationDuration: '1s' }}></span>
-        <span className="w-1 h-1 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '400ms', animationDuration: '1s' }}></span>
-      </div>
+      {loadingDot}
     </div>
   );
 }

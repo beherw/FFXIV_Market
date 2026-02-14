@@ -3942,7 +3942,7 @@ function App() {
       {/* Loading Indicator */}
       {isLoadingDB && (
         <div className="fixed top-14 mid:top-4 left-1/2 transform -translate-x-1/2 z-[60]">
-          <div className="bg-gradient-to-r from-purple-900/80 to-indigo-900/80 backdrop-blur-sm px-3 mid:px-4 py-2 rounded-lg border border-ffxiv-gold/30 flex items-center gap-2">
+          <div className="bg-gradient-to-r from-purple-900/80 to-indigo-900/80 px-3 mid:px-4 py-2 rounded-lg border border-ffxiv-gold/30 flex items-center gap-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-ffxiv-gold"></div>
             <span className="text-xs mid:text-sm text-gray-300">正在載入伺服器...</span>
           </div>
@@ -4005,7 +4005,7 @@ function App() {
               </div>
               
               {isHistoryLoading ? (
-                <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-8 sm:p-12 text-center">
+                <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 sm:p-12 text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ffxiv-gold mx-auto"></div>
                   <p className="mt-4 text-sm text-gray-400">載入歷史記錄...</p>
                 </div>
@@ -4036,7 +4036,7 @@ function App() {
                   onSelect={handleItemSelect}
                 />
               ) : (
-                <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-8 sm:p-12 text-center">
+                <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-8 sm:p-12 text-center">
                   <div className="text-6xl mb-4">📜</div>
                   <h2 className="text-2xl sm:text-3xl font-bold text-ffxiv-gold mb-2">暫無歷史記錄</h2>
                   <p className="text-sm sm:text-base text-gray-400">查看物品詳情後，會自動保存到歷史記錄</p>
@@ -4136,7 +4136,7 @@ function App() {
               <ItemSEO item={selectedItem} />
               <div className="space-y-4 sm:space-y-6">
               {/* Item Info & Controls */}
-              <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg border border-slate-700/50 p-3 sm:p-4">
+              <div className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 sm:p-4">
                 {/* First Row: Item Image, Name & Server Selector */}
                 <div className="flex flex-col detail:flex-row detail:items-center detail:justify-between gap-4 detail:gap-4 mb-3 mid:mb-4">
                   <div className="flex items-center gap-3 mid:gap-4 min-w-0 flex-1">
@@ -4369,7 +4369,7 @@ function App() {
                   >
                     {/* Shimmer effect for active button */}
                     {!isObtainMethodsExpanded && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_2]"></div>
                     )}
                     
                     <svg 
@@ -4418,7 +4418,7 @@ function App() {
                       ${hasCraftingRecipe && !isLoadingCraftingTree && craftingTree
                         ? isCraftingTreeExpanded
                           ? 'bg-gradient-to-r from-amber-900/60 via-yellow-800/50 to-orange-900/60 border border-ffxiv-gold/60 text-ffxiv-gold shadow-[0_0_20px_rgba(212,175,55,0.4)]'
-                          : 'bg-gradient-to-r from-purple-900/50 via-indigo-900/40 to-purple-900/50 border border-purple-400/40 text-purple-200 hover:text-ffxiv-gold hover:border-ffxiv-gold/50 hover:shadow-[0_0_15px_rgba(212,175,55,0.2)] animate-[craftingPulse_3s_ease-in-out_infinite]'
+                          : 'bg-gradient-to-r from-purple-900/50 via-indigo-900/40 to-purple-900/50 border border-purple-400/40 text-purple-200 hover:text-ffxiv-gold hover:border-ffxiv-gold/50 hover:shadow-[0_0_15px_rgba(212,175,55,0.2)] animate-[craftingPulse_3s_ease-in-out_3]'
                         : 'bg-slate-800/30 border border-slate-600/20 text-gray-600 cursor-not-allowed'
                       }
                     `}
@@ -4434,7 +4434,7 @@ function App() {
                   >
                     {/* Shimmer effect for active button */}
                     {hasCraftingRecipe && !isLoadingCraftingTree && !isCraftingTreeExpanded && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_2]"></div>
                     )}
                     
                     {isLoadingCraftingTree ? (
@@ -4688,7 +4688,7 @@ function App() {
                     component: (
                       <div
                         key="itemSetContainer"
-                        className={`bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-6 ${recentlyOpenedSection === 'itemSet' ? 'container-just-opened' : ''}`}
+                        className={`bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-4 sm:p-6 ${recentlyOpenedSection === 'itemSet' ? 'container-just-opened' : ''}`}
                       >
                         <div className="flex items-center justify-between gap-3 mb-2">
                           <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold flex items-center gap-2">
@@ -4802,11 +4802,10 @@ function App() {
                         className={`mt-4 rounded-xl ${(!isObtainMethodsExpanded || !hasObtainMethods) ? 'hidden' : ''} ${recentlyOpenedSection === 'obtainMethods' ? 'container-just-opened' : ''}`}
                       >
                         <div 
-                          className="relative bg-gradient-to-br from-slate-900/95 via-indigo-950/20 to-slate-900/95 rounded-xl border border-indigo-600/20 shadow-[0_0_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(99,102,241,0.1)] p-4 sm:p-6 overflow-hidden backdrop-blur-sm"
+                          className="relative bg-gradient-to-br from-slate-900/95 via-indigo-950/20 to-slate-900/95 rounded-xl border border-indigo-600/20 shadow-[0_0_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(99,102,241,0.1)] p-4 sm:p-6 overflow-hidden"
                         >
-                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2/3 h-2/3 bg-indigo-500 rounded-full blur-3xl"></div>
-                        </div>
+                        {/* Decorative glow - uses radial-gradient instead of expensive blur-3xl filter */}
+                        <div className="absolute inset-0 pointer-events-none" style={{background: 'radial-gradient(ellipse at center, rgba(99,102,241,0.03) 0%, transparent 70%)'}}></div>
                         <div className="absolute inset-0 rounded-xl border border-indigo-500/10 pointer-events-none"></div>
                         <div className="relative z-10">
                           <ErrorBoundary fallbackMessage="取得方式載入失敗，請重新整理頁面">
@@ -4924,7 +4923,7 @@ function App() {
                             </svg>
                             {formatRelativeTime(uploadTime)}
                             {/* Tooltip on hover showing local time */}
-                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900/95 backdrop-blur-sm text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[9999] border border-slate-600/50">
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900/95 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-[9999] border border-slate-600/50">
                               {formatLocalTime(uploadTime)}
                               <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-0">
                                 <div className="border-4 border-transparent border-t-slate-900/95"></div>
@@ -5011,7 +5010,7 @@ function App() {
             const isOnItemPage = location.pathname.startsWith('/item/');
             const showItemLoadError = isOnItemPage && !selectedItem && itemLoadError && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker';
             return showItemLoadError && (
-              <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-red-500/30 p-12 text-center">
+              <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-red-500/30 p-12 text-center">
                 <p className="text-gray-300 mb-2">無法載入物品資料（可能為快取已清或網路異常）</p>
                 <p className="text-sm text-gray-500 mb-6">請檢查網路後點擊下方按鈕重新載入</p>
                 <button
@@ -5035,7 +5034,7 @@ function App() {
             // Show loading if explicitly loading OR if on item page but item not loaded yet (and no load error)
             const shouldShowLoading = (isLoadingItemFromURL || (isOnItemPage && !selectedItem && !itemLoadError && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker'));
             return shouldShowLoading && (
-              <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-12 text-center">
+              <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-12 text-center">
                 <div className="relative inline-block">
                   <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold mx-auto"></div>
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -5056,7 +5055,7 @@ function App() {
           })() && (
             <div className="space-y-4 sm:space-y-8">
               {/* Welcome Section */}
-              <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-8 relative z-10">
+              <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-4 sm:p-8 relative z-10">
                   <div className="text-center mb-4 sm:mb-6">
                   <h2 className="text-xl sm:text-2xl font-bold text-ffxiv-gold mb-4">FFXIV繁中市場小屋</h2>
                   {/* Bear/Sheep Image */}
@@ -5280,7 +5279,7 @@ function App() {
               )}
 
               {/* Credits Section - Show on home page at the bottom */}
-              <div className="bg-gradient-to-br from-slate-800/60 via-slate-900/40 to-slate-800/60 backdrop-blur-sm rounded-lg border border-slate-600/30 p-4 sm:p-6 mt-4 sm:mt-6">
+              <div className="bg-gradient-to-br from-slate-800/60 via-slate-900/40 to-slate-800/60 rounded-lg border border-slate-600/30 p-4 sm:p-6 mt-4 sm:mt-6">
                 <h3 className="text-base sm:text-lg font-semibold text-slate-300 mb-3 sm:mb-4 flex items-center gap-2">
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
@@ -5472,14 +5471,14 @@ function App() {
       {isOnItemInfoPage && createPortal(
         <button
           onClick={() => setIsMultiItemListModalOpen(true)}
-          className={`fixed top-[180px] sm:top-[200px] xl:top-[220px] right-2 sm:right-4 xl:right-12 z-50 flex items-center gap-1.5 sm:gap-2.5 px-2.5 py-1.5 sm:px-3 sm:py-2 xl:px-4 xl:py-2.5 rounded-full text-white backdrop-blur-md transition-all duration-300 ${
+          className={`fixed top-[180px] sm:top-[200px] xl:top-[220px] right-2 sm:right-4 xl:right-12 z-50 flex items-center gap-1.5 sm:gap-2.5 px-2.5 py-1.5 sm:px-3 sm:py-2 xl:px-4 xl:py-2.5 rounded-full text-white transition-all duration-300 ${
             hasItemListChanged
-              ? 'bg-gradient-to-br from-amber-500/95 via-yellow-500/90 to-orange-500/95 border-2 border-ffxiv-gold animate-bounce shadow-[0_0_40px_rgba(212,175,55,0.8),0_0_80px_rgba(212,175,55,0.6),inset_0_1px_0_rgba(255,255,255,0.5)] scale-110'
-              : 'bg-gradient-to-br from-purple-600/90 via-purple-500/80 to-indigo-600/90 border-2 border-purple-400/60 hover:from-purple-500 hover:via-purple-400 hover:to-indigo-500 hover:border-ffxiv-gold hover:scale-110 shadow-[0_0_30px_rgba(168,85,247,0.5),0_0_60px_rgba(168,85,247,0.3),inset_0_1px_0_rgba(255,255,255,0.3)] animate-pulse hover:animate-none'
+              ? 'bg-gradient-to-br from-amber-500/95 via-yellow-500/90 to-orange-500/95 border-2 border-ffxiv-gold shadow-[0_0_15px_rgba(212,175,55,0.6),inset_0_1px_0_rgba(255,255,255,0.5)] scale-110'
+              : 'bg-gradient-to-br from-purple-600/90 via-purple-500/80 to-indigo-600/90 border-2 border-purple-400/60 hover:from-purple-500 hover:via-purple-400 hover:to-indigo-500 hover:border-ffxiv-gold hover:scale-110 shadow-[0_0_15px_rgba(168,85,247,0.4),inset_0_1px_0_rgba(255,255,255,0.3)]'
           }`}
           title="打開多物品組合樹清單"
           style={{
-            animation: hasItemListChanged ? 'bounce 0.5s ease-in-out 0s 4 normal none running' : 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            animation: hasItemListChanged ? 'bounce 0.5s ease-in-out 0s 4 normal none running' : 'none',
           }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -5487,7 +5486,6 @@ function App() {
           </svg>
           <span className="text-xs sm:text-sm font-bold whitespace-nowrap tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">多物品清單</span>
           <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-4 w-4 sm:h-5 sm:w-5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-4 w-4 sm:h-5 sm:w-5 bg-purple-500 items-center justify-center text-[9px] sm:text-[10px] font-bold text-white border border-purple-300">
               {multiItemState.itemList.length}
             </span>

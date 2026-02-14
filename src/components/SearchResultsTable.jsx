@@ -213,7 +213,7 @@ export default function SearchResultsTable({
           {title} ({`${tradeableCount > 0 ? tradeableCount : items.length}`} 個物品{titleSuffix || ''})
         </h2>
         {showServerBadge && selectedWorld && selectedServerOption && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg backdrop-blur-sm">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border border-purple-500/30 rounded-lg">
             <div className="w-1.5 h-1.5 rounded-full bg-ffxiv-gold animate-pulse"></div>
             <span className="text-xs sm:text-sm font-semibold text-ffxiv-gold">
               {selectedServerOption === selectedWorld.section
@@ -249,7 +249,7 @@ export default function SearchResultsTable({
               }
             }}
             disabled={isServerSelectorDisabled || untradeableCount === 0}
-            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 backdrop-blur-sm shadow-sm border ${
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 shadow-sm border ${
               untradeableCount === 0
                 ? 'bg-gradient-to-r from-slate-700/40 via-slate-600/30 to-slate-700/40 text-gray-500 border-slate-600/30 cursor-not-allowed opacity-60'
                 : isServerSelectorDisabled
@@ -371,7 +371,7 @@ export default function SearchResultsTable({
       
       {/* Pagination Controls */}
       {itemsToPaginate.length > itemsPerPage && (
-        <div className="mb-4 flex items-center justify-between flex-wrap gap-3 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-3">
+        <div className="mb-4 flex items-center justify-between flex-wrap gap-3 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-3">
           <div className="flex items-center gap-3">
             <label className="text-sm text-gray-300">每頁顯示:</label>
             <select

@@ -13,7 +13,7 @@ export default function HistorySection({ onItemSelect }) {
 
   if (isLoading) {
     return (
-      <div className="mb-6 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-6">
+      <div className="mb-6 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-4 sm:p-6">
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ffxiv-gold"></div>
           <span className="ml-3 text-sm text-gray-400">載入歷史記錄...</span>
@@ -27,7 +27,7 @@ export default function HistorySection({ onItemSelect }) {
   }
 
   return (
-    <div className="mb-6 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-6">
+    <div className="mb-6 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg sm:text-xl font-semibold text-ffxiv-gold flex items-center gap-2">
           <svg 

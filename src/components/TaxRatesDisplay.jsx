@@ -28,7 +28,7 @@ export default function TaxRatesDisplay({ taxRates, worlds, isLoading, selectedW
 
   if (isLoading) {
     return (
-      <div className="mb-4 p-4 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20">
+      <div className="mb-4 p-4 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20">
         <div className="flex items-center gap-2">
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-ffxiv-gold"></div>
           <span className="text-sm text-gray-300">載入市場稅率...</span>
@@ -42,7 +42,7 @@ export default function TaxRatesDisplay({ taxRates, worlds, isLoading, selectedW
   }
 
   return (
-    <div className="mb-4 p-4 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20">
+    <div className="mb-4 p-4 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20">
       <div className="flex items-center gap-2 mb-3">
         <svg
           xmlns="http://www.w3.org/2000/svg"

@@ -119,7 +119,7 @@ export default function RecentUpdatesSection({ onItemSelect, selectedDcName }) {
   }
 
   return (
-    <div className="mb-6 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 backdrop-blur-sm rounded-lg border border-purple-500/20 p-4 sm:p-6">
+    <div className="mb-6 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg sm:text-xl font-semibold text-ffxiv-gold flex items-center gap-2">
           <svg 

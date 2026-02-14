@@ -39,7 +39,7 @@ export default function Toast({ message, type = 'info', duration = 3000, onClose
   }[type];
 
   return (
-    <div className={`${bgColor} text-white px-4 py-3 rounded-lg shadow-lg backdrop-blur-sm border border-white/20 animate-fadeIn mb-2`}>
+    <div className={`${bgColor} text-white px-4 py-3 rounded-lg shadow-lg border border-white/20 animate-fadeIn mb-2`}>
       <div className="flex items-center justify-between">
         <span className="text-sm">{message}</span>
         <button

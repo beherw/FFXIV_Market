@@ -22,12 +22,22 @@
     overflow-x: hidden;
     overflow-y: auto;
     min-height: 100vh;
+  }
+
+  /* GPU-optimized fixed background: use ::before with position:fixed instead of
+     background-attachment:fixed which forces expensive full-page repaints on scroll */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-color: #0f172a;
     background-image: 
       radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
       radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.12) 0%, transparent 50%),
       radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 60%),
       radial-gradient(circle at 10% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 40%);
-    background-attachment: fixed;
+    pointer-events: none;
   }
 
   #root {
@@ -353,47 +363,40 @@
   animation: containerJustOpenedGlow 2.5s ease-out forwards;
 }
 
-/* Table hover effects */
+/* Table hover effects - only transition specific properties for GPU efficiency */
 table tbody tr {
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 table tbody tr:hover {
-  background: linear-gradient(90deg, rgba(139, 92, 246, 0.2) 0%, rgba(236, 72, 153, 0.15) 50%, rgba(99, 102, 241, 0.2) 100%);
-  transform: translateX(2px);
+  background-color: rgba(139, 92, 246, 0.15);
   box-shadow: -2px 0 8px rgba(251, 191, 36, 0.3);
 }
 
-/* Button effects */
+/* Button effects - specific transitions only for GPU efficiency */
 button {
-  transition: all 0.2s ease;
+  transition: box-shadow 0.2s ease, opacity 0.2s ease, border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
 }
 
 button:hover {
-  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-button:active {
-  transform: translateY(0);
 }
 
 /* Input focus effects */
 input:focus {
   box-shadow: 
     0 0 0 3px rgba(251, 191, 36, 0.15),
-    0 0 20px rgba(139, 92, 246, 0.3);
+    0 0 12px rgba(139, 92, 246, 0.2);
 }
 
-/* Card effects */
+/* Card effects - removed backdrop-filter:blur for GPU performance */
 .card-fantasy {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(236, 72, 153, 0.15) 50%, rgba(99, 102, 241, 0.2) 100%);
+  background: linear-gradient(135deg, rgba(30, 20, 60, 0.92) 0%, rgba(40, 18, 50, 0.90) 50%, rgba(25, 22, 55, 0.92) 100%);
   border: 1px solid rgba(251, 191, 36, 0.25);
   box-shadow: 
     0 8px 16px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 0 30px rgba(251, 191, 36, 0.15);
-  backdrop-filter: blur(10px);
 }
 
 /* Image shatter effect */
@@ -441,17 +444,7 @@ input:focus {
   opacity: 0;
 }
 
-/* 1. Fix the rotation animation to keep it centered */
-@keyframes rotate {
-  from {
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-  to {
-    transform: translate(-50%, -50%) rotate(360deg);
-  }
-}
-
-/* 2. Rotating flow effect for confirm button - matches selected server button style */
+/* Confirm button with border shimmer effect */
 .confirm-button-attention {
   position: relative;
   min-width: 0; /* Allow button to shrink */
@@ -489,28 +482,29 @@ input:focus {
   transform: translateY(0);
 }
 
-/* The Rotating Light Layer - creates flowing shine effect */
+/* Lightweight border glow effect - replaces expensive conic-gradient rotation */
 .confirm-button-attention::before {
   content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 300px;
-  height: 300px;
-  background: conic-gradient(
-    transparent 0deg,
-    transparent 240deg,
-    rgba(251, 191, 36, 0.4) 260deg,
-    rgba(251, 191, 36, 0.8) 270deg,
-    rgba(255, 255, 255, 1) 285deg,
-    rgba(251, 191, 36, 0.8) 300deg,
-    rgba(251, 191, 36, 0.4) 310deg,
-    transparent 330deg,
-    transparent 360deg
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(251, 191, 36, 0.3) 0%,
+    rgba(251, 191, 36, 0.7) 25%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(251, 191, 36, 0.7) 75%,
+    rgba(251, 191, 36, 0.3) 100%
   );
-  animation: rotate 2.5s linear infinite;
+  background-size: 200% 100%;
+  animation: borderShimmer 3s ease-in-out infinite;
   z-index: 0;
   pointer-events: none;
+}
+
+@keyframes borderShimmer {
+  0%, 100% { background-position: 200% 0; }
+  50% { background-position: -200% 0; }
 }
 
 /* Button face with darker inner background - matches selected server button style */
@@ -565,28 +559,24 @@ input:focus {
   overflow: hidden;
 }
 
+/* Lightweight border shimmer - replaces expensive conic-gradient rotation */
 .server-box-rotating-light::before {
   content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 300px;
-  height: 300px;
-  background: conic-gradient(
-    transparent 0deg,
-    transparent 240deg,
-    rgba(251, 191, 36, 0.4) 260deg,
-    rgba(251, 191, 36, 0.8) 270deg,
-    rgba(255, 255, 255, 1) 285deg,
-    rgba(251, 191, 36, 0.8) 300deg,
-    rgba(251, 191, 36, 0.4) 310deg,
-    transparent 330deg,
-    transparent 360deg
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(251, 191, 36, 0.3) 0%,
+    rgba(251, 191, 36, 0.7) 25%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(251, 191, 36, 0.7) 75%,
+    rgba(251, 191, 36, 0.3) 100%
   );
-  animation: rotate 2.5s linear infinite;
+  background-size: 200% 100%;
+  animation: borderShimmer 3s ease-in-out infinite;
   z-index: 0;
   pointer-events: none;
-  transform: translate(-50%, -50%);
 }
 
 /* Hide rotating light behind box content - only visible at border edges */
@@ -613,7 +603,7 @@ input:focus {
   z-index: 2;
 }
 
-/* Silver flow effect for search prompt */
+/* Silver flow effect for search prompt - runs once then stops to save GPU */
 @keyframes silverFlow {
   0% {
     background-position: 200% 0;
@@ -650,6 +640,7 @@ input:focus {
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: silverFlow 2.5s linear infinite;
+  /* Run only 3 times then stop, instead of infinite */
+  animation: silverFlow 3s ease-in-out 3;
   pointer-events: none;
 }

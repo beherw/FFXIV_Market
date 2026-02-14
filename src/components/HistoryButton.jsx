@@ -104,7 +104,7 @@ export default function HistoryButton({ onItemSelect, compact = false, setSearch
         onMouseDown={(e) => e.stopPropagation()}
         className={isItemInfoPage 
           ? `topbar-nav-button item-info-page ${isOnHistoryPage ? 'active' : ''}`
-          : `bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg backdrop-blur-sm whitespace-nowrap flex items-center transition-colors ${
+          : `bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg whitespace-nowrap flex items-center transition-colors ${
               compact 
                 ? 'px-2 h-8 gap-1.5' 
                 : 'px-2 mid:px-3 detail:px-4 h-9 mid:h-12 gap-1.5 mid:gap-2'
@@ -146,7 +146,7 @@ export default function HistoryButton({ onItemSelect, compact = false, setSearch
       {/* Dropdown Menu */}
       {isOpen && (
         <div 
-          className="absolute top-full left-0 mt-2 w-64 mid:w-80 bg-slate-900/95 backdrop-blur-sm border border-purple-500/30 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto"
+          className="absolute top-full left-0 mt-2 w-64 mid:w-80 bg-slate-900/95 border border-purple-500/30 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto"
           onMouseEnter={() => {
             if (timeoutRef.current) {
               clearTimeout(timeoutRef.current);

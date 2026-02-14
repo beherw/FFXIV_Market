@@ -505,7 +505,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
               : searchTerm.trim() && !isLoading && isFocused
                 ? 'pr-28 mid:pr-36'
                 : 'pr-3'
-          } bg-slate-900/80 backdrop-blur-sm border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 transition-all text-xs mid:text-sm shadow-lg ${
+          } bg-slate-900/80 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-1 transition-all text-xs mid:text-sm shadow-lg ${
             isDisabled 
               ? 'border-slate-700/30 cursor-not-allowed opacity-60' 
               : 'border-purple-500/30 focus:border-ffxiv-gold focus:ring-ffxiv-gold/50'
@@ -561,7 +561,7 @@ export default function SearchBar({ onSearch, isLoading, value, onChange, disabl
         {showDropdown && (
           <div 
             ref={dropdownRef}
-            className="absolute top-full left-0 right-0 mt-1 bg-slate-900/95 backdrop-blur-sm border border-purple-500/30 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto"
+            className="absolute top-full left-0 right-0 mt-1 bg-slate-900/95 border border-purple-500/30 rounded-lg shadow-xl z-50 max-h-80 overflow-y-auto"
           >
             {hasSearchResults && searchTerm.trim() && !showHistoryOnFocus ? (
               /* Keyword Suggestions Dropdown - Show when on search page with input */
