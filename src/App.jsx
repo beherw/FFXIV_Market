@@ -11,7 +11,7 @@ import ServerUploadTimes from './components/ServerUploadTimes';
 import Toast from './components/Toast';
 import { formatRelativeTime, formatLocalTime } from './utils/timeFormat';
 import { searchItems, searchItemsOCR, getItemById, getSimplifiedChineseName, cancelSimplifiedNameFetch } from './services/itemDatabase';
-import { getMarketData, getMarketableItems, getItemsVelocity, getTaxRates } from './services/universalis';
+import { getMarketData, getMarketableItems, getItemsVelocity, getTaxRates, getAggregatedMarketData } from './services/universalis';
 // Removed containsChinese import - no longer restricting to Chinese input
 import { getAssetPath } from './utils/assetPath.js';
 import ItemImage from './components/ItemImage';
@@ -116,6 +116,8 @@ function App() {
   const [marketInfo, setMarketInfo] = useState(null);
   const [marketListings, setMarketListings] = useState([]);
   const [marketHistory, setMarketHistory] = useState([]);
+  /** Current item's daily sale velocity for 在售列表: { velocityWorld, velocityDc } or null */
+  const [itemVelocity, setItemVelocity] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchingItemsCount, setSearchingItemsCount] = useState(0); // Track items count during search
   const [searchingLanguage, setSearchingLanguage] = useState(null); // Track language being searched
@@ -2345,6 +2347,7 @@ function App() {
     setMarketInfo(null);
     setMarketListings([]);
     setMarketHistory([]);
+    setItemVelocity(null);
     setError(null);
     setRateLimitMessage(null);
     
@@ -2618,6 +2621,7 @@ function App() {
         setMarketInfo(null);
         setMarketListings([]);
         setMarketHistory([]);
+        setItemVelocity(null);
         setRateLimitMessage(null);
         
         const previousSearchText = searchText;
@@ -2847,6 +2851,7 @@ function App() {
         setMarketInfo(null);
         setMarketListings([]);
         setMarketHistory([]);
+        setItemVelocity(null);
       }
     }
 
@@ -2866,6 +2871,7 @@ function App() {
     setMarketInfo(null);
     setMarketListings([]);
     setMarketHistory([]);
+    setItemVelocity(null);
     setError(null);
     setRateLimitMessage(null);
     
@@ -2910,6 +2916,7 @@ function App() {
         setMarketInfo(null);
         setMarketListings([]);
         setMarketHistory([]);
+        setItemVelocity(null);
         setError(null);
         setRateLimitMessage(null);
         // Don't navigate if we're on crafting-inspiration, msq-price-checker, advanced-search or history page
@@ -2941,6 +2948,7 @@ function App() {
     setMarketInfo(null);
     setMarketListings([]);
     setMarketHistory([]);
+    setItemVelocity(null);
     setRateLimitMessage(null);
     
     // Cancel all pending icon requests from previous search
@@ -3204,12 +3212,14 @@ function App() {
       setMarketInfo(null);
       setMarketListings([]);
       setMarketHistory([]);
+      setItemVelocity(null);
       return;
     }
 
     setMarketInfo(null);
     setMarketListings([]);
     setMarketHistory([]);
+    setItemVelocity(null);
     setError(null);
     setRateLimitMessage(null);
 
@@ -3286,7 +3296,11 @@ function App() {
           options.hq = true;
         }
 
-        const data = await getMarketData(requestServerOption, requestItemId, options);
+        const signal = abortControllerRef.current.signal;
+        const [data, aggregatedResult] = await Promise.all([
+          getMarketData(requestServerOption, requestItemId, options),
+          getAggregatedMarketData(requestServerOption, [requestItemId], worlds, { signal }).catch(() => ({})),
+        ]);
 
         if (
           abortControllerRef.current?.signal.aborted || 
@@ -3307,6 +3321,8 @@ function App() {
         }
 
         setMarketInfo(data);
+        const velocityInfo = aggregatedResult[requestItemId] || null;
+        setItemVelocity(velocityInfo ? { velocityWorld: velocityInfo.velocityWorld, velocityDc: velocityInfo.velocityDc } : null);
 
         if (data) {
           const isDataCenterSearch = selectedWorld && requestServerOption === selectedWorld.section;
@@ -4889,6 +4905,43 @@ function App() {
                   <div className="flex items-center justify-between mb-2 sm:mb-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold">在售列表</h3>
+                      {/* Daily sale velocity: DC = 全服 only; Server = 單服 + 全服 (same as CraftingTree) */}
+                      {(() => {
+                        const isDcQuery = selectedWorld && selectedServerOption === selectedWorld.section;
+                        const hasVelocityWorld = itemVelocity?.velocityWorld !== undefined;
+                        const hasVelocityDc = itemVelocity?.velocityDc !== undefined;
+                        const velocityWorldValue = itemVelocity?.velocityWorld ?? 0;
+                        const velocityDcValue = itemVelocity?.velocityDc ?? 0;
+                        if (!isDcQuery) {
+                          return (
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-800/60 border border-slate-600/40 text-xs w-fit">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-cyan-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                              </svg>
+                              <span className="text-gray-400">日均銷量:</span>
+                              <span className="text-cyan-300" title="單服日均銷量">單服 {hasVelocityWorld ? velocityWorldValue.toFixed(1) : '0.0'}</span>
+                              {hasVelocityDc && (
+                                <>
+                                  <span className="text-gray-500">/</span>
+                                  <span className="text-emerald-300" title="全服日均銷量">全服 {velocityDcValue.toFixed(1)}</span>
+                                </>
+                              )}
+                            </div>
+                          );
+                        }
+                        if (hasVelocityDc) {
+                          return (
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-800/60 border border-slate-600/40 text-xs w-fit">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-cyan-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                              </svg>
+                              <span className="text-gray-400">日均銷量:</span>
+                              <span className="text-emerald-300" title="全服日均銷量">全服 {velocityDcValue.toFixed(1)}</span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                       {/* Show upload time when a single server is selected */}
                       {(() => {
                         // Check if a single server (not DC) is selected
