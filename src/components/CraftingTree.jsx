@@ -466,65 +466,6 @@ function calculateCraftingCost(node, itemPrices, queriedItemIds) {
 }
 
 /**
- * Build a map of crafting methods for each node in the tree
- * Used to highlight the crafting path when crafting is cheaper
- * This function marks nodes as 'craft' if they should be crafted (have children and crafting is viable)
- * and 'buy' if they should be bought (leaf nodes or can't be crafted)
- */
-function buildCraftingPathMap(node, itemPrices, queriedItemIds, pathMap = new Map()) {
-  // Check if this node can be crafted (has children)
-  const hasChildren = node.children && node.children.length > 0;
-  
-  if (!hasChildren) {
-    // Leaf node - must buy
-    pathMap.set(node.itemId, 'buy');
-    return pathMap;
-  }
-  
-  // Check if all children have been queried
-  let allChildrenQueried = true;
-  for (const child of node.children) {
-    if (!queriedItemIds.has(child.itemId)) {
-      allChildrenQueried = false;
-      break;
-    }
-  }
-  
-  if (!allChildrenQueried) {
-    // Still loading, can't determine path
-    return pathMap;
-  }
-  
-  // Calculate crafting cost for this node using calculateCraftingCost
-  // This always returns the crafting cost, not the market price
-  const craftingCost = calculateCraftingCost(node, itemPrices, queriedItemIds);
-  
-  // Check if we can calculate crafting cost
-  if (craftingCost === null || craftingCost === 'N/A') {
-    // Can't craft - mark as buy
-    pathMap.set(node.itemId, 'buy');
-    return pathMap;
-  }
-  
-  // Get market price
-  const marketPrice = itemPrices[node.itemId]?.price ?? null;
-  
-  // If we can craft and (no market price OR crafting is cheaper), mark as craft
-  if (typeof craftingCost === 'number' && (marketPrice === null || craftingCost < marketPrice)) {
-    pathMap.set(node.itemId, 'craft');
-    // Recurse into children to mark them as well
-    for (const child of node.children) {
-      buildCraftingPathMap(child, itemPrices, queriedItemIds, pathMap);
-    }
-  } else {
-    // Can't craft or buying is cheaper - mark as buy
-    pathMap.set(node.itemId, 'buy');
-  }
-  
-  return pathMap;
-}
-
-/**
  * Root item price comparison badge - uses cheapest route calculation
  * Compares: main item market price vs optimal crafting route (cheapest for each sub-item)
  */
@@ -1076,8 +1017,7 @@ function TreeNodeVertical({
   onItemClick,
   isRoot = false,
   isLoading = false,
-  optimalPathMap = null,
-  isCraftingCheaper = false,
+  parentOnGreenPath = false,
   isDcQuery = false,
 }) {
   const childrenRef = useRef(null);
@@ -1086,11 +1026,6 @@ function TreeNodeVertical({
   const itemName = itemNames[node.itemId] || `物品 ${node.itemId}`;
   const priceInfo = itemPrices[node.itemId];
   const isPriceQueried = queriedItemIds.has(node.itemId);
-  
-  // Determine if this node is on the optimal path and should be highlighted
-  const optimalMethod = optimalPathMap?.get(node.itemId);
-  const isOnOptimalPath = isCraftingCheaper && optimalMethod !== undefined;
-  const shouldHighlightChildren = isOnOptimalPath && optimalMethod === 'craft';
 
   // Calculate children total price (considering amounts) and get breakdown
   // Returns: number (total price), 'N/A' (some materials missing), or null (still loading)
@@ -1139,12 +1074,13 @@ function TreeNodeVertical({
         }
       }
       
-      // Use the crafting cost if available (already adjusted for yields), otherwise calculate from market prices
+      // Use the crafting cost if available. For badge we show "材料" vs "yields個成品", so same units: total materials for one craft vs total buy for yields units.
       if (cheapestResult.method === 'craft' && cheapestResult.breakdown) {
-        // Use the crafting cost (already adjusted for yields)
-        return { childrenTotalPrice: cheapestResult.cost, breakdown: breakdownData };
+        const yields = node.yields || 1;
+        const materialsTotal = yields > 1 ? cheapestResult.cost * yields : cheapestResult.cost;
+        return { childrenTotalPrice: materialsTotal, breakdown: breakdownData };
       } else {
-        // Calculate from market prices (for comparison when buying is cheaper)
+        // Raw total of buying all materials for one craft (do NOT divide by yields)
         let total = 0;
         for (const child of node.children) {
           const childPrice = itemPrices[child.itemId];
@@ -1154,10 +1090,7 @@ function TreeNodeVertical({
             return { childrenTotalPrice: 'N/A', breakdown: breakdownData.length > 0 ? breakdownData : null };
           }
         }
-        // Adjust by yields if applicable
-        const yields = node.yields || 1;
-        const totalPerUnit = yields > 1 ? total / yields : total;
-        return { childrenTotalPrice: totalPerUnit, breakdown: breakdownData.length > 0 ? breakdownData : null };
+        return { childrenTotalPrice: total, breakdown: breakdownData.length > 0 ? breakdownData : null };
       }
     }
     
@@ -1184,6 +1117,19 @@ function TreeNodeVertical({
     const parentQueried = queriedItemIds.has(node.itemId);
     return parentQueried;
   }, [hasChildren, node.children, priceInfo, childrenTotalPrice, queriedItemIds]);
+
+  // isCraftCheaper: exact same comparison as PriceComparisonBadge.
+  // Badge receives parentPrice = priceInfo.price * node.amount and childrenTotalPrice (total materials for one craft).
+  // Badge decides: savings = parentPrice - childrenTotalPrice; isCraftCheaper = savings > 0.
+  // We replicate that here so green line and badge always agree.
+  const badgeParentPrice = (priceInfo?.price != null) ? priceInfo.price * (node.amount || 1) : null;
+  const isCraftCheaper =
+    hasChildren &&
+    isComparisonReady &&
+    typeof childrenTotalPrice === 'number' &&
+    (badgeParentPrice === null || childrenTotalPrice < badgeParentPrice);
+  // Green line: continues from parent only when this node is craft-cheaper. Stops at buy-cheaper or leaf.
+  const highlightLinesToChildren = parentOnGreenPath && isCraftCheaper;
 
   // Calculate horizontal line position
   const calculateLinePosition = useCallback(() => {
@@ -1233,10 +1179,9 @@ function TreeNodeVertical({
     };
   }, [calculateLinePosition, itemNames, itemPrices]);
 
-  // Connector line styles based on highlighting
-  const lineColor = shouldHighlightChildren ? 'bg-green-400' : 'bg-purple-500/50';
-  const lineWidth = shouldHighlightChildren ? 'w-0.5' : 'w-px';
-  const lineGlow = shouldHighlightChildren ? 'shadow-[0_0_6px_rgba(74,222,128,0.6)]' : '';
+  const lineColor = highlightLinesToChildren ? 'bg-green-400' : 'bg-purple-500/50';
+  const lineWidth = highlightLinesToChildren ? 'w-0.5' : 'w-px';
+  const lineGlow = highlightLinesToChildren ? 'shadow-[0_0_6px_rgba(74,222,128,0.6)]' : '';
 
   return (
     <div className="flex flex-col items-center">
@@ -1249,8 +1194,8 @@ function TreeNodeVertical({
         isRoot={isRoot}
         isLoading={isLoading}
         isPriceQueried={isPriceQueried}
-        isHighlighted={isOnOptimalPath && !isRoot}
-        highlightMethod={optimalMethod}
+        isHighlighted={isRoot ? isCraftCheaper : parentOnGreenPath}
+        highlightMethod={(isRoot ? isCraftCheaper : parentOnGreenPath) ? 'craft' : undefined}
         isDcQuery={isDcQuery}
       />
       
@@ -1301,7 +1246,7 @@ function TreeNodeVertical({
             {/* Horizontal connector bar - dynamically positioned */}
             {node.children.length > 1 && lineStyle.width > 0 && (
               <div 
-                className={`absolute top-0 ${shouldHighlightChildren ? 'h-0.5' : 'h-px'} ${lineColor} ${lineGlow}`}
+                className={`absolute top-0 ${highlightLinesToChildren ? 'h-0.5' : 'h-px'} ${lineColor} ${lineGlow}`}
                 style={{
                   left: `${lineStyle.left}px`,
                   width: `${lineStyle.width}px`,
@@ -1313,10 +1258,7 @@ function TreeNodeVertical({
             <div ref={childrenRef} className="flex gap-3 items-start">
               {node.children.map((child, index) => (
                 <div key={`${child.itemId}-${index}`} className="flex flex-col items-center">
-                  {/* Vertical line down to child */}
-                  <div className={`${shouldHighlightChildren ? 'w-0.5 bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]' : 'w-px bg-purple-500/50'} h-4`}></div>
-                  
-                  {/* Recursive child */}
+                  <div className={`${highlightLinesToChildren ? 'w-0.5 bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]' : 'w-px bg-purple-500/50'} h-4`}></div>
                   <TreeNodeVertical
                     node={child}
                     itemNames={itemNames}
@@ -1324,8 +1266,7 @@ function TreeNodeVertical({
                     queriedItemIds={queriedItemIds}
                     onItemClick={onItemClick}
                     isLoading={isLoading}
-                    optimalPathMap={optimalPathMap}
-                    isCraftingCheaper={isCraftingCheaper && shouldHighlightChildren}
+                    parentOnGreenPath={highlightLinesToChildren}
                     isDcQuery={isDcQuery}
                   />
                 </div>
@@ -1595,70 +1536,6 @@ export default function CraftingTree({
       };
     }
   }, [isDragging, handleDragMove, handleMouseUp]);
-
-  // Calculate optimal path for highlighting
-  const { optimalPathMap, isCraftingCheaper } = useMemo(() => {
-    if (!tree || isLoadingPrices || Object.keys(itemPrices).length === 0) {
-      return { optimalPathMap: null, isCraftingCheaper: false };
-    }
-    
-    // If no children, can't craft
-    if (!tree.children || tree.children.length === 0) {
-      return { optimalPathMap: null, isCraftingCheaper: false };
-    }
-    
-    // Wait for all children to be queried
-    for (const child of tree.children) {
-      if (!queriedItemIds.has(child.itemId)) {
-        // Still loading
-        return { optimalPathMap: null, isCraftingCheaper: false };
-      }
-    }
-    
-    // Calculate crafting cost separately (always returns crafting cost, not market price)
-    const craftingCost = calculateCraftingCost(tree, itemPrices, queriedItemIds);
-    
-    // If we can't calculate crafting cost (null), it means the path is incomplete (still loading)
-    if (craftingCost === null) {
-      return { optimalPathMap: null, isCraftingCheaper: false };
-    }
-    
-    // If cost is 'N/A', don't show optimal path
-    if (craftingCost === 'N/A') {
-      return { optimalPathMap: null, isCraftingCheaper: false };
-    }
-    
-    const rootPrice = itemPrices[tree.itemId]?.price ?? null;
-    
-    // If root has no price, but we can craft it (cost is a number), show the crafting path
-    if (rootPrice === null) {
-      // If we can calculate crafting cost, show the crafting path
-      if (typeof craftingCost === 'number') {
-        const pathMap = buildCraftingPathMap(tree, itemPrices, queriedItemIds);
-        return { optimalPathMap: pathMap, isCraftingCheaper: true };
-      }
-      return { optimalPathMap: null, isCraftingCheaper: false };
-    }
-    
-    // If root has price, compare with crafting cost
-    // Only compare if both are numbers
-    if (typeof craftingCost !== 'number') {
-      return { optimalPathMap: null, isCraftingCheaper: false };
-    }
-    
-    const craftingIsCheaper = craftingCost < rootPrice;
-    
-    // Only highlight if crafting is cheaper than buying
-    if (!craftingIsCheaper) {
-      return { optimalPathMap: null, isCraftingCheaper: false };
-    }
-    
-    // Build the crafting path map for highlighting
-    // Use buildCraftingPathMap instead of buildOptimalPathMap to correctly mark all crafting nodes
-    const pathMap = buildCraftingPathMap(tree, itemPrices, queriedItemIds);
-    
-    return { optimalPathMap: pathMap, isCraftingCheaper: true };
-  }, [tree, itemPrices, queriedItemIds, isLoadingPrices]);
 
   if (!tree) {
     return (
@@ -1944,8 +1821,7 @@ export default function CraftingTree({
             onItemClick={handleItemClick}
             isRoot={true}
             isLoading={isLoadingNames}
-            optimalPathMap={optimalPathMap}
-            isCraftingCheaper={isCraftingCheaper}
+            parentOnGreenPath={true}
             isDcQuery={isDcQuery}
           />
         </div>
@@ -1961,15 +1837,11 @@ export default function CraftingTree({
           <div className="w-3 h-3 rounded bg-slate-800/60 border border-purple-500/30"></div>
           <span>材料</span>
         </div>
-        {isCraftingCheaper && (
+        {!isLoadingPrices && (
           <>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded bg-gradient-to-br from-green-900/40 to-emerald-900/30 border-2 border-green-500/60"></div>
-              <span className="text-green-400">最優路線(製作)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-gradient-to-br from-blue-900/40 to-cyan-900/30 border-2 border-blue-500/60"></div>
-              <span className="text-blue-400">最優路線(購買)</span>
+              <span className="text-green-400">自製較省（綠線到材料）</span>
             </div>
           </>
         )}

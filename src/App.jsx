@@ -147,6 +147,7 @@ function App() {
   const currentIntervalRef = useRef(3500); // Start at 3.5 seconds
   const craftingTreeRef = useRef(null);
   const prevCraftingTreeExpandedRef = useRef(false);
+  const prevExcludeCrystalsRef = useRef(null); // Track previous excludeCrystals to avoid rebuilding tree on selectedItem change
   
   // Crafting tree states
   const [craftingTree, setCraftingTree] = useState(null);
@@ -3546,35 +3547,40 @@ function App() {
     // Auto-expand obtainable if we clicked from obtainable
     // Use setTimeout to ensure this happens after React has updated the DOM
     // This prevents race conditions where component mounts before selectedItem is fully set
+    let autoExpandTimeoutId = null;
     if (shouldAutoExpandObtainableRef.current) {
       // Use a small delay to ensure selectedItem is fully updated in the component tree
-      const timeoutId = setTimeout(() => {
+      autoExpandTimeoutId = setTimeout(() => {
         setIsObtainMethodsExpanded(true);
         setButtonOrder(prev => ({ ...prev, obtainMethods: Math.max(...Object.values(prev)) + 1 }));
         shouldAutoExpandObtainableRef.current = false; // Reset flag after using it
       }, 0);
-      
-      return () => clearTimeout(timeoutId);
     }
 
-    // Check if item has a recipe
+    // ALWAYS load crafting tree + related items regardless of navigation source
+    // (Previously the shouldAutoExpandObtainableRef branch returned early, skipping all of this)
     setIsLoadingCraftingTree(true);
     setCraftingTree(null);
     setIsCraftingTreeExpanded(false);
     
+    let cancelled = false;
+    
     hasRecipe(selectedItem.id)
       .then(async (hasCraft) => {
+        if (cancelled) return;
         setHasCraftingRecipe(hasCraft);
         
         if (hasCraft) {
           // Build the crafting tree with excludeCrystals parameter
           const tree = await buildCraftingTree(selectedItem.id, 1, new Set(), 0, excludeCrystals);
+          if (cancelled) return;
           setCraftingTree(tree);
         }
         
-        setIsLoadingCraftingTree(false);
+        if (!cancelled) setIsLoadingCraftingTree(false);
       })
       .catch(error => {
+        if (cancelled) return;
         console.error('Failed to load crafting recipe:', error);
         setHasCraftingRecipe(false);
         setCraftingTree(null);
@@ -3587,31 +3593,51 @@ function App() {
     
     findRelatedItems(selectedItem.id)
       .then(ids => {
+        if (cancelled) return;
         setHasRelatedItems(ids.length > 0);
         setIsLoadingRelatedItems(false);
       })
       .catch(error => {
+        if (cancelled) return;
         console.error('Failed to check related items:', error);
         setHasRelatedItems(false);
         setIsLoadingRelatedItems(false);
       });
+      
+    return () => {
+      cancelled = true;
+      if (autoExpandTimeoutId !== null) clearTimeout(autoExpandTimeoutId);
+    };
   }, [selectedItem]);
 
-  // Update crafting tree when excludeCrystals changes (without collapsing)
+  // Update crafting tree ONLY when excludeCrystals actually changes (without collapsing).
+  // We guard with a ref so that selectedItem/hasCraftingRecipe changes alone don't trigger
+  // a redundant concurrent tree build (the selectedItem effect already handles that).
   useEffect(() => {
+    // On first mount or when excludeCrystals hasn't changed, just record the value and skip.
+    if (prevExcludeCrystalsRef.current === excludeCrystals) {
+      return;
+    }
+    prevExcludeCrystalsRef.current = excludeCrystals;
+    
     if (!selectedItem || !hasCraftingRecipe) return;
 
+    let cancelled = false;
     setIsLoadingCraftingTree(true);
     
     buildCraftingTree(selectedItem.id, 1, new Set(), 0, excludeCrystals)
       .then(tree => {
+        if (cancelled) return;
         setCraftingTree(tree);
         setIsLoadingCraftingTree(false);
       })
       .catch(error => {
+        if (cancelled) return;
         console.error('Failed to rebuild crafting tree:', error);
         setIsLoadingCraftingTree(false);
       });
+      
+    return () => { cancelled = true; };
   }, [excludeCrystals, selectedItem, hasCraftingRecipe]);
 
   useEffect(() => {
@@ -4654,6 +4680,7 @@ function App() {
                             </div>
                           }>
                             <CraftingTree
+                              key={craftingTree?.itemId}
                               tree={craftingTree}
                               selectedServerOption={selectedServerOption}
                               selectedWorld={selectedWorld}
