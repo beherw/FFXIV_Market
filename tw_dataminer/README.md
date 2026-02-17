@@ -68,11 +68,6 @@ To run setup manually (e.g. after setup failed during datamine):
 .\tw_dataminer\setup-dumpcsv.ps1
 ```
 
-To remove old datamining folders from the parent directory (ji_project) so everything stays in **tw_dataminer/**:
-
-```powershell
-.\tw_dataminer\cleanup-ji-project-datamining.ps1
-```
 
 Game path is hardcoded in **run-pipeline.js** as `D:\FINAL FANTASY XIV TC`. If DumpCSV is already built elsewhere (with SaintCoinach at runtime), set **DUMPCSV_DIR** to its `bin/Release/net8.0` folder.
 
