@@ -1,10 +1,27 @@
 # Extracting TW Client Data for Teamcraft (tw-item.json etc.)
 
-This document describes how **ffxiv-teamcraft** obtained and updated the Taiwan (TW) client data used for `tw-items.json`, `tw-item-descriptions.json`, `tw-item-search-categories.json`, `tw-item-ui-categories.json`, and other `tw-*.json` files. It is based on the Teamcraft data-extraction setup and PR #3098 (tw-json updates).
+This document describes how **ffxiv-teamcraft** obtained and updated the Taiwan (TW) client data used for `tw-items.json`, `tw-item-descriptions.json`, and other `tw-*.json` files.
 
 **Important:** Only **read** game files. Do **not** modify, patch, or write anything inside the game installation directory (e.g. `D:\FINAL FANTASY XIV TC`) to avoid any risk of bans or client integrity issues.
 
-**In this project:** Production extraction lives in **`tw_dataminer/`**. Run `node tw_dataminer/run-pipeline.js` (or `--extract` / `--dumpcsv` / `--pull`) to generate **tw_dataminer/output/tw-*.json**. On deploy, the build runs **`resolve-tw-json`**: for each `tw-*.json` it uses the newer of `teamcraft_git/.../tw/` vs `tw_dataminer/output/`. See `tw_dataminer/README.md`.
+---
+
+## Goal: Extract from your game and use it on the web
+
+**Single path in this project:**
+
+1. **Extract** from your FFXIV TW install: run **`npm run datamine`** (or `node tw_dataminer/run-pipeline.js --extract`). Game path is hardcoded as `D:\FINAL FANTASY XIV TC`. If DumpCSV is not built, the pipeline runs **`tw_dataminer/setup-dumpcsv.ps1`** automatically.
+2. **Resolve** so the build uses that output:  
+   `npm run resolve-tw-json`  
+   (Uses **tw_dataminer/output/** first, then test-extract/output, then teamcraft.)
+3. **Build** items data and run your app:  
+   `node scripts/build-items-data.js` then your normal build/dev.
+
+All extractor dependencies are under **tw_dataminer/** (SaintCoinach, DumpCSV, ffxiv-datamining-tw clone). The older **test-extract** folder and paths under `d:\ji_project\` (e.g. `dumpcsv`, `dumpcsv-output`) are legacy; you can point env vars at them if you still use that setup, but the app will only use their output if you put tw-*.json in **tw_dataminer/output/** or **test-extract/output/** and run resolve-tw-json.
+
+See **tw_dataminer/README.md** for pipeline modes and env vars.
+
+---
 
 ---
 

@@ -19,7 +19,7 @@
  *
  * Env vars:
  *   DATAMINING_TW_DIR  — Path to ffxiv-datamining-tw clone
- *   GAME_PATH          — FFXIV TW install path
+ *   (Game path is hardcoded: D:\FINAL FANTASY XIV TC)
  *   DUMPCSV_DIR        — Path to built DumpCSV bin directory
  *   DUMPCSV_OUTPUT_DIR — DumpCSV rawexd output directory
  *   DOTNET_ROOT        — .NET runtime location (if not in PATH)
@@ -85,10 +85,11 @@ const CSV_CHT_DIR = path.join(TW_DATAMINER_DIR, 'csv', 'cht');
 const LIBRARY_DIR = path.join(TW_DATAMINER_DIR, 'library');
 const OUTPUT_DIR = path.join(TW_DATAMINER_DIR, 'output');
 
-const DATAMINING_TW_DIR = process.env.DATAMINING_TW_DIR || 'd:\\ji_project\\ffxiv-datamining-tw';
-const DUMPCSV_OUTPUT_DIR = process.env.DUMPCSV_OUTPUT_DIR || 'd:\\ji_project\\dumpcsv-output\\rawexd';
-const DUMPCSV_BIN_DIR = process.env.DUMPCSV_DIR || 'd:\\ji_project\\dumpcsv\\bin\\Release\\net8.0';
-const GAME_PATH = process.env.GAME_PATH || 'D:\\FINAL FANTASY XIV TC';
+// All tw_dataminer-related paths default to inside tw_dataminer/ (override with env vars if needed)
+const DATAMINING_TW_DIR = process.env.DATAMINING_TW_DIR || path.join(TW_DATAMINER_DIR, 'ffxiv-datamining-tw');
+const DUMPCSV_OUTPUT_DIR = process.env.DUMPCSV_OUTPUT_DIR || path.join(TW_DATAMINER_DIR, 'dumpcsv-output', 'rawexd');
+const DUMPCSV_BIN_DIR = process.env.DUMPCSV_DIR || path.join(TW_DATAMINER_DIR, 'dumpcsv', 'bin', 'Release', 'net8.0');
+const GAME_PATH = 'D:\\FINAL FANTASY XIV TC';
 
 // Parse args
 const args = process.argv.slice(2);
@@ -151,7 +152,7 @@ function copyFromRepo() {
 
   if (!fs.existsSync(rawexdDir)) {
     console.error('ffxiv-datamining-tw repo not found at:', DATAMINING_TW_DIR);
-    console.error('Clone it: git clone --depth 1 https://github.com/harukaxxxx/ffxiv-datamining-tw.git');
+    console.error('Clone it into tw_dataminer: cd tw_dataminer && git clone --depth 1 https://github.com/harukaxxxx/ffxiv-datamining-tw.git');
     process.exit(1);
   }
 
@@ -218,14 +219,54 @@ function extractFromClient() {
 
   if (!fs.existsSync(gameSqpackDir)) {
     console.error('Game sqpack directory not found:', gameSqpackDir);
-    console.error('Set GAME_PATH env var to your FFXIV TW install directory.');
+    console.error('Game path is set in run-pipeline.js (GAME_PATH).');
     process.exit(1);
   }
 
   if (!fs.existsSync(dumpCsvDll)) {
-    console.error('DumpCSV not built. Expected:', dumpCsvDll);
-    console.error('Build it: cd dumpcsv && dotnet build -c Release');
-    process.exit(1);
+    console.log('DumpCSV not built. Running setup (SaintCoinach + DumpCSV)...');
+    const projectRoot = path.resolve(__dirname, '..');
+    const setupScript = path.join(__dirname, 'setup-dumpcsv.ps1');
+    if (!fs.existsSync(setupScript)) {
+      console.error('Setup script not found:', setupScript);
+      process.exit(1);
+    }
+    try {
+      execSync(`powershell -ExecutionPolicy Bypass -File "${setupScript}"`, {
+        cwd: projectRoot,
+        stdio: 'inherit',
+        timeout: 300000
+      });
+    } catch (e) {
+      console.error('Setup failed. Run manually: .\\tw_dataminer\\setup-dumpcsv.ps1');
+      process.exit(1);
+    }
+    if (!fs.existsSync(dumpCsvDll)) {
+      console.error('DumpCSV still missing after setup:', dumpCsvDll);
+      process.exit(1);
+    }
+    console.log('');
+  }
+
+  // Ensure DumpCSV is up to date (rebuild when code changed)
+  const dumpcsvProj = path.join(DUMPCSV_BIN_DIR, '..', '..', '..', 'DumpCsv.csproj');
+  if (fs.existsSync(dumpcsvProj)) {
+    const { exe: dotnetExe, dir: dotnetDir } = findDotnetExe();
+    const buildEnv = { ...process.env };
+    if (dotnetDir) buildEnv.PATH = dotnetDir + path.delimiter + (process.env.PATH || '');
+    console.log('[Step 0] Building DumpCSV...');
+    try {
+      execSync(`"${dotnetExe}" build "${dumpcsvProj}" -c Release`, {
+        stdio: 'inherit',
+        timeout: 120000,
+        env: buildEnv,
+        cwd: path.dirname(dumpcsvProj)
+      });
+    } catch (e) {
+      console.error('DumpCSV build failed.');
+      process.exit(1);
+    }
+    console.log('');
   }
 
   const gameVerPath = path.join(GAME_PATH, 'game', 'ffxivgame.ver');

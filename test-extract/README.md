@@ -1,4 +1,6 @@
-# Test TW data extractor
+# Test TW data extractor (legacy)
+
+**Prefer `tw_dataminer/` for the main app:** run `node tw_dataminer/run-pipeline.js --extract`; the build uses `tw_dataminer/output/`. See `tw_dataminer/README.md`. resolve-tw-json uses test-extract/output only if tw_dataminer has no file; default paths here point at `d:\ji_project\` (dumpcsv, dumpcsv-output).
 
 This folder runs the same CSV → `tw-*.json` logic as Teamcraft’s data-exporter, but reads CSVs from `library/` and writes JSON into `output/` inside this folder.
 

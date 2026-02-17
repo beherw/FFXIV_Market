@@ -4,18 +4,27 @@ Extracts Traditional Chinese (TW) game data from the FFXIV Taiwan client and wri
 
 On deploy, the project compares these files with **teamcraft_git**’s `tw/` JSONs by modify date and uses the newer source per file.
 
-## Quick run
+## One command: game → web (recommended)
 
 From project root:
 
 ```bash
-# Use pre-extracted CSVs from ffxiv-datamining-tw repo
+npm run datamine
+```
+
+This **builds DumpCSV** (if needed), **runs setup** (SaintCoinach + DumpCSV) when missing, **extracts** from your game folder (`D:\FINAL FANTASY XIV TC`), writes tw-*.json, resolves them, and builds items data. One command handles everything. Then run **`npm run build`** — the app will use the newest data from your game.
+
+---
+
+## Other pipeline modes
+
+From project root:
+
+```bash
+# Use pre-extracted CSVs from ffxiv-datamining-tw repo (no game path)
 node tw_dataminer/run-pipeline.js
 
-# Extract from game client then build JSONs (needs DumpCSV)
-node tw_dataminer/run-pipeline.js --extract
-
-# Use existing DumpCSV output
+# Use existing DumpCSV output only
 node tw_dataminer/run-pipeline.js --dumpcsv
 ```
 
@@ -31,22 +40,48 @@ Output: **tw_dataminer/output/tw-*.json**
 | dumpcsv | `node tw_dataminer/run-pipeline.js --dumpcsv` | Existing DumpCSV rawexd → library → JSON |
 | local | `node tw_dataminer/run-pipeline.js --local` | tw_dataminer/csv/cht/ (Oxidizer format) |
 
+**Authoritative data:** Repo mode uses the **ffxiv-datamining-tw** community repo; that data can be older or contain typos (e.g. wrong character in a name). For strings that match your installed game client, use **extract** (or **dumpcsv** with output from a recent DumpCSV run). That reads from your actual game files, so you get the same text as in-game.
+
+## Paths (all under tw_dataminer by default)
+
+All tw_dataminer-related folders live inside **tw_dataminer/** so nothing is scattered in the project root:
+
+| Path | Default (inside tw_dataminer) | Env override |
+|------|-------------------------------|--------------|
+| ffxiv-datamining-tw clone | `tw_dataminer/ffxiv-datamining-tw` | **DATAMINING_TW_DIR** |
+| DumpCSV rawexd output | `tw_dataminer/dumpcsv-output/rawexd` | **DUMPCSV_OUTPUT_DIR** |
+| DumpCSV build (bin) | `tw_dataminer/dumpcsv/bin/Release/net8.0` | **DUMPCSV_DIR** |
+| CSVs (library) | `tw_dataminer/library/` | — |
+| JSON output | `tw_dataminer/output/` | — |
+
+Clone **ffxiv-datamining-tw** and/or build **DumpCSV** inside **tw_dataminer** to use these defaults.
+
+### Building DumpCSV (for `--extract`)
+
+DumpCSV depends on [xivapi/SaintCoinach](https://github.com/xivapi/SaintCoinach). **`npm run datamine`** runs **`tw_dataminer/setup-dumpcsv.ps1`** automatically when DumpCSV is not built (clone SaintCoinach, build it and DumpCSV, wire DLLs; includes **cht** / Traditional Chinese support).
+
+**Requires:** **.NET 8 SDK** only. All dependencies (SaintCoinach, NuGet config) are under **tw_dataminer/**.
+
+To run setup manually (e.g. after setup failed during datamine):
+
+```powershell
+.\tw_dataminer\setup-dumpcsv.ps1
+```
+
+Game path is hardcoded in **run-pipeline.js** as `D:\FINAL FANTASY XIV TC`. If DumpCSV is already built elsewhere (with SaintCoinach at runtime), set **DUMPCSV_DIR** to its `bin/Release/net8.0` folder.
+
 ## Env vars
 
-- **DATAMINING_TW_DIR** — ffxiv-datamining-tw clone path
-- **GAME_PATH** — FFXIV TW install (e.g. `D:\FINAL FANTASY XIV TC`)
-- **DUMPCSV_DIR** — DumpCSV bin directory
-- **DUMPCSV_OUTPUT_DIR** — DumpCSV rawexd output directory
+- **DATAMINING_TW_DIR** — ffxiv-datamining-tw clone path (default: `tw_dataminer/ffxiv-datamining-tw`)
+- Game path — hardcoded in `run-pipeline.js` as `D:\FINAL FANTASY XIV TC`
+- **DUMPCSV_DIR** — DumpCSV bin directory (default: `tw_dataminer/dumpcsv/bin/Release/net8.0`)
+- **DUMPCSV_OUTPUT_DIR** — DumpCSV rawexd output (default: `tw_dataminer/dumpcsv-output/rawexd`)
 - **DOTNET_ROOT** — .NET runtime (optional)
 - **SKIP_EXPORT** — `1` = only copy CSVs, skip JSON generation
 
-## Deploy behavior
+## How the web app gets TW data
 
-Before build, the app runs **resolve-tw-json**: for each **tw-*.json**, it compares modify time of:
+Before build, **resolve-tw-json** runs and picks sources in this order: (1) tw_dataminer/output, (2) test-extract/output, (3) teamcraft. So after `node tw_dataminer/run-pipeline.js --extract`, run `npm run resolve-tw-json` and `node scripts/build-items-data.js` so the app loads your data.
 
-- **teamcraft_git/libs/data/src/lib/json/tw/** (theirs)
-- **tw_dataminer/output/** (ours)
+See **scripts/resolve-tw-json.js** and **package.json** (`resolve-tw-json`, `prebuild`).
 
-The newer file is used for that build. So after running `tw_dataminer/run-pipeline.js`, your next deploy will use your extracted data when it’s newer than teamcraft’s.
-
-See project root **scripts/resolve-tw-json.js** and **package.json** (`resolve-tw-json`, `prebuild`).

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
  * Resolve TW JSON sources for deploy/build.
- * For each tw-*.json, compare modify date of:
- *   - teamcraft_git/libs/data/src/lib/json/tw/ (theirs)
- *   - tw_dataminer/output/ (ours)
- * Copy the newer file into .tw-json/ so build and Vite use it.
- * If only one source exists, use that one.
+ * For each tw-*.json, use first available in order:
+ *   1. tw_dataminer/output/   — production pipeline (run tw_dataminer/run-pipeline.js --extract)
+ *   2. test-extract/output/   — legacy extractor (run test-extract/run-pipeline.js --extract)
+ *   3. teamcraft_git/.../tw/  — upstream Teamcraft data
+ * Copies the chosen file into .tw-json/ so build and Vite use it.
  */
 
 import fs from 'fs';
@@ -15,17 +15,21 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const TC_TW_DIR = path.join(ROOT, 'teamcraft_git', 'libs', 'data', 'src', 'lib', 'json', 'tw');
-const OUR_OUTPUT_DIR = path.join(ROOT, 'tw_dataminer', 'output');
+const TW_DATAMINER_OUTPUT = path.join(ROOT, 'tw_dataminer', 'output');
+const TEST_EXTRACT_OUTPUT = path.join(ROOT, 'test-extract', 'output');
 const RESOLVED_DIR = path.join(ROOT, '.tw-json');
 
 function listTwJsonFiles() {
   const fromTc = fs.existsSync(TC_TW_DIR)
     ? fs.readdirSync(TC_TW_DIR).filter((f) => f.startsWith('tw-') && f.endsWith('.json'))
     : [];
-  const fromOurs = fs.existsSync(OUR_OUTPUT_DIR)
-    ? fs.readdirSync(OUR_OUTPUT_DIR).filter((f) => f.startsWith('tw-') && f.endsWith('.json'))
+  const fromOurs = fs.existsSync(TW_DATAMINER_OUTPUT)
+    ? fs.readdirSync(TW_DATAMINER_OUTPUT).filter((f) => f.startsWith('tw-') && f.endsWith('.json'))
     : [];
-  const set = new Set([...fromTc, ...fromOurs]);
+  const fromTest = fs.existsSync(TEST_EXTRACT_OUTPUT)
+    ? fs.readdirSync(TEST_EXTRACT_OUTPUT).filter((f) => f.startsWith('tw-') && f.endsWith('.json'))
+    : [];
+  const set = new Set([...fromTc, ...fromOurs, ...fromTest]);
   return [...set].sort();
 }
 
@@ -44,40 +48,38 @@ function main() {
 
   const files = listTwJsonFiles();
   if (files.length === 0) {
-    console.log('[resolve-tw-json] No tw-*.json found in teamcraft or tw_dataminer/output. Using teamcraft path for build.');
+    console.log('[resolve-tw-json] No tw-*.json found. Using teamcraft path for build.');
     return;
   }
 
-  let usedOurs = 0;
-  let usedTheirs = 0;
+  let fromTwDataminer = 0;
+  let fromTestExtract = 0;
+  let fromTeamcraft = 0;
 
   for (const name of files) {
+    const twPath = path.join(TW_DATAMINER_OUTPUT, name);
+    const testPath = path.join(TEST_EXTRACT_OUTPUT, name);
     const tcPath = path.join(TC_TW_DIR, name);
-    const ourPath = path.join(OUR_OUTPUT_DIR, name);
     const resolvedPath = path.join(RESOLVED_DIR, name);
 
-    const tcMtime = getMtime(tcPath);
-    const ourMtime = getMtime(ourPath);
-
     let sourcePath;
-    if (tcMtime && !ourMtime) {
+    if (getMtime(twPath)) {
+      sourcePath = twPath;
+      fromTwDataminer++;
+    } else if (getMtime(testPath)) {
+      sourcePath = testPath;
+      fromTestExtract++;
+    } else if (getMtime(tcPath)) {
       sourcePath = tcPath;
-      usedTheirs++;
-    } else if (ourMtime && !tcMtime) {
-      sourcePath = ourPath;
-      usedOurs++;
-    } else if (ourMtime >= tcMtime) {
-      sourcePath = ourPath;
-      usedOurs++;
+      fromTeamcraft++;
     } else {
-      sourcePath = tcPath;
-      usedTheirs++;
+      continue;
     }
 
     fs.copyFileSync(sourcePath, resolvedPath);
   }
 
-  console.log(`[resolve-tw-json] Resolved ${files.length} tw-*.json → .tw-json/ (ours: ${usedOurs}, teamcraft: ${usedTheirs})`);
+  console.log(`[resolve-tw-json] Resolved ${files.length} tw-*.json → .tw-json/ (tw_dataminer: ${fromTwDataminer}, test-extract: ${fromTestExtract}, teamcraft: ${fromTeamcraft})`);
 }
 
 main();

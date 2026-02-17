@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "datamine": "node tw_dataminer/run-pipeline.js --extract && node scripts/resolve-tw-json.js && node scripts/build-items-data.js",
     "resolve-tw-json": "node scripts/resolve-tw-json.js",
     "prebuild": "npm run resolve-tw-json && node scripts/build-recipe-data.js && node scripts/build-items-data.js && node scripts/build-fates-data.js && node scripts/build-obtainable-methods-optimized.js",
     "build": "vite build",
