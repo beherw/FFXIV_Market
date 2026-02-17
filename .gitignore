@@ -36,8 +36,9 @@ playground/*
 .tw-json
 
 # TW dataminer: ignore extracted CSVs (large, regeneratable); push only final tw-*.json in output/
-# SaintCoinach is cloned by setup-dumpcsv.ps1 (not a git submodule), so ignore to avoid committing a clone
+# SaintCoinach and ffxiv-datamining-tw are cloned by setup/pipeline when needed (not git submodules)
 tw_dataminer/SaintCoinach
+tw_dataminer/ffxiv-datamining-tw
 tw_dataminer/library/*.csv
 tw_dataminer/csv/*
 !tw_dataminer/csv/.gitkeep
