@@ -18,13 +18,13 @@
  *
  * Env vars:
  *   DATAMINING_TW_DIR  — Path to ffxiv-datamining-tw clone
- *                          (default: d:\ji_project\ffxiv-datamining-tw)
+ *                          (default: tw_dataminer/ffxiv-datamining-tw)
  *   GAME_PATH          — FFXIV TW install path
  *                          (default: D:\FINAL FANTASY XIV TC)
  *   DUMPCSV_DIR        — Path to built DumpCSV bin directory
- *                          (default: d:\ji_project\dumpcsv\bin\Release\net8.0)
+ *                          (default: tw_dataminer/dumpcsv/bin/Release/net8.0)
  *   DUMPCSV_OUTPUT_DIR — DumpCSV rawexd output directory
- *                          (default: d:\ji_project\dumpcsv-output\rawexd)
+ *                          (default: tw_dataminer/dumpcsv-output/rawexd)
  *   DOTNET_ROOT        — .NET runtime location (if not in PATH)
  *   SKIP_EXPORT        — Set to "1" to skip JSON generation (only copy CSVs)
  */
@@ -34,6 +34,7 @@ const fs = require('fs');
 const { execSync, spawnSync } = require('child_process');
 
 const TEST_EXTRACT_DIR = path.resolve(__dirname);
+const ROOT = path.resolve(__dirname, '..');
 
 /**
  * Find dotnet executable: DOTNET_ROOT, then PATH, then common install paths.
@@ -88,9 +89,9 @@ const CSV_CHT_DIR = path.join(TEST_EXTRACT_DIR, 'csv', 'cht');
 const LIBRARY_DIR = path.join(TEST_EXTRACT_DIR, 'library');
 const OUTPUT_DIR = path.join(TEST_EXTRACT_DIR, 'output');
 
-const DATAMINING_TW_DIR = process.env.DATAMINING_TW_DIR || 'd:\\ji_project\\ffxiv-datamining-tw';
-const DUMPCSV_OUTPUT_DIR = process.env.DUMPCSV_OUTPUT_DIR || 'd:\\ji_project\\dumpcsv-output\\rawexd';
-const DUMPCSV_BIN_DIR = process.env.DUMPCSV_DIR || 'd:\\ji_project\\dumpcsv\\bin\\Release\\net8.0';
+const DATAMINING_TW_DIR = process.env.DATAMINING_TW_DIR || path.join(ROOT, 'tw_dataminer', 'ffxiv-datamining-tw');
+const DUMPCSV_OUTPUT_DIR = process.env.DUMPCSV_OUTPUT_DIR || path.join(ROOT, 'tw_dataminer', 'dumpcsv-output', 'rawexd');
+const DUMPCSV_BIN_DIR = process.env.DUMPCSV_DIR || path.join(ROOT, 'tw_dataminer', 'dumpcsv', 'bin', 'Release', 'net8.0');
 const GAME_PATH = process.env.GAME_PATH || 'D:\\FINAL FANTASY XIV TC';
 
 // Parse args

@@ -1,6 +1,6 @@
 # Test TW data extractor (legacy)
 
-**Prefer `tw_dataminer/` for the main app:** run `node tw_dataminer/run-pipeline.js --extract`; the build uses `tw_dataminer/output/`. See `tw_dataminer/README.md`. resolve-tw-json uses test-extract/output only if tw_dataminer has no file; default paths here point at `d:\ji_project\` (dumpcsv, dumpcsv-output).
+**Prefer `tw_dataminer/` for the main app:** run `node tw_dataminer/run-pipeline.js --extract`; the build uses `tw_dataminer/output/`. See `tw_dataminer/README.md`. resolve-tw-json uses test-extract/output only if tw_dataminer has no file. Default paths here use **tw_dataminer/** (dumpcsv, dumpcsv-output, ffxiv-datamining-tw) — no dependencies outside this repo.
 
 This folder runs the same CSV → `tw-*.json` logic as Teamcraft’s data-exporter, but reads CSVs from `library/` and writes JSON into `output/` inside this folder.
 
@@ -14,7 +14,7 @@ node test-extract/run-pipeline.js --extract
 
 This will:
 
-1. **Datamine** your FFXIV TW client (DumpCSV) → CSVs to `DUMPCSV_OUTPUT_DIR` (default `d:\ji_project\dumpcsv-output\rawexd`).
+1. **Datamine** your FFXIV TW client (DumpCSV) → CSVs to `DUMPCSV_OUTPUT_DIR` (default `tw_dataminer/dumpcsv-output/rawexd`).
 2. **Copy** those CSVs into `test-extract/library/`.
 3. **Generate** `tw-*.json` into **`test-extract/output/`**.
 

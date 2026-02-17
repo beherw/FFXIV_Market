@@ -17,7 +17,7 @@ This document describes how **ffxiv-teamcraft** obtained and updated the Taiwan 
 3. **Build** items data and run your app:  
    `node scripts/build-items-data.js` then your normal build/dev.
 
-All extractor dependencies are under **tw_dataminer/** (SaintCoinach, DumpCSV, ffxiv-datamining-tw clone). The older **test-extract** folder and paths under `d:\ji_project\` (e.g. `dumpcsv`, `dumpcsv-output`) are legacy; you can point env vars at them if you still use that setup, but the app will only use their output if you put tw-*.json in **tw_dataminer/output/** or **test-extract/output/** and run resolve-tw-json.
+All extractor dependencies live under **tw_dataminer/** (SaintCoinach, DumpCSV, ffxiv-datamining-tw clone). The **test-extract** folder is legacy; it defaults to the same paths under **tw_dataminer/** (ffxiv-datamining-tw, dumpcsv, dumpcsv-output). No paths outside this repo are used.
 
 See **tw_dataminer/README.md** for pipeline modes and env vars.
 
@@ -155,7 +155,7 @@ Tools like [thewakingsands/dumpcsv](https://github.com/thewakingsands/dumpcsv) c
 The TW exporter reads CSVs from the **library** folder at the **root** of the Teamcraft repo:
 
 - Path (from repo root): `library/`
-- Full path example: `d:\ji_project\FFXIV_market\teamcraft_git\library\`
+- Full path example: `<repo>/teamcraft_git/library/`
 
 For TW, the config uses **no language suffix** in the CSV file name:
 
