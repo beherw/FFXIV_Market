@@ -5282,7 +5282,6 @@ function App() {
                       <div>
                         <p className="text-gray-300 leading-relaxed mb-2">
                           有幫助到你的話，看到就打個招呼吧~ 
-                          <span className="text-ffxiv-gold">（賣我便宜點！）</span>
                         </p>
                         <p className="text-gray-400 text-xs sm:text-sm italic flex items-center gap-1.5 mb-0 mt-5">
                           或者...
