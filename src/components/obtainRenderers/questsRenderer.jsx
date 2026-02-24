@@ -1,6 +1,7 @@
 // QUESTS renderer (Type 10 - 任務獎勵)
 import React from 'react';
 import { commonClasses } from './sharedUtils.jsx';
+import { FALLBACK_MESSAGE } from '../../constants/obtainableConstants';
 
 export function renderQuests({
   source,
@@ -204,7 +205,7 @@ export function renderQuests({
                   </div>
                 )}
                 
-                {startingNpcName && startingNpcName !== `NPC ${startingNpcId}` && (
+                {startingNpcName && startingNpcName !== FALLBACK_MESSAGE && startingNpcName !== `NPC ${startingNpcId}` && (
                   <div className=\"text-gray-400\">{startingNpcName}</div>
                 )}
                 

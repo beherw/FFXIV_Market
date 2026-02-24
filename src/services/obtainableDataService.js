@@ -218,6 +218,30 @@ export async function loadDataForRequiredIds(requiredIds, options = {}) {
 
   await Promise.all(loaders);
 
+  // Phase 2: Extract quest starting NPC IDs from questsDatabasePages and load their data
+  // (Quest issuers are not in extractIdsFromSources because that data comes from quests domain)
+  if (out.questsDatabasePages && typeof out.questsDatabasePages === 'object') {
+    const questStartingNpcIds = [];
+    for (const quest of Object.values(out.questsDatabasePages)) {
+      const startId = quest?.start;
+      if (startId != null && startId !== '') {
+        questStartingNpcIds.push(typeof startId === 'number' ? startId : parseInt(startId, 10));
+      }
+    }
+    const uniqueQuestNpcIds = [...new Set(questStartingNpcIds)].filter(
+      id => id && !isNaN(id) && !(String(id) in (out.twNpcs || {}))
+    );
+    if (uniqueQuestNpcIds.length > 0) {
+      const npcData = await loadDomain('npcs', signal);
+      const sliced = sliceById(npcData?.twNpcs || {}, uniqueQuestNpcIds);
+      const slicedEn = sliceById(npcData?.npcs || {}, uniqueQuestNpcIds);
+      const slicedDb = sliceById(npcData?.npcsDatabasePages || {}, uniqueQuestNpcIds);
+      out.twNpcs = { ...(out.twNpcs || {}), ...sliced };
+      out.npcs = { ...(out.npcs || {}), ...slicedEn };
+      out.npcsDatabasePages = { ...(out.npcsDatabasePages || {}), ...slicedDb };
+    }
+  }
+
   return out;
 }
 

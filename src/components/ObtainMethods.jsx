@@ -2596,7 +2596,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                     )}
                     
                     {/* Starting NPC */}
-                    {startingNpcName && startingNpcName !== `NPC ${startingNpcId}` && (
+                    {startingNpcName && startingNpcName !== FALLBACK_MESSAGE && startingNpcName !== `NPC ${startingNpcId}` && (
                       <div className="text-gray-400">{startingNpcName}</div>
                     )}
                     
