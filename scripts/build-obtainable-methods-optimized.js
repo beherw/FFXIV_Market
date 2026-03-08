@@ -14,12 +14,16 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { DataType, TYPE_CHINESE_NAMES, getStringFromTypeId } from '../src/constants/dataTypes.js';
+import { getTwJsonPath } from './tw-json-paths.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const EXTRACTS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/extracts/extracts.json');
 const INSTANCES_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/instances.json');
+const MAPS_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/maps.json');
+const PLACES_SOURCE = path.join(__dirname, '../teamcraft_git/libs/data/src/lib/json/places.json');
+const TW_PLACES_SOURCE = getTwJsonPath('tw-places.json');
 const OUTPUT_DIR = path.join(__dirname, '../public/data');
 const OUTPUT_FILE_MSGPACK = path.join(OUTPUT_DIR, 'obtainable-methods.msgpack');
 
@@ -65,11 +69,33 @@ function getInstanceTypeName(instanceIds, instancesMap) {
   return TYPE_NAME_MAP[DataType.INSTANCES];
 }
 
+function getPlaceNameById(placeId, twPlacesMap, placesMap) {
+  if (!placeId) return '';
+  const tw = twPlacesMap?.[placeId] || twPlacesMap?.[String(placeId)];
+  if (tw?.tw) return tw.tw;
+  const place = placesMap?.[placeId] || placesMap?.[String(placeId)];
+  return place?.en || '';
+}
+
+function composeZoneDisplayName(node, mapsMap, twPlacesMap, placesMap) {
+  if (!node || typeof node !== 'object') return '';
+
+  const subName = getPlaceNameById(node.zoneId, twPlacesMap, placesMap);
+  const mapId = node.map ?? node.mapId;
+  const map = mapsMap?.[mapId] || mapsMap?.[String(mapId)];
+  const mainName = getPlaceNameById(map?.placename_id, twPlacesMap, placesMap);
+
+  if (!mainName) return subName;
+  if (!subName || mainName === subName) return mainName;
+  if (subName.startsWith(mainName)) return subName;
+  return `${mainName}・${subName}`;
+}
+
 /**
  * Extract only essential fields from source data
  * Mimics ffxiv-item-search-tc's approach of storing minimal data
  */
-function extractEssentialData(type, rawData, instancesMap) {
+function extractEssentialData(type, rawData, instancesMap, mapsMap, twPlacesMap, placesMap) {
   const typeName = type === DataType.INSTANCES 
     ? getInstanceTypeName(rawData, instancesMap)
     : (TYPE_NAME_MAP[type] || '未知');
@@ -175,8 +201,14 @@ function extractEssentialData(type, rawData, instancesMap) {
         result.fateName = rawData[0].name || '';
         result.level = rawData[0].level;
         result.zoneId = rawData[0].zoneId;
-        // Preserve full fate list for frontend rendering
-        result.data = rawData;
+        // Preserve full fate list for frontend rendering and enrich zone names
+        result.data = rawData.map(fate => {
+          if (!fate || typeof fate !== 'object') return fate;
+          return {
+            ...fate,
+            zoneName: composeZoneDisplayName(fate, mapsMap, twPlacesMap, placesMap)
+          };
+        });
       }
       break;
 
@@ -227,6 +259,7 @@ function extractEssentialData(type, rawData, instancesMap) {
           level: node.level,
           zoneId: node.zoneId,
           mapId: node.map,
+          zoneName: composeZoneDisplayName(node, mapsMap, twPlacesMap, placesMap),
           x: node.x,
           y: node.y,
           nodeId: node.id,
@@ -279,6 +312,7 @@ function extractEssentialData(type, rawData, instancesMap) {
           nodeId: alarm.nodeId,
           zoneId: alarm.zoneId,
           mapId: alarm.mapId,
+          zoneName: composeZoneDisplayName(alarm, mapsMap, twPlacesMap, placesMap),
           x: alarm.coords?.x,
           y: alarm.coords?.y,
           spawns: alarm.spawns,
@@ -373,6 +407,9 @@ function buildOptimizedData() {
 
   const extracts = loadJson(EXTRACTS_SOURCE, 'extracts');
   const instances = loadJson(INSTANCES_SOURCE, 'instances');
+  const maps = loadJson(MAPS_SOURCE, 'maps');
+  const places = loadJson(PLACES_SOURCE, 'places');
+  const twPlaces = loadJson(TW_PLACES_SOURCE, 'tw-places');
 
   console.log('[Obtainable] Processing and optimizing data...');
   const result = {};
@@ -398,7 +435,7 @@ function buildOptimizedData() {
       }
 
       try {
-        const optimizedSource = extractEssentialData(source.type, source.data, instances);
+        const optimizedSource = extractEssentialData(source.type, source.data, instances, maps, twPlaces, places);
         if (optimizedSource._tradeResults && Array.isArray(optimizedSource._tradeResults)) {
           optimizedSource._tradeResults.forEach(s => sources.push(s));
         } else {

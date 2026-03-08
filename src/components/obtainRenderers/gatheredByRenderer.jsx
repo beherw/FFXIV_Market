@@ -29,7 +29,7 @@ export function renderGatheredBy({
     2: '採伐',
     3: '割取',
     4: '釣魚',
-    5: '潛水',
+    5: '刺魚',
   };
 
   const gatheringLevel = data.level || 0;
@@ -47,7 +47,7 @@ export function renderGatheredBy({
       <div className="flex flex-wrap gap-2 mt-2">
         {data.nodes.map((node, nodeIndex) => {
           const zoneId = node.zoneId;
-          const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
+          const zoneName = node.zoneName || (zoneId ? getPlaceNameCN(zoneId) : '');
           const mapId = node.mapId;
           const coords = node.x !== undefined && node.y !== undefined ? { x: node.x, y: node.y } : null;
           const hasLocation = coords && mapId;

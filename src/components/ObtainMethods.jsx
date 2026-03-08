@@ -1060,11 +1060,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       mapId,
       coords,
       radius,
+      zoneName: zoneNameOverride,
       contextName = ''
     } = locationData;
 
     // 1. 获取地图名称（中文优先）
-    const zoneName = zoneId ? getPlaceNameCN(zoneId) : '';
+    const zoneName = zoneNameOverride || (zoneId ? getPlaceNameCN(zoneId) : '');
 
     // 2. 检查是否有有效的坐标
     const hasValidCoords = coords && coords.x !== undefined && coords.y !== undefined;
@@ -2686,7 +2687,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const levelFromData = fateInfo?.level ?? null;
               const zoneIdFromData = fateInfo?.zoneId ?? null;
               const zoneIdForName = fateZoneId ?? zoneIdFromData;
-              const zoneName = zoneIdForName ? getPlaceNameCN(zoneIdForName) : '';
+              const zoneName = (typeof fate === 'object' ? fate.zoneName : '') || (zoneIdForName ? getPlaceNameCN(zoneIdForName) : '');
               const hasLocation = (fateCoords && fateCoords.x !== undefined && fateCoords.y !== undefined && fateMapId) ||
                 (fateInfo?.x != null && fateInfo?.y != null && fateInfo?.mapId);
               const rewardItemsRaw = fateInfo?.items || [];
@@ -2749,7 +2750,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       )}
                       {displayLevel && (
                         <div className="text-xs text-gray-400 mt-0.5">
-                          {zoneName ? `${zoneName} ` : ''}{displayLevel}級危命任務
+                          {displayLevel}級危命任務
                           {isNotoriousMonster && <span className="ml-1 text-yellow-400">惡名精英</span>}
                         </div>
                       )}
@@ -3007,8 +3008,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         1: '採石',
         2: '採伐',
         3: '割取',
-        4: '釣魚',
-        5: '潛水',
+        4: '捕魚師',
+        5: '捕魚師',
       };
 
       const gatheringLevel = source.level || data?.level || 0;
@@ -3018,6 +3019,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       const nodeType = Math.abs(rawNodeType);
       const nodeIcon = nodeTypeIcons[nodeType] || nodeTypeIcons[0];
       const nodeTypeName = nodeTypeNames[nodeType] || '採集';
+      const nodePointLabel = nodeType === 4 ? '釣場' : (nodeType === 5 ? '刺魚點' : `${nodeTypeName}採集點`);
 
       return (
         <div key={`gathered-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
@@ -3078,11 +3080,18 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                 mapId: mapId,
                 coords: coords,
                 radius: node.radius,
-                contextName: `${nodeTypeName}采集點`
+                zoneName: node.zoneName,
+                contextName: nodePointLabel
               });
+              const primaryLocationText = locationInfo.zoneName || locationInfo.displayText;
+              const hasCoordsRow = !!locationInfo.zoneName && !!locationInfo.coordsText;
               const nodeLevel = node.level || gatheringLevel;
               const isLimited = node.limited === true;
               const isIslandNode = node.isIslandNode === true;
+              const isFishingType = nodeType === 4 || nodeType === 5;
+              const fishCakeUrl = isFishingType && node.nodeId
+                ? `https://fish.ffmomola.com/ng/#/wiki/fishing/spot/${node.nodeId}/fish/${itemId}`
+                : null;
               const timing = isLimited
                 ? getLimitedNodeTiming(node.spawns, node.duration, eorzeaTime.totalMinutes)
                 : null;
@@ -3090,16 +3099,32 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               return (
                 <div key={nodeIndex} className={`${getInnerItemLayoutClass(totalMethodCards)} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}>
                   <div className="flex items-center gap-2 mb-1">
-                    <img src="https://garlandtools.org/db/images/node/Mineral%20Deposit%20Limited.png" alt={nodeTypeName} className="w-9 h-9 object-contain" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-white">
-                        {locationInfo.displayText}
-                      </div>
+                    <img src={nodeIcon} alt={nodeTypeName} className="w-9 h-9 object-contain" />
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
                       {!isIslandNode && nodeLevel > 0 && (
-                        <div className="text-xs text-gray-400 mt-0.5">
+                        <div className="text-sm text-gray-200">
                           Lv.{nodeLevel} {nodeTypeName}
                           {isLimited && <span className="ml-1 text-yellow-400">限時</span>}
                         </div>
+                      )}
+                      {fishCakeUrl && (
+                        <a
+                          href={fishCakeUrl}
+                          target="_blank"
+                          rel="nofollow noreferrer noopener"
+                          onClick={(event) => event.stopPropagation()}
+                          className="inline-flex items-center gap-1 mt-1 text-xs text-blue-300 hover:text-blue-200 hover:underline"
+                        >
+                          <img
+                            alt="Icon pastry fish.png"
+                            src="https://huiji-thumb.huijistatic.com/ff14/uploads/thumb/f/f2/Icon_pastry_fish.png/16px-Icon_pastry_fish.png"
+                            decoding="async"
+                            width="16"
+                            height="16"
+                            srcSet="https://huiji-thumb.huijistatic.com/ff14/uploads/thumb/f/f2/Icon_pastry_fish.png/24px-Icon_pastry_fish.png 1.5x, https://huiji-thumb.huijistatic.com/ff14/uploads/thumb/f/f2/Icon_pastry_fish.png/32px-Icon_pastry_fish.png 2x"
+                          />
+                          <span>魚糕</span>
+                        </a>
                       )}
                       {isIslandNode && (
                         <div className="text-xs text-gray-400 mt-0.5">
@@ -3136,15 +3161,22 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        openMapModal(locationInfo, `${nodeTypeName}採集點`);
+                        openMapModal(locationInfo, nodePointLabel);
                       }}
                       className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-700/50 text-xs text-blue-400 hover:bg-slate-800/50 hover:text-blue-300 rounded px-1 py-0.5 transition-all w-full text-left"
                     >
                       <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                       </svg>
-                      <span>
-                        {locationInfo.displayText}
+                      <span className="flex flex-col justify-center items-start leading-tight">
+                        <span>
+                          {primaryLocationText}
+                        </span>
+                        {hasCoordsRow && (
+                          <span className="text-[11px] text-blue-300/90 mt-0.5">
+                            {locationInfo.coordsText}
+                          </span>
+                        )}
                       </span>
                     </button>
                   )}

@@ -29,7 +29,7 @@ export function renderAlarms({
     2: '採伐',
     3: '割取',
     4: '釣魚',
-    5: '潛水',
+    5: '刺魚',
   };
 
   return (
