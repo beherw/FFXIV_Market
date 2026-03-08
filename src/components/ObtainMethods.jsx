@@ -3117,7 +3117,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         >
                           <img
                             alt="魚糕"
-                            src="/pastry-fish.png"
+                            src="/pastry-fish.webp"
                             width="16"
                             height="16"
                             className="w-4 h-4 object-contain"
