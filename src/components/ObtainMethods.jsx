@@ -3115,13 +3115,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                           onClick={(event) => event.stopPropagation()}
                           className="inline-flex items-center gap-1 mt-1 text-xs text-blue-300 hover:text-blue-200 hover:underline"
                         >
-                          <img
-                            alt="Icon pastry fish.png"
-                            src="https://huiji-thumb.huijistatic.com/ff14/uploads/thumb/f/f2/Icon_pastry_fish.png/16px-Icon_pastry_fish.png"
-                            decoding="async"
-                            width="16"
-                            height="16"
-                            srcSet="https://huiji-thumb.huijistatic.com/ff14/uploads/thumb/f/f2/Icon_pastry_fish.png/24px-Icon_pastry_fish.png 1.5x, https://huiji-thumb.huijistatic.com/ff14/uploads/thumb/f/f2/Icon_pastry_fish.png/32px-Icon_pastry_fish.png 2x"
+                          <ItemImage
+                            itemId={itemId}
+                            alt="魚糕"
+                            className="w-4 h-4"
                           />
                           <span>魚糕</span>
                         </a>
