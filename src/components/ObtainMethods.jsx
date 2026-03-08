@@ -3115,10 +3115,12 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                           onClick={(event) => event.stopPropagation()}
                           className="inline-flex items-center gap-1 mt-1 text-xs text-blue-300 hover:text-blue-200 hover:underline"
                         >
-                          <ItemImage
-                            itemId={itemId}
+                          <img
                             alt="魚糕"
-                            className="w-4 h-4"
+                            src="/pastry-fish.png"
+                            width="16"
+                            height="16"
+                            className="w-4 h-4 object-contain"
                           />
                           <span>魚糕</span>
                         </a>
