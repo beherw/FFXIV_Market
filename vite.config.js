@@ -2,6 +2,8 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import wasm from 'vite-plugin-wasm'
+import topLevelAwait from 'vite-plugin-top-level-await'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -12,12 +14,16 @@ const TC_TW_JSON_DIR = path.resolve(__dirname, 'teamcraft_git/libs/data/src/lib/
 // https://vitejs.dev/config/
 export default defineConfig({
   base: process.env.GITHUB_PAGES === 'true' ? '/FFXIV_Market/' : '/',
-  plugins: [react()],
+  plugins: [wasm(), topLevelAwait(), react()],
   resolve: {
     alias: [
       // Prefer resolved tw-*.json (by mtime) over teamcraft so deploy uses ours when newer
       { find: TC_TW_JSON_DIR, replacement: TW_JSON_DIR },
     ],
+  },
+  worker: {
+    format: 'es',
+    plugins: () => [wasm()],
   },
   build: {
     rollupOptions: {

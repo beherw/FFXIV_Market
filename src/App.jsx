@@ -72,6 +72,7 @@ const RecentUpdatesSection = createLazyComponent(() => import('./components/Rece
 const ObtainMethods = createLazyComponent(() => import('./components/ObtainMethods.jsx'), 'ObtainMethods');
 const MultiItemListModal = createLazyComponent(() => import('./components/MultiItemListModal.jsx'), 'MultiItemListModal');
 const MultiItemCombinedTree = createLazyComponent(() => import('./components/MultiItemCombinedTree.jsx'), 'MultiItemCombinedTree');
+const CraftingSimulatorDrawer = createLazyComponent(() => import('./components/CraftingSimulatorDrawer.jsx'), 'CraftingSimulatorDrawer');
 
 const TAX_SERVER_STORAGE_KEY = 'tax_server';
 
@@ -154,6 +155,7 @@ function App() {
   const [hasCraftingRecipe, setHasCraftingRecipe] = useState(false);
   const [isCraftingTreeExpanded, setIsCraftingTreeExpanded] = useState(false);
   const [isLoadingCraftingTree, setIsLoadingCraftingTree] = useState(false);
+  const [isCraftingSimulatorOpen, setIsCraftingSimulatorOpen] = useState(false);
   
   // Load excludeCrystals preference from localStorage (default: true, meaning exclude crystals)
   const [excludeCrystals, setExcludeCrystals] = useState(() => {
@@ -926,7 +928,7 @@ function App() {
       const itemName = selectedItem.nameTW || selectedItemMeta?.tw || selectedItem.name || '未知物品';
       document.title = `${itemName} - 繁中XIV市場 - FF14 Market`;
     } else {
-      document.title = '繁中XIV市場 - FF14 Market - 貝爾的市場小屋';
+      document.title = '繁中XIV市場｜FF14 Market 查價工具 - 貝爾的市場小屋';
     }
   }, [selectedItem, selectedItemMeta]);
 
@@ -3521,6 +3523,7 @@ function App() {
       setCraftingTree(null);
       setHasCraftingRecipe(false);
       setIsCraftingTreeExpanded(false);
+      setIsCraftingSimulatorOpen(false);
       setHasRelatedItems(false);
       setIsRelatedItemsExpanded(false);
       setIsObtainMethodsExpanded(false);
@@ -4494,6 +4497,34 @@ function App() {
                     )}
                     <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">製作價格樹</span>
                   </button>
+
+                  {/* Crafting Simulator Button */}
+                  {hasCraftingRecipe && (
+                    <button
+                      onClick={() => setIsCraftingSimulatorOpen(true)}
+                      disabled={isLoadingCraftingTree}
+                      className={`
+                        relative flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 overflow-hidden
+                        ${isLoadingCraftingTree
+                          ? 'bg-slate-800/30 border border-slate-600/20 text-gray-600 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-emerald-900/50 via-teal-900/40 to-cyan-900/50 border border-emerald-400/40 text-emerald-200 hover:text-ffxiv-gold hover:border-ffxiv-gold/50 hover:shadow-[0_0_18px_rgba(20,184,166,0.2)]'
+                        }
+                      `}
+                      title={isLoadingCraftingTree ? '配方資料載入中...' : '打開模擬製作面板'}
+                    >
+                      {!isLoadingCraftingTree && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_1]" />
+                      )}
+                      {isLoadingCraftingTree ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-400/30 border-t-emerald-400" />
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3.104v5.714a2.143 2.143 0 01-.627 1.515L5.61 13.846a2.143 2.143 0 000 3.03l1.515 1.515a2.143 2.143 0 003.03 0l3.513-3.513a2.143 2.143 0 011.515-.627h5.714M15 5h4m0 0v4m0-4L9 15" />
+                        </svg>
+                      )}
+                      <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">模擬製作</span>
+                    </button>
+                  )}
 
                   {/* Related Items Button - only show if has related items */}
                   {(hasRelatedItems || isLoadingRelatedItems) && (
@@ -5542,6 +5573,16 @@ function App() {
             excludeCrystals={excludeCrystals}
             onExcludeCrystalsChange={handleExcludeCrystalsChange}
             currentItemId={currentItemId}
+          />
+        </Suspense>
+      </ErrorBoundary>
+
+      <ErrorBoundary fallbackMessage="模擬製作面板載入失敗，請重新整理頁面">
+        <Suspense fallback={null}>
+          <CraftingSimulatorDrawer
+            isOpen={isCraftingSimulatorOpen}
+            item={selectedItem}
+            onClose={() => setIsCraftingSimulatorOpen(false)}
           />
         </Suspense>
       </ErrorBoundary>

@@ -95,7 +95,7 @@ export default function ItemSEO({ item }) {
     
     // Cleanup: 返回主頁時重置
     return () => {
-      document.title = '繁中XIV市場 - FF14 Market - 貝爾的市場小屋';
+      document.title = '繁中XIV市場｜FF14 Market 查價工具 - 貝爾的市場小屋';
       
       // 重置 meta description
       const resetMeta = (name, content) => {
@@ -123,7 +123,7 @@ export default function ItemSEO({ item }) {
       
       resetOG('og:type', 'website');
       resetOG('og:url', `${baseUrl}/`);
-      resetOG('og:title', '繁中XIV市場 - FF14 Market - 貝爾的市場小屋');
+      resetOG('og:title', '繁中XIV市場｜FF14 Market 查價工具 - 貝爾的市場小屋');
       resetOG('og:description', 'FFXIV（FF14）物價查詢工具，即時查詢最終幻想14物品市場價格、歷史價格趨勢、各伺服器價格比較。');
       
       // 移除 Schema.org script

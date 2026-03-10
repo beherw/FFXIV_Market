@@ -1,0 +1,23 @@
+{
+  "name": "繁中XIV市場",
+  "short_name": "繁中XIV市場",
+  "description": "FF14 繁體中文市場查價工具，支援 OCR、價格比較與物品資料查詢。",
+  "start_url": "https://beherw.github.io/FFXIV_Market/",
+  "scope": "https://beherw.github.io/FFXIV_Market/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#1a1a1a",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "https://beherw.github.io/FFXIV_Market/favicon_bear.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "https://beherw.github.io/FFXIV_Market/favicon.ico",
+      "sizes": "48x48 64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
