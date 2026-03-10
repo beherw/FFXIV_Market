@@ -127,6 +127,74 @@ const MANUAL_CATEGORY_NAMES = {
 
 const ALL_MANUAL_ACTIONS = Object.values(MANUAL_ACTION_CATEGORIES).flat();
 
+const CRAFTER_STATS_CACHE_KEY = 'crafting-simulator-crafter-stats-v1';
+const CRAFTER_STAT_RULES = {
+  level: { min: 1 },
+  craftsmanship: { min: 0 },
+  control: { min: 0 },
+  craft_points: { min: 0 },
+};
+
+function normalizeCrafterStats(rawStats, defaultStats) {
+  if (!rawStats || typeof rawStats !== 'object') {
+    return null;
+  }
+
+  const normalized = { ...defaultStats };
+
+  for (const [key, rule] of Object.entries(CRAFTER_STAT_RULES)) {
+    if (!(key in rawStats)) {
+      return null;
+    }
+
+    const value = Number(rawStats[key]);
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+
+    normalized[key] = Math.max(rule.min, Math.floor(value));
+  }
+
+  return normalized;
+}
+
+function loadCrafterStatsFromCache(defaultStats) {
+  if (typeof window === 'undefined') {
+    return { ...defaultStats };
+  }
+
+  try {
+    const cachedRaw = window.localStorage.getItem(CRAFTER_STATS_CACHE_KEY);
+    if (!cachedRaw) {
+      return { ...defaultStats };
+    }
+
+    const parsed = JSON.parse(cachedRaw);
+    const normalized = normalizeCrafterStats(parsed, defaultStats);
+
+    if (!normalized) {
+      window.localStorage.removeItem(CRAFTER_STATS_CACHE_KEY);
+      return { ...defaultStats };
+    }
+
+    return normalized;
+  } catch {
+    window.localStorage.removeItem(CRAFTER_STATS_CACHE_KEY);
+    return { ...defaultStats };
+  }
+}
+
+function saveCrafterStatsToCache(crafterStats) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(CRAFTER_STATS_CACHE_KEY, JSON.stringify(crafterStats));
+  } catch {
+  }
+}
+
 function formatActionName(action) {
   if (!action) return '未知技能';
   if (ACTION_NAMES[action]) return ACTION_NAMES[action];
@@ -186,6 +254,44 @@ function getNestedStatusValue(status, path) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function localizeSimulationErrorMessage(rawMessage) {
+  const message = String(rawMessage || '').trim();
+  if (!message) {
+    return null;
+  }
+
+  const normalized = message.toLowerCase();
+  const knownMappings = [
+    {
+      patterns: ['player-level-lower-than-recipe-requirement', 'player level lower than recipe requirement'],
+      text: '角色等級低於配方需求，請提升等級後再試。',
+    },
+    {
+      patterns: ['insufficient-craft-points', 'not enough cp', 'insufficient cp'],
+      text: 'CP 不足，無法執行目前技能或手法。',
+    },
+    {
+      patterns: ['durability-not-enough', 'not enough durability', 'insufficient durability'],
+      text: '耐久不足，無法繼續執行目前技能或手法。',
+    },
+    {
+      patterns: ['invalid-action', 'action-not-allowed', 'action not allowed'],
+      text: '目前狀態無法使用此技能。',
+    },
+  ];
+
+  const matched = knownMappings.find((entry) => entry.patterns.some((pattern) => normalized.includes(pattern)));
+  if (matched) {
+    return matched.text;
+  }
+
+  if (/^[a-z0-9_.-]+$/i.test(message)) {
+    return `模擬器錯誤代碼：${message}`;
+  }
+
+  return null;
+}
+
 function formatSolveFailureMessage(rawError, recipe, stats) {
   const rawMessage = rawError instanceof Error ? rawError.message : String(rawError || '');
   const normalized = rawMessage.toLowerCase();
@@ -207,6 +313,11 @@ function formatSolveFailureMessage(rawError, recipe, stats) {
 
   if (isNoFeasible) {
     return `目前條件找不到可行手法。請提高屬性或調整設定後再試。`;
+  }
+
+  const localized = localizeSimulationErrorMessage(rawMessage);
+  if (localized) {
+    return localized;
   }
 
   return rawMessage || '模擬製作失敗';
@@ -349,9 +460,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   });
 
   const defaultStats = useMemo(() => getDefaultCrafterAttributes(), []);
-  const [crafterStats, setCrafterStats] = useState(defaultStats);
+  const [crafterStats, setCrafterStats] = useState(() => loadCrafterStatsFromCache(defaultStats));
   const [ingredientHqCounts, setIngredientHqCounts] = useState({});
   const solveRequestIdRef = useRef(0);
+  const backdropPointerDownRef = useRef(null);
   const itemName = item?.nameTW || item?.name || '未知物品';
 
   const handleCrafterStatChange = (key, nextValue, min = 0) => {
@@ -361,6 +473,13 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       ...previous,
       [key]: safeValue,
     }));
+  };
+
+  const handleResetCrafterStats = () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(CRAFTER_STATS_CACHE_KEY);
+    }
+    setCrafterStats({ ...defaultStats });
   };
 
   const handleIngredientHqChange = (ingredientKey, maxAmount, nextValue) => {
@@ -387,6 +506,18 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     }, 0);
   }, [ingredients, ingredientHqCounts]);
   const clampedStartingQuality = Math.max(0, Math.min(startingQuality, recipe?.quality || 0));
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setCrafterStats(loadCrafterStatsFromCache(defaultStats));
+  }, [defaultStats, isOpen]);
+
+  useEffect(() => {
+    saveCrafterStatsToCache(crafterStats);
+  }, [crafterStats]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -544,7 +675,8 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       } catch (manualInitError) {
         if (!cancelled) {
           setManualInitialStatus(null);
-          setManualRunError(manualInitError instanceof Error ? manualInitError.message : '手動狀態初始化失敗');
+          const rawMessage = manualInitError instanceof Error ? manualInitError.message : '手動狀態初始化失敗';
+          setManualRunError(localizeSimulationErrorMessage(rawMessage) || rawMessage);
         }
       }
     };
@@ -629,7 +761,8 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
         setManualRunError(null);
       } catch (manualError) {
         if (!cancelled) {
-          setManualRunError(manualError instanceof Error ? manualError.message : '手動模擬失敗');
+          const rawMessage = manualError instanceof Error ? manualError.message : '手動模擬失敗';
+          setManualRunError(localizeSimulationErrorMessage(rawMessage) || rawMessage);
         }
       }
     };
@@ -884,12 +1017,46 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     setManualStepError(null);
   };
 
+  const handleBackdropPointerDown = (event) => {
+    if (event.target !== event.currentTarget) {
+      backdropPointerDownRef.current = null;
+      return;
+    }
+
+    backdropPointerDownRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+    };
+  };
+
+  const handleBackdropPointerUp = (event) => {
+    if (event.target !== event.currentTarget) {
+      backdropPointerDownRef.current = null;
+      return;
+    }
+
+    const pointerDown = backdropPointerDownRef.current;
+    backdropPointerDownRef.current = null;
+    if (!pointerDown) {
+      return;
+    }
+
+    const movedDistance = Math.hypot(event.clientX - pointerDown.x, event.clientY - pointerDown.y);
+    if (movedDistance <= 6) {
+      onClose();
+    }
+  };
+
   if (!isOpen || !item) {
     return null;
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-6" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-6"
+      onPointerDown={handleBackdropPointerDown}
+      onPointerUp={handleBackdropPointerUp}
+    >
       <div
         className="relative h-[min(92vh,980px)] w-[min(96vw,1420px)] rounded-2xl bg-gradient-to-b from-slate-800 via-slate-850 to-slate-950 border border-purple-400/35 shadow-[0_24px_90px_rgba(0,0,0,0.58)] overflow-hidden"
         onClick={(event) => event.stopPropagation()}
@@ -947,6 +1114,13 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
             <div>
               <div className="mb-1.5 flex items-center justify-between">
                 <div className="text-[11px] font-semibold tracking-wide text-cyan-200">可調整角色屬性</div>
+                <button
+                  type="button"
+                  onClick={handleResetCrafterStats}
+                  className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-300 transition hover:border-amber-400/50 hover:text-amber-200"
+                >
+                  重置預設
+                </button>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <label className="rounded-lg border border-cyan-500/35 bg-cyan-500/10 px-2 py-1.5 text-cyan-200 cursor-text">
@@ -1261,7 +1435,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
 
               {firstError && !hasFailure && simulationMode === 'auto' && (
                 <div className="rounded-2xl border border-amber-500/30 bg-amber-950/30 px-4 py-3 text-sm text-amber-300">
-                  第 {firstError.pos + 1} 步出現警告：{firstError.err}
+                  第 {firstError.pos + 1} 步出現警告：{localizeSimulationErrorMessage(firstError.err) || firstError.err}
                 </div>
               )}
 
