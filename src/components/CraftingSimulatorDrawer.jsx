@@ -81,6 +81,49 @@ const ACTION_NAMES = {
   daring_touch_fail: '大膽加工（失敗）',
 };
 
+// Required crafter level for each manual action (FFXIV Dawntrail 7.x)
+const ACTION_LEVEL_REQUIREMENTS = {
+  basic_synthesis: 1,
+  basic_touch: 5,
+  masters_mend: 7,
+  hasty_touch: 9,
+  rapid_synthesis: 9,
+  observe: 13,
+  tricks_of_the_trade: 13,
+  waste_not: 15,
+  veneration: 15,
+  standard_touch: 18,
+  great_strides: 21,
+  innovation: 26,
+  final_appraisal: 42,
+  waste_not_ii: 47,
+  byregots_blessing: 50,
+  byregot_s_blessing: 50,
+  precise_touch: 53,
+  muscle_memory: 54,
+  careful_observation: 55,
+  careful_synthesis: 62,
+  manipulation: 65,
+  prudent_touch: 66,
+  reflect: 69,
+  preparatory_touch: 71,
+  groundwork: 72,
+  delicate_synthesis: 76,
+  intensive_synthesis: 78,
+  trained_eye: 80,
+  advanced_touch: 84,
+  heart_and_soul: 86,
+  prudent_synthesis: 88,
+  trained_finesse: 90,
+  refined_touch: 92,
+  quick_innovation: 96,
+  daring_touch: 96,
+  immaculate_mend: 98,
+  trained_perfection: 100,
+};
+
+const UNSIMULATABLE_ACTIONS = ['intensive_synthesis', 'precise_touch'];
+
 const CONDITION_NAMES = {
   Normal: '通常',
   Good: '高品質',
@@ -446,6 +489,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const [manualStepError, setManualStepError] = useState(null);
   const [draggedActionIndex, setDraggedActionIndex] = useState(null);
   const [allowedActionMap, setAllowedActionMap] = useState({});
+  const [actionExecutableMap, setActionExecutableMap] = useState({});
   const [actionCpMap, setActionCpMap] = useState({});
   const [actionDurabilityCostMap, setActionDurabilityCostMap] = useState({});
   const [isLoadingActionMeta, setIsLoadingActionMeta] = useState(false);
@@ -554,6 +598,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       setManualStepError(null);
       setDraggedActionIndex(null);
       setAllowedActionMap({});
+      setActionExecutableMap({});
       setActionCpMap({});
       setActionDurabilityCostMap({});
       setError(null);
@@ -584,6 +629,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
         setManualStepError(null);
         setDraggedActionIndex(null);
         setAllowedActionMap({});
+        setActionExecutableMap({});
         setActionCpMap({});
         setActionDurabilityCostMap({});
         setIngredientHqCounts({});
@@ -789,11 +835,12 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
 
   useEffect(() => {
     const currentStatus = simulationMode === 'manual'
-      ? (manualStepStatus || manualResult?.status || manualInitialStatus || simulationResult?.initialStatus)
+      ? (manualResult?.status || manualStepStatus || manualInitialStatus || simulationResult?.initialStatus)
       : simulationResult?.initialStatus;
 
     if (!isOpen || !currentStatus) {
       setAllowedActionMap({});
+      setActionExecutableMap({});
       setActionCpMap({});
       setActionDurabilityCostMap({});
       return;
@@ -813,9 +860,15 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                 const oneStepResult = await simulateCraftingOneStep(currentStatus, action, true);
                 const currentDurability = toFiniteNumber(currentStatus?.durability, 0);
                 const nextDurability = toFiniteNumber(oneStepResult?.status?.durability, currentDurability);
-                return Math.max(0, Math.round(currentDurability - nextDurability));
+                return {
+                  durabilityCost: Math.max(0, Math.round(currentDurability - nextDurability)),
+                  executable: !!oneStepResult?.is_success,
+                };
               } catch {
-                return 0;
+                return {
+                  durabilityCost: 0,
+                  executable: false,
+                };
               }
             }),
           ),
@@ -823,16 +876,19 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
         if (cancelled) return;
 
         const nextAllowedMap = {};
+        const nextExecutableMap = {};
         const nextCpMap = {};
         const nextDurabilityCostMap = {};
 
         ALL_MANUAL_ACTIONS.forEach((action, index) => {
           nextAllowedMap[action] = allowedResults[index] === 'ok';
+          nextExecutableMap[action] = durabilityCosts[index]?.executable ?? false;
           nextCpMap[action] = cpResults[index];
-          nextDurabilityCostMap[action] = durabilityCosts[index] || 0;
+          nextDurabilityCostMap[action] = durabilityCosts[index]?.durabilityCost || 0;
         });
 
         setAllowedActionMap(nextAllowedMap);
+        setActionExecutableMap(nextExecutableMap);
         setActionCpMap(nextCpMap);
         setActionDurabilityCostMap(nextDurabilityCostMap);
       } catch (metaError) {
@@ -908,12 +964,13 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const jobName = recipe ? (JOB_NAMES[recipe.job] || `職業 ${recipe.job}`) : '讀取中';
   const jobIcon = recipe ? JOB_ICON_MAP[recipe.job] : null;
   const recipeYield = recipe?.yields || 1;
+  const trainedEyeEligible = crafterStats.level >= (recipe?.lvl || 0) + 10;
   const firstError = simulationResult?.errors?.[0];
   const errorPositions = new Set((simulationResult?.errors || []).map((entry) => entry.pos));
   const macroText = buildMacroText(simulationResult?.actions || []);
   const splitMacroText = buildSplitMacroText(simulationResult?.actions || []);
   const detailedStatuses = simulationResult?.detailedStatuses || [];
-  const manualStatus = manualStepStatus || manualResult?.status || manualInitialStatus || simulationResult?.initialStatus || null;
+  const manualStatus = manualResult?.status || manualStepStatus || manualInitialStatus || simulationResult?.initialStatus || null;
   const activeActions = simulationMode === 'manual' ? manualActions : (simulationResult?.actions || []);
   const activeStatus = simulationMode === 'manual'
     ? (manualResult?.status || manualStepStatus || manualInitialStatus || simulationResult?.initialStatus)
@@ -972,6 +1029,37 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     }
   };
 
+  const handleAddManualAction = async (action) => {
+    const currentStatus = manualResult?.status || manualStepStatus || manualInitialStatus || simulationResult?.initialStatus;
+    if (!currentStatus || isLoadingActionMeta) {
+      return;
+    }
+
+    if (UNSIMULATABLE_ACTIONS.includes(action)) {
+      return;
+    }
+
+    const isOpeningAction = MANUAL_ACTION_CATEGORIES.opening.includes(action);
+    if (isOpeningAction && manualActions.length > 0) {
+      return;
+    }
+
+    try {
+      const oneStepResult = await simulateCraftingOneStep(currentStatus, action, true);
+      if (!oneStepResult?.is_success) {
+        return;
+      }
+
+      setManualActions((prev) => {
+        if (isOpeningAction && prev.length > 0) {
+          return prev;
+        }
+        return [...prev, action];
+      });
+    } catch {
+    }
+  };
+
   const handleManualActionDrop = (targetIndex) => {
     if (draggedActionIndex === null || draggedActionIndex === targetIndex) {
       setDraggedActionIndex(null);
@@ -979,6 +1067,11 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     }
 
     setManualActions((previous) => {
+      // Prevent displacing an opening skill from position 0
+      const isOpeningAtZero = previous.length > 0 && MANUAL_ACTION_CATEGORIES.opening.includes(previous[0]);
+      if (isOpeningAtZero && targetIndex === 0) {
+        return previous;
+      }
       const next = [...previous];
       const [movedAction] = next.splice(draggedActionIndex, 1);
       next.splice(targetIndex, 0, movedAction);
@@ -1315,14 +1408,23 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                     />
                     使用快速改革
                   </label>
-                  <label className="flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300">
+                  <label
+                    className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-xs ${
+                      trainedEyeEligible
+                        ? 'border-purple-500/20 bg-slate-950/70 text-slate-300'
+                        : 'border-slate-700/40 bg-slate-950/40 text-slate-500 cursor-not-allowed'
+                    }`}
+                    title={trainedEyeEligible ? '' : `需角色等級比配方高 10 級以上（目前：Lv.${crafterStats.level}，配方：Lv.${recipe?.lvl || '?'}）`}
+                  >
                     <input
                       type="checkbox"
-                      checked={solverOptions.useTrainedEye}
+                      checked={solverOptions.useTrainedEye && trainedEyeEligible}
+                      disabled={!trainedEyeEligible}
                       onChange={(event) => setSolverOptions((prev) => ({ ...prev, useTrainedEye: event.target.checked }))}
-                      className="accent-purple-400"
+                      className="accent-purple-400 disabled:cursor-not-allowed"
                     />
                     使用工匠的神速技巧
+                    {!trainedEyeEligible && <span className="ml-auto text-[10px] text-slate-600">等級不足</span>}
                   </label>
                   <label className="flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300">
                     <input
@@ -1350,7 +1452,17 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                 </div>
 
                 <div className="rounded-xl border border-purple-400/25 bg-slate-900/85 p-3">
-                  <div className="mb-2 text-xs text-slate-500">目前手動序列（{manualActions.length}）</div>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="text-sm text-slate-400">目前手動序列（{manualActions.length}）</span>
+                    {activeBuffDurations.map((buff) => (
+                      <span
+                        key={buff.label}
+                        className="rounded border border-cyan-500/25 bg-cyan-500/10 px-1.5 py-0.5 text-xs font-medium text-cyan-200"
+                      >
+                        {buff.label} {buff.value}
+                      </span>
+                    ))}
+                  </div>
                   {manualActions.length === 0 ? (
                     <div className="text-sm text-slate-400">尚未加入技能</div>
                   ) : (
@@ -1358,13 +1470,13 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                       {manualActions.map((action, index) => (
                         <button
                           key={`${action}-${index}`}
-                          draggable
-                          onDragStart={() => setDraggedActionIndex(index)}
+                          draggable={!MANUAL_ACTION_CATEGORIES.opening.includes(action)}
+                          onDragStart={MANUAL_ACTION_CATEGORIES.opening.includes(action) ? undefined : () => setDraggedActionIndex(index)}
                           onDragOver={(event) => event.preventDefault()}
                           onDrop={() => handleManualActionDrop(index)}
                           onClick={() => setManualActions((prev) => prev.filter((_, actionIndex) => actionIndex !== index))}
                           className="inline-flex items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-200 hover:border-red-400/40"
-                          title="可拖曳重排；點擊移除此技能"
+                          title={MANUAL_ACTION_CATEGORIES.opening.includes(action) ? '點擊移除此技能（起手技能無法重排）' : '可拖曳重排；點擊移除此技能'}
                         >
                           <span className="rounded-full bg-ffxiv-gold/10 px-1.5 py-0.5 text-[10px] text-ffxiv-gold">{index + 1}</span>
                           <img src={getCraftingActionIconUrl(action)} alt={formatActionName(action)} className="h-4 w-4 object-contain" loading="lazy" />
@@ -1381,6 +1493,18 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                   </div>
                 )}
 
+                {isComplete && !hasFailure && (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-300">
+                    製作完成{isQualityMax ? '，物品已達最高品質。' : '。'}
+                  </div>
+                )}
+
+                {hasFailure && (
+                  <div className="rounded-xl border border-red-500/30 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+                    耐久耗盡，製作失敗。所有技能已鎖定，請清空序列重新開始。
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   {Object.entries(MANUAL_ACTION_CATEGORIES).map(([category, actions]) => (
                     <div key={category} className="rounded-xl border border-purple-400/25 bg-slate-900/82 p-3">
@@ -1394,20 +1518,29 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                           const currentDurability = toFiniteNumber(manualStatus?.durability, 0);
                           const isInsufficientCp = cpCost > 0 && currentCp < cpCost;
                           const isInsufficientDurability = durabilityCost > 0 && currentDurability < durabilityCost;
-                          const isActionDisabled = !manualStatus || !isAllowed || isLoadingActionMeta || isInsufficientCp || isInsufficientDurability;
+                          const requiredLevel = ACTION_LEVEL_REQUIREMENTS[action] || 1;
+                          const isInsufficientLevel = crafterStats.level < requiredLevel;
+                          const isUnsimulatable = UNSIMULATABLE_ACTIONS.includes(action);
+                          const isExecutable = actionExecutableMap[action] ?? true;
+                          const isNotExecutable = !isExecutable;
+                          const isOpeningOnly = MANUAL_ACTION_CATEGORIES.opening.includes(action) && manualActions.length > 0;
+                          const isActionDisabled = !manualStatus || !isAllowed || isLoadingActionMeta || isInsufficientCp || isInsufficientDurability || isInsufficientLevel || isComplete || hasFailure || isOpeningOnly || isUnsimulatable || isNotExecutable;
                           return (
                             <button
                               key={action}
                               disabled={isActionDisabled}
-                              onClick={() => setManualActions((prev) => [...prev, action])}
-                              className={`relative flex w-[86px] flex-col items-center gap-1 rounded-lg border px-2 py-2 text-[10px] transition ${isActionDisabled ? 'border-slate-700/60 bg-slate-900/70 text-slate-500 cursor-not-allowed grayscale' : 'border-cyan-500/25 bg-slate-900/80 text-slate-200 hover:border-cyan-400/45 hover:text-cyan-200'}`}
-                              title={`${formatActionName(action)}${cpCost ? ` (${cpCost} CP)` : ''}`}
+                              onClick={() => {
+                                handleAddManualAction(action);
+                              }}
+                              className={`relative flex w-[86px] flex-col items-center gap-1 rounded-lg border px-2 py-2 text-[10px] transition ${isActionDisabled ? 'border-slate-700/80 bg-slate-900/45 text-slate-600 cursor-not-allowed opacity-55 grayscale saturate-0 shadow-none' : 'border-cyan-500/25 bg-slate-900/80 text-slate-200 hover:border-cyan-400/45 hover:text-cyan-200 hover:shadow-[0_0_10px_rgba(34,211,238,0.15)]'}`}
+                              title={`${formatActionName(action)}，Lv.${requiredLevel}${cpCost ? ` (${cpCost} CP)` : ''}${isInsufficientLevel ? `（目前：Lv.${crafterStats.level}，等級不足）` : ''}${isInsufficientCp ? ` — CP 不足（需 ${cpCost}，剩餘 ${currentCp}）` : ''}${(isUnsimulatable || isNotExecutable) ? ' — 無法模擬該技能' : ''}${isOpeningOnly ? ' — 起手技能僅可用於第一步' : ''}`}
                             >
                               <img src={getCraftingActionIconUrl(action)} alt={formatActionName(action)} className="h-8 w-8 object-contain" loading="lazy" />
                               <span className="truncate max-w-full">{formatActionName(action)}</span>
                               {cpCost > 0 && (
                                 <span className="absolute -top-1 -right-1 rounded bg-pink-600 px-1 text-[9px] text-white">{cpCost}</span>
                               )}
+
                             </button>
                           );
                         })}
@@ -1645,7 +1778,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                             max={maxAmount}
                             value={ingredientHqCount}
                             onChange={(event) => handleIngredientHqChange(ingredient.key, maxAmount, event.target.value)}
-                            className="w-12 rounded-md border border-purple-500/25 bg-slate-950/80 px-1 py-0.5 text-center text-xs font-semibold text-slate-100 outline-none focus:border-purple-300/70"
+                            className="w-12 rounded-md border border-purple-500/25 bg-slate-950/80 px-1 py-0.5 text-center text-xs font-semibold text-slate-100 outline-none focus:border-purple-300/70 [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
                           />
                           <span className="text-[11px] text-slate-500">/ {maxAmount}</span>
                           <button
@@ -1701,7 +1834,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
               <div className="mt-4 text-base font-semibold text-ffxiv-gold">
                 {loadingRecipe ? '讀取配方資料中...' : '正在計算最佳手法...'}
               </div>
-              <div className="mt-1 text-sm text-slate-400">會自動以預設工匠屬性完成求解，<br></br>無需額外設定。</div>
+              <div className="mt-1 text-sm text-slate-400">將以左側設定的工匠屬性進行求解。</div>
             </div>
           )}
 
