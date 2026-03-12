@@ -171,11 +171,21 @@ const MANUAL_CATEGORY_NAMES = {
 const ALL_MANUAL_ACTIONS = Object.values(MANUAL_ACTION_CATEGORIES).flat();
 
 const CRAFTER_STATS_CACHE_KEY = 'crafting-simulator-crafter-stats-v1';
+const SIMULATOR_PREFERENCES_CACHE_KEY = 'crafting-simulator-preferences-v1';
 const CRAFTER_STAT_RULES = {
   level: { min: 1 },
   craftsmanship: { min: 0 },
   control: { min: 0 },
   craft_points: { min: 0 },
+};
+const DEFAULT_SOLVER_OPTIONS = {
+  targetQuality: null,
+  useManipulation: true,
+  useHeartAndSoul: false,
+  useQuickInnovation: false,
+  useTrainedEye: false,
+  backloadProgress: false,
+  adversarial: false,
 };
 
 function normalizeCrafterStats(rawStats, defaultStats) {
@@ -234,6 +244,54 @@ function saveCrafterStatsToCache(crafterStats) {
 
   try {
     window.localStorage.setItem(CRAFTER_STATS_CACHE_KEY, JSON.stringify(crafterStats));
+  } catch {
+  }
+}
+
+function loadSimulatorPreferencesFromCache() {
+  if (typeof window === 'undefined') {
+    return {
+      simulationMode: 'auto',
+      solverOptions: { ...DEFAULT_SOLVER_OPTIONS },
+    };
+  }
+
+  try {
+    const cachedRaw = window.localStorage.getItem(SIMULATOR_PREFERENCES_CACHE_KEY);
+    if (!cachedRaw) {
+      return {
+        simulationMode: 'auto',
+        solverOptions: { ...DEFAULT_SOLVER_OPTIONS },
+      };
+    }
+
+    const parsed = JSON.parse(cachedRaw);
+    const simulationMode = parsed?.simulationMode === 'manual' ? 'manual' : 'auto';
+    const solverOptions = {
+      ...DEFAULT_SOLVER_OPTIONS,
+      ...(parsed?.solverOptions && typeof parsed.solverOptions === 'object' ? parsed.solverOptions : {}),
+    };
+
+    return {
+      simulationMode,
+      solverOptions,
+    };
+  } catch {
+    window.localStorage.removeItem(SIMULATOR_PREFERENCES_CACHE_KEY);
+    return {
+      simulationMode: 'auto',
+      solverOptions: { ...DEFAULT_SOLVER_OPTIONS },
+    };
+  }
+}
+
+function saveSimulatorPreferencesToCache(preferences) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(SIMULATOR_PREFERENCES_CACHE_KEY, JSON.stringify(preferences));
   } catch {
   }
 }
@@ -366,6 +424,37 @@ function formatSolveFailureMessage(rawError, recipe, stats) {
   return rawMessage || '模擬製作失敗';
 }
 
+function getStatRequirementFailureMessage(recipe, stats) {
+  if (!recipe || !stats) {
+    return null;
+  }
+
+  const requiredLevel = Number(recipe.lvl) || 0;
+  const requiredCraftsmanship = Number(recipe.craftsmanshipReq) || Number(recipe.suggestedCraftsmanship) || 0;
+  const requiredControl = Number(recipe.controlReq) || 0;
+
+  const currentLevel = Number(stats.level) || 0;
+  const currentCraftsmanship = Number(stats.craftsmanship) || 0;
+  const currentControl = Number(stats.control) || 0;
+
+  const missing = [];
+  if (requiredLevel > 0 && currentLevel < requiredLevel) {
+    missing.push(`等級 ${currentLevel}/${requiredLevel}`);
+  }
+  if (requiredCraftsmanship > 0 && currentCraftsmanship < requiredCraftsmanship) {
+    missing.push(`作業精度 ${currentCraftsmanship}/${requiredCraftsmanship}`);
+  }
+  if (requiredControl > 0 && currentControl < requiredControl) {
+    missing.push(`加工精度 ${currentControl}/${requiredControl}`);
+  }
+
+  if (!missing.length) {
+    return null;
+  }
+
+  return `目前屬性未達配方最低門檻（${missing.join('、')}），先提升屬性再進行自動計算。`;
+}
+
 const BUFF_DURATION_CANDIDATES = [
   { label: '崇敬', paths: ['veneration', 'effects.veneration', 'buffs.veneration'] },
   { label: '改革', paths: ['innovation', 'effects.innovation', 'buffs.innovation'] },
@@ -466,51 +555,38 @@ function formatDeltaOrUnchanged(delta) {
   return formatSignedNumber(numeric);
 }
 
-function buildMacroText(actions) {
+const MACRO_MAX_LINES = 15;
+const MACRO_ACTIONS_PER_PAGE = MACRO_MAX_LINES - 1;
+
+function buildMacroPages(actions, chunkSize = MACRO_ACTIONS_PER_PAGE) {
   if (!actions?.length) {
-    return '';
-  }
-
-  const lines = [];
-
-  actions.forEach((action, index) => {
-    lines.push(`/ac "${formatActionName(action)}" <wait.3>`);
-    if ((index + 1) % 14 === 0 && index !== actions.length - 1) {
-      lines.push(`/echo ===== 第 ${Math.floor((index + 1) / 14) + 1} 段 =====`);
-    }
-  });
-
-  lines.push('/echo 製作模擬巨集執行完畢');
-  return lines.join('\n');
-}
-
-function buildSplitMacroText(actions, chunkSize = 14) {
-  if (!actions?.length) {
-    return '';
+    return [];
   }
 
   const chunks = [];
-  for (let index = 0; index < actions.length; index += chunkSize) {
-    chunks.push(actions.slice(index, index + chunkSize));
+  let index = 0;
+
+  while (index < actions.length) {
+    const remaining = actions.length - index;
+    const currentChunkSize = remaining <= MACRO_MAX_LINES ? remaining : chunkSize;
+    chunks.push(actions.slice(index, index + currentChunkSize));
+    index += currentChunkSize;
   }
 
-  const lines = [];
+  return chunks.map((chunk, chunkIndex) => {
+    const isLastPage = chunkIndex === chunks.length - 1;
+    const lines = chunk.map((action) => `/ac "${formatActionName(action)}" <wait.3>`);
 
-  chunks.forEach((chunk, chunkIndex) => {
-    if (chunkIndex > 0) {
-      lines.push('');
+    if (!isLastPage) {
+      lines.push(`/echo 請接續執行下一頁巨集 (${chunkIndex + 2}/${chunks.length})`);
     }
-    chunk.forEach((action) => {
-      lines.push(`/ac "${formatActionName(action)}" <wait.3>`);
-    });
-    if (chunkIndex < chunks.length - 1) {
-      lines.push(`/echo 請接續執行下一段巨集 (${chunkIndex + 2}/${chunks.length})`);
-    } else {
-      lines.push('/echo 製作模擬巨集全部執行完畢');
-    }
+
+    return {
+      index: chunkIndex,
+      text: lines.join('\n'),
+      lines,
+    };
   });
-
-  return lines.join('\n');
 }
 
 function ProgressBar({ label, current, max, barClass, valueClass = 'text-white' }) {
@@ -544,6 +620,7 @@ function MetricCard({ label, value, accentClass = 'text-ffxiv-gold' }) {
 }
 
 export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
+  const cachedPreferences = useMemo(() => loadSimulatorPreferencesFromCache(), []);
   const [recipes, setRecipes] = useState([]);
   const [recipe, setRecipe] = useState(null);
   const [ingredients, setIngredients] = useState([]);
@@ -555,9 +632,9 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const [error, setError] = useState(null);
   const [simulationResult, setSimulationResult] = useState(null);
   const [copyState, setCopyState] = useState('idle');
-  const [copySplitState, setCopySplitState] = useState('idle');
+  const [macroPageIndex, setMacroPageIndex] = useState(0);
   const [rightPanelTab, setRightPanelTab] = useState('rotation');
-  const [simulationMode, setSimulationMode] = useState('auto');
+  const [simulationMode, setSimulationMode] = useState(cachedPreferences.simulationMode);
   const [manualActions, setManualActions] = useState([]);
   const [manualInitialStatus, setManualInitialStatus] = useState(null);
   const [manualResult, setManualResult] = useState(null);
@@ -571,15 +648,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const [actionCpMap, setActionCpMap] = useState({});
   const [actionDurabilityCostMap, setActionDurabilityCostMap] = useState({});
   const [isLoadingActionMeta, setIsLoadingActionMeta] = useState(false);
-  const [solverOptions, setSolverOptions] = useState({
-    targetQuality: null,
-    useManipulation: true,
-    useHeartAndSoul: false,
-    useQuickInnovation: false,
-    useTrainedEye: false,
-    backloadProgress: false,
-    adversarial: false,
-  });
+  const [solverOptions, setSolverOptions] = useState(cachedPreferences.solverOptions);
 
   const defaultStats = useMemo(() => getDefaultCrafterAttributes(), []);
   const [crafterStats, setCrafterStats] = useState(() => loadCrafterStatsFromCache(defaultStats));
@@ -642,6 +711,13 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   }, [crafterStats]);
 
   useEffect(() => {
+    saveSimulatorPreferencesToCache({
+      simulationMode,
+      solverOptions,
+    });
+  }, [simulationMode, solverOptions]);
+
+  useEffect(() => {
     if (!isOpen) return undefined;
 
     const previousOverflow = document.body.style.overflow;
@@ -681,9 +757,8 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       setActionDurabilityCostMap({});
       setError(null);
       setCopyState('idle');
-      setCopySplitState('idle');
+      setMacroPageIndex(0);
       setRightPanelTab('rotation');
-      setSimulationMode('auto');
       setIngredientHqCounts({});
       setNeedsSolve(true);
       return;
@@ -696,7 +771,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
         setLoadingRecipe(true);
         setError(null);
         setCopyState('idle');
-        setCopySplitState('idle');
+        setMacroPageIndex(0);
         setRightPanelTab('rotation');
         setManualActions([]);
         setManualInitialStatus(null);
@@ -764,7 +839,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     setManualStepIndex(0);
     setManualStepError(null);
     setCopyState('idle');
-    setCopySplitState('idle');
+    setMacroPageIndex(0);
     setNeedsSolve(true);
     setError(null);
   }, [clampedStartingQuality, crafterStats, isOpen, recipe, solverOptions]);
@@ -816,6 +891,14 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       return;
     }
 
+    const requirementError = getStatRequirementFailureMessage(recipe, crafterStats);
+    if (requirementError) {
+      setSimulationResult(null);
+      setNeedsSolve(true);
+      setError(requirementError);
+      return;
+    }
+
     const requestId = solveRequestIdRef.current + 1;
     solveRequestIdRef.current = requestId;
 
@@ -823,7 +906,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       setRunningSolver(true);
       setError(null);
       setCopyState('idle');
-      setCopySplitState('idle');
+      setMacroPageIndex(0);
 
       const result = await runAutoCraftSimulation(recipe, crafterStats, { ...solverOptions, solverType: 'raphael' }, clampedStartingQuality);
       if (solveRequestIdRef.current !== requestId) {
@@ -1045,8 +1128,6 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const trainedEyeEligible = crafterStats.level >= (recipe?.lvl || 0) + 10;
   const firstError = simulationResult?.errors?.[0];
   const errorPositions = new Set((simulationResult?.errors || []).map((entry) => entry.pos));
-  const macroText = buildMacroText(simulationResult?.actions || []);
-  const splitMacroText = buildSplitMacroText(simulationResult?.actions || []);
   const detailedStatuses = simulationResult?.detailedStatuses || [];
   const manualStatus = manualResult?.status || manualStepStatus || manualInitialStatus || simulationResult?.initialStatus || null;
   const activeActions = simulationMode === 'manual' ? manualActions : (simulationResult?.actions || []);
@@ -1058,8 +1139,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const hasFailure = !!(activeStatus && activeStatus.durability <= 0 && !isComplete);
   const activeErrors = simulationMode === 'manual' ? (manualResult?.errors || []) : (simulationResult?.errors || []);
   const activeErrorPositions = new Set(activeErrors.map((entry) => entry.pos));
-  const activeMacroText = simulationMode === 'manual' ? buildMacroText(manualActions) : macroText;
-  const activeSplitMacroText = simulationMode === 'manual' ? buildSplitMacroText(manualActions) : splitMacroText;
+  const activeMacroPages = useMemo(() => buildMacroPages(activeActions), [activeActions]);
   const activeBuffDurations = BUFF_DURATION_CANDIDATES
     .map((buff) => {
       const value = buff.paths
@@ -1069,41 +1149,34 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       return value ? { label: buff.label, value: Math.round(value) } : null;
     })
     .filter(Boolean);
-  const macroPreviewText = activeActions
-    .slice(0, 15)
-    .map((action) => `/ac "${formatActionName(action)}" <wait.3>`)
-    .join('\n');
-  const macroPreviewLines = macroPreviewText ? macroPreviewText.split('\n') : [];
+  const currentMacroPage = activeMacroPages[Math.min(macroPageIndex, Math.max(activeMacroPages.length - 1, 0))] || null;
+  const macroPreviewLines = currentMacroPage?.lines || [];
+
+  useEffect(() => {
+    setMacroPageIndex(0);
+  }, [simulationMode, activeActions.join('|')]);
+
+  useEffect(() => {
+    if (macroPageIndex <= Math.max(activeMacroPages.length - 1, 0)) {
+      return;
+    }
+
+    setMacroPageIndex(Math.max(activeMacroPages.length - 1, 0));
+  }, [activeMacroPages.length, macroPageIndex]);
 
   const handleCopyMacro = async () => {
-    if (!activeMacroText) {
+    if (!currentMacroPage?.text) {
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(activeMacroText);
+      await navigator.clipboard.writeText(currentMacroPage.text);
       setCopyState('copied');
       window.setTimeout(() => setCopyState('idle'), 1800);
     } catch (copyError) {
       console.warn('[CraftingSimulator] Failed to copy macro:', copyError);
       setCopyState('failed');
       window.setTimeout(() => setCopyState('idle'), 2200);
-    }
-  };
-
-  const handleCopySplitMacro = async () => {
-    if (!activeSplitMacroText) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(activeSplitMacroText);
-      setCopySplitState('copied');
-      window.setTimeout(() => setCopySplitState('idle'), 1800);
-    } catch (copyError) {
-      console.warn('[CraftingSimulator] Failed to copy split macro:', copyError);
-      setCopySplitState('failed');
-      window.setTimeout(() => setCopySplitState('idle'), 2200);
     }
   };
 
@@ -1913,25 +1986,69 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
 
           <div className="rounded-2xl border border-purple-400/30 bg-slate-800/75 p-3.5 sm:p-4">
             <div className="mb-2.5 flex items-center justify-between gap-2">
-              <h3 className="text-base sm:text-lg font-semibold text-white">巨集</h3>
+              <div>
+                <h3 className="text-base sm:text-lg font-semibold text-white">巨集</h3>
+              </div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-slate-400">最多 15 行</span>
                 <button
                   onClick={handleCopyMacro}
-                  className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-semibold text-cyan-300 transition hover:border-cyan-400/40 hover:text-cyan-200"
+                    className="inline-flex min-w-[58px] flex-col items-center justify-center rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-semibold leading-tight text-cyan-300 transition hover:border-cyan-400/40 hover:text-cyan-200"
                 >
-                  {copyState === 'copied' ? '已複製' : copyState === 'failed' ? '複製失敗' : '複製'}
+                    {copyState === 'copied' ? (
+                      <>
+                        <span>已複製</span>
+                        <span>本頁</span>
+                      </>
+                    ) : copyState === 'failed' ? (
+                      <>
+                        <span>複製</span>
+                        <span>失敗</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>複製</span>
+                        <span>本頁</span>
+                      </>
+                    )}
                 </button>
               </div>
             </div>
             {macroPreviewLines.length > 0 ? (
-              <div className="max-h-[34vh] overflow-y-auto rounded-lg border border-purple-500/20 bg-slate-950/70 text-[11px] leading-5">
-                {macroPreviewLines.map((line, index) => (
-                  <div key={`macro-line-${index}`} className="grid grid-cols-[34px_1fr] gap-0 border-b border-white/5 last:border-b-0">
-                    <div className="select-none px-2 py-1 text-right text-slate-500 bg-slate-900/35">{index + 1}</div>
-                    <div className="select-text px-2 py-1 text-slate-200 whitespace-pre-wrap break-words">{line}</div>
+              <div className="space-y-2.5">
+                {activeMacroPages.length > 1 && (
+                  <div className="flex items-center justify-between gap-2 rounded-xl border border-purple-500/20 bg-slate-950/55 px-2.5 py-2">
+                    <button
+                      type="button"
+                      onClick={() => setMacroPageIndex((previous) => Math.max(previous - 1, 0))}
+                      disabled={macroPageIndex === 0}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/25 bg-gradient-to-r from-slate-900/95 via-slate-800/85 to-slate-900/95 px-3 py-1.5 text-[11px] font-semibold text-slate-200 transition hover:border-cyan-400/45 hover:text-cyan-200 hover:shadow-[0_0_14px_rgba(34,211,238,0.12)] disabled:cursor-not-allowed disabled:opacity-35"
+                    >
+                      <span aria-hidden="true">←</span>
+                      <span>上一頁</span>
+                    </button>
+                    <div className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-200">
+                      第 {macroPageIndex + 1} / {activeMacroPages.length} 頁
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMacroPageIndex((previous) => Math.min(previous + 1, activeMacroPages.length - 1))}
+                      disabled={macroPageIndex >= activeMacroPages.length - 1}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/25 bg-gradient-to-r from-slate-900/95 via-slate-800/85 to-slate-900/95 px-3 py-1.5 text-[11px] font-semibold text-slate-200 transition hover:border-cyan-400/45 hover:text-cyan-200 hover:shadow-[0_0_14px_rgba(34,211,238,0.12)] disabled:cursor-not-allowed disabled:opacity-35"
+                    >
+                      <span>下一頁</span>
+                      <span aria-hidden="true">→</span>
+                    </button>
                   </div>
-                ))}
+                )}
+
+                <div className="max-h-[34vh] overflow-y-auto rounded-lg border border-purple-500/20 bg-slate-950/70 text-[11px] leading-5">
+                  {macroPreviewLines.map((line, index) => (
+                    <div key={`macro-line-${index}`} className="grid grid-cols-[34px_1fr] gap-0 border-b border-white/5 last:border-b-0">
+                      <div className="select-none px-2 py-1 text-right text-slate-500 bg-slate-900/35">{index + 1}</div>
+                      <div className="select-text px-2 py-1 text-slate-200 whitespace-pre-wrap break-words">{line}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="rounded-lg border border-purple-500/20 bg-slate-950/60 px-3 py-3 text-xs text-slate-400">
@@ -1946,7 +2063,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
               <div className="mt-4 text-base font-semibold text-ffxiv-gold">
                 {loadingRecipe ? '讀取配方資料中...' : '正在計算最佳手法...'}
               </div>
-              <div className="mt-1 text-sm text-slate-400">將以左側設定的工匠屬性進行求解。</div>
+              <div className="mt-1 text-sm text-slate-400">高等級物品複雜度較高，會需要更多時間計算。</div>
             </div>
           )}
 

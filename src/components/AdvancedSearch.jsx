@@ -4497,12 +4497,9 @@ export default function AdvancedSearch({
                           setMinLevelFocused(false);
                         }}
                         disabled={isLoadingVelocities || isFilterSearching || (levelFilterMode === 'equipLevel' && hasMiscellaneousCategory)}
-                        placeholder={(levelFilterMode === 'equipLevel' && hasMiscellaneousCategory) ? '🔒' : (levelFilterMode === 'ilvls' ? 'ilvls' : '1')}
-                        className="w-35 pl-3 pr-14 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-gray-500 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                        className="w-36 pl-3 pr-3 py-2 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white focus:outline-none focus:border-ffxiv-gold disabled:opacity-50 disabled:cursor-not-allowed [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                       />
-                      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                        <span className="text-xs text-gray-400">{levelFilterMode === 'ilvls' ? 'ilvls' : '裝等'}</span>
-                      </div>
+
                     </div>
                     <div className="text-gray-400">~</div>
                     <input
@@ -4568,9 +4565,10 @@ export default function AdvancedSearch({
             
             if (!shouldRender) return null;
             
-            // Determine which results to show based on activeTab and showUntradeable
-            // When showUntradeable is true, combine tradeable and untradeable items together
-            // When showUntradeable is false, show only tradeable items
+            // Determine which results to show based on activeTab and showUntradeable.
+            // When showUntradeable is false, prefer tradeable results; if there are none,
+            // fall back to untradeable results so the table never renders an empty state
+            // while untradeable data exists.
             let allResultsForRarityCount;
             let currentResults;
             
@@ -4580,17 +4578,19 @@ export default function AdvancedSearch({
                 allResultsForRarityCount = [...searchResults, ...untradeableResults];
                 currentResults = [...searchResults, ...untradeableResults];
               } else {
-                // Show only tradeable items by default
-                allResultsForRarityCount = searchResults;
-                currentResults = searchResults;
+                // Default view: tradeable items, but gracefully fall back to untradeable only results
+                const defaultResults = searchResults.length > 0 ? searchResults : untradeableResults;
+                allResultsForRarityCount = defaultResults;
+                currentResults = defaultResults;
               }
             } else if (activeTab === 'batch') {
               if (showUntradeable) {
                 allResultsForRarityCount = [...searchResults, ...untradeableResults];
                 currentResults = [...searchResults, ...untradeableResults];
               } else {
-                allResultsForRarityCount = searchResults;
-                currentResults = searchResults;
+                const defaultResults = searchResults.length > 0 ? searchResults : untradeableResults;
+                allResultsForRarityCount = defaultResults;
+                currentResults = defaultResults;
               }
             } else {
               allResultsForRarityCount = [];
