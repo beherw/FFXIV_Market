@@ -385,7 +385,85 @@ function normalizeStatusSnapshot(payload) {
     return payload.status;
   }
 
+  if (payload.state && typeof payload.state === 'object') {
+    return payload.state;
+  }
+
+  if (payload.snapshot && typeof payload.snapshot === 'object') {
+    return payload.snapshot;
+  }
+
+  if (payload.next_status && typeof payload.next_status === 'object') {
+    return payload.next_status;
+  }
+
+  if (payload.result?.status && typeof payload.result.status === 'object') {
+    return payload.result.status;
+  }
+
+  if (
+    typeof payload === 'object'
+    && (
+      'progress' in payload
+      || 'craft_points' in payload
+      || 'condition' in payload
+      || ('recipe' in payload && 'attributes' in payload)
+    )
+  ) {
+    return payload;
+  }
+
+  if (Array.isArray(payload) && payload.length > 0) {
+    const nestedSnapshot = payload
+      .map((entry) => normalizeStatusSnapshot(entry))
+      .find(Boolean);
+    if (nestedSnapshot) {
+      return nestedSnapshot;
+    }
+  }
+
+  if (typeof payload === 'object') {
+    const nestedSnapshot = Object.values(payload)
+      .filter((candidate) => candidate && typeof candidate === 'object')
+      .map((candidate) => normalizeStatusSnapshot(candidate))
+      .find(Boolean);
+    if (nestedSnapshot) {
+      return nestedSnapshot;
+    }
+  }
+
   return payload;
+}
+
+function formatResourceDelta(delta, consumeLabel = '消耗', recoverLabel = '恢復') {
+  const numeric = Number(delta);
+  if (!Number.isFinite(numeric) || numeric === 0) {
+    return '不變';
+  }
+
+  if (numeric < 0) {
+    return `${consumeLabel} ${Math.abs(Math.round(numeric))}`;
+  }
+
+  return `${recoverLabel} ${Math.round(numeric)}`;
+}
+
+function getDeltaColorClass(delta) {
+  const numeric = Number(delta);
+  if (!Number.isFinite(numeric) || numeric === 0) {
+    return 'text-slate-300';
+  }
+
+  return numeric > 0 ? 'text-emerald-300' : 'text-red-300';
+}
+
+function formatDeltaOrUnchanged(delta) {
+  const numeric = Number(delta);
+  if (!Number.isFinite(numeric) || numeric === 0) {
+    return '不變';
+  }
+
+  return formatSignedNumber(numeric);
 }
 
 function buildMacroText(actions) {
@@ -1381,37 +1459,52 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
               <div className="rounded-xl border border-purple-500/20 bg-slate-950/55 p-2.5">
                 <div className="mb-2 text-xs font-semibold text-slate-300">自動解設定</div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <label className="flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300">
+                  <label className="group flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300 transition hover:border-cyan-400/40 hover:bg-slate-900/80">
                     <input
                       type="checkbox"
                       checked={solverOptions.useManipulation}
                       onChange={(event) => setSolverOptions((prev) => ({ ...prev, useManipulation: event.target.checked }))}
-                      className="accent-purple-400"
+                      className="peer sr-only"
                     />
-                    使用掌握
+                    <span className="flex h-4 w-4 items-center justify-center rounded border border-slate-500/80 bg-slate-900/90 text-cyan-200 transition peer-checked:border-cyan-300 peer-checked:bg-cyan-500/20 peer-checked:shadow-[0_0_0_1px_rgba(34,211,238,0.35)]">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3 opacity-0 transition peer-checked:opacity-100">
+                        <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.414l-7.2 7.2a1 1 0 01-1.414 0l-3.2-3.2a1 1 0 111.414-1.414L8.8 11.786l6.493-6.496a1 1 0 011.411 0z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                    <span className="transition group-hover:text-cyan-200">使用掌握</span>
                   </label>
-                  <label className="flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300">
+                  <label className="group flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300 transition hover:border-cyan-400/40 hover:bg-slate-900/80">
                     <input
                       type="checkbox"
                       checked={solverOptions.useHeartAndSoul}
                       onChange={(event) => setSolverOptions((prev) => ({ ...prev, useHeartAndSoul: event.target.checked }))}
-                      className="accent-purple-400"
+                      className="peer sr-only"
                     />
-                    使用專心致志
+                    <span className="flex h-4 w-4 items-center justify-center rounded border border-slate-500/80 bg-slate-900/90 text-cyan-200 transition peer-checked:border-cyan-300 peer-checked:bg-cyan-500/20 peer-checked:shadow-[0_0_0_1px_rgba(34,211,238,0.35)]">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3 opacity-0 transition peer-checked:opacity-100">
+                        <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.414l-7.2 7.2a1 1 0 01-1.414 0l-3.2-3.2a1 1 0 111.414-1.414L8.8 11.786l6.493-6.496a1 1 0 011.411 0z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                    <span className="transition group-hover:text-cyan-200">使用專心致志</span>
                   </label>
-                  <label className="flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300">
+                  <label className="group flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300 transition hover:border-cyan-400/40 hover:bg-slate-900/80">
                     <input
                       type="checkbox"
                       checked={solverOptions.useQuickInnovation}
                       onChange={(event) => setSolverOptions((prev) => ({ ...prev, useQuickInnovation: event.target.checked }))}
-                      className="accent-purple-400"
+                      className="peer sr-only"
                     />
-                    使用快速改革
+                    <span className="flex h-4 w-4 items-center justify-center rounded border border-slate-500/80 bg-slate-900/90 text-cyan-200 transition peer-checked:border-cyan-300 peer-checked:bg-cyan-500/20 peer-checked:shadow-[0_0_0_1px_rgba(34,211,238,0.35)]">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3 opacity-0 transition peer-checked:opacity-100">
+                        <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.414l-7.2 7.2a1 1 0 01-1.414 0l-3.2-3.2a1 1 0 111.414-1.414L8.8 11.786l6.493-6.496a1 1 0 011.411 0z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                    <span className="transition group-hover:text-cyan-200">使用快速改革</span>
                   </label>
                   <label
-                    className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-xs ${
+                    className={`group flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-xs transition ${
                       trainedEyeEligible
-                        ? 'border-purple-500/20 bg-slate-950/70 text-slate-300'
+                        ? 'border-purple-500/20 bg-slate-950/70 text-slate-300 hover:border-cyan-400/40 hover:bg-slate-900/80'
                         : 'border-slate-700/40 bg-slate-950/40 text-slate-500 cursor-not-allowed'
                     }`}
                     title={trainedEyeEligible ? '' : `需角色等級比配方高 10 級以上（目前：Lv.${crafterStats.level}，配方：Lv.${recipe?.lvl || '?'}）`}
@@ -1421,19 +1514,29 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                       checked={solverOptions.useTrainedEye && trainedEyeEligible}
                       disabled={!trainedEyeEligible}
                       onChange={(event) => setSolverOptions((prev) => ({ ...prev, useTrainedEye: event.target.checked }))}
-                      className="accent-purple-400 disabled:cursor-not-allowed"
+                      className="peer sr-only"
                     />
-                    使用工匠的神速技巧
+                    <span className="flex h-4 w-4 items-center justify-center rounded border border-slate-500/80 bg-slate-900/90 text-cyan-200 transition peer-checked:border-cyan-300 peer-checked:bg-cyan-500/20 peer-checked:shadow-[0_0_0_1px_rgba(34,211,238,0.35)] peer-disabled:opacity-40">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3 opacity-0 transition peer-checked:opacity-100">
+                        <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.414l-7.2 7.2a1 1 0 01-1.414 0l-3.2-3.2a1 1 0 111.414-1.414L8.8 11.786l6.493-6.496a1 1 0 011.411 0z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                    <span className="transition group-hover:text-cyan-200">使用工匠的神速技巧</span>
                     {!trainedEyeEligible && <span className="ml-auto text-[10px] text-slate-600">等級不足</span>}
                   </label>
-                  <label className="flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300">
+                  <label className="group flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300 transition hover:border-cyan-400/40 hover:bg-slate-900/80">
                     <input
                       type="checkbox"
                       checked={solverOptions.backloadProgress}
                       onChange={(event) => setSolverOptions((prev) => ({ ...prev, backloadProgress: event.target.checked }))}
-                      className="accent-purple-400"
+                      className="peer sr-only"
                     />
-                    進展後置（品質優先）
+                    <span className="flex h-4 w-4 items-center justify-center rounded border border-slate-500/80 bg-slate-900/90 text-cyan-200 transition peer-checked:border-cyan-300 peer-checked:bg-cyan-500/20 peer-checked:shadow-[0_0_0_1px_rgba(34,211,238,0.35)]">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3 opacity-0 transition peer-checked:opacity-100">
+                        <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.414l-7.2 7.2a1 1 0 01-1.414 0l-3.2-3.2a1 1 0 111.414-1.414L8.8 11.786l6.493-6.496a1 1 0 011.411 0z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                    <span className="transition group-hover:text-cyan-200">進展後置（品質優先）</span>
                   </label>
                 </div>
               </div>
@@ -1640,6 +1743,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                 {rightPanelTab === 'timeline' && simulationMode === 'auto' && detailedStatuses.length > 0 && (
                   <div className="space-y-2 max-h-[52vh] overflow-y-auto pr-1">
                     {detailedStatuses.map((statusPayload, index) => {
+                      const action = simulationResult.actions[index];
                       const currentStatus = normalizeStatusSnapshot(statusPayload);
                       const previousPayload = index === 0 ? simulationResult.initialStatus : detailedStatuses[index - 1];
                       const previousStatus = normalizeStatusSnapshot(previousPayload);
@@ -1653,6 +1757,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                       const previousQuality = toFiniteNumber(previousStatus?.quality, 0);
                       const previousDurability = toFiniteNumber(previousStatus?.durability, 0);
                       const previousCp = toFiniteNumber(previousStatus?.craft_points, 0);
+                      const progressDelta = currentProgress - previousProgress;
+                      const qualityDelta = currentQuality - previousQuality;
+                      const durabilityDelta = currentDurability - previousDurability;
+                      const cpDelta = currentCp - previousCp;
 
                       return (
                         <div
@@ -1663,8 +1771,8 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                             <div className="flex items-center gap-3 min-w-0">
                               <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-cyan-400/30 bg-cyan-500/10">
                                 <img
-                                  src={getCraftingActionIconUrl(simulationResult.actions[index])}
-                                  alt={formatActionName(simulationResult.actions[index])}
+                                  src={getCraftingActionIconUrl(action)}
+                                  alt={formatActionName(action)}
                                   className="h-8 w-8 object-contain"
                                   loading="lazy"
                                 />
@@ -1673,7 +1781,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                                 {index + 1}
                               </div>
                               <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold text-slate-100">{formatActionName(simulationResult.actions[index])}</div>
+                                <div className="truncate text-sm font-semibold text-slate-100">{formatActionName(action)}</div>
                               </div>
                             </div>
                             <div className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs font-medium ${conditionClass}`}>
@@ -1684,19 +1792,23 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                           <div className="mt-3 grid grid-cols-2 xl:grid-cols-4 gap-2 text-xs sm:text-sm">
                             <div className="rounded-lg bg-slate-900/70 px-3 py-2">
                               <div className="text-slate-500">進展</div>
-                              <div className="mt-1 font-semibold text-blue-200">{Math.round(currentProgress)} <span className="text-slate-500">({formatSignedNumber(currentProgress - previousProgress)})</span></div>
+                              <div className={`mt-1 font-semibold ${getDeltaColorClass(progressDelta)}`}>{formatDeltaOrUnchanged(progressDelta)}</div>
+                              <div className="text-[11px] text-slate-500">目前 {Math.round(currentProgress)}</div>
                             </div>
                             <div className="rounded-lg bg-slate-900/70 px-3 py-2">
                               <div className="text-slate-500">品質</div>
-                              <div className="mt-1 font-semibold text-orange-200">{Math.round(currentQuality)} <span className="text-slate-500">({formatSignedNumber(currentQuality - previousQuality)})</span></div>
+                              <div className={`mt-1 font-semibold ${getDeltaColorClass(qualityDelta)}`}>{formatDeltaOrUnchanged(qualityDelta)}</div>
+                              <div className="text-[11px] text-slate-500">目前 {Math.round(currentQuality)}</div>
                             </div>
                             <div className="rounded-lg bg-slate-900/70 px-3 py-2">
                               <div className="text-slate-500">耐久</div>
-                              <div className="mt-1 font-semibold text-yellow-200">{Math.round(currentDurability)} <span className="text-slate-500">({formatSignedNumber(currentDurability - previousDurability)})</span></div>
+                              <div className={`mt-1 font-semibold ${getDeltaColorClass(durabilityDelta)}`}>{formatResourceDelta(durabilityDelta)}</div>
+                              <div className="text-[11px] text-slate-500">目前 {Math.round(currentDurability)}（{formatDeltaOrUnchanged(durabilityDelta)}）</div>
                             </div>
                             <div className="rounded-lg bg-slate-900/70 px-3 py-2">
                               <div className="text-slate-500">CP</div>
-                              <div className="mt-1 font-semibold text-pink-200">{Math.round(currentCp)} <span className="text-slate-500">({formatSignedNumber(currentCp - previousCp)})</span></div>
+                              <div className={`mt-1 font-semibold ${getDeltaColorClass(cpDelta)}`}>{formatResourceDelta(cpDelta)}</div>
+                              <div className="text-[11px] text-slate-500">目前 {Math.round(currentCp)}（{formatDeltaOrUnchanged(cpDelta)}）</div>
                             </div>
                           </div>
                         </div>

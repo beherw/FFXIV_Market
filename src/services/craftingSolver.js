@@ -109,6 +109,50 @@ export async function getCraftPointsList(status, actions) {
   return wasm.craftpoints_list(status, actions);
 }
 
+function hasUsableDetailedStatuses(entries, expectedLength) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return false;
+  }
+
+  if (expectedLength > 0 && entries.length !== expectedLength) {
+    return false;
+  }
+
+  return entries.some((entry) => {
+    const status = entry?.status && typeof entry.status === 'object' ? entry.status : entry;
+    if (!status || typeof status !== 'object') {
+      return false;
+    }
+
+    return ['progress', 'quality', 'durability', 'craft_points'].some((key) => Number.isFinite(Number(status[key])));
+  });
+}
+
+async function buildDetailedStatusesFromSteps(initialStatus, actions) {
+  if (!initialStatus || !Array.isArray(actions) || actions.length === 0) {
+    return [];
+  }
+
+  const statuses = [];
+  let currentStatus = initialStatus;
+
+  for (const action of actions) {
+    const oneStepResult = await simulateCraftingOneStep(currentStatus, action, true);
+    const nextStatus = oneStepResult?.status && typeof oneStepResult.status === 'object'
+      ? oneStepResult.status
+      : oneStepResult;
+
+    if (!nextStatus || typeof nextStatus !== 'object') {
+      break;
+    }
+
+    statuses.push(nextStatus);
+    currentStatus = nextStatus;
+  }
+
+  return statuses;
+}
+
 function invokeSolver(name, args) {
   return new Promise((resolve, reject) => {
     const worker = new Worker(
@@ -193,9 +237,17 @@ export async function runAutoCraftSimulation(
 
   let detailedStatuses = [];
   try {
-    detailedStatuses = await simulateCraftingDetail(initialStatus, actions);
+    detailedStatuses = await buildDetailedStatusesFromSteps(initialStatus, actions);
   } catch (error) {
-    console.warn('[CraftingSimulator] Failed to calculate detailed simulation states:', error);
+    console.warn('[CraftingSimulator] Failed to build detailed simulation from one-step states:', error);
+  }
+
+  if (!hasUsableDetailedStatuses(detailedStatuses, actions.length)) {
+    try {
+      detailedStatuses = await simulateCraftingDetail(initialStatus, actions);
+    } catch (error) {
+      console.warn('[CraftingSimulator] Failed to calculate detailed simulation states:', error);
+    }
   }
 
   let hqProbability = null;
