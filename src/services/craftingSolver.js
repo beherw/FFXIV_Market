@@ -230,7 +230,7 @@ export async function runAutoCraftSimulation(
 ) {
   const simulatorRecipe = convertRecipeToSimulatorRecipe(recipe);
   const initialStatus = await createCraftingStatus(attributes, simulatorRecipe);
-  const clampedStartingQuality = Math.max(0, Math.min(Number(startingQuality) || 0, simulatorRecipe.quality || 0));
+  const clampedStartingQuality = Math.floor(Math.max(0, Math.min(Number(startingQuality) || 0, simulatorRecipe.quality || 0)));
   initialStatus.quality = clampedStartingQuality;
   const actions = await solveWithSelectedSolver(initialStatus, solverOptions);
   const simulation = await simulateCrafting(initialStatus, actions);

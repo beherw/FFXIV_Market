@@ -577,10 +577,6 @@ function buildMacroPages(actions, chunkSize = MACRO_ACTIONS_PER_PAGE) {
     const isLastPage = chunkIndex === chunks.length - 1;
     const lines = chunk.map((action) => `/ac "${formatActionName(action)}" <wait.3>`);
 
-    if (!isLastPage) {
-      lines.push(`/echo 請接續執行下一頁巨集 (${chunkIndex + 2}/${chunks.length})`);
-    }
-
     return {
       index: chunkIndex,
       text: lines.join('\n'),
@@ -856,7 +852,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       try {
         const simulatorRecipe = convertRecipeToSimulatorRecipe(recipe);
         const status = await createCraftingStatus(crafterStats, simulatorRecipe);
-        status.quality = clampedStartingQuality;
+        status.quality = Math.floor(clampedStartingQuality);
 
         if (cancelled) {
           return;
