@@ -736,7 +736,9 @@ export default function CraftingJobPriceChecker({
 
   // Update searchResults when showUntradeable changes
   useEffect(() => {
-    const itemsToDisplay = showUntradeable ? untradeableResults : tradeableResults;
+    const itemsToDisplay = showUntradeable
+      ? untradeableResults
+      : (tradeableResults.length > 0 ? tradeableResults : untradeableResults);
     // Only update if we have results to avoid clearing during search
     if (tradeableResults.length > 0 || untradeableResults.length > 0) {
       setSearchResults(itemsToDisplay);
