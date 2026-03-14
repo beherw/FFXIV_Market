@@ -1304,6 +1304,9 @@ export default function CraftingTree({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartScrollLeft, setDragStartScrollLeft] = useState(0);
+  const [isHqOptionsOpen, setIsHqOptionsOpen] = useState(false);
+  const [hqOverrides, setHqOverrides] = useState({});
+  const [hqOverridesDraft, setHqOverridesDraft] = useState({});
 
   // Check if it's a DC query (not a specific server)
   const isDcQuery = useMemo(() => {
@@ -1340,6 +1343,53 @@ export default function CraftingTree({
     }
     return ids;
   }, []);
+
+  const allTreeItemIds = useMemo(() => {
+    if (!tree) return [];
+    return Array.from(getAllItemIds(tree));
+  }, [tree, getAllItemIds]);
+
+  const isTreeLoaded = !!tree && !isLoadingNames && !isLoadingPrices;
+
+  const canOpenHqOptions = useMemo(() => {
+    if (!isTreeLoaded) return false;
+    return allTreeItemIds.some((itemId) => {
+      const priceInfo = itemPrices[itemId];
+      return priceInfo && (priceInfo.nqPrice !== undefined || priceInfo.hqPrice !== undefined);
+    });
+  }, [allTreeItemIds, isTreeLoaded, itemPrices]);
+
+  const effectiveItemPrices = useMemo(() => {
+    const nextPrices = { ...itemPrices };
+
+    Object.entries(itemPrices).forEach(([itemIdKey, priceInfo]) => {
+      const override = hqOverrides[itemIdKey];
+      if (!override || !priceInfo) {
+        return;
+      }
+
+      if (override === 'hq' && priceInfo.hqPrice !== undefined && priceInfo.hqPrice !== null) {
+        nextPrices[itemIdKey] = {
+          ...priceInfo,
+          price: priceInfo.hqPrice,
+          isHQ: true,
+          worldName: priceInfo.hqWorldName || priceInfo.worldName || null,
+        };
+        return;
+      }
+
+      if (override === 'nq' && priceInfo.nqPrice !== undefined && priceInfo.nqPrice !== null) {
+        nextPrices[itemIdKey] = {
+          ...priceInfo,
+          price: priceInfo.nqPrice,
+          isHQ: false,
+          worldName: priceInfo.nqWorldName || priceInfo.worldName || null,
+        };
+      }
+    });
+
+    return nextPrices;
+  }, [itemPrices, hqOverrides]);
 
   // Load item names + market prices (with short-lived cache to avoid API spam on expand/collapse)
   useEffect(() => {
@@ -1432,6 +1482,12 @@ export default function CraftingTree({
 
     return () => { cancelled = true; };
   }, [tree, selectedServerOption, worlds, getAllItemIds]);
+
+  useEffect(() => {
+    setIsHqOptionsOpen(false);
+    setHqOverrides({});
+    setHqOverridesDraft({});
+  }, [tree, selectedServerOption]);
 
   // Handle item click - open item page in new tab
   const handleItemClick = useCallback((itemId) => {
@@ -1545,8 +1601,57 @@ export default function CraftingTree({
     );
   }
 
+  const openHqOptionsDrawer = () => {
+    if (!canOpenHqOptions) {
+      return;
+    }
+
+    if (isHqOptionsOpen) {
+      closeHqOptionsDrawer();
+      return;
+    }
+
+    setHqOverridesDraft({ ...hqOverrides });
+    setIsHqOptionsOpen(true);
+  };
+
+  const closeHqOptionsDrawer = () => {
+    setIsHqOptionsOpen(false);
+    setHqOverridesDraft({});
+  };
+
+  const saveHqOptionsDrawer = () => {
+    const normalized = {};
+    Object.entries(hqOverridesDraft).forEach(([itemId, mode]) => {
+      if (mode === 'hq' || mode === 'nq') {
+        normalized[itemId] = mode;
+      }
+    });
+    setHqOverrides(normalized);
+    setIsHqOptionsOpen(false);
+  };
+
+  const applyDraftQualityForAll = (targetMode) => {
+    const nextDraft = {};
+    allTreeItemIds.forEach((itemId) => {
+      const priceInfo = itemPrices[itemId];
+      if (!priceInfo) return;
+
+      if (targetMode === 'hq') {
+        if (priceInfo.hqPrice !== undefined && priceInfo.hqPrice !== null) {
+          nextDraft[itemId] = 'hq';
+        }
+      } else if (targetMode === 'nq') {
+        if (priceInfo.nqPrice !== undefined && priceInfo.nqPrice !== null) {
+          nextDraft[itemId] = 'nq';
+        }
+      }
+    });
+    setHqOverridesDraft(nextDraft);
+  };
+
   return (
-    <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-4">
+    <div className="relative bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -1651,6 +1756,103 @@ export default function CraftingTree({
               </div>
             </div>
           )}
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={openHqOptionsDrawer}
+              disabled={!canOpenHqOptions}
+              className={`px-2.5 py-1 rounded-md border text-xs font-medium transition ${canOpenHqOptions ? (isHqOptionsOpen ? 'bg-slate-800/70 border-cyan-500/35 text-cyan-300 hover:border-cyan-400/60 hover:text-cyan-200' : 'bg-slate-800/60 border-slate-600/40 text-gray-400 hover:border-purple-500/40 hover:text-purple-300') : 'bg-slate-800/40 border-slate-700/50 text-slate-500 cursor-not-allowed opacity-70'}`}
+              title={canOpenHqOptions ? (isHqOptionsOpen ? '再次點擊可關閉 HQ 選項' : '設定每個材料使用 HQ 或 NQ 價格') : '請等待製作樹完成載入後再設定 HQ 選項'}
+            >
+              HQ選項
+            </button>
+
+            {isHqOptionsOpen && (
+              <div className="absolute left-0 top-[calc(100%+8px)] z-40 w-[min(88vw,330px)] rounded-xl border border-cyan-500/30 bg-slate-900/95 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-sm font-semibold text-cyan-200">HQ選項設定</h4>
+                    <p className="text-xs text-slate-400">預設為自動最佳解，無法切換的物品已隱藏。</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => applyDraftQualityForAll('nq')}
+                      className="rounded-md border border-slate-600/60 bg-slate-800/80 px-2.5 py-1 text-xs text-slate-200 hover:border-slate-500"
+                    >
+                      全部NQ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyDraftQualityForAll('hq')}
+                      className="rounded-md border border-yellow-500/35 bg-yellow-500/10 px-2.5 py-1 text-xs text-yellow-300 hover:border-yellow-400/50"
+                    >
+                      全部HQ
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-3 max-h-[58vh] overflow-y-auto space-y-1.5 pr-1">
+                  {allTreeItemIds
+                    .filter((itemId) => {
+                      const priceInfo = itemPrices[itemId] || {};
+                      const hasNq = priceInfo.nqPrice !== undefined && priceInfo.nqPrice !== null;
+                      const hasHq = priceInfo.hqPrice !== undefined && priceInfo.hqPrice !== null;
+                      return hasNq && hasHq;
+                    })
+                    .map((itemId) => {
+                      const priceInfo = itemPrices[itemId] || {};
+                      const itemName = itemNames[itemId] || `物品 ${itemId}`;
+                      const fallbackMode = priceInfo.isHQ ? 'hq' : 'nq';
+                      const selectedMode = hqOverridesDraft[itemId] || fallbackMode;
+
+                      return (
+                        <div key={itemId} className="flex items-center justify-between gap-2 rounded-lg border border-slate-700/70 bg-slate-950/55 px-2.5 py-2">
+                          <div className="min-w-0">
+                            <div className="truncate text-xs text-slate-100" title={itemName}>{itemName}</div>
+                            <div className="text-[11px] text-slate-500">ID {itemId}</div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setHqOverridesDraft((prev) => ({ ...prev, [itemId]: 'nq' }))}
+                              className={`rounded-md border px-2 py-1 text-[11px] transition ${selectedMode === 'nq' ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300' : 'border-slate-600/70 bg-slate-800/70 text-slate-300 hover:border-emerald-400/60'}`}
+                            >
+                              NQ
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setHqOverridesDraft((prev) => ({ ...prev, [itemId]: 'hq' }))}
+                              className={`rounded-md border px-2 py-1 text-[11px] transition ${selectedMode === 'hq' ? 'border-yellow-500/50 bg-yellow-500/15 text-yellow-300' : 'border-slate-600/70 bg-slate-800/70 text-slate-300 hover:border-yellow-400/60'}`}
+                            >
+                              HQ
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                <div className="mt-3 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeHqOptionsDrawer}
+                    className="rounded-md border border-slate-600/70 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-500"
+                  >
+                    關閉
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveHqOptionsDrawer}
+                    className="rounded-md border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-300 hover:border-cyan-400/60"
+                  >
+                    保存
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           
           {/* Add CSS animations for crystal effects */}
           {/* Crystal animations - simplified for GPU efficiency: removed expensive
@@ -1698,8 +1900,8 @@ export default function CraftingTree({
         </div>
         <div className="flex items-center gap-3">
           {/* Price type explanation and Daily Sale Velocity for root item */}
-          {!isLoadingPrices && tree && itemPrices[tree.itemId] && (() => {
-            const rootPriceInfo = itemPrices[tree.itemId];
+          {!isLoadingPrices && tree && effectiveItemPrices[tree.itemId] && (() => {
+            const rootPriceInfo = effectiveItemPrices[tree.itemId];
             const rootPriceType = rootPriceInfo?.priceType || (isDcQuery ? 'minListing' : 'average');
             const isFallback = !isDcQuery && rootPriceType === 'minListing';
             const hasPrice = rootPriceInfo.price !== null && rootPriceInfo.price !== undefined;
@@ -1816,7 +2018,7 @@ export default function CraftingTree({
           <TreeNodeVertical
             node={tree}
             itemNames={itemNames}
-            itemPrices={itemPrices}
+            itemPrices={effectiveItemPrices}
             queriedItemIds={queriedItemIds}
             onItemClick={handleItemClick}
             isRoot={true}

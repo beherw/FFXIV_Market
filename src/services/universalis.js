@@ -357,7 +357,7 @@ export async function getMarketDataByDataCenter(itemId, dataCenter, options = {}
  * @param {Array<number>} itemIds - Array of item IDs (max 100)
  * @param {Object} worlds - World ID to name mapping
  * @param {Object} options - Additional options like abort signal
- * @returns {Promise<Object>} - Object with itemId as key and { price, isHQ, worldName?, priceType } as value
+ * @returns {Promise<Object>} - Object with itemId as key and { price, isHQ, worldName?, priceType, nqPrice?, hqPrice?, nqWorldName?, hqWorldName? } as value
  *   priceType: 'average' (normal) or 'minListing' (fallback when no average available)
  */
 export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {}, options = {}) {
@@ -399,6 +399,10 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
         let isHQ = false;
         let worldName = null;
         let priceType = 'average'; // 'average' or 'minListing'
+        let nqPrice = null;
+        let hqPrice = null;
+        let nqWorldName = null;
+        let hqWorldName = null;
 
         if (isSpecificWorld) {
           // When querying specific world, use AVERAGE SALE PRICE (world level)
@@ -449,6 +453,14 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
               priceType = 'minListing';
             }
           }
+
+          if (priceType === 'average') {
+            nqPrice = nqAvgPrice ? Math.round(nqAvgPrice) : null;
+            hqPrice = hqAvgPrice ? Math.round(hqAvgPrice) : null;
+          } else {
+            nqPrice = nqMinListing?.price ?? null;
+            hqPrice = hqMinListing?.price ?? null;
+          }
         } else {
           // When querying DC, use MIN LISTING PRICE with server name
           const nqMinListing = item.nq?.minListing?.dc;
@@ -476,6 +488,11 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
             isHQ = false;
             worldName = worlds[nqMinListing.worldId] || `伺服器 ${nqMinListing.worldId}`;
           }
+
+          nqPrice = nqMinListing?.price ?? null;
+          hqPrice = hqMinListing?.price ?? null;
+          nqWorldName = nqMinListing?.worldId ? (worlds[nqMinListing.worldId] || `伺服器 ${nqMinListing.worldId}`) : null;
+          hqWorldName = hqMinListing?.worldId ? (worlds[hqMinListing.worldId] || `伺服器 ${hqMinListing.worldId}`) : null;
         }
 
         // Get daily sale velocity - add NQ and HQ together (use whichever is available)
@@ -503,6 +520,19 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
           isHQ: isHQ,
           priceType: priceType,
         };
+
+        if (nqPrice !== null) {
+          result.nqPrice = nqPrice;
+        }
+        if (hqPrice !== null) {
+          result.hqPrice = hqPrice;
+        }
+        if (nqWorldName) {
+          result.nqWorldName = nqWorldName;
+        }
+        if (hqWorldName) {
+          result.hqWorldName = hqWorldName;
+        }
         // Only include worldName for DC queries (minListing)
         if (worldName) {
           result.worldName = worldName;
