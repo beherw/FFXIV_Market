@@ -1,5 +1,5 @@
 // Crafting Tree component - displays a vertical crafting price tree
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import ItemImage from './ItemImage';
 import { getItemById } from '../services/itemDatabase';
 import { getInternalUrl } from '../utils/internalUrl.js';
@@ -11,6 +11,7 @@ import { generateItemUrl } from '../utils/urlSlug';
 // TTL 5 min so data refreshes on page load; same-session expand/collapse reuses cache
 const TREE_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
 const treeDataCache = new Map(); // key -> { itemNames, itemPrices, queriedItemIds (array), expires }
+const LazyObtainMethods = lazy(() => import('./ObtainMethods.jsx'));
 
 function getTreeDataCacheKey(itemIds, selectedServerOption) {
   const sorted = [...itemIds].sort((a, b) => a - b).join(',');
@@ -65,6 +66,40 @@ function CopyButton({ text, onCopy }) {
         </svg>
       )}
     </button>
+  );
+}
+
+function ObtainMethodIcon({ className = '' }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M12 12.2a2.7 2.7 0 100-5.4 2.7 2.7 0 000 5.4z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 21s6-5.4 6-10.2A6 6 0 006 10.8C6 15.6 12 21 12 21z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3.5 20.2c2.1-1.8 4.7-2.7 8-2.7m4 .3c1.9.4 3.5 1.2 5 2.4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -228,6 +263,7 @@ function ItemCard({
   itemName, 
   priceInfo, 
   onItemClick, 
+  onOpenObtainMethods,
   isRoot = false,
   isLoading = false,
   isPriceQueried = false,
@@ -240,7 +276,7 @@ function ItemCard({
     <div 
       ref={nodeRef}
       className={`
-        flex flex-col items-center p-2 rounded-lg cursor-pointer transition-all duration-200
+        relative flex flex-col items-center p-2 rounded-lg cursor-pointer transition-all duration-200
         ${isRoot 
           ? 'bg-gradient-to-br from-ffxiv-gold/20 to-yellow-500/10 border-2 border-ffxiv-gold/50 hover:border-ffxiv-gold min-w-[120px]' 
           : isHighlighted
@@ -253,6 +289,19 @@ function ItemCard({
       onClick={() => onItemClick(node.itemId)}
       title={`查看 ${itemName}`}
     >
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenObtainMethods?.(node.itemId);
+        }}
+        className="absolute top-1 right-1 p-0.5 rounded transition-all duration-200 flex-shrink-0 text-gray-500 hover:text-ffxiv-gold hover:bg-purple-800/40"
+        title={`查看 ${itemName} 的取得方式`}
+        aria-label={`查看 ${itemName} 的取得方式`}
+      >
+        <ObtainMethodIcon className="w-3 h-3" />
+      </button>
+
       {/* Item Image */}
       <div className="relative">
         <ItemImage
@@ -1015,6 +1064,7 @@ function TreeNodeVertical({
   itemPrices,
   queriedItemIds,
   onItemClick,
+  onOpenObtainMethods,
   isRoot = false,
   isLoading = false,
   parentOnGreenPath = false,
@@ -1191,6 +1241,7 @@ function TreeNodeVertical({
         itemName={itemName}
         priceInfo={priceInfo}
         onItemClick={onItemClick}
+        onOpenObtainMethods={onOpenObtainMethods}
         isRoot={isRoot}
         isLoading={isLoading}
         isPriceQueried={isPriceQueried}
@@ -1265,6 +1316,7 @@ function TreeNodeVertical({
                     itemPrices={itemPrices}
                     queriedItemIds={queriedItemIds}
                     onItemClick={onItemClick}
+                    onOpenObtainMethods={onOpenObtainMethods}
                     isLoading={isLoading}
                     parentOnGreenPath={highlightLinesToChildren}
                     isDcQuery={isDcQuery}
@@ -1307,6 +1359,9 @@ export default function CraftingTree({
   const [isHqOptionsOpen, setIsHqOptionsOpen] = useState(false);
   const [hqOverrides, setHqOverrides] = useState({});
   const [hqOverridesDraft, setHqOverridesDraft] = useState({});
+  const [isObtainModalOpen, setIsObtainModalOpen] = useState(false);
+  const [obtainModalItemId, setObtainModalItemId] = useState(null);
+  const [isObtainModalLoading, setIsObtainModalLoading] = useState(false);
 
   // Check if it's a DC query (not a specific server)
   const isDcQuery = useMemo(() => {
@@ -1489,13 +1544,41 @@ export default function CraftingTree({
     setHqOverridesDraft({});
   }, [tree, selectedServerOption]);
 
+  useEffect(() => {
+    setIsObtainModalOpen(false);
+    setObtainModalItemId(null);
+    setIsObtainModalLoading(false);
+  }, [tree?.itemId]);
+
+  useEffect(() => {
+    if (!isObtainModalOpen) return;
+
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape') {
+        setIsObtainModalOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscKey);
+    return () => window.removeEventListener('keydown', handleEscKey);
+  }, [isObtainModalOpen]);
+
   // Handle item click - open item page in new tab
-  const handleItemClick = useCallback((itemId) => {
+  const handleItemClick = useCallback((itemOrId, options = {}) => {
+    const itemId = typeof itemOrId === 'object' ? itemOrId?.id : itemOrId;
+
+    if (!itemId) return;
+
+    if (typeof itemOrId === 'object' && itemOrId?.id && onItemSelect) {
+      onItemSelect(itemOrId, options);
+      return;
+    }
+
     if (onItemSelect) {
       // Use the callback if provided
       getItemById(itemId).then(item => {
         if (item) {
-          onItemSelect(item);
+          onItemSelect(item, options);
         } else {
           // Open in new tab
           const itemUrl = generateItemUrl(itemId, 'item');
@@ -1510,6 +1593,12 @@ export default function CraftingTree({
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   }, [onItemSelect]);
+
+  const handleOpenObtainMethods = useCallback((itemId) => {
+    if (!itemId) return;
+    setObtainModalItemId(itemId);
+    setIsObtainModalOpen(true);
+  }, []);
 
   // Check if horizontal scroll is needed
   useEffect(() => {
@@ -2021,6 +2110,7 @@ export default function CraftingTree({
             itemPrices={effectiveItemPrices}
             queriedItemIds={queriedItemIds}
             onItemClick={handleItemClick}
+            onOpenObtainMethods={handleOpenObtainMethods}
             isRoot={true}
             isLoading={isLoadingNames}
             parentOnGreenPath={true}
@@ -2028,6 +2118,74 @@ export default function CraftingTree({
           />
         </div>
       </div>
+
+      {isObtainModalOpen && obtainModalItemId && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setIsObtainModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-6xl max-h-[90vh] rounded-xl border border-indigo-600/30 bg-slate-900/95 shadow-[0_0_40px_rgba(0,0,0,0.55)] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-indigo-500/20 bg-slate-900/90">
+              <div className="flex items-center gap-3 min-w-0">
+                <ItemImage
+                  itemId={obtainModalItemId}
+                  alt={itemNames[obtainModalItemId] || `物品 ${obtainModalItemId}`}
+                  className="w-8 h-8 object-contain rounded border border-indigo-500/30"
+                />
+                <div className="min-w-0">
+                  <h4 className="text-sm sm:text-base font-semibold text-ffxiv-gold truncate">
+                    取得方式
+                  </h4>
+                  <p className="text-xs text-gray-400 truncate">
+                    {itemNames[obtainModalItemId] || `物品 ${obtainModalItemId}`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {isObtainModalLoading && (
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-indigo-400/30 border-t-indigo-400"></div>
+                    載入中...
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsObtainModalOpen(false)}
+                  className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-slate-800/70 transition-colors"
+                  aria-label="關閉取得方式視窗"
+                  title="關閉"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[calc(90vh-66px)] overflow-y-auto p-4 sm:p-5">
+              <Suspense fallback={
+                <div className="p-8 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-400/30 border-t-indigo-400 mx-auto"></div>
+                  <p className="mt-3 text-sm text-gray-400">載入取得方式...</p>
+                </div>
+              }>
+                <LazyObtainMethods
+                  itemId={obtainModalItemId}
+                  onItemClick={(item, options) => {
+                    handleItemClick(item, options);
+                    setIsObtainModalOpen(false);
+                  }}
+                  onLoadingChange={setIsObtainModalLoading}
+                />
+              </Suspense>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Legend */}
       <div className="mt-4 pt-3 border-t border-purple-500/20 flex flex-wrap gap-4 text-xs text-gray-400">

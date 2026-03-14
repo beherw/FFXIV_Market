@@ -3273,7 +3273,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 min-w-0">
             {tasks.map((task, taskIdx) => {
               const taskId = typeof task === 'object' && task !== null ? task.id : task;
               const taskFromLookup = taskId !== undefined && taskId !== null
@@ -3294,7 +3294,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               return (
                 <div
                   key={taskIdx}
-                  className={`${getMethodCardLayoutClass(tasks.length)} rounded-xl p-4 flex flex-col gap-3 bg-slate-900/50 border border-slate-700/50 hover:border-slate-600/60 transition-all duration-200`}
+                  className="w-full min-w-0 max-w-full rounded-xl p-4 flex flex-col gap-3 bg-slate-900/50 border border-slate-700/50 hover:border-slate-600/60 transition-all duration-200"
                 >
                   {/* Level & category row */}
                   <div className="flex flex-wrap items-center gap-2">
@@ -3302,7 +3302,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                       Lv.{level ?? '?'}
                     </span>
                     {categoryName && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-700/50 border border-slate-600/50 text-xs text-slate-300 font-medium">
+                      <span className="inline-flex min-w-0 max-w-full items-center gap-1 px-2.5 py-1 rounded-md bg-slate-700/50 border border-slate-600/50 text-xs text-slate-300 font-medium truncate" title={categoryName}>
                         {categoryName}
                       </span>
                     )}
@@ -3353,9 +3353,9 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                               )}
                             </div>
                             <div className="flex min-w-0 flex-1 items-center py-2.5 px-3">
-                              <div>
+                              <div className="min-w-0">
                                 <div className="text-[11px] uppercase tracking-wider text-slate-500">條件</div>
-                                <div className="text-sm font-medium text-slate-200">{conditionText}</div>
+                                <div className="text-sm font-medium text-slate-200 break-words">{conditionText}</div>
                               </div>
                             </div>
                             <div className="w-px bg-slate-600/60 shrink-0" aria-hidden />
