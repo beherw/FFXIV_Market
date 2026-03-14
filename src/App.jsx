@@ -24,6 +24,7 @@ import { useHistory } from './hooks/useHistory';
 import { useMultiItemCombinedTree } from './hooks/useMultiItemCombinedTree';
 import { hasRecipe, buildCraftingTree, findRelatedItems } from './services/recipeDatabase';
 import { getIlvls, getItemPatch, getPatchNames, getItemSetFromDB, getTwItemsByIds } from './services/gameData';
+import { getUICategoriesByIds, getTwItemUICategories } from './services/uiCategoriesDataService';
 import TopBar from './components/TopBar';
 import NotFound from './components/NotFound';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
@@ -423,6 +424,7 @@ function App() {
   const [selectedItemMeta, setSelectedItemMeta] = useState(null);
   /** True after we've attempted to load TW name for selected item (so we don't show "查無此物" before load completes, e.g. on reload with empty cache) */
   const [twNameLoadAttempted, setTwNameLoadAttempted] = useState(false);
+  const [selectedItemCategory, setSelectedItemCategory] = useState(null); // { id, name }
 
   // Load ilvl and patch data lazily (only when needed, not on mount)
   // This prevents unnecessary data loading on initial page load
@@ -549,6 +551,33 @@ function App() {
         }
       } finally {
         if (!cancelled) setTwNameLoadAttempted(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedItem]);
+
+  useEffect(() => {
+    if (!selectedItem?.id) {
+      setSelectedItemCategory(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [catMap, twCats] = await Promise.all([
+          getUICategoriesByIds([selectedItem.id]),
+          getTwItemUICategories(),
+        ]);
+        if (cancelled) return;
+        const catId = catMap[selectedItem.id];
+        if (catId !== undefined) {
+          const name = twCats[catId]?.tw || null;
+          setSelectedItemCategory({ id: catId, name });
+        } else {
+          setSelectedItemCategory(null);
+        }
+      } catch (err) {
+        if (!cancelled) console.error('Failed to load item category:', err);
       }
     })();
     return () => { cancelled = true; };
@@ -4300,6 +4329,15 @@ function App() {
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded-md border text-[10px] mid:text-xs font-semibold whitespace-nowrap bg-amber-900/20 border-amber-400/40 text-amber-300">
                                   裝等: {equipLevel}
                                 </span>
+                              )}
+                              {selectedItemCategory?.name && (
+                                <button
+                                  onClick={() => navigate(`/advanced-search?category=${selectedItemCategory.id}`)}
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded-md border text-[10px] mid:text-xs font-semibold whitespace-nowrap bg-sky-900/20 border-sky-400/40 text-sky-300 hover:bg-sky-800/30 hover:border-sky-400/60 transition-colors cursor-pointer"
+                                  title={`進階搜尋：${selectedItemCategory.name}`}
+                                >
+                                  {selectedItemCategory.name}
+                                </button>
                               )}
                             </>
                           );

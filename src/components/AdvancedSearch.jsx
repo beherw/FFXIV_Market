@@ -1080,7 +1080,17 @@ export default function AdvancedSearch({
 
     // Check for search query parameter
     const searchQuery = searchParams.get('q');
-    if (searchQuery && searchQuery.trim() !== '') {
+    const categoryParam = searchParams.get('category');
+
+    if (categoryParam) {
+      // Navigate from item info page - pre-select the category
+      const catId = parseInt(categoryParam, 10);
+      if (!isNaN(catId)) {
+        setActiveTab('filter');
+        setSelectedCategories([catId]);
+      }
+      hasInitializedFromURLRef.current = true;
+    } else if (searchQuery && searchQuery.trim() !== '') {
       // Batch search is disabled, ignore URL query parameter
       // Force switch to filter tab if somehow on batch tab
       if (activeTab === 'batch') {
