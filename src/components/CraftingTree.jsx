@@ -287,6 +287,12 @@ function ItemCard({
         }
       `}
       onClick={() => onItemClick(node.itemId)}
+      onMouseDown={(e) => {
+        if (e.button !== 1) return;
+        e.preventDefault();
+        e.stopPropagation();
+        onItemClick(node.itemId, { openInNewTab: true });
+      }}
       title={`查看 ${itemName}`}
     >
       <button
@@ -1563,11 +1569,21 @@ export default function CraftingTree({
     return () => window.removeEventListener('keydown', handleEscKey);
   }, [isObtainModalOpen]);
 
-  // Handle item click - open item page in new tab
+  // Handle item click: left-click selects in current page, middle-click opens a new tab
   const handleItemClick = useCallback((itemOrId, options = {}) => {
     const itemId = typeof itemOrId === 'object' ? itemOrId?.id : itemOrId;
+    const itemName = typeof itemOrId === 'object'
+      ? (itemOrId?.nameTW || itemOrId?.name || 'item')
+      : 'item';
 
     if (!itemId) return;
+
+    if (options.openInNewTab) {
+      const itemUrl = generateItemUrl(itemId, itemName);
+      const url = `${window.location.origin}${getInternalUrl(itemUrl)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
 
     if (typeof itemOrId === 'object' && itemOrId?.id && onItemSelect) {
       onItemSelect(itemOrId, options);
