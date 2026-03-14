@@ -17,14 +17,14 @@ import { getCraftingActionIconUrl } from '../utils/craftingActionIcons';
 import { generateItemUrl } from '../utils/urlSlug';
 
 const JOB_NAMES = {
-  8: '鍛鐵匠',
-  9: '鑄甲匠',
-  10: '雕金匠',
-  11: '製革匠',
-  12: '裁縫匠',
-  13: '煉金術士',
-  14: '烹調師',
-  15: '刻木匠',
+  8: '刻木匠',
+  9: '鍛鐵匠',
+  10: '鑄甲匠',
+  11: '雕金匠',
+  12: '製革匠',
+  13: '裁縫匠',
+  14: '煉金術士',
+  15: '烹調師',
 };
 
 const JOB_ICON_MAP = {
@@ -171,7 +171,9 @@ const MANUAL_CATEGORY_NAMES = {
 const ALL_MANUAL_ACTIONS = Object.values(MANUAL_ACTION_CATEGORIES).flat();
 
 const CRAFTER_STATS_CACHE_KEY = 'crafting-simulator-crafter-stats-v1';
+const CRAFTER_JOB_PROFILES_CACHE_KEY = 'crafting-simulator-crafter-job-profiles-v1';
 const SIMULATOR_PREFERENCES_CACHE_KEY = 'crafting-simulator-preferences-v1';
+const CRAFTING_JOB_IDS = [8, 9, 10, 11, 12, 13, 14, 15];
 const CRAFTER_STAT_RULES = {
   level: { min: 1 },
   craftsmanship: { min: 0 },
@@ -244,6 +246,51 @@ function saveCrafterStatsToCache(crafterStats) {
 
   try {
     window.localStorage.setItem(CRAFTER_STATS_CACHE_KEY, JSON.stringify(crafterStats));
+  } catch {
+  }
+}
+
+function loadCrafterJobProfilesFromCache(defaultStats) {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  try {
+    const cachedRaw = window.localStorage.getItem(CRAFTER_JOB_PROFILES_CACHE_KEY);
+    if (!cachedRaw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(cachedRaw);
+    if (!parsed || typeof parsed !== 'object') {
+      window.localStorage.removeItem(CRAFTER_JOB_PROFILES_CACHE_KEY);
+      return {};
+    }
+
+    const normalizedProfiles = {};
+
+    CRAFTING_JOB_IDS.forEach((jobId) => {
+      const key = String(jobId);
+      const normalized = normalizeCrafterStats(parsed[key], defaultStats);
+      if (normalized) {
+        normalizedProfiles[key] = normalized;
+      }
+    });
+
+    return normalizedProfiles;
+  } catch {
+    window.localStorage.removeItem(CRAFTER_JOB_PROFILES_CACHE_KEY);
+    return {};
+  }
+}
+
+function saveCrafterJobProfilesToCache(jobProfiles) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(CRAFTER_JOB_PROFILES_CACHE_KEY, JSON.stringify(jobProfiles));
   } catch {
   }
 }
@@ -422,37 +469,6 @@ function formatSolveFailureMessage(rawError, recipe, stats) {
   }
 
   return rawMessage || '模擬製作失敗';
-}
-
-function getStatRequirementFailureMessage(recipe, stats) {
-  if (!recipe || !stats) {
-    return null;
-  }
-
-  const requiredLevel = Number(recipe.lvl) || 0;
-  const requiredCraftsmanship = Number(recipe.craftsmanshipReq) || Number(recipe.suggestedCraftsmanship) || 0;
-  const requiredControl = Number(recipe.controlReq) || 0;
-
-  const currentLevel = Number(stats.level) || 0;
-  const currentCraftsmanship = Number(stats.craftsmanship) || 0;
-  const currentControl = Number(stats.control) || 0;
-
-  const missing = [];
-  if (requiredLevel > 0 && currentLevel < requiredLevel) {
-    missing.push(`等級 ${currentLevel}/${requiredLevel}`);
-  }
-  if (requiredCraftsmanship > 0 && currentCraftsmanship < requiredCraftsmanship) {
-    missing.push(`作業精度 ${currentCraftsmanship}/${requiredCraftsmanship}`);
-  }
-  if (requiredControl > 0 && currentControl < requiredControl) {
-    missing.push(`加工精度 ${currentControl}/${requiredControl}`);
-  }
-
-  if (!missing.length) {
-    return null;
-  }
-
-  return `目前屬性未達配方最低門檻（${missing.join('、')}），先提升屬性再進行自動計算。`;
 }
 
 const BUFF_DURATION_CANDIDATES = [
@@ -648,6 +664,9 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
 
   const defaultStats = useMemo(() => getDefaultCrafterAttributes(), []);
   const [crafterStats, setCrafterStats] = useState(() => loadCrafterStatsFromCache(defaultStats));
+  const [crafterJobProfiles, setCrafterJobProfiles] = useState(() => loadCrafterJobProfilesFromCache(defaultStats));
+  const [isJobProfilesOpen, setIsJobProfilesOpen] = useState(false);
+  const [jobProfileState, setJobProfileState] = useState({ type: 'idle', jobId: null });
   const [ingredientHqCounts, setIngredientHqCounts] = useState({});
   const solveRequestIdRef = useRef(0);
   const backdropPointerDownRef = useRef(null);
@@ -667,6 +686,39 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       window.localStorage.removeItem(CRAFTER_STATS_CACHE_KEY);
     }
     setCrafterStats({ ...defaultStats });
+  };
+
+  const handleToggleJobProfiles = () => {
+    setIsJobProfilesOpen((previous) => !previous);
+  };
+
+  const handleSaveCrafterStatsForJob = (jobId) => {
+    const normalizedJobId = String(jobId);
+    const statsToSave = normalizeCrafterStats(crafterStats, defaultStats);
+    if (!statsToSave) {
+      setJobProfileState({ type: 'missing', jobId: normalizedJobId });
+      return;
+    }
+
+    setCrafterJobProfiles((previous) => ({
+      ...previous,
+      [normalizedJobId]: { ...statsToSave },
+    }));
+    setJobProfileState({ type: 'saved', jobId: normalizedJobId });
+  };
+
+  const handleLoadCrafterStatsForJob = (jobId) => {
+    const normalizedJobId = String(jobId);
+    const profile = crafterJobProfiles[normalizedJobId];
+    const normalizedStats = normalizeCrafterStats(profile, defaultStats);
+
+    if (!normalizedStats) {
+      setJobProfileState({ type: 'missing', jobId: normalizedJobId });
+      return;
+    }
+
+    setCrafterStats(normalizedStats);
+    setJobProfileState({ type: 'loaded', jobId: normalizedJobId });
   };
 
   const handleIngredientHqChange = (ingredientKey, maxAmount, nextValue) => {
@@ -705,6 +757,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   useEffect(() => {
     saveCrafterStatsToCache(crafterStats);
   }, [crafterStats]);
+
+  useEffect(() => {
+    saveCrafterJobProfilesToCache(crafterJobProfiles);
+  }, [crafterJobProfiles]);
 
   useEffect(() => {
     saveSimulatorPreferencesToCache({
@@ -757,6 +813,8 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       setRightPanelTab('rotation');
       setIngredientHqCounts({});
       setNeedsSolve(true);
+      setIsJobProfilesOpen(false);
+      setJobProfileState({ type: 'idle', jobId: null });
       return;
     }
 
@@ -884,14 +942,6 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
 
   const handleStartSolve = async () => {
     if (!isOpen || !recipe || runningSolver) {
-      return;
-    }
-
-    const requirementError = getStatRequirementFailureMessage(recipe, crafterStats);
-    if (requirementError) {
-      setSimulationResult(null);
-      setNeedsSolve(true);
-      setError(requirementError);
       return;
     }
 
@@ -1120,6 +1170,23 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const finalStatus = simulationResult?.finalStatus;
   const jobName = recipe ? (JOB_NAMES[recipe.job] || `職業 ${recipe.job}`) : '讀取中';
   const jobIcon = recipe ? JOB_ICON_MAP[recipe.job] : null;
+  const jobProfileStatusText = useMemo(() => {
+    if (!jobProfileState || jobProfileState.type === 'idle') {
+      return null;
+    }
+
+    const savedJobName = JOB_NAMES[jobProfileState.jobId] || `職業 ${jobProfileState.jobId}`;
+
+    if (jobProfileState.type === 'saved') {
+      return `已保存目前屬性到 ${savedJobName}`;
+    }
+
+    if (jobProfileState.type === 'loaded') {
+      return `已讀取 ${savedJobName} 的已保存屬性`;
+    }
+
+    return `${savedJobName} 尚未保存屬性`;
+  }, [jobProfileState]);
   const recipeYield = recipe?.yields || 1;
   const trainedEyeEligible = crafterStats.level >= (recipe?.lvl || 0) + 10;
   const firstError = simulationResult?.errors?.[0];
@@ -1354,14 +1421,63 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
             <div>
               <div className="mb-1.5 flex items-center justify-between">
                 <div className="text-[11px] font-semibold tracking-wide text-cyan-200">可調整角色屬性</div>
-                <button
-                  type="button"
-                  onClick={handleResetCrafterStats}
-                  className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-300 transition hover:border-amber-400/50 hover:text-amber-200"
-                >
-                  重置預設
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleToggleJobProfiles}
+                    className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold text-cyan-200 transition hover:border-cyan-400/50 hover:text-cyan-100"
+                  >
+                    職業存取
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetCrafterStats}
+                    className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-300 transition hover:border-amber-400/50 hover:text-amber-200"
+                  >
+                    重置預設
+                  </button>
+                </div>
               </div>
+              {isJobProfilesOpen ? (
+                <div className="mb-2 rounded-lg border border-cyan-500/25 bg-slate-950/70 p-2">
+                  <div className="text-[10px] text-cyan-300/85">選擇製作職業，可保存目前屬性或讀取已保存屬性。</div>
+                  <div className="mt-1.5 space-y-1.5">
+                    {CRAFTING_JOB_IDS.map((jobId) => {
+                      const profile = crafterJobProfiles[String(jobId)] || null;
+                      const profileJobName = JOB_NAMES[jobId] || `職業 ${jobId}`;
+                      const profileJobIcon = JOB_ICON_MAP[jobId] || null;
+
+                      return (
+                        <div key={jobId} className="flex items-center justify-between gap-2 rounded-md border border-white/10 bg-slate-900/70 px-2 py-1.5">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            {profileJobIcon ? <img src={profileJobIcon} alt={profileJobName} className="h-4 w-4 object-contain" /> : null}
+                            <span className="truncate text-[11px] font-medium text-slate-100">{profileJobName}</span>
+                            {profile ? <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-300">已保存</span> : null}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleLoadCrafterStatsForJob(jobId)}
+                              disabled={!profile}
+                              className="rounded border border-purple-500/30 bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-purple-200 transition hover:border-purple-400/50 hover:text-purple-100 disabled:cursor-not-allowed disabled:opacity-45"
+                            >
+                              讀取
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveCrafterStatsForJob(jobId)}
+                              className="rounded border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-200 transition hover:border-cyan-400/50 hover:text-cyan-100"
+                            >
+                              保存
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {jobProfileStatusText ? <div className="mt-1.5 text-[10px] text-cyan-200">{jobProfileStatusText}</div> : null}
+                </div>
+              ) : null}
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <label className="rounded-lg border border-cyan-500/35 bg-cyan-500/10 px-2 py-1.5 text-cyan-200 cursor-text">
                   <div className="text-[10px] uppercase tracking-wide text-cyan-300/80">Lv</div>
@@ -1597,7 +1713,15 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                     <input
                       type="checkbox"
                       checked={solverOptions.backloadProgress}
-                      onChange={(event) => setSolverOptions((prev) => ({ ...prev, backloadProgress: event.target.checked }))}
+                      disabled={solverOptions.targetQuality === 0}
+                      onChange={(event) => {
+                        const nextChecked = event.target.checked;
+                        setSolverOptions((prev) => ({
+                          ...prev,
+                          backloadProgress: nextChecked,
+                          targetQuality: nextChecked ? null : prev.targetQuality,
+                        }));
+                      }}
                       className="peer sr-only"
                     />
                     <span className="flex h-4 w-4 items-center justify-center rounded border border-slate-500/80 bg-slate-900/90 text-cyan-200 transition peer-checked:border-cyan-300 peer-checked:bg-cyan-500/20 peer-checked:shadow-[0_0_0_1px_rgba(34,211,238,0.35)]">
@@ -1605,7 +1729,28 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                         <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.414l-7.2 7.2a1 1 0 01-1.414 0l-3.2-3.2a1 1 0 111.414-1.414L8.8 11.786l6.493-6.496a1 1 0 011.411 0z" clipRule="evenodd" />
                       </svg>
                     </span>
-                    <span className="transition group-hover:text-cyan-200">進展後置（品質優先）</span>
+                    <span className="transition group-hover:text-cyan-200">HQ優先</span>
+                  </label>
+                  <label className="group flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300 transition hover:border-cyan-400/40 hover:bg-slate-900/80">
+                    <input
+                      type="checkbox"
+                      checked={solverOptions.targetQuality === 0}
+                      onChange={(event) => {
+                        const nextChecked = event.target.checked;
+                        setSolverOptions((prev) => ({
+                          ...prev,
+                          targetQuality: nextChecked ? 0 : null,
+                          backloadProgress: nextChecked ? false : prev.backloadProgress,
+                        }));
+                      }}
+                      className="peer sr-only"
+                    />
+                    <span className="flex h-4 w-4 items-center justify-center rounded border border-slate-500/80 bg-slate-900/90 text-cyan-200 transition peer-checked:border-cyan-300 peer-checked:bg-cyan-500/20 peer-checked:shadow-[0_0_0_1px_rgba(34,211,238,0.35)]">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3 opacity-0 transition peer-checked:opacity-100">
+                        <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.414l-7.2 7.2a1 1 0 01-1.414 0l-3.2-3.2a1 1 0 111.414-1.414L8.8 11.786l6.493-6.496a1 1 0 011.411 0z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                    <span className="transition group-hover:text-cyan-200">NQ優先（無須品質）</span>
                   </label>
                 </div>
               </div>
