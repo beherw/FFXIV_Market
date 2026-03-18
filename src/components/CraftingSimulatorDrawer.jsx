@@ -42,7 +42,7 @@ const ACTION_NAMES = {
   basic_synthesis: '製作',
   basic_touch: '加工',
   masters_mend: '精修',
-  hasty_touch: '倉促加工',
+  hasty_touch: '倉促',
   rapid_synthesis: '高速製作',
   observe: '觀察',
   tricks_of_the_trade: '秘訣',
@@ -71,14 +71,14 @@ const ACTION_NAMES = {
   trained_finesse: '工匠的神技',
   careful_observation: '設計變動',
   heart_and_soul: '專心致志',
-  refined_touch: '精修加工',
-  daring_touch: '大膽加工',
+  refined_touch: '精煉加工',
+  daring_touch: '冒進',
   immaculate_mend: '巧奪天工',
   quick_innovation: '快速改革',
   trained_perfection: '工匠的絕技',
   rapid_synthesis_fail: '高速製作（失敗）',
-  hasty_touch_fail: '倉促加工（失敗）',
-  daring_touch_fail: '大膽加工（失敗）',
+  hasty_touch_fail: '倉促（失敗）',
+  daring_touch_fail: '冒進（失敗）',
 };
 
 // Required crafter level for each manual action (FFXIV Dawntrail 7.x)
