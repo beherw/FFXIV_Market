@@ -271,7 +271,30 @@ function ItemCard({
   isHighlighted = false,
   highlightMethod = null, // 'craft' or 'buy'
   isDcQuery = false, // Whether this is a DC query (not specific server)
+  rootQuantity,
+  onRootQuantityChange,
+  displayAmount: displayAmountProp, // scaled amount from parent (when root quantity changes)
 }) {
+  const displayAmount = displayAmountProp != null ? displayAmountProp : (isRoot && rootQuantity != null ? rootQuantity : (node.amount || 1));
+  const showQuantityBadge = displayAmount > 1;
+  const canChangeRootQuantity = isRoot && typeof onRootQuantityChange === 'function';
+  const stepAmount = (isRoot && (node.yields ?? 1) >= 1) ? (node.yields ?? 1) : 1;
+  const minRootQty = stepAmount;
+  const maxRootQty = stepAmount > 1 ? (Math.floor(999 / stepAmount) * stepAmount) : 999;
+  const clampToStep = (n) => {
+    const v = Math.floor(Number(n) || 0);
+    if (v <= minRootQty) return minRootQty;
+    if (v >= maxRootQty) return maxRootQty;
+    if (stepAmount <= 1) return Math.max(1, Math.min(999, v));
+    return Math.round(v / stepAmount) * stepAmount;
+  };
+  const handleRootQtyDelta = (delta) => {
+    if (!onRootQuantityChange) return;
+    const current = rootQuantity ?? node.amount ?? minRootQty;
+    const next = current + delta * stepAmount;
+    onRootQuantityChange(clampToStep(next));
+  };
+  const currentRootQty = rootQuantity ?? node.amount ?? minRootQty;
   return (
     <div 
       ref={nodeRef}
@@ -316,10 +339,10 @@ function ItemCard({
           className={`${isRoot ? 'w-12 h-12' : 'w-9 h-9'} object-contain rounded border border-purple-500/30`}
           priority={isRoot}
         />
-        {/* Quantity badge - don't show for root */}
-        {!isRoot && node.amount > 1 && (
+        {/* Quantity badge when > 1 (uses scaled displayAmount when root quantity changed) */}
+        {showQuantityBadge && (
           <div className="absolute -bottom-1 -right-1 bg-purple-900/90 text-ffxiv-gold text-xs font-bold px-1 py-0.5 rounded-full border border-purple-500/50 min-w-[18px] text-center leading-none">
-            {node.amount}
+            {displayAmount}
           </div>
         )}
       </div>
@@ -334,6 +357,50 @@ function ItemCard({
         </p>
         <CopyButton text={itemName} />
       </div>
+
+      {/* Root quantity control: - [qty] + between name and price (step by recipe yields, e.g. 3 → 3,6,9) */}
+      {canChangeRootQuantity && (
+        <div 
+          className="mt-1.5 flex items-center rounded border border-purple-500/30 bg-slate-800/50 overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            aria-label="減少數量"
+            className="w-6 h-7 flex items-center justify-center text-gray-400 hover:text-ffxiv-gold hover:bg-slate-700/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            onClick={(e) => { e.stopPropagation(); handleRootQtyDelta(-1); }}
+            disabled={currentRootQty <= minRootQty}
+          >
+            −
+          </button>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={currentRootQty}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/\D/g, '');
+              if (raw === '') {
+                onRootQuantityChange(minRootQty);
+                return;
+              }
+              const n = parseInt(raw, 10);
+              if (!Number.isNaN(n)) onRootQuantityChange(clampToStep(n));
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-9 h-7 text-center text-xs font-medium text-gray-200 bg-transparent border-0 border-x border-purple-500/20 focus:outline-none focus:ring-0"
+          />
+          <button
+            type="button"
+            aria-label="增加數量"
+            className="w-6 h-7 flex items-center justify-center text-gray-400 hover:text-ffxiv-gold hover:bg-slate-700/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            onClick={(e) => { e.stopPropagation(); handleRootQtyDelta(1); }}
+            disabled={currentRootQty >= maxRootQty}
+          >
+            +
+          </button>
+        </div>
+      )}
       
       {/* Price info - fixed height to prevent layout shift */}
       <div className={`mt-1 text-center ${priceInfo?.worldName ? 'h-[32px]' : 'h-[20px]'} flex flex-col justify-center`}>
@@ -524,12 +591,12 @@ function calculateCraftingCost(node, itemPrices, queriedItemIds) {
  * Root item price comparison badge - uses cheapest route calculation
  * Compares: main item market price vs optimal crafting route (cheapest for each sub-item)
  */
-function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames }) {
+function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames, rootDisplayAmount }) {
   const [showModal, setShowModal] = useState(false);
   
-  // Get root unit price and amount
+  // Get root unit price and amount (use rootDisplayAmount when provided, e.g. from quantity control)
   const rootUnitPrice = itemPrices[tree.itemId]?.price ?? null;
-  const rootAmount = tree.amount || 1;
+  const rootAmount = rootDisplayAmount ?? tree.amount ?? 1;
   
   // Calculate cheapest route for the root's children
   const result = useMemo(() => {
@@ -640,6 +707,15 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
   }
   
   if (!result.canCraft) return null;
+
+  // Scale all root values by rootAmount so badge and modal show totals for the selected quantity
+  const buyTotal = (result.rootPrice ?? 0) * rootAmount;
+  const craftTotal = (typeof result.cheapestRouteCost === 'number' ? result.cheapestRouteCost : 0) * rootAmount;
+  const scaledBreakdown = result.breakdown?.map((b) => ({
+    ...b,
+    amount: b.amount * rootAmount,
+    totalCost: b.totalCost * rootAmount,
+  })) ?? result.breakdown;
   
   // 材料 N/A vs 成品 有數值，用成品
   if (result.isMaterialsNA) {
@@ -659,7 +735,7 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
             <div className="flex items-center gap-2 text-sm whitespace-nowrap">
               <span className="flex-shrink-0">最優製作: N/A</span>
               <span className="opacity-60 flex-shrink-0">vs</span>
-              <span className="flex-shrink-0">直購成品: {formatPrice(result.rootPrice)}</span>
+              <span className="flex-shrink-0">直購成品: {formatPrice(buyTotal)}{rootAmount > 1 ? ` (×${rootAmount})` : ''}</span>
             </div>
             {/* Recommendation */}
             <div className="flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
@@ -673,10 +749,10 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
         <CalculationModal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
-          breakdown={result.breakdown}
+          breakdown={scaledBreakdown}
           itemNames={itemNames}
           itemPrices={itemPrices}
-          parentPrice={result.rootPrice}
+          parentPrice={buyTotal}
           childrenTotalPrice={null}
           yields={result.yields}
           isRoot={true}
@@ -697,27 +773,25 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
           title="點擊查看計算公式"
         >
           <div className="flex flex-col items-center gap-1 whitespace-nowrap">
-            {/* Explanation */}
             <div className="text-xs opacity-70 text-center whitespace-nowrap">
               以最優路線計算（每項材料取買/製的較低價）
             </div>
-            {/* Price display */}
             <div className="flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="font-bold flex-shrink-0">自製最佳: {formatPrice(result.cheapestRouteCost)}</span>
+              <span className="font-bold flex-shrink-0">自製最佳: {formatPrice(craftTotal)}{rootAmount > 1 ? ` (×${rootAmount})` : ''}</span>
             </div>
           </div>
         </div>
         <CalculationModal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
-          breakdown={result.breakdown}
+          breakdown={scaledBreakdown}
           itemNames={itemNames}
           itemPrices={itemPrices}
           parentPrice={null}
-          childrenTotalPrice={result.cheapestRouteCost}
+          childrenTotalPrice={craftTotal}
           yields={result.yields}
           isRoot={true}
           amount={rootAmount}
@@ -730,11 +804,9 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
   // Root has price - show comparison
   const { rootPrice, cheapestRouteCost, savings } = result;
   const isCraftCheaper = savings > 0;
-  const absSavings = Math.abs(savings);
+  const absSavingsTotal = Math.abs(savings) * rootAmount;
   
-  // Use a small tolerance (1 gil) to account for floating point precision issues
-  // If the difference is less than 1, consider prices equal
-  if (absSavings < 1) {
+  if (Math.abs(savings) < 1) {
     return (
       <>
         <div 
@@ -749,11 +821,10 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
             </div>
             {/* Price breakdown */}
             <div className="flex items-center gap-2 text-sm whitespace-nowrap">
-              <span className="flex-shrink-0">最優製作: {formatPrice(cheapestRouteCost)}</span>
+              <span className="flex-shrink-0">最優製作: {formatPrice(craftTotal)}</span>
               <span className="opacity-60 flex-shrink-0">vs</span>
-              <span className="flex-shrink-0">直購成品: {formatPrice(rootPrice)}</span>
+              <span className="flex-shrink-0">直購成品: {formatPrice(buyTotal)}{rootAmount > 1 ? ` (×${rootAmount})` : ''}</span>
             </div>
-            {/* Status */}
             <div className="flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -765,11 +836,11 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
         <CalculationModal
           isOpen={showModal}
           onClose={() => setShowModal(false)}
-          breakdown={result.breakdown}
+          breakdown={scaledBreakdown}
           itemNames={itemNames}
           itemPrices={itemPrices}
-          parentPrice={rootPrice}
-          childrenTotalPrice={cheapestRouteCost}
+          parentPrice={buyTotal}
+          childrenTotalPrice={craftTotal}
           yields={result.yields}
           isRoot={true}
           amount={rootAmount}
@@ -793,31 +864,28 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
         title="點擊查看計算公式"
       >
         <div className="flex flex-col items-center gap-1 whitespace-nowrap">
-          {/* Explanation */}
           <div className="text-xs opacity-70 text-center whitespace-nowrap">
             以最優路線計算（每項材料取買/製的較低價）
           </div>
-          {/* Price breakdown */}
           <div className="flex items-center gap-2 text-sm whitespace-nowrap">
-            <span className="flex-shrink-0">最優製作: {formatPrice(cheapestRouteCost)}</span>
+            <span className="flex-shrink-0">最優製作: {formatPrice(craftTotal)}</span>
             <span className="opacity-60 flex-shrink-0">vs</span>
-            <span className="flex-shrink-0">直購成品: {formatPrice(rootPrice)}</span>
+            <span className="flex-shrink-0">直購成品: {formatPrice(buyTotal)}{rootAmount > 1 ? ` (×${rootAmount})` : ''}</span>
           </div>
-          {/* Recommendation */}
           <div className="flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
             {isCraftCheaper ? (
               <>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="font-bold flex-shrink-0">建議自製，省 {formatPrice(absSavings)}</span>
+                <span className="font-bold flex-shrink-0">建議自製，省 {formatPrice(absSavingsTotal)}</span>
               </>
             ) : (
               <>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                <span className="font-bold flex-shrink-0">建議直購，省 {formatPrice(absSavings)}</span>
+                <span className="font-bold flex-shrink-0">建議直購，省 {formatPrice(absSavingsTotal)}</span>
               </>
             )}
           </div>
@@ -826,13 +894,15 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames 
       <CalculationModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        breakdown={result.breakdown}
+        breakdown={scaledBreakdown}
         itemNames={itemNames}
         itemPrices={itemPrices}
-        parentPrice={rootPrice}
-        childrenTotalPrice={cheapestRouteCost}
+        parentPrice={buyTotal}
+        childrenTotalPrice={craftTotal}
         yields={result.yields}
         isRoot={true}
+        amount={rootAmount}
+        parentUnitPrice={rootUnitPrice}
       />
     </>
   );
@@ -999,6 +1069,8 @@ function PriceComparisonBadge({ parentPrice, childrenTotalPrice, isReady, amount
           childrenTotalPrice={childrenTotalPrice}
           yields={yields}
           isRoot={false}
+          amount={amount}
+          parentUnitPrice={parentUnitPrice}
         />
       </>
     );
@@ -1075,6 +1147,10 @@ function TreeNodeVertical({
   isLoading = false,
   parentOnGreenPath = false,
   isDcQuery = false,
+  rootQuantity,
+  onRootQuantityChange,
+  rootScaleFactor = 1,
+  parentDisplayAmount = 1,
 }) {
   const childrenRef = useRef(null);
   const [lineStyle, setLineStyle] = useState({ left: 0, width: 0 });
@@ -1082,6 +1158,11 @@ function TreeNodeVertical({
   const itemName = itemNames[node.itemId] || `物品 ${node.itemId}`;
   const priceInfo = itemPrices[node.itemId];
   const isPriceQueried = queriedItemIds.has(node.itemId);
+
+  // Scaled amount for display and price comparison (when root quantity changes, all children scale)
+  const displayAmount = isRoot
+    ? (rootQuantity ?? node.amount ?? 1)
+    : (node.amount || 1) * parentDisplayAmount;
 
   // Calculate children total price (considering amounts) and get breakdown
   // Returns: number (total price), 'N/A' (some materials missing), or null (still loading)
@@ -1174,11 +1255,8 @@ function TreeNodeVertical({
     return parentQueried;
   }, [hasChildren, node.children, priceInfo, childrenTotalPrice, queriedItemIds]);
 
-  // isCraftCheaper: exact same comparison as PriceComparisonBadge.
-  // Badge receives parentPrice = priceInfo.price * node.amount and childrenTotalPrice (total materials for one craft).
-  // Badge decides: savings = parentPrice - childrenTotalPrice; isCraftCheaper = savings > 0.
-  // We replicate that here so green line and badge always agree.
-  const badgeParentPrice = (priceInfo?.price != null) ? priceInfo.price * (node.amount || 1) : null;
+  // isCraftCheaper: exact same comparison as PriceComparisonBadge (use scaled displayAmount when root qty changed).
+  const badgeParentPrice = (priceInfo?.price != null) ? priceInfo.price * displayAmount : null;
   const isCraftCheaper =
     hasChildren &&
     isComparisonReady &&
@@ -1254,6 +1332,9 @@ function TreeNodeVertical({
         isHighlighted={isRoot ? isCraftCheaper : parentOnGreenPath}
         highlightMethod={(isRoot ? isCraftCheaper : parentOnGreenPath) ? 'craft' : undefined}
         isDcQuery={isDcQuery}
+        rootQuantity={isRoot ? rootQuantity : undefined}
+        onRootQuantityChange={isRoot ? onRootQuantityChange : undefined}
+        displayAmount={displayAmount}
       />
       
       {/* Children */}
@@ -1280,18 +1361,24 @@ function TreeNodeVertical({
               itemPrices={itemPrices}
               queriedItemIds={queriedItemIds}
               itemNames={itemNames}
+              rootDisplayAmount={rootQuantity}
             />
           ) : (
             <PriceComparisonBadge 
-              parentPrice={priceInfo?.price ? priceInfo.price * node.amount : null}
-              childrenTotalPrice={childrenTotalPrice}
+              parentPrice={priceInfo?.price != null ? priceInfo.price * displayAmount : null}
+              childrenTotalPrice={childrenTotalPrice != null && typeof childrenTotalPrice === 'number'
+                ? childrenTotalPrice * (displayAmount / (node.yields || 1))
+                : childrenTotalPrice}
               isReady={isComparisonReady}
-              amount={node.amount}
-              breakdown={breakdown}
+              amount={displayAmount}
+              breakdown={breakdown?.map((b) => {
+                const scale = displayAmount / (node.yields || 1);
+                return { ...b, amount: b.amount * scale, totalCost: b.totalCost * scale };
+              }) ?? breakdown}
               itemNames={itemNames}
               itemPrices={itemPrices}
               yields={node.yields || 1}
-              parentUnitPrice={priceInfo?.price || null}
+              parentUnitPrice={priceInfo?.price ?? null}
             />
           )}
           
@@ -1326,6 +1413,8 @@ function TreeNodeVertical({
                     isLoading={isLoading}
                     parentOnGreenPath={highlightLinesToChildren}
                     isDcQuery={isDcQuery}
+                    rootScaleFactor={rootScaleFactor}
+                    parentDisplayAmount={isRoot ? rootScaleFactor : displayAmount}
                   />
                 </div>
               ))}
@@ -1368,6 +1457,15 @@ export default function CraftingTree({
   const [isObtainModalOpen, setIsObtainModalOpen] = useState(false);
   const [obtainModalItemId, setObtainModalItemId] = useState(null);
   const [isObtainModalLoading, setIsObtainModalLoading] = useState(false);
+  // Root item quantity (default from recipe yields, e.g. 3, or amount 1)
+  const [rootQuantity, setRootQuantity] = useState(1);
+
+  // Sync root quantity default when tree changes (yields = 3 → default 3, etc.)
+  useEffect(() => {
+    if (!tree) return;
+    const defaultQty = tree.yields ?? tree.amount ?? 1;
+    setRootQuantity(defaultQty);
+  }, [tree?.itemId, tree?.yields, tree?.amount]);
 
   // Check if it's a DC query (not a specific server)
   const isDcQuery = useMemo(() => {
@@ -2131,6 +2229,10 @@ export default function CraftingTree({
             isLoading={isLoadingNames}
             parentOnGreenPath={true}
             isDcQuery={isDcQuery}
+            rootQuantity={rootQuantity}
+            onRootQuantityChange={setRootQuantity}
+            rootScaleFactor={tree ? Math.ceil(rootQuantity / (tree.yields || 1)) : 1}
+            parentDisplayAmount={tree ? Math.ceil(rootQuantity / (tree.yields || 1)) : 1}
           />
         </div>
       </div>
