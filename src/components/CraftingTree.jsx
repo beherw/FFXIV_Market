@@ -1174,34 +1174,30 @@ function TreeNodeVertical({
     
     // If not all children are queried yet, return null (still loading)
     if (!allChildrenQueried) return { childrenTotalPrice: null, breakdown: null };
-    
-    const craftingCost = calculateCraftingCost(node, itemPrices, queriedItemIds);
 
-    if (craftingCost === 'N/A') {
-      return { childrenTotalPrice: 'N/A', breakdown: null };
-    } else if (craftingCost === null) {
-      return { childrenTotalPrice: null, breakdown: null };
-    } else if (typeof craftingCost === 'number') {
-      const breakdownData = [];
+    // For non-root comparison, parent material cost uses direct child market prices.
+    // Child "buy vs craft" optimization is still shown on each child node itself.
+    let total = 0;
+    const breakdownData = [];
 
-      for (const child of node.children) {
-        const childResult = getCheapestCost(child, itemPrices, queriedItemIds);
-        if (childResult.cost === 'N/A' || childResult.cost === null || typeof childResult.cost !== 'number') {
-          return { childrenTotalPrice: 'N/A', breakdown: null };
-        }
-
-        const childTotal = childResult.cost * child.amount;
-        breakdownData.push({
-          itemId: child.itemId,
-          amount: child.amount,
-          unitCost: childResult.cost,
-          totalCost: childTotal,
-          method: childResult.method,
-        });
+    for (const child of node.children) {
+      const childPrice = itemPrices[child.itemId]?.price;
+      if (childPrice === null || childPrice === undefined) {
+        return { childrenTotalPrice: 'N/A', breakdown: null };
       }
 
-      return { childrenTotalPrice: craftingCost, breakdown: breakdownData };
+      const childTotal = childPrice * child.amount;
+      total += childTotal;
+      breakdownData.push({
+        itemId: child.itemId,
+        amount: child.amount,
+        unitCost: childPrice,
+        totalCost: childTotal,
+        method: 'buy',
+      });
     }
+
+    return { childrenTotalPrice: total, breakdown: breakdownData };
     
     return { childrenTotalPrice: null, breakdown: null };
   }, [hasChildren, node, itemPrices, queriedItemIds]);
