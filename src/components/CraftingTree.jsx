@@ -196,16 +196,13 @@ function CalculationModal({ isOpen, onClose, breakdown, itemNames, itemPrices, p
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-400">材料總成本：</span>
                   <span className="text-base font-bold text-green-400">
-                    {yields && yields > 1 
-                      ? `${formatPrice(childrenTotalPrice * yields)} ÷ ${yields} ≈ ${formatPrice(childrenTotalPrice)}`
-                      : formatPrice(childrenTotalPrice)
-                    }
+                    {formatPrice(childrenTotalPrice)}
                   </span>
                 </div>
                 {yields && yields > 1 && (
                   <div className="mt-2 pt-2 border-t border-purple-500/20">
                     <div className="text-xs text-gray-500">
-                      製作產出數量：<span className="text-blue-300 font-semibold">{yields}</span>，已納入成本考量
+                      製作產出數量：<span className="text-blue-300 font-semibold">{yields}</span>，材料總成本已按目前顯示數量計算
                     </div>
                   </div>
                 )}
@@ -221,10 +218,7 @@ function CalculationModal({ isOpen, onClose, breakdown, itemNames, itemPrices, p
                 <div className="flex items-center justify-between p-2 bg-slate-700/50 rounded">
                   <span className="text-sm text-gray-300">製作成本{isRoot && yields && yields > 1 ? ` (已考慮產出數量=${yields})` : ''}：</span>
                   <span className="text-sm font-semibold text-green-400">
-                    {yields && yields > 1 
-                      ? `${formatPrice(childrenTotalPrice * yields)} ÷ ${yields} ≈ ${formatPrice(childrenTotalPrice)}`
-                      : formatPrice(childrenTotalPrice)
-                    }
+                    {formatPrice(childrenTotalPrice)}
                   </span>
                 </div>
                 <div className="p-2 bg-slate-700/50 rounded">
@@ -445,9 +439,8 @@ function ItemCard({
 }
 
 /**
- * Recursively calculate the cheapest cost to obtain an item
- * For each node: min(market price, sum of children's cheapest costs × amounts)
- * Returns cost as: number (price), 'N/A' (missing materials), or null (not queried)
+ * Recursively calculate the cheapest unit cost to obtain an item.
+ * Returns cost as: number (unit price), 'N/A' (missing materials), or null (not queried)
  */
 function getCheapestCost(node, itemPrices, queriedItemIds) {
   const priceInfo = itemPrices[node.itemId];
@@ -521,10 +514,12 @@ function getCheapestCost(node, itemPrices, queriedItemIds) {
     }
   }
   
-  // Adjust crafting cost by yields: if yields > 1, divide by yields to get cost per unit
-  // This is because one craft produces multiple items
+  // Convert total craft cost for this node into a per-unit cost.
+  // `child.amount` already includes all crafts needed for this node's base amount.
   const yields = node.yields || 1;
-  const craftingCostPerUnit = yields > 1 ? craftingCost / yields : craftingCost;
+  const craftsNeeded = node.craftsNeeded || 1;
+  const totalOutputAmount = craftsNeeded * yields;
+  const craftingCostPerUnit = totalOutputAmount > 0 ? craftingCost / totalOutputAmount : craftingCost;
   
   // Return the cheaper option
   if (marketPrice === null) {
@@ -545,9 +540,9 @@ function getCheapestCost(node, itemPrices, queriedItemIds) {
 }
 
 /**
- * Calculate the crafting cost for a node (sum of children's cheapest costs × amounts)
- * This always returns the crafting cost, regardless of whether buying is cheaper
- * Returns: number (crafting cost), 'N/A' (missing materials), or null (not queried)
+ * Calculate the total crafting cost for this node's current base amount.
+ * This always returns the total material cost, regardless of whether buying is cheaper.
+ * Returns: number (total crafting cost), 'N/A' (missing materials), or null (not queried)
  */
 function calculateCraftingCost(node, itemPrices, queriedItemIds) {
   if (!node.children || node.children.length === 0) {
@@ -582,9 +577,7 @@ function calculateCraftingCost(node, itemPrices, queriedItemIds) {
     }
   }
   
-  // Adjust crafting cost by yields: if yields > 1, divide by yields to get cost per unit
-  const yields = node.yields || 1;
-  return yields > 1 ? craftingCost / yields : craftingCost;
+  return craftingCost;
 }
 
 /**
@@ -597,6 +590,8 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames,
   // Get root unit price and amount (use rootDisplayAmount when provided, e.g. from quantity control)
   const rootUnitPrice = itemPrices[tree.itemId]?.price ?? null;
   const rootAmount = rootDisplayAmount ?? tree.amount ?? 1;
+  const yields = tree.yields || 1;
+  const rootScaleFactor = Math.ceil(rootAmount / yields);
   
   // Calculate cheapest route for the root's children
   const result = useMemo(() => {
@@ -635,7 +630,7 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames,
     const materialsIsNA = cheapestRouteCost === 'N/A';
     const materialsHasPrice = typeof cheapestRouteCost === 'number';
     const breakdown = cheapestResult?.breakdown || null;
-    const yields = tree.yields || 1;
+    const baseBuyPrice = rootPrice !== null ? rootPrice * yields : null;
     
     // 材料 N/A vs 成品 N/A，資訊不足，不做比對
     if (materialsIsNA && rootIsNA) {
@@ -648,7 +643,7 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames,
     // 材料 N/A vs 成品 有數值，用成品
     if (materialsIsNA && rootPrice !== null) {
       return {
-        rootPrice,
+        rootPrice: baseBuyPrice,
         cheapestRouteCost: 'N/A',
         canCraft: true,
         isMaterialsNA: true,
@@ -673,9 +668,9 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames,
     
     // Both have prices - normal comparison
     if (materialsHasPrice && rootPrice !== null) {
-      const savings = rootPrice - cheapestRouteCost;
+      const savings = baseBuyPrice - cheapestRouteCost;
       return {
-        rootPrice,
+        rootPrice: baseBuyPrice,
         cheapestRouteCost,
         savings,
         canCraft: true,
@@ -708,13 +703,13 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames,
   
   if (!result.canCraft) return null;
 
-  // Scale all root values by rootAmount so badge and modal show totals for the selected quantity
-  const buyTotal = (result.rootPrice ?? 0) * rootAmount;
-  const craftTotal = (typeof result.cheapestRouteCost === 'number' ? result.cheapestRouteCost : 0) * rootAmount;
+  // Scale all root values by craft count so materials follow recipe output instead of item quantity.
+  const buyTotal = rootUnitPrice != null ? rootUnitPrice * rootAmount : 0;
+  const craftTotal = (typeof result.cheapestRouteCost === 'number' ? result.cheapestRouteCost : 0) * rootScaleFactor;
   const scaledBreakdown = result.breakdown?.map((b) => ({
     ...b,
-    amount: b.amount * rootAmount,
-    totalCost: b.totalCost * rootAmount,
+    amount: b.amount * rootScaleFactor,
+    totalCost: b.totalCost * rootScaleFactor,
   })) ?? result.breakdown;
   
   // 材料 N/A vs 成品 有數值，用成品
@@ -804,7 +799,7 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames,
   // Root has price - show comparison
   const { rootPrice, cheapestRouteCost, savings } = result;
   const isCraftCheaper = savings > 0;
-  const absSavingsTotal = Math.abs(savings) * rootAmount;
+  const absSavingsTotal = Math.abs(savings) * rootScaleFactor;
   
   if (Math.abs(savings) < 1) {
     return (
@@ -1180,58 +1175,40 @@ function TreeNodeVertical({
     // If not all children are queried yet, return null (still loading)
     if (!allChildrenQueried) return { childrenTotalPrice: null, breakdown: null };
     
-    // Use getCheapestCost to get the proper cost calculation (which considers yields)
-    const cheapestResult = getCheapestCost(node, itemPrices, queriedItemIds);
-    
-    if (cheapestResult.cost === 'N/A') {
-      return { childrenTotalPrice: 'N/A', breakdown: cheapestResult.breakdown };
-    } else if (cheapestResult.cost === null) {
+    const craftingCost = calculateCraftingCost(node, itemPrices, queriedItemIds);
+
+    if (craftingCost === 'N/A') {
+      return { childrenTotalPrice: 'N/A', breakdown: null };
+    } else if (craftingCost === null) {
       return { childrenTotalPrice: null, breakdown: null };
-    } else if (typeof cheapestResult.cost === 'number') {
-      // Always calculate breakdown for materials, regardless of whether crafting or buying is cheaper
-      // This allows users to see the material cost breakdown even when buying is cheaper
-      let breakdownData = cheapestResult.breakdown;
-      
-      // If breakdown is not available (e.g., when buying is cheaper), calculate it from children
-      if (!breakdownData) {
-        breakdownData = [];
-        for (const child of node.children) {
-          const childPrice = itemPrices[child.itemId];
-          if (childPrice && childPrice.price !== undefined) {
-            const childTotal = childPrice.price * child.amount;
-            breakdownData.push({
-              itemId: child.itemId,
-              amount: child.amount,
-              unitCost: childPrice.price,
-              totalCost: childTotal,
-              method: 'buy', // These are market prices
-            });
-          }
+    } else if (typeof craftingCost === 'number') {
+      const breakdownData = [];
+
+      for (const child of node.children) {
+        const childResult = getCheapestCost(child, itemPrices, queriedItemIds);
+        if (childResult.cost === 'N/A' || childResult.cost === null || typeof childResult.cost !== 'number') {
+          return { childrenTotalPrice: 'N/A', breakdown: null };
         }
+
+        const childTotal = childResult.cost * child.amount;
+        breakdownData.push({
+          itemId: child.itemId,
+          amount: child.amount,
+          unitCost: childResult.cost,
+          totalCost: childTotal,
+          method: childResult.method,
+        });
       }
-      
-      // Use the crafting cost if available. For badge we show "材料" vs "yields個成品", so same units: total materials for one craft vs total buy for yields units.
-      if (cheapestResult.method === 'craft' && cheapestResult.breakdown) {
-        const yields = node.yields || 1;
-        const materialsTotal = yields > 1 ? cheapestResult.cost * yields : cheapestResult.cost;
-        return { childrenTotalPrice: materialsTotal, breakdown: breakdownData };
-      } else {
-        // Raw total of buying all materials for one craft (do NOT divide by yields)
-        let total = 0;
-        for (const child of node.children) {
-          const childPrice = itemPrices[child.itemId];
-          if (childPrice && childPrice.price !== undefined) {
-            total += childPrice.price * child.amount;
-          } else {
-            return { childrenTotalPrice: 'N/A', breakdown: breakdownData.length > 0 ? breakdownData : null };
-          }
-        }
-        return { childrenTotalPrice: total, breakdown: breakdownData.length > 0 ? breakdownData : null };
-      }
+
+      return { childrenTotalPrice: craftingCost, breakdown: breakdownData };
     }
     
     return { childrenTotalPrice: null, breakdown: null };
   }, [hasChildren, node, itemPrices, queriedItemIds]);
+
+      const scaledChildrenTotalPrice = typeof childrenTotalPrice === 'number'
+        ? childrenTotalPrice * rootScaleFactor
+        : childrenTotalPrice;
 
   // Check if comparison is ready (parent and all children prices loaded)
   // Also check if we should show N/A message
@@ -1259,8 +1236,8 @@ function TreeNodeVertical({
   const isCraftCheaper =
     hasChildren &&
     isComparisonReady &&
-    typeof childrenTotalPrice === 'number' &&
-    (badgeParentPrice === null || childrenTotalPrice < badgeParentPrice);
+    typeof scaledChildrenTotalPrice === 'number' &&
+    (badgeParentPrice === null || scaledChildrenTotalPrice < badgeParentPrice);
   // Green line: continues from parent only when this node is craft-cheaper. Stops at buy-cheaper or leaf.
   const highlightLinesToChildren = parentOnGreenPath && isCraftCheaper;
 
@@ -1365,15 +1342,14 @@ function TreeNodeVertical({
           ) : (
             <PriceComparisonBadge 
               parentPrice={priceInfo?.price != null ? priceInfo.price * displayAmount : null}
-              childrenTotalPrice={childrenTotalPrice != null && typeof childrenTotalPrice === 'number'
-                ? childrenTotalPrice * (displayAmount / (node.yields || 1))
-                : childrenTotalPrice}
+              childrenTotalPrice={scaledChildrenTotalPrice}
               isReady={isComparisonReady}
               amount={displayAmount}
-              breakdown={breakdown?.map((b) => {
-                const scale = displayAmount / (node.yields || 1);
-                return { ...b, amount: b.amount * scale, totalCost: b.totalCost * scale };
-              }) ?? breakdown}
+              breakdown={breakdown?.map((b) => ({
+                ...b,
+                amount: b.amount * rootScaleFactor,
+                totalCost: b.totalCost * rootScaleFactor,
+              })) ?? breakdown}
               itemNames={itemNames}
               itemPrices={itemPrices}
               yields={node.yields || 1}
