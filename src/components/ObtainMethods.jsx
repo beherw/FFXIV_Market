@@ -3089,8 +3089,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const isLimited = node.limited === true;
               const isIslandNode = node.isIslandNode === true;
               const isFishingType = nodeType === 4 || nodeType === 5;
-              const fishCakeUrl = isFishingType && node.nodeId
-                ? `https://fish.ffmomola.com/ng/#/wiki/fishing/spot/${node.nodeId}/fish/${itemId}`
+              const fishCakeUrl = isFishingType && itemId
+                ? `https://fish.ffmomola.com/ng/#/wiki/fish/${itemId}`
                 : null;
               const timing = isLimited
                 ? getLimitedNodeTiming(node.spawns, node.duration, eorzeaTime.totalMinutes)
