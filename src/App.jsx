@@ -4002,7 +4002,10 @@ function App() {
 
 
       {/* Toast Notifications - z-[100] so they appear above modals (z-50 / z-[60]) */}
-      <div className="fixed right-2 mid:right-4 left-2 mid:left-auto z-[100] space-y-2 max-w-sm mid:max-w-none top-[60px] mid:top-4">
+      <div
+        className="fixed right-2 mid:right-4 left-2 mid:left-auto z-[100] space-y-2 max-w-sm mid:max-w-none"
+        style={{ top: 'var(--topbar-toast-offset, 92px)' }}
+      >
         {toasts.map(toast => (
           <Toast
             key={toast.id}
@@ -4015,7 +4018,10 @@ function App() {
 
       {/* Loading Indicator */}
       {isLoadingDB && (
-        <div className="fixed top-14 mid:top-4 left-1/2 transform -translate-x-1/2 z-[60]">
+        <div
+          className="fixed left-1/2 transform -translate-x-1/2 z-[60]"
+          style={{ top: 'max(0.75rem, calc(var(--topbar-content-offset, 96px) - 1.25rem))' }}
+        >
           <div className="bg-gradient-to-r from-purple-900/80 to-indigo-900/80 px-3 mid:px-4 py-2 rounded-lg border border-ffxiv-gold/30 flex items-center gap-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-ffxiv-gold"></div>
             <span className="text-xs mid:text-sm text-gray-300">正在載入伺服器...</span>
@@ -4024,11 +4030,14 @@ function App() {
       )}
 
       {/* Main Content */}
-      <div className={`pb-8 ${
-        selectedItem 
-          ? 'pt-[200px] md:pt-[180px] lg:pt-[160px] xl:pt-24'
-          : 'pt-16 mid:pt-24'
-      }`}>
+      <div
+        className="pb-8"
+        style={{
+          paddingTop: selectedItem
+            ? 'calc(var(--topbar-content-offset, 96px) + clamp(3.5rem, 10vw, 6rem))'
+            : 'var(--topbar-content-offset, 96px)'
+        }}
+      >
         <div className="max-w-7xl mx-auto px-2 sm:px-4">
           {/* History Page */}
           {isOnHistoryPage && !selectedItem && (

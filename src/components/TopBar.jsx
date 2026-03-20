@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import HistoryButton from './HistoryButton';
@@ -29,6 +30,37 @@ export default function TopBar({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const topbarContainerRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const topbarElement = topbarContainerRef.current;
+    if (!topbarElement || typeof window === 'undefined') {
+      return;
+    }
+
+    const root = document.documentElement;
+    const applyTopbarOffsets = () => {
+      const rect = topbarElement.getBoundingClientRect();
+      const topbarBottom = Math.max(0, Math.ceil(rect.bottom));
+      const contentOffset = topbarBottom + 8;
+      const toastOffset = topbarBottom + 4;
+
+      root.style.setProperty('--topbar-height', `${topbarBottom}px`);
+      root.style.setProperty('--topbar-content-offset', `${contentOffset}px`);
+      root.style.setProperty('--topbar-toast-offset', `${toastOffset}px`);
+    };
+
+    applyTopbarOffsets();
+
+    const resizeObserver = new ResizeObserver(applyTopbarOffsets);
+    resizeObserver.observe(topbarElement);
+    window.addEventListener('resize', applyTopbarOffsets);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', applyTopbarOffsets);
+    };
+  }, [showNavigationButtons]);
   
   // Determine active page from location if not provided
   const currentActivePage = activePage || (() => {
@@ -101,8 +133,9 @@ export default function TopBar({
       </button>
 
       {/* Fixed Search Bar - Top Row */}
-      <div className="topbar-container">
+      <div ref={topbarContainerRef} className="topbar-container">
         <div className="topbar-first-row">
+            <div className="topbar-main-row">
             {/* Mobile Logo */}
             <button
               onClick={() => navigate('/')}
@@ -131,10 +164,11 @@ export default function TopBar({
                 marketableItems={marketableItems}
               />
             </div>
+            </div>
 
             {/* All three navigation buttons */}
             {showNavigationButtons && (
-              <>
+              <div className="topbar-actions-row" role="group" aria-label="頁面功能按鈕">
                 {/* Advanced Search Button */}
                 <div className="topbar-nav-button-container">
                   <button
@@ -276,7 +310,7 @@ export default function TopBar({
                   </svg>
                   <span className="topbar-bug-report-text">回報</span>
                 </a>
-              </>
+              </div>
             )}
           </div>
       </div>

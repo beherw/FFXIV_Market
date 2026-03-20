@@ -944,7 +944,10 @@ export default function CraftingJobPriceChecker({
       />
 
       {/* Toast Notifications */}
-      <div className="fixed right-2 mid:right-4 left-2 mid:left-auto z-50 space-y-2 max-w-sm mid:max-w-none top-[60px] mid:top-4">
+      <div
+        className="fixed right-2 mid:right-4 left-2 mid:left-auto z-50 space-y-2 max-w-sm mid:max-w-none"
+        style={{ top: 'var(--topbar-toast-offset, 92px)' }}
+      >
         {toasts.map(toast => (
           <Toast
             key={toast.id}
@@ -955,7 +958,7 @@ export default function CraftingJobPriceChecker({
         ))}
       </div>
 
-      <div className="pt-24 pb-8">
+      <div className="pb-8" style={{ paddingTop: 'var(--topbar-content-offset, 96px)' }}>
         <div className="max-w-7xl mx-auto px-4">
           {/* Header */}
           <div className="mb-6">
