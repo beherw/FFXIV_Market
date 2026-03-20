@@ -1150,7 +1150,6 @@ function TreeNodeVertical({
   rootQuantity,
   onRootQuantityChange,
   rootScaleFactor = 1,
-  parentDisplayAmount = 1,
 }) {
   const childrenRef = useRef(null);
   const [lineStyle, setLineStyle] = useState({ left: 0, width: 0 });
@@ -1162,7 +1161,7 @@ function TreeNodeVertical({
   // Scaled amount for display and price comparison (when root quantity changes, all children scale)
   const displayAmount = isRoot
     ? (rootQuantity ?? node.amount ?? 1)
-    : (node.amount || 1) * parentDisplayAmount;
+    : (node.amount || 1) * rootScaleFactor;
 
   // Calculate children total price (considering amounts) and get breakdown
   // Returns: number (total price), 'N/A' (some materials missing), or null (still loading)
@@ -1414,7 +1413,6 @@ function TreeNodeVertical({
                     parentOnGreenPath={highlightLinesToChildren}
                     isDcQuery={isDcQuery}
                     rootScaleFactor={rootScaleFactor}
-                    parentDisplayAmount={isRoot ? rootScaleFactor : displayAmount}
                   />
                 </div>
               ))}
@@ -2232,7 +2230,6 @@ export default function CraftingTree({
             rootQuantity={rootQuantity}
             onRootQuantityChange={setRootQuantity}
             rootScaleFactor={tree ? Math.ceil(rootQuantity / (tree.yields || 1)) : 1}
-            parentDisplayAmount={tree ? Math.ceil(rootQuantity / (tree.yields || 1)) : 1}
           />
         </div>
       </div>
