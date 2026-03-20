@@ -1158,6 +1158,12 @@ function TreeNodeVertical({
     ? (rootQuantity ?? node.amount ?? 1)
     : (node.amount || 1) * rootScaleFactor;
 
+  // Scale material cost by this node's actual crafts needed at current display amount.
+  // This keeps multi-yield nodes accurate when parent/root quantity changes.
+  const baseCraftsNeeded = node.craftsNeeded || 1;
+  const currentCraftsNeeded = Math.ceil(displayAmount / (node.yields || 1));
+  const nodeCraftScaleFactor = baseCraftsNeeded > 0 ? (currentCraftsNeeded / baseCraftsNeeded) : 1;
+
   // Calculate children total price (considering amounts) and get breakdown
   // Returns: number (total price), 'N/A' (some materials missing), or null (still loading)
   const { childrenTotalPrice, breakdown } = useMemo(() => {
@@ -1203,7 +1209,7 @@ function TreeNodeVertical({
   }, [hasChildren, node, itemPrices, queriedItemIds]);
 
       const scaledChildrenTotalPrice = typeof childrenTotalPrice === 'number'
-        ? childrenTotalPrice * rootScaleFactor
+        ? childrenTotalPrice * nodeCraftScaleFactor
         : childrenTotalPrice;
 
   // Check if comparison is ready (parent and all children prices loaded)
@@ -1343,8 +1349,8 @@ function TreeNodeVertical({
               amount={displayAmount}
               breakdown={breakdown?.map((b) => ({
                 ...b,
-                amount: b.amount * rootScaleFactor,
-                totalCost: b.totalCost * rootScaleFactor,
+                amount: b.amount * nodeCraftScaleFactor,
+                totalCost: b.totalCost * nodeCraftScaleFactor,
               })) ?? breakdown}
               itemNames={itemNames}
               itemPrices={itemPrices}
