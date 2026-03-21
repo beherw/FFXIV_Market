@@ -569,7 +569,13 @@ input:focus {
   pointer-events: none;
 }
 
-/* Ensure text is on top */
+/* Ensure text is on top (::after face uses z-index:1 and covers bare text nodes) */
+.confirm-button-attention > * {
+  position: relative;
+  z-index: 2;
+  color: #fbbf24;
+}
+
 .confirm-button-attention span {
   position: relative;
   z-index: 2;

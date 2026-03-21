@@ -2993,6 +2993,757 @@ export default function AdvancedSearch({
   // Do NOT include: showUntradeable (toggling visibility) or untradeableResults (untradeable items don't need market data)
   }, [searchResults, selectedServerOption, selectedWorld, loadIlvlsData]);
 
+  const tooManyItemsContinueModeRef = useRef('tradeable500');
+
+  const runTooManyItemsContinue = async () => {
+    const limitMode = tooManyItemsContinueModeRef.current;
+
+    // Cancel any ongoing search requests
+    const continueSearchRequestId = ++filterSearchRequestIdRef.current;
+    
+    // Cancel all ongoing market data fetches
+    if (velocityFetchAbortControllerRef.current) {
+      velocityFetchAbortControllerRef.current.abort();
+      velocityFetchAbortControllerRef.current = null;
+    }
+    
+    // Increment velocity fetch request ID to cancel any ongoing market data requests
+    velocityFetchRequestIdRef.current++;
+    velocityFetchInProgressRef.current = false;
+    setVelocityFetchInProgress(false);
+    setIsLoadingVelocities(false);
+
+    setTooManyItemsWarning(null);
+    setIsFilterSearching(true);
+    setIsSearchButtonDisabled(false); // Clear disabled state for continue search
+    setSearchResults([]);
+    setUntradeableResults([]);
+    setShowUntradeable(false);
+    setItemVelocities({});
+    setItemAveragePrices({});
+    setItemMinListings({});
+    setItemRecentPurchases({});
+    setItemTradability({});
+    setSelectedRarities([]); // Reset rarity filter on continue search
+
+    // Disable search button for 1.5 seconds
+    setIsSearchButtonDisabled(true);
+    setTimeout(() => {
+      setIsSearchButtonDisabled(false);
+    }, 1500);
+
+    try {
+      // Use shared filter search logic with skipLimitCheck=true
+      // This allows continuing search even when over limit (user already confirmed)
+      const result = await performFilterSearchLogic(true);
+      
+      // Check if this request was superseded
+      if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+        setIsFilterSearching(false);
+        return;
+      }
+      
+      if (!result) {
+        setIsFilterSearching(false);
+        return; // Error already handled in performFilterSearchLogic
+      }
+
+      let { tradeableItemIds, untradeableItemIds, marketableSet } = result;
+      
+      // Check if this request was superseded
+      if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+        setIsFilterSearching(false);
+        return;
+      }
+
+      // CRITICAL: Use marketableSet from performFilterSearchLogic (already queried with targeted query)
+      // This avoids unnecessary full table query
+      setMarketableItems(marketableSet);
+      
+      // CRITICAL: Double-check that tradeableItemIds only contains tradeable items
+      // This matches handleBatchSearch behavior - filter BEFORE setting searchResults
+      const verifiedTradeableItemIds = tradeableItemIds.filter(id => marketableSet.has(id));
+
+      /** 依序掃描已排序 ID，湊滿 maxCount 個「有 tw」的 ID；取消時回傳 null */
+      const pickIdsWithTwFromSorted = async (sortedIds, maxCount) => {
+        if (maxCount <= 0) return [];
+        const { getTwItemsByIds } = await import('../services/gameData');
+        const picked = [];
+        const scanBatch = 200;
+        for (let start = 0; start < sortedIds.length && picked.length < maxCount; start += scanBatch) {
+          if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+            return null;
+          }
+          const batch = sortedIds.slice(start, start + scanBatch);
+          if (batch.length === 0) break;
+          const twBatch = await getTwItemsByIds(batch);
+          for (const id of batch) {
+            if (picked.length >= maxCount) break;
+            if (twBatch[id]?.tw) picked.push(id);
+          }
+        }
+        return picked;
+      };
+
+      let limitedTradeableItemIds;
+      let limitedUntradeableItemIds;
+      if (limitMode === 'tradeable500') {
+        const pickedTradeableWithTw = await pickIdsWithTwFromSorted(verifiedTradeableItemIds, MAX_ITEMS_LIMIT);
+        if (pickedTradeableWithTw === null) {
+          setIsFilterSearching(false);
+          return;
+        }
+        limitedTradeableItemIds = pickedTradeableWithTw;
+        limitedUntradeableItemIds = [];
+        const n = limitedTradeableItemIds.length;
+        if (n > 0) {
+          addToast(`已僅搜尋可交易物品並限制為前 ${n} 個（略過無中文名的物品），正在獲取市場數據...`, 'warning');
+        } else {
+          addToast('沒有可交易物品', 'info');
+        }
+      } else {
+        const totalItems = verifiedTradeableItemIds.length + untradeableItemIds.length;
+        if (totalItems > MAX_ITEMS_LIMIT) {
+          const tradeableRatio = verifiedTradeableItemIds.length / totalItems;
+          const tradeableLimit = Math.floor(MAX_ITEMS_LIMIT * tradeableRatio);
+          const untradeableLimit = MAX_ITEMS_LIMIT - tradeableLimit;
+          const ilvlsForU = await loadIlvlsData(untradeableItemIds);
+          if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+            setIsFilterSearching(false);
+            return;
+          }
+          const untradeableSorted = [...untradeableItemIds].sort((a, b) => {
+            const aIlvl = ilvlsForU[a?.toString()] ?? null;
+            const bIlvl = ilvlsForU[b?.toString()] ?? null;
+            if (aIlvl !== null && bIlvl !== null) return bIlvl - aIlvl;
+            if (aIlvl !== null) return -1;
+            if (bIlvl !== null) return 1;
+            return b - a;
+          });
+          const pickedT = await pickIdsWithTwFromSorted(verifiedTradeableItemIds, tradeableLimit);
+          if (pickedT === null) {
+            setIsFilterSearching(false);
+            return;
+          }
+          const pickedU = await pickIdsWithTwFromSorted(untradeableSorted, untradeableLimit);
+          if (pickedU === null) {
+            setIsFilterSearching(false);
+            return;
+          }
+          limitedTradeableItemIds = pickedT;
+          limitedUntradeableItemIds = pickedU;
+          addToast(
+            `已限制為前 ${pickedT.length + pickedU.length} 個物品（${pickedT.length} 可交易 + ${pickedU.length} 不可交易，略過無中文名），正在獲取市場數據...`,
+            'warning'
+          );
+        } else {
+          limitedTradeableItemIds = verifiedTradeableItemIds;
+          limitedUntradeableItemIds = untradeableItemIds;
+          addToast(`共 ${totalItems} 個物品（${limitedTradeableItemIds.length} 可交易 + ${limitedUntradeableItemIds.length} 不可交易），正在獲取市場數據...`, 'info');
+        }
+      }
+
+      // Load ilvls data for sorting - use targeted query for these specific items
+      const allItemIdsForSortContinue = [...limitedTradeableItemIds, ...limitedUntradeableItemIds];
+      const ilvlsData = await loadIlvlsData(allItemIdsForSortContinue);
+      
+      // Check again if this request was superseded
+      if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+        setIsFilterSearching(false);
+        return;
+      }
+
+      // Use the same unified progressive loading function as handleFilterSearch
+      // This ensures consistent behavior for both <500 and >500 items
+      // The only difference is the input: limitedTradeableItemIds (limited to MAX_ITEMS_LIMIT)
+      const loadItemsProgressively = async (itemIds, isTradeable) => {
+        // Check if this search request was superseded
+        if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+          return;
+        }
+        
+        // Use ilvlsData (already loaded above)
+        const ilvlsDataForSort = ilvlsData;
+        
+        // CRITICAL: For tradeable items, itemIds should already be filtered
+        const filteredItemIds = isTradeable 
+          ? itemIds.filter(id => marketableSet.has(id))
+          : itemIds;
+        
+        const sortedItemIds = [...filteredItemIds].sort((a, b) => {
+          const aIlvl = ilvlsDataForSort[a?.toString()] || null;
+          const bIlvl = ilvlsDataForSort[b?.toString()] || null;
+          
+          if (aIlvl !== null && bIlvl !== null) {
+            return bIlvl - aIlvl;
+          }
+          if (aIlvl !== null) return -1;
+          if (bIlvl !== null) return 1;
+          return b - a;
+        });
+
+        // Load first batch (20 items) - load full data BEFORE displaying to prevent jumping
+        const INITIAL_BATCH_SIZE = 20;
+        const initialBatch = sortedItemIds.slice(0, INITIAL_BATCH_SIZE);
+        
+        const verifiedInitialBatch = isTradeable 
+          ? initialBatch.filter(id => marketableSet.has(id))
+          : initialBatch;
+        
+        // Load full item details synchronously for initial batch BEFORE displaying
+        // This prevents multiple re-renders and data jumping
+        // Use batch query instead of individual queries (optimized)
+        const { getTwItemsByIds } = await import('../services/gameData');
+        const itemsData = await getTwItemsByIds(verifiedInitialBatch);
+        const initialItems = verifiedInitialBatch.map(id => {
+          const itemData = itemsData[id];
+          if (!itemData || !itemData.tw) {
+            return null;
+          }
+          const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+          return {
+            id,
+            name: cleanName,
+            nameTW: cleanName,
+            searchLanguageName: null,
+            description: '',
+            itemLevel: '',
+            shopPrice: '',
+            inShop: false,
+          };
+        }).filter(item => item !== null);
+        
+        // Check if search was cancelled or superseded
+        if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+          return;
+        }
+        
+        // CRITICAL: Filter items using marketableSet to ensure only tradeable items
+        const filteredInitialItems = isTradeable
+          ? initialItems.filter(item => marketableSet.has(item.id))
+          : initialItems;
+        
+        const initialItemsSorted = filteredInitialItems.sort((a, b) => {
+          const aIlvl = ilvlsDataForSort[a.id?.toString()] || null;
+          const bIlvl = ilvlsDataForSort[b.id?.toString()] || null;
+          
+          if (aIlvl !== null && bIlvl !== null) {
+            return bIlvl - aIlvl;
+          }
+          if (aIlvl !== null) return -1;
+          if (bIlvl !== null) return 1;
+          return b.id - a.id;
+        });
+        
+        // Load rarities for these items (for rarity filter)
+        const itemIdsForRaritiesContinue = initialItemsSorted.map(item => item.id);
+        const raritiesForItemsContinue = await loadRaritiesData(itemIdsForRaritiesContinue);
+        
+        // Check again before updating state
+        if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+          return;
+        }
+        
+        // Update rarities state
+        setRaritiesData(prev => ({ ...prev, ...raritiesForItemsContinue }));
+        
+        // Display initial batch with full item details (only once, no jumping)
+        if (isTradeable) {
+          setSearchResults([]);
+          setShowUntradeable(false);
+          flushSync(() => {
+            setSearchResults(initialItemsSorted);
+          });
+        } else {
+          // For untradeable items, use the same initialBatch
+        // Use batch query instead of individual queries (optimized)
+        const { getTwItemsByIds: getTwItemsByIdsUntradeable } = await import('../services/gameData');
+        const untradeableItemsData = await getTwItemsByIdsUntradeable(initialBatch);
+        const untradeableInitialItems = initialBatch.map(id => {
+          const itemData = untradeableItemsData[id];
+          if (!itemData || !itemData.tw) {
+            return null;
+          }
+          const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+          return {
+            id,
+            name: cleanName,
+            nameTW: cleanName,
+            searchLanguageName: null,
+            description: '',
+            itemLevel: '',
+            shopPrice: '',
+            inShop: false,
+          };
+        }).filter(item => item !== null);
+          
+          // Check if search was cancelled or superseded
+          if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+            return;
+          }
+          
+          const untradeableInitialItemsSorted = untradeableInitialItems.sort((a, b) => {
+            const aIlvl = ilvlsDataForSort[a.id?.toString()] || null;
+            const bIlvl = ilvlsDataForSort[b.id?.toString()] || null;
+            
+            if (aIlvl !== null && bIlvl !== null) {
+              return bIlvl - aIlvl;
+            }
+            if (aIlvl !== null) return -1;
+            if (bIlvl !== null) return 1;
+            return b.id - a.id;
+          });
+          
+          // Check again before updating state
+          if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+            return;
+          }
+          
+          // Display untradeable results with full details (only once, no jumping)
+          setUntradeableResults([]);
+          flushSync(() => {
+            setUntradeableResults(untradeableInitialItemsSorted);
+          });
+          
+          // Mark all untradeable items as non-tradable in itemTradability
+          // This ensures ItemTable can properly display ilvl, version, and tradability columns
+          const untradeableTradabilityContinue = {};
+          untradeableInitialItemsSorted.forEach(item => {
+            untradeableTradabilityContinue[item.id] = false;
+          });
+          setItemTradability(prev => ({ ...prev, ...untradeableTradabilityContinue }));
+        }
+
+        // Start loading market data immediately (non-blocking)
+        if (selectedWorld && selectedServerOption && sortedItemIds.length > 0 && isTradeable) {
+          if (velocityFetchAbortControllerRef.current) {
+            velocityFetchAbortControllerRef.current.abort();
+          }
+
+          const marketDataRequestId = ++velocityFetchRequestIdRef.current;
+          velocityFetchAbortControllerRef.current = new AbortController();
+          const abortSignal = velocityFetchAbortControllerRef.current.signal;
+          velocityFetchInProgressRef.current = true;
+          setVelocityFetchInProgress(true);
+          setIsLoadingVelocities(true);
+
+          // Start market data fetch in background (non-blocking)
+          (async () => {
+            const isDCQuery = selectedServerOption === selectedWorld.section;
+            const queryTarget = isDCQuery ? selectedWorld.section : selectedServerOption;
+            
+            // Helper function to get value from market data
+            const getValue = (nqData, hqData, field) => {
+              const nqWorld = nqData?.world?.[field];
+              const hqWorld = hqData?.world?.[field];
+              const nqDc = nqData?.dc?.[field];
+              const hqDc = hqData?.dc?.[field];
+              const nqValue = isDCQuery ? (nqDc !== undefined ? nqDc : nqWorld) : (nqWorld !== undefined ? nqWorld : undefined);
+              const hqValue = isDCQuery ? (hqDc !== undefined ? hqDc : hqWorld) : (hqWorld !== undefined ? hqWorld : undefined);
+              if (field === 'quantity') {
+                if (nqValue !== undefined || hqValue !== undefined) {
+                  return (nqValue || 0) + (hqValue || 0);
+                }
+              } else {
+                if (nqValue !== undefined && hqValue !== undefined) {
+                  return Math.min(nqValue, hqValue);
+                } else if (hqValue !== undefined) {
+                  return hqValue;
+                } else if (nqValue !== undefined) {
+                  return nqValue;
+                }
+              }
+              return null;
+            };
+
+            // Process a single batch of market data
+            const processMarketBatch = async (batchNumber, startIndex) => {
+              // Check if search was cancelled or superseded
+              if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || continueSearchRequestId !== filterSearchRequestIdRef.current) {
+                return;
+              }
+              
+              let batchSize;
+              if (batchNumber === 0) {
+                batchSize = 20;
+              } else if (batchNumber === 1) {
+                batchSize = 50;
+              } else {
+                batchSize = 100;
+              }
+              
+              const batch = sortedItemIds.slice(startIndex, startIndex + batchSize);
+              if (batch.length === 0) {
+                return;
+              }
+              
+              const itemIdsString = batch.join(',');
+              
+              try {
+                const response = await fetch(`https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`, {
+                  signal: abortSignal
+                });
+                
+                if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || continueSearchRequestId !== filterSearchRequestIdRef.current) {
+                  return;
+                }
+                
+                const data = await response.json();
+                
+                if (data && data.results) {
+                  const batchVelocities = {};
+                  const batchAveragePrices = {};
+                  const batchMinListings = {};
+                  const batchRecentPurchases = {};
+                  const batchTradability = {};
+                  
+                  data.results.forEach(item => {
+                    const itemId = item.itemId;
+                    
+                    const velocity = getValue(item.nq?.dailySaleVelocity, item.hq?.dailySaleVelocity, 'quantity');
+                    let averagePrice = null;
+                    if (!isDCQuery) {
+                      const nqWorld = item.nq?.averageSalePrice?.world?.price;
+                      const hqWorld = item.hq?.averageSalePrice?.world?.price;
+                      const nqDc = item.nq?.averageSalePrice?.dc?.price;
+                      const hqDc = item.hq?.averageSalePrice?.dc?.price;
+                      const nqValue = nqWorld !== undefined ? nqWorld : nqDc;
+                      const hqValue = hqWorld !== undefined ? hqWorld : hqDc;
+                      if (nqValue !== undefined && hqValue !== undefined) {
+                        averagePrice = Math.min(nqValue, hqValue);
+                      } else if (hqValue !== undefined) {
+                        averagePrice = hqValue;
+                      } else if (nqValue !== undefined) {
+                        averagePrice = nqValue;
+                      }
+                    } else {
+                      averagePrice = getValue(item.nq?.averageSalePrice, item.hq?.averageSalePrice, 'price');
+                    }
+                    
+                    const minListingPrice = getValue(item.nq?.minListing, item.hq?.minListing, 'price');
+                    const recentPurchasePrice = getValue(item.nq?.recentPurchase, item.hq?.recentPurchase, 'price');
+                    
+                    let minListing = null;
+                    if (minListingPrice !== null && minListingPrice !== undefined) {
+                      if (!isDCQuery) {
+                        const nqWorldPrice = item.nq?.minListing?.world?.price;
+                        const hqWorldPrice = item.hq?.minListing?.world?.price;
+                        let selectedData = null;
+                        if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
+                          selectedData = hqWorldPrice <= nqWorldPrice ? item.hq?.minListing?.world : item.nq?.minListing?.world;
+                        } else if (hqWorldPrice !== undefined) {
+                          selectedData = item.hq?.minListing?.world;
+                        } else if (nqWorldPrice !== undefined) {
+                          selectedData = item.nq?.minListing?.world;
+                        }
+                        if (selectedData !== null) {
+                          const region = selectedData?.region;
+                          minListing = { price: minListingPrice };
+                          if (region !== undefined) {
+                            minListing.region = region;
+                          }
+                        }
+                      } else {
+                        minListing = minListingPrice;
+                      }
+                    }
+                    
+                    let recentPurchase = null;
+                    if (recentPurchasePrice !== null && recentPurchasePrice !== undefined) {
+                      if (!isDCQuery) {
+                        const nqWorldPrice = item.nq?.recentPurchase?.world?.price;
+                        const hqWorldPrice = item.hq?.recentPurchase?.world?.price;
+                        let selectedData = null;
+                        if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
+                          selectedData = hqWorldPrice <= nqWorldPrice ? item.hq?.recentPurchase?.world : item.nq?.recentPurchase?.world;
+                        } else if (hqWorldPrice !== undefined) {
+                          selectedData = item.hq?.recentPurchase?.world;
+                        } else if (nqWorldPrice !== undefined) {
+                          selectedData = item.nq?.recentPurchase?.world;
+                        }
+                        const region = selectedData?.region;
+                        recentPurchase = { price: recentPurchasePrice };
+                        if (region !== undefined) {
+                          recentPurchase.region = region;
+                        }
+                      } else {
+                        recentPurchase = recentPurchasePrice;
+                      }
+                    }
+                    
+                    if (velocity !== null && velocity !== undefined) {
+                      batchVelocities[itemId] = velocity;
+                    }
+                    if (averagePrice !== null && averagePrice !== undefined) {
+                      batchAveragePrices[itemId] = Math.round(averagePrice);
+                    }
+                    if (minListing !== null && minListing !== undefined) {
+                      batchMinListings[itemId] = minListing;
+                    }
+                    if (recentPurchase !== null && recentPurchase !== undefined) {
+                      batchRecentPurchases[itemId] = recentPurchase;
+                    }
+                    batchTradability[itemId] = true;
+                  });
+                  
+                  batch.forEach(itemId => {
+                    if (!batchTradability.hasOwnProperty(itemId)) {
+                      batchTradability[itemId] = false;
+                    }
+                  });
+                  
+                  if (!abortSignal.aborted && marketDataRequestId === velocityFetchRequestIdRef.current && continueSearchRequestId === filterSearchRequestIdRef.current) {
+                    flushSync(() => {
+                      setItemVelocities(prev => ({ ...prev, ...batchVelocities }));
+                      setItemAveragePrices(prev => ({ ...prev, ...batchAveragePrices }));
+                      setItemMinListings(prev => ({ ...prev, ...batchMinListings }));
+                      setItemRecentPurchases(prev => ({ ...prev, ...batchRecentPurchases }));
+                      setItemTradability(prev => ({ ...prev, ...batchTradability }));
+                      // Update loading progress
+                      setVelocityLoadingProgress(prev => ({ ...prev, loaded: prev.loaded + batch.length }));
+                    });
+                    
+                    if (batchNumber === 0) {
+                      setIsLoadingVelocities(false);
+                    }
+                  }
+                }
+              } catch (error) {
+                if (error.name === 'AbortError' || abortSignal.aborted) {
+                  return;
+                }
+                console.error('Error fetching market data:', error);
+                const batchTradability = {};
+                batch.forEach(itemId => {
+                  batchTradability[itemId] = false;
+                });
+                if (!abortSignal.aborted && marketDataRequestId === velocityFetchRequestIdRef.current && continueSearchRequestId === filterSearchRequestIdRef.current) {
+                  flushSync(() => {
+                    setItemTradability(prev => ({ ...prev, ...batchTradability }));
+                  });
+                }
+              }
+            };
+
+            // Process batches recursively with non-blocking delays
+            const processBatchesRecursively = async (batchNumber, startIndex) => {
+              if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || continueSearchRequestId !== filterSearchRequestIdRef.current) {
+                return;
+              }
+              
+              if (startIndex >= sortedItemIds.length) {
+                if (marketDataRequestId === velocityFetchRequestIdRef.current && continueSearchRequestId === filterSearchRequestIdRef.current && !abortSignal.aborted) {
+                  setIsLoadingVelocities(false);
+                  velocityFetchInProgressRef.current = false;
+                  setVelocityFetchInProgress(false);
+                  setVelocityLoadingProgress({ loaded: 0, total: 0 });
+                }
+                return;
+              }
+              
+              await processMarketBatch(batchNumber, startIndex);
+              
+              if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || continueSearchRequestId !== filterSearchRequestIdRef.current) {
+                return;
+              }
+              
+              let batchSize;
+              if (batchNumber === 0) {
+                batchSize = 20;
+              } else if (batchNumber === 1) {
+                batchSize = 50;
+              } else {
+                batchSize = 100;
+              }
+              
+              const nextIndex = startIndex + batchSize;
+              
+              if (nextIndex < sortedItemIds.length) {
+                await new Promise(resolve => {
+                  setTimeout(() => {
+                    processBatchesRecursively(batchNumber + 1, nextIndex).then(resolve);
+                  }, batchNumber === 0 ? 0 : 100);
+                });
+              } else {
+                if (marketDataRequestId === velocityFetchRequestIdRef.current && continueSearchRequestId === filterSearchRequestIdRef.current && !abortSignal.aborted) {
+                  setIsLoadingVelocities(false);
+                  velocityFetchInProgressRef.current = false;
+                  setVelocityFetchInProgress(false);
+                  setVelocityLoadingProgress({ loaded: 0, total: 0 });
+                }
+              }
+            };
+            
+            try {
+              await processBatchesRecursively(0, 0);
+            } catch (error) {
+              if (error.name !== 'AbortError') {
+                console.error('Error in market data fetch:', error);
+              }
+            }
+          })().catch(error => {
+            if (error.name !== 'AbortError') {
+              console.error('Error in market data fetch:', error);
+            }
+          });
+        }
+
+        // Load remaining items in batches (non-blocking progressive loading)
+        const REMAINING_BATCH_SIZE = 50;
+        
+        const processRemainingBatches = async (batchIndex) => {
+          // Check if search was cancelled or superseded
+          if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+            return;
+          }
+          
+          const startIndex = INITIAL_BATCH_SIZE + (batchIndex * REMAINING_BATCH_SIZE);
+          
+          if (startIndex >= sortedItemIds.length) {
+            return;
+          }
+          
+          const batch = sortedItemIds.slice(startIndex, startIndex + REMAINING_BATCH_SIZE);
+          if (batch.length === 0) {
+            return;
+          }
+          
+          // Use batch query instead of individual queries (optimized)
+          const { getTwItemsByIds: getTwItemsByIdsBatch } = await import('../services/gameData');
+          const batchItemsData = await getTwItemsByIdsBatch(batch);
+          const batchItems = batch.map(id => {
+            const itemData = batchItemsData[id];
+            if (!itemData || !itemData.tw) {
+              return null;
+            }
+            const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+            return {
+              id,
+              name: cleanName,
+              nameTW: cleanName,
+              searchLanguageName: null,
+              description: '',
+              itemLevel: '',
+              shopPrice: '',
+              inShop: false,
+            };
+          }).filter(item => item !== null);
+          
+          // Check again if search was cancelled
+          if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+            return;
+          }
+          
+          const filteredBatchItems = isTradeable 
+            ? batchItems.filter(item => marketableSet.has(item.id))
+            : batchItems;
+          
+          const batchItemsSorted = filteredBatchItems.sort((a, b) => {
+            const aIlvl = ilvlsData[a.id?.toString()] || null;
+            const bIlvl = ilvlsData[b.id?.toString()] || null;
+            
+            if (aIlvl !== null && bIlvl !== null) {
+              return bIlvl - aIlvl;
+            }
+            if (aIlvl !== null) return -1;
+            if (bIlvl !== null) return 1;
+            return b.id - a.id;
+          });
+
+          // Check again before updating state
+          if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+            return;
+          }
+
+          // Load rarities for this batch (for rarity filter)
+          const batchItemIdsContinue = batchItemsSorted.map(item => item.id);
+          loadRaritiesData(batchItemIdsContinue).then(raritiesForBatchContinue => {
+            setRaritiesData(prev => ({ ...prev, ...raritiesForBatchContinue }));
+          }).catch(error => {
+            console.error('Error loading rarities for batch:', error);
+          });
+
+          // Use flushSync to ensure atomic updates and prevent table jumping
+          if (isTradeable) {
+            flushSync(() => {
+              setSearchResults(prev => {
+                // Since batchItemsSorted is already sorted and prev is already sorted,
+                // we can simply append without re-sorting to avoid layout shifts
+                return [...prev, ...batchItemsSorted];
+              });
+            });
+          } else {
+            // Load untradeable items even if there are tradeable items
+            // This allows users to view untradeable items via the button
+            flushSync(() => {
+              setUntradeableResults(prev => {
+                // Since batchItemsSorted is already sorted and prev is already sorted,
+                // we can simply append without re-sorting to avoid layout shifts
+                return [...prev, ...batchItemsSorted];
+              });
+            });
+          }
+          
+          await new Promise(resolve => {
+            setTimeout(() => {
+              processRemainingBatches(batchIndex + 1).then(resolve);
+            }, 50);
+          });
+        };
+        
+        if (sortedItemIds.length > INITIAL_BATCH_SIZE) {
+          processRemainingBatches(0).catch(error => {
+            console.error('Error loading remaining batches:', error);
+          });
+        }
+      };
+
+      // Start loading tradeable items progressively using unified function
+      if (limitedTradeableItemIds.length > 0) {
+        // Keep track of untradeable items even when we have tradeable items
+        setShowUntradeable(false);
+        
+        loadItemsProgressively(limitedTradeableItemIds, true).catch(error => {
+          console.error('Error loading tradeable items progressively:', error);
+        });
+        
+        // Also load untradeable items in background if they exist
+        if (limitedUntradeableItemIds.length > 0) {
+          loadItemsProgressively(limitedUntradeableItemIds, false).catch(error => {
+            console.error('Error loading untradeable items:', error);
+          });
+        }
+      } else if (limitedUntradeableItemIds.length > 0) {
+        loadItemsProgressively(limitedUntradeableItemIds, false).catch(error => {
+          console.error('Error loading untradeable items:', error);
+        });
+      }
+
+      // Check if this request was superseded before showing toast
+      if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+        setIsFilterSearching(false);
+        return;
+      }
+
+      // Show toast with results count
+      if (limitedTradeableItemIds.length > 0 || limitedUntradeableItemIds.length > 0) {
+        addToast(`找到 ${limitedTradeableItemIds.length} 個可交易物品${limitedUntradeableItemIds.length > 0 ? `、${limitedUntradeableItemIds.length} 個不可交易物品` : ''}`, 'success');
+      }
+
+      setIsFilterSearching(false);
+    } catch (error) {
+      // Check if this request was superseded
+      if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
+        return;
+      }
+      console.error('Continue search error:', error);
+      addToast('搜索失敗，請稍後再試', 'error');
+      setIsLoadingVelocities(false);
+      setIsFilterSearching(false);
+      setVelocityLoadingProgress({ loaded: 0, total: 0 });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
       <TopBar
@@ -3604,699 +4355,24 @@ export default function AdvancedSearch({
                       </p>
                       <div className="flex gap-2 flex-wrap">
                         <button
-                          onClick={async () => {
-                            // Cancel any ongoing search requests
-                            const continueSearchRequestId = ++filterSearchRequestIdRef.current;
-                            
-                            // Cancel all ongoing market data fetches
-                            if (velocityFetchAbortControllerRef.current) {
-                              velocityFetchAbortControllerRef.current.abort();
-                              velocityFetchAbortControllerRef.current = null;
-                            }
-                            
-                            // Increment velocity fetch request ID to cancel any ongoing market data requests
-                            velocityFetchRequestIdRef.current++;
-                            velocityFetchInProgressRef.current = false;
-                            setVelocityFetchInProgress(false);
-                            setIsLoadingVelocities(false);
-
-                            setTooManyItemsWarning(null);
-                            setIsFilterSearching(true);
-                            setIsSearchButtonDisabled(false); // Clear disabled state for continue search
-                            setSearchResults([]);
-                            setUntradeableResults([]);
-                            setShowUntradeable(false);
-                            setItemVelocities({});
-                            setItemAveragePrices({});
-                            setItemMinListings({});
-                            setItemRecentPurchases({});
-                            setItemTradability({});
-                            setSelectedRarities([]); // Reset rarity filter on continue search
-
-                            // Disable search button for 1.5 seconds
-                            setIsSearchButtonDisabled(true);
-                            setTimeout(() => {
-                              setIsSearchButtonDisabled(false);
-                            }, 1500);
-
-                            try {
-                              // Use shared filter search logic with skipLimitCheck=true
-                              // This allows continuing search even when over limit (user already confirmed)
-                              const result = await performFilterSearchLogic(true);
-                              
-                              // Check if this request was superseded
-                              if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                setIsFilterSearching(false);
-                                return;
-                              }
-                              
-                              if (!result) {
-                                setIsFilterSearching(false);
-                                return; // Error already handled in performFilterSearchLogic
-                              }
-
-                              let { tradeableItemIds, untradeableItemIds, marketableSet } = result;
-                              
-                              // Check if this request was superseded
-                              if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                setIsFilterSearching(false);
-                                return;
-                              }
-
-                              // CRITICAL: Use marketableSet from performFilterSearchLogic (already queried with targeted query)
-                              // This avoids unnecessary full table query
-                              setMarketableItems(marketableSet);
-                              
-                              // CRITICAL: Double-check that tradeableItemIds only contains tradeable items
-                              // This matches handleBatchSearch behavior - filter BEFORE setting searchResults
-                              const verifiedTradeableItemIds = tradeableItemIds.filter(id => marketableSet.has(id));
-
-                              // Limit TOTAL items (tradeable + untradeable) to MAX_ITEMS_LIMIT
-                              // This ensures the combined count doesn't exceed 500
-                              const totalItems = verifiedTradeableItemIds.length + untradeableItemIds.length;
-                              let limitedTradeableItemIds = verifiedTradeableItemIds;
-                              let limitedUntradeableItemIds = untradeableItemIds;
-                              
-                              if (totalItems > MAX_ITEMS_LIMIT) {
-                                // Calculate how many items to take from each category proportionally
-                                const tradeableRatio = verifiedTradeableItemIds.length / totalItems;
-                                const tradeableLimit = Math.floor(MAX_ITEMS_LIMIT * tradeableRatio);
-                                const untradeableLimit = MAX_ITEMS_LIMIT - tradeableLimit;
-                                
-                                limitedTradeableItemIds = verifiedTradeableItemIds.slice(0, Math.max(tradeableLimit, 0));
-                                limitedUntradeableItemIds = untradeableItemIds.slice(0, Math.max(untradeableLimit, 0));
-                                
-                                addToast(`已限制為前 ${limitedTradeableItemIds.length + limitedUntradeableItemIds.length} 個物品（${limitedTradeableItemIds.length} 可交易 + ${limitedUntradeableItemIds.length} 不可交易），正在獲取市場數據...`, 'warning');
-                              } else {
-                                addToast(`共 ${totalItems} 個物品（${limitedTradeableItemIds.length} 可交易 + ${limitedUntradeableItemIds.length} 不可交易），正在獲取市場數據...`, 'info');
-                              }
-
-                              // Load ilvls data for sorting - use targeted query for these specific items
-                              const allItemIdsForSortContinue = [...limitedTradeableItemIds, ...limitedUntradeableItemIds];
-                              const ilvlsData = await loadIlvlsData(allItemIdsForSortContinue);
-                              
-                              // Check again if this request was superseded
-                              if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                setIsFilterSearching(false);
-                                return;
-                              }
-
-                              // Use the same unified progressive loading function as handleFilterSearch
-                              // This ensures consistent behavior for both <500 and >500 items
-                              // The only difference is the input: limitedTradeableItemIds (limited to MAX_ITEMS_LIMIT)
-                              const loadItemsProgressively = async (itemIds, isTradeable) => {
-                                // Check if this search request was superseded
-                                if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                  return;
-                                }
-                                
-                                // Use ilvlsData (already loaded above)
-                                const ilvlsDataForSort = ilvlsData;
-                                
-                                // CRITICAL: For tradeable items, itemIds should already be filtered
-                                const filteredItemIds = isTradeable 
-                                  ? itemIds.filter(id => marketableSet.has(id))
-                                  : itemIds;
-                                
-                                const sortedItemIds = [...filteredItemIds].sort((a, b) => {
-                                  const aIlvl = ilvlsDataForSort[a?.toString()] || null;
-                                  const bIlvl = ilvlsDataForSort[b?.toString()] || null;
-                                  
-                                  if (aIlvl !== null && bIlvl !== null) {
-                                    return bIlvl - aIlvl;
-                                  }
-                                  if (aIlvl !== null) return -1;
-                                  if (bIlvl !== null) return 1;
-                                  return b - a;
-                                });
-
-                                // Load first batch (20 items) - load full data BEFORE displaying to prevent jumping
-                                const INITIAL_BATCH_SIZE = 20;
-                                const initialBatch = sortedItemIds.slice(0, INITIAL_BATCH_SIZE);
-                                
-                                const verifiedInitialBatch = isTradeable 
-                                  ? initialBatch.filter(id => marketableSet.has(id))
-                                  : initialBatch;
-                                
-                                // Load full item details synchronously for initial batch BEFORE displaying
-                                // This prevents multiple re-renders and data jumping
-                                // Use batch query instead of individual queries (optimized)
-                                const { getTwItemsByIds } = await import('../services/gameData');
-                                const itemsData = await getTwItemsByIds(verifiedInitialBatch);
-                                const initialItems = verifiedInitialBatch.map(id => {
-                                  const itemData = itemsData[id];
-                                  if (!itemData || !itemData.tw) {
-                                    return null;
-                                  }
-                                  const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
-                                  return {
-                                    id,
-                                    name: cleanName,
-                                    nameTW: cleanName,
-                                    searchLanguageName: null,
-                                    description: '',
-                                    itemLevel: '',
-                                    shopPrice: '',
-                                    inShop: false,
-                                  };
-                                }).filter(item => item !== null);
-                                
-                                // Check if search was cancelled or superseded
-                                if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                  return;
-                                }
-                                
-                                // CRITICAL: Filter items using marketableSet to ensure only tradeable items
-                                const filteredInitialItems = isTradeable
-                                  ? initialItems.filter(item => marketableSet.has(item.id))
-                                  : initialItems;
-                                
-                                const initialItemsSorted = filteredInitialItems.sort((a, b) => {
-                                  const aIlvl = ilvlsDataForSort[a.id?.toString()] || null;
-                                  const bIlvl = ilvlsDataForSort[b.id?.toString()] || null;
-                                  
-                                  if (aIlvl !== null && bIlvl !== null) {
-                                    return bIlvl - aIlvl;
-                                  }
-                                  if (aIlvl !== null) return -1;
-                                  if (bIlvl !== null) return 1;
-                                  return b.id - a.id;
-                                });
-                                
-                                // Load rarities for these items (for rarity filter)
-                                const itemIdsForRaritiesContinue = initialItemsSorted.map(item => item.id);
-                                const raritiesForItemsContinue = await loadRaritiesData(itemIdsForRaritiesContinue);
-                                
-                                // Check again before updating state
-                                if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                  return;
-                                }
-                                
-                                // Update rarities state
-                                setRaritiesData(prev => ({ ...prev, ...raritiesForItemsContinue }));
-                                
-                                // Display initial batch with full item details (only once, no jumping)
-                                if (isTradeable) {
-                                  setSearchResults([]);
-                                  setShowUntradeable(false);
-                                  flushSync(() => {
-                                    setSearchResults(initialItemsSorted);
-                                  });
-                                } else {
-                                  // For untradeable items, use the same initialBatch
-                                // Use batch query instead of individual queries (optimized)
-                                const { getTwItemsByIds: getTwItemsByIdsUntradeable } = await import('../services/gameData');
-                                const untradeableItemsData = await getTwItemsByIdsUntradeable(initialBatch);
-                                const untradeableInitialItems = initialBatch.map(id => {
-                                  const itemData = untradeableItemsData[id];
-                                  if (!itemData || !itemData.tw) {
-                                    return null;
-                                  }
-                                  const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
-                                  return {
-                                    id,
-                                    name: cleanName,
-                                    nameTW: cleanName,
-                                    searchLanguageName: null,
-                                    description: '',
-                                    itemLevel: '',
-                                    shopPrice: '',
-                                    inShop: false,
-                                  };
-                                }).filter(item => item !== null);
-                                  
-                                  // Check if search was cancelled or superseded
-                                  if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                    return;
-                                  }
-                                  
-                                  const untradeableInitialItemsSorted = untradeableInitialItems.sort((a, b) => {
-                                    const aIlvl = ilvlsDataForSort[a.id?.toString()] || null;
-                                    const bIlvl = ilvlsDataForSort[b.id?.toString()] || null;
-                                    
-                                    if (aIlvl !== null && bIlvl !== null) {
-                                      return bIlvl - aIlvl;
-                                    }
-                                    if (aIlvl !== null) return -1;
-                                    if (bIlvl !== null) return 1;
-                                    return b.id - a.id;
-                                  });
-                                  
-                                  // Check again before updating state
-                                  if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                    return;
-                                  }
-                                  
-                                  // Display untradeable results with full details (only once, no jumping)
-                                  setUntradeableResults([]);
-                                  flushSync(() => {
-                                    setUntradeableResults(untradeableInitialItemsSorted);
-                                  });
-                                  
-                                  // Mark all untradeable items as non-tradable in itemTradability
-                                  // This ensures ItemTable can properly display ilvl, version, and tradability columns
-                                  const untradeableTradabilityContinue = {};
-                                  untradeableInitialItemsSorted.forEach(item => {
-                                    untradeableTradabilityContinue[item.id] = false;
-                                  });
-                                  setItemTradability(prev => ({ ...prev, ...untradeableTradabilityContinue }));
-                                }
-
-                                // Start loading market data immediately (non-blocking)
-                                if (selectedWorld && selectedServerOption && sortedItemIds.length > 0 && isTradeable) {
-                                  if (velocityFetchAbortControllerRef.current) {
-                                    velocityFetchAbortControllerRef.current.abort();
-                                  }
-
-                                  const marketDataRequestId = ++velocityFetchRequestIdRef.current;
-                                  velocityFetchAbortControllerRef.current = new AbortController();
-                                  const abortSignal = velocityFetchAbortControllerRef.current.signal;
-                                  velocityFetchInProgressRef.current = true;
-                                  setVelocityFetchInProgress(true);
-                                  setIsLoadingVelocities(true);
-
-                                  // Start market data fetch in background (non-blocking)
-                                  (async () => {
-                                    const isDCQuery = selectedServerOption === selectedWorld.section;
-                                    const queryTarget = isDCQuery ? selectedWorld.section : selectedServerOption;
-                                    
-                                    // Helper function to get value from market data
-                                    const getValue = (nqData, hqData, field) => {
-                                      const nqWorld = nqData?.world?.[field];
-                                      const hqWorld = hqData?.world?.[field];
-                                      const nqDc = nqData?.dc?.[field];
-                                      const hqDc = hqData?.dc?.[field];
-                                      const nqValue = isDCQuery ? (nqDc !== undefined ? nqDc : nqWorld) : (nqWorld !== undefined ? nqWorld : undefined);
-                                      const hqValue = isDCQuery ? (hqDc !== undefined ? hqDc : hqWorld) : (hqWorld !== undefined ? hqWorld : undefined);
-                                      if (field === 'quantity') {
-                                        if (nqValue !== undefined || hqValue !== undefined) {
-                                          return (nqValue || 0) + (hqValue || 0);
-                                        }
-                                      } else {
-                                        if (nqValue !== undefined && hqValue !== undefined) {
-                                          return Math.min(nqValue, hqValue);
-                                        } else if (hqValue !== undefined) {
-                                          return hqValue;
-                                        } else if (nqValue !== undefined) {
-                                          return nqValue;
-                                        }
-                                      }
-                                      return null;
-                                    };
-
-                                    // Process a single batch of market data
-                                    const processMarketBatch = async (batchNumber, startIndex) => {
-                                      // Check if search was cancelled or superseded
-                                      if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                        return;
-                                      }
-                                      
-                                      let batchSize;
-                                      if (batchNumber === 0) {
-                                        batchSize = 20;
-                                      } else if (batchNumber === 1) {
-                                        batchSize = 50;
-                                      } else {
-                                        batchSize = 100;
-                                      }
-                                      
-                                      const batch = sortedItemIds.slice(startIndex, startIndex + batchSize);
-                                      if (batch.length === 0) {
-                                        return;
-                                      }
-                                      
-                                      const itemIdsString = batch.join(',');
-                                      
-                                      try {
-                                        const response = await fetch(`https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`, {
-                                          signal: abortSignal
-                                        });
-                                        
-                                        if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                          return;
-                                        }
-                                        
-                                        const data = await response.json();
-                                        
-                                        if (data && data.results) {
-                                          const batchVelocities = {};
-                                          const batchAveragePrices = {};
-                                          const batchMinListings = {};
-                                          const batchRecentPurchases = {};
-                                          const batchTradability = {};
-                                          
-                                          data.results.forEach(item => {
-                                            const itemId = item.itemId;
-                                            
-                                            const velocity = getValue(item.nq?.dailySaleVelocity, item.hq?.dailySaleVelocity, 'quantity');
-                                            let averagePrice = null;
-                                            if (!isDCQuery) {
-                                              const nqWorld = item.nq?.averageSalePrice?.world?.price;
-                                              const hqWorld = item.hq?.averageSalePrice?.world?.price;
-                                              const nqDc = item.nq?.averageSalePrice?.dc?.price;
-                                              const hqDc = item.hq?.averageSalePrice?.dc?.price;
-                                              const nqValue = nqWorld !== undefined ? nqWorld : nqDc;
-                                              const hqValue = hqWorld !== undefined ? hqWorld : hqDc;
-                                              if (nqValue !== undefined && hqValue !== undefined) {
-                                                averagePrice = Math.min(nqValue, hqValue);
-                                              } else if (hqValue !== undefined) {
-                                                averagePrice = hqValue;
-                                              } else if (nqValue !== undefined) {
-                                                averagePrice = nqValue;
-                                              }
-                                            } else {
-                                              averagePrice = getValue(item.nq?.averageSalePrice, item.hq?.averageSalePrice, 'price');
-                                            }
-                                            
-                                            const minListingPrice = getValue(item.nq?.minListing, item.hq?.minListing, 'price');
-                                            const recentPurchasePrice = getValue(item.nq?.recentPurchase, item.hq?.recentPurchase, 'price');
-                                            
-                                            let minListing = null;
-                                            if (minListingPrice !== null && minListingPrice !== undefined) {
-                                              if (!isDCQuery) {
-                                                const nqWorldPrice = item.nq?.minListing?.world?.price;
-                                                const hqWorldPrice = item.hq?.minListing?.world?.price;
-                                                let selectedData = null;
-                                                if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
-                                                  selectedData = hqWorldPrice <= nqWorldPrice ? item.hq?.minListing?.world : item.nq?.minListing?.world;
-                                                } else if (hqWorldPrice !== undefined) {
-                                                  selectedData = item.hq?.minListing?.world;
-                                                } else if (nqWorldPrice !== undefined) {
-                                                  selectedData = item.nq?.minListing?.world;
-                                                }
-                                                if (selectedData !== null) {
-                                                  const region = selectedData?.region;
-                                                  minListing = { price: minListingPrice };
-                                                  if (region !== undefined) {
-                                                    minListing.region = region;
-                                                  }
-                                                }
-                                              } else {
-                                                minListing = minListingPrice;
-                                              }
-                                            }
-                                            
-                                            let recentPurchase = null;
-                                            if (recentPurchasePrice !== null && recentPurchasePrice !== undefined) {
-                                              if (!isDCQuery) {
-                                                const nqWorldPrice = item.nq?.recentPurchase?.world?.price;
-                                                const hqWorldPrice = item.hq?.recentPurchase?.world?.price;
-                                                let selectedData = null;
-                                                if (nqWorldPrice !== undefined && hqWorldPrice !== undefined) {
-                                                  selectedData = hqWorldPrice <= nqWorldPrice ? item.hq?.recentPurchase?.world : item.nq?.recentPurchase?.world;
-                                                } else if (hqWorldPrice !== undefined) {
-                                                  selectedData = item.hq?.recentPurchase?.world;
-                                                } else if (nqWorldPrice !== undefined) {
-                                                  selectedData = item.nq?.recentPurchase?.world;
-                                                }
-                                                const region = selectedData?.region;
-                                                recentPurchase = { price: recentPurchasePrice };
-                                                if (region !== undefined) {
-                                                  recentPurchase.region = region;
-                                                }
-                                              } else {
-                                                recentPurchase = recentPurchasePrice;
-                                              }
-                                            }
-                                            
-                                            if (velocity !== null && velocity !== undefined) {
-                                              batchVelocities[itemId] = velocity;
-                                            }
-                                            if (averagePrice !== null && averagePrice !== undefined) {
-                                              batchAveragePrices[itemId] = Math.round(averagePrice);
-                                            }
-                                            if (minListing !== null && minListing !== undefined) {
-                                              batchMinListings[itemId] = minListing;
-                                            }
-                                            if (recentPurchase !== null && recentPurchase !== undefined) {
-                                              batchRecentPurchases[itemId] = recentPurchase;
-                                            }
-                                            batchTradability[itemId] = true;
-                                          });
-                                          
-                                          batch.forEach(itemId => {
-                                            if (!batchTradability.hasOwnProperty(itemId)) {
-                                              batchTradability[itemId] = false;
-                                            }
-                                          });
-                                          
-                                          if (!abortSignal.aborted && marketDataRequestId === velocityFetchRequestIdRef.current && continueSearchRequestId === filterSearchRequestIdRef.current) {
-                                            flushSync(() => {
-                                              setItemVelocities(prev => ({ ...prev, ...batchVelocities }));
-                                              setItemAveragePrices(prev => ({ ...prev, ...batchAveragePrices }));
-                                              setItemMinListings(prev => ({ ...prev, ...batchMinListings }));
-                                              setItemRecentPurchases(prev => ({ ...prev, ...batchRecentPurchases }));
-                                              setItemTradability(prev => ({ ...prev, ...batchTradability }));
-                                              // Update loading progress
-                                              setVelocityLoadingProgress(prev => ({ ...prev, loaded: prev.loaded + batch.length }));
-                                            });
-                                            
-                                            if (batchNumber === 0) {
-                                              setIsLoadingVelocities(false);
-                                            }
-                                          }
-                                        }
-                                      } catch (error) {
-                                        if (error.name === 'AbortError' || abortSignal.aborted) {
-                                          return;
-                                        }
-                                        console.error('Error fetching market data:', error);
-                                        const batchTradability = {};
-                                        batch.forEach(itemId => {
-                                          batchTradability[itemId] = false;
-                                        });
-                                        if (!abortSignal.aborted && marketDataRequestId === velocityFetchRequestIdRef.current && continueSearchRequestId === filterSearchRequestIdRef.current) {
-                                          flushSync(() => {
-                                            setItemTradability(prev => ({ ...prev, ...batchTradability }));
-                                          });
-                                        }
-                                      }
-                                    };
-
-                                    // Process batches recursively with non-blocking delays
-                                    const processBatchesRecursively = async (batchNumber, startIndex) => {
-                                      if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                        return;
-                                      }
-                                      
-                                      if (startIndex >= sortedItemIds.length) {
-                                        if (marketDataRequestId === velocityFetchRequestIdRef.current && continueSearchRequestId === filterSearchRequestIdRef.current && !abortSignal.aborted) {
-                                          setIsLoadingVelocities(false);
-                                          velocityFetchInProgressRef.current = false;
-                                          setVelocityFetchInProgress(false);
-                                          setVelocityLoadingProgress({ loaded: 0, total: 0 });
-                                        }
-                                        return;
-                                      }
-                                      
-                                      await processMarketBatch(batchNumber, startIndex);
-                                      
-                                      if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                        return;
-                                      }
-                                      
-                                      let batchSize;
-                                      if (batchNumber === 0) {
-                                        batchSize = 20;
-                                      } else if (batchNumber === 1) {
-                                        batchSize = 50;
-                                      } else {
-                                        batchSize = 100;
-                                      }
-                                      
-                                      const nextIndex = startIndex + batchSize;
-                                      
-                                      if (nextIndex < sortedItemIds.length) {
-                                        await new Promise(resolve => {
-                                          setTimeout(() => {
-                                            processBatchesRecursively(batchNumber + 1, nextIndex).then(resolve);
-                                          }, batchNumber === 0 ? 0 : 100);
-                                        });
-                                      } else {
-                                        if (marketDataRequestId === velocityFetchRequestIdRef.current && continueSearchRequestId === filterSearchRequestIdRef.current && !abortSignal.aborted) {
-                                          setIsLoadingVelocities(false);
-                                          velocityFetchInProgressRef.current = false;
-                                          setVelocityFetchInProgress(false);
-                                          setVelocityLoadingProgress({ loaded: 0, total: 0 });
-                                        }
-                                      }
-                                    };
-                                    
-                                    try {
-                                      await processBatchesRecursively(0, 0);
-                                    } catch (error) {
-                                      if (error.name !== 'AbortError') {
-                                        console.error('Error in market data fetch:', error);
-                                      }
-                                    }
-                                  })().catch(error => {
-                                    if (error.name !== 'AbortError') {
-                                      console.error('Error in market data fetch:', error);
-                                    }
-                                  });
-                                }
-
-                                // Load remaining items in batches (non-blocking progressive loading)
-                                const REMAINING_BATCH_SIZE = 50;
-                                
-                                const processRemainingBatches = async (batchIndex) => {
-                                  // Check if search was cancelled or superseded
-                                  if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                    return;
-                                  }
-                                  
-                                  const startIndex = INITIAL_BATCH_SIZE + (batchIndex * REMAINING_BATCH_SIZE);
-                                  
-                                  if (startIndex >= sortedItemIds.length) {
-                                    return;
-                                  }
-                                  
-                                  const batch = sortedItemIds.slice(startIndex, startIndex + REMAINING_BATCH_SIZE);
-                                  if (batch.length === 0) {
-                                    return;
-                                  }
-                                  
-                                  // Use batch query instead of individual queries (optimized)
-                                  const { getTwItemsByIds: getTwItemsByIdsBatch } = await import('../services/gameData');
-                                  const batchItemsData = await getTwItemsByIdsBatch(batch);
-                                  const batchItems = batch.map(id => {
-                                    const itemData = batchItemsData[id];
-                                    if (!itemData || !itemData.tw) {
-                                      return null;
-                                    }
-                                    const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
-                                    return {
-                                      id,
-                                      name: cleanName,
-                                      nameTW: cleanName,
-                                      searchLanguageName: null,
-                                      description: '',
-                                      itemLevel: '',
-                                      shopPrice: '',
-                                      inShop: false,
-                                    };
-                                  }).filter(item => item !== null);
-                                  
-                                  // Check again if search was cancelled
-                                  if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                    return;
-                                  }
-                                  
-                                  const filteredBatchItems = isTradeable 
-                                    ? batchItems.filter(item => marketableSet.has(item.id))
-                                    : batchItems;
-                                  
-                                  const batchItemsSorted = filteredBatchItems.sort((a, b) => {
-                                    const aIlvl = ilvlsData[a.id?.toString()] || null;
-                                    const bIlvl = ilvlsData[b.id?.toString()] || null;
-                                    
-                                    if (aIlvl !== null && bIlvl !== null) {
-                                      return bIlvl - aIlvl;
-                                    }
-                                    if (aIlvl !== null) return -1;
-                                    if (bIlvl !== null) return 1;
-                                    return b.id - a.id;
-                                  });
-
-                                  // Check again before updating state
-                                  if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                    return;
-                                  }
-
-                                  // Load rarities for this batch (for rarity filter)
-                                  const batchItemIdsContinue = batchItemsSorted.map(item => item.id);
-                                  loadRaritiesData(batchItemIdsContinue).then(raritiesForBatchContinue => {
-                                    setRaritiesData(prev => ({ ...prev, ...raritiesForBatchContinue }));
-                                  }).catch(error => {
-                                    console.error('Error loading rarities for batch:', error);
-                                  });
-
-                                  // Use flushSync to ensure atomic updates and prevent table jumping
-                                  if (isTradeable) {
-                                    flushSync(() => {
-                                      setSearchResults(prev => {
-                                        // Since batchItemsSorted is already sorted and prev is already sorted,
-                                        // we can simply append without re-sorting to avoid layout shifts
-                                        return [...prev, ...batchItemsSorted];
-                                      });
-                                    });
-                                  } else {
-                                    // Load untradeable items even if there are tradeable items
-                                    // This allows users to view untradeable items via the button
-                                    flushSync(() => {
-                                      setUntradeableResults(prev => {
-                                        // Since batchItemsSorted is already sorted and prev is already sorted,
-                                        // we can simply append without re-sorting to avoid layout shifts
-                                        return [...prev, ...batchItemsSorted];
-                                      });
-                                    });
-                                  }
-                                  
-                                  await new Promise(resolve => {
-                                    setTimeout(() => {
-                                      processRemainingBatches(batchIndex + 1).then(resolve);
-                                    }, 50);
-                                  });
-                                };
-                                
-                                if (sortedItemIds.length > INITIAL_BATCH_SIZE) {
-                                  processRemainingBatches(0).catch(error => {
-                                    console.error('Error loading remaining batches:', error);
-                                  });
-                                }
-                              };
-
-                              // Start loading tradeable items progressively using unified function
-                              if (limitedTradeableItemIds.length > 0) {
-                                // Keep track of untradeable items even when we have tradeable items
-                                setShowUntradeable(false);
-                                
-                                loadItemsProgressively(limitedTradeableItemIds, true).catch(error => {
-                                  console.error('Error loading tradeable items progressively:', error);
-                                });
-                                
-                                // Also load untradeable items in background if they exist
-                                if (limitedUntradeableItemIds.length > 0) {
-                                  loadItemsProgressively(limitedUntradeableItemIds, false).catch(error => {
-                                    console.error('Error loading untradeable items:', error);
-                                  });
-                                }
-                              } else if (limitedUntradeableItemIds.length > 0) {
-                                loadItemsProgressively(limitedUntradeableItemIds, false).catch(error => {
-                                  console.error('Error loading untradeable items:', error);
-                                });
-                              }
-
-                              // Check if this request was superseded before showing toast
-                              if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                setIsFilterSearching(false);
-                                return;
-                              }
-
-                              // Show toast with results count
-                              if (limitedTradeableItemIds.length > 0 || limitedUntradeableItemIds.length > 0) {
-                                addToast(`找到 ${limitedTradeableItemIds.length} 個可交易物品${limitedUntradeableItemIds.length > 0 ? `、${limitedUntradeableItemIds.length} 個不可交易物品` : ''}`, 'success');
-                              }
-
-                              setIsFilterSearching(false);
-                            } catch (error) {
-                              // Check if this request was superseded
-                              if (continueSearchRequestId !== filterSearchRequestIdRef.current) {
-                                return;
-                              }
-                              console.error('Continue search error:', error);
-                              addToast('搜索失敗，請稍後再試', 'error');
-                              setIsLoadingVelocities(false);
-                              setIsFilterSearching(false);
-                              setVelocityLoadingProgress({ loaded: 0, total: 0 });
-                            }
+                          type="button"
+                          onClick={() => {
+                            tooManyItemsContinueModeRef.current = 'tradeable500';
+                            void runTooManyItemsContinue();
                           }}
                           className="confirm-button-attention py-3"
                         >
-                          <span className="flex items-center gap-2">
-                            <span>確認</span>
-                            <span>繼續搜索（限制為前 {MAX_ITEMS_LIMIT} 個）</span>
-                          </span>
+                          <span>搜尋可交易物品</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            tooManyItemsContinueModeRef.current = 'mixed500';
+                            void runTooManyItemsContinue();
+                          }}
+                          className="px-4 py-2 bg-slate-700/50 border border-gray-500/50 rounded-lg text-gray-300 hover:bg-slate-700/70 transition-all text-sm font-medium"
+                        >
+                          搜尋全部物品
                         </button>
                         <button
                           onClick={() => setTooManyItemsWarning(null)}
@@ -4624,13 +4700,15 @@ export default function AdvancedSearch({
             
             // Calculate filtered items count (same logic as ItemTable)
             // This simulates the filtering that happens inside ItemTable
+            // 與 SearchResultsTable 分頁用：須與實際傳入 ItemTable 的 items 一致。
+            // 當使用者已開啟「顯示不可交易」時，不可再把 filteredResults 裁成僅可交易，否則 totalPages 過小、無法瀏覽後半不可交易列。
             let filteredResults = currentResults;
-            if (marketableItems) {
+            if (!showUntradeable && marketableItems) {
               const hasTradeableItems = currentResults.some(item => {
                 const tradable = itemTradability?.[item.id];
                 return tradable === true;
               });
-              
+
               if (hasTradeableItems) {
                 filteredResults = currentResults.filter(item => {
                   const tradable = itemTradability?.[item.id];

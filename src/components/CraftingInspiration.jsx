@@ -77,6 +77,7 @@ export default function CraftingJobPriceChecker({
   
   // Ref for scrolling to results table
   const resultsTableRef = useRef(null);
+  const tooManyItemsContinueModeRef = useRef('tradeable500');
   const previousSearchResultsLengthRef = useRef(0);
   const runningLoaderRef = useRef(null);
   const previousServerOptionRef = useRef(null);
@@ -916,6 +917,183 @@ export default function CraftingJobPriceChecker({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  const runTooManyRecipeContinue = async () => {
+    const limitMode = tooManyItemsContinueModeRef.current;
+    setTooManyItemsWarning(null);
+    setIsRecipeSearching(true);
+    setSearchResults([]);
+    setTradeableResults([]);
+    setUntradeableResults([]);
+    setShowUntradeable(false);
+    setItemVelocities({});
+    setItemAveragePrices({});
+    setItemMinListings({});
+    setItemRecentPurchases({});
+    setItemTradability({});
+
+    const sortIdsByIlvl = (ids, ilvlsData) =>
+      [...ids].sort((a, b) => {
+        const aIlvl = ilvlsData[a?.toString()] ?? null;
+        const bIlvl = ilvlsData[b?.toString()] ?? null;
+        if (aIlvl !== null && bIlvl !== null) return bIlvl - aIlvl;
+        if (aIlvl !== null) return -1;
+        if (bIlvl !== null) return 1;
+        return b - a;
+      });
+
+    try {
+      const { recipes: filteredRecipes } = await loadRecipesByJobAndLevel(
+        selectedJobs.length > 0 ? selectedJobs : [],
+        ilvlMin,
+        ilvlMax
+      );
+
+      const itemIds = [...new Set(filteredRecipes.map((recipe) => recipe.result))];
+      const marketableSet = await getMarketableItemsByIds(itemIds);
+      let tradeableItemIds = itemIds.filter((id) => marketableSet.has(id));
+      let untradeableItemIds = itemIds.filter((id) => !marketableSet.has(id));
+
+      const ilvlsDataTrade = await loadIlvlsData(tradeableItemIds);
+      tradeableItemIds = sortIdsByIlvl(tradeableItemIds, ilvlsDataTrade);
+
+      const { getTwItemsByIds } = await import('../services/gameData');
+
+      const pickIdsWithTwFromSorted = async (sortedIds, maxCount) => {
+        if (maxCount <= 0) return [];
+        const picked = [];
+        const scanBatch = 200;
+        for (let start = 0; start < sortedIds.length && picked.length < maxCount; start += scanBatch) {
+          const batch = sortedIds.slice(start, start + scanBatch);
+          if (batch.length === 0) break;
+          const twBatch = await getTwItemsByIds(batch);
+          for (const id of batch) {
+            if (picked.length >= maxCount) break;
+            if (twBatch[id]?.tw) picked.push(id);
+          }
+        }
+        return picked;
+      };
+
+      if (limitMode === 'tradeable500') {
+        const pickedIds = [];
+        const scanBatch = 200;
+        const twById = {};
+        for (let start = 0; start < tradeableItemIds.length && pickedIds.length < MAX_ITEMS_LIMIT; start += scanBatch) {
+          const batch = tradeableItemIds.slice(start, start + scanBatch);
+          if (batch.length === 0) break;
+          const batchTw = await getTwItemsByIds(batch);
+          Object.assign(twById, batchTw);
+          for (const id of batch) {
+            if (pickedIds.length >= MAX_ITEMS_LIMIT) break;
+            const itemData = batchTw[id];
+            if (itemData?.tw) pickedIds.push(id);
+          }
+        }
+        tradeableItemIds = pickedIds;
+        untradeableItemIds = [];
+
+        const items = tradeableItemIds
+          .map((id) => {
+            const itemData = twById[id];
+            if (!itemData || !itemData.tw) return null;
+            const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+            return {
+              id,
+              name: cleanName,
+              nameTW: cleanName,
+              searchLanguageName: null,
+              description: '',
+              itemLevel: '',
+              shopPrice: '',
+              inShop: false,
+            };
+          })
+          .filter(Boolean);
+        setTradeableResults(items);
+        setUntradeableResults([]);
+        setSearchResults(items);
+
+        const marketData = await fetchMarketData(tradeableItemIds, true);
+        if (!marketData) {
+          setIsRecipeSearching(false);
+          return;
+        }
+        addToast(`搜索完成！找到 ${items.length} 個可交易物品（已限制）`, 'success');
+      } else {
+        const ilvlsDataAll = await loadIlvlsData([...tradeableItemIds, ...untradeableItemIds]);
+        untradeableItemIds = sortIdsByIlvl(untradeableItemIds, ilvlsDataAll);
+
+        const totalItems = tradeableItemIds.length + untradeableItemIds.length;
+        let limitedTradeable = tradeableItemIds;
+        let limitedUntradeable = untradeableItemIds;
+        if (totalItems > MAX_ITEMS_LIMIT) {
+          const tradeableRatio = tradeableItemIds.length / totalItems;
+          const tradeableLimit = Math.floor(MAX_ITEMS_LIMIT * tradeableRatio);
+          const untradeableLimit = MAX_ITEMS_LIMIT - tradeableLimit;
+          const pickedT = await pickIdsWithTwFromSorted(tradeableItemIds, Math.max(tradeableLimit, 0));
+          const pickedU = await pickIdsWithTwFromSorted(untradeableItemIds, Math.max(untradeableLimit, 0));
+          limitedTradeable = pickedT;
+          limitedUntradeable = pickedU;
+          addToast(
+            `已限制為前 ${limitedTradeable.length + limitedUntradeable.length} 個物品（${limitedTradeable.length} 可交易 + ${limitedUntradeable.length} 不可交易，略過無中文名），正在獲取市場數據...`,
+            'warning'
+          );
+        } else {
+          addToast(
+            `共 ${totalItems} 個物品（${limitedTradeable.length} 可交易 + ${limitedUntradeable.length} 不可交易），正在獲取市場數據...`,
+            'info'
+          );
+        }
+
+        const allLimitedIds = [...limitedTradeable, ...limitedUntradeable];
+        const itemsData = await getTwItemsByIds(allLimitedIds);
+
+        const mapRow = (id) => {
+          const itemData = itemsData[id];
+          if (!itemData || !itemData.tw) return null;
+          const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
+          return {
+            id,
+            name: cleanName,
+            nameTW: cleanName,
+            searchLanguageName: null,
+            description: '',
+            itemLevel: '',
+            shopPrice: '',
+            inShop: false,
+          };
+        };
+
+        const tradeableItems = limitedTradeable.map(mapRow).filter(Boolean);
+        const untradeableItems = limitedUntradeable.map(mapRow).filter(Boolean);
+
+        setTradeableResults(tradeableItems);
+        setUntradeableResults(untradeableItems);
+        setShowUntradeable(false);
+        setSearchResults(tradeableItems.length > 0 ? tradeableItems : untradeableItems);
+
+        if (limitedTradeable.length > 0) {
+          const marketData = await fetchMarketData(limitedTradeable, totalItems > MAX_ITEMS_LIMIT);
+          if (!marketData) {
+            setIsRecipeSearching(false);
+            return;
+          }
+        }
+
+        addToast(
+          `搜索完成！找到 ${tradeableItems.length} 個可交易物品${untradeableItems.length > 0 ? `、${untradeableItems.length} 個不可交易物品` : ''}${totalItems > MAX_ITEMS_LIMIT ? '（已限制）' : ''}`,
+          'success'
+        );
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      addToast('搜索失敗，請稍後再試', 'error');
+      setIsLoadingVelocities(false);
+    } finally {
+      setIsRecipeSearching(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
       <TopBar
@@ -1151,94 +1329,24 @@ export default function CraftingJobPriceChecker({
                   </p>
                   <div className="flex gap-2 flex-wrap">
                     <button
-                      onClick={async () => {
-                        setTooManyItemsWarning(null);
-                        setIsRecipeSearching(true);
-                        setSearchResults([]);
-                        setItemVelocities({});
-                        setItemAveragePrices({});
-                        setItemMinListings({});
-                        setItemRecentPurchases({});
-                        setItemTradability({});
-
-                        try {
-                          // Load recipes filtered by job and level using targeted query (optimized)
-                          const { recipes: filteredRecipes } = await loadRecipesByJobAndLevel(
-                            selectedJobs.length > 0 ? selectedJobs : [],
-                            ilvlMin,
-                            ilvlMax
-                          );
-
-                          const itemIds = [...new Set(filteredRecipes.map(recipe => recipe.result))];
-                          // Filter out non-tradeable items using targeted marketable API (optimized)
-                          const marketableSet = await getMarketableItemsByIds(itemIds);
-                          let tradeableItemIds = itemIds.filter(id => marketableSet.has(id));
-                          
-                          // Sort item IDs by ilvl (descending, highest first) before API query
-                          // Use targeted query to load only ilvls for these specific items
-                          const ilvlsData = await loadIlvlsData(tradeableItemIds);
-                          tradeableItemIds = tradeableItemIds.sort((a, b) => {
-                            const aIlvl = ilvlsData[a?.toString()] || null;
-                            const bIlvl = ilvlsData[b?.toString()] || null;
-                            
-                            // If both have ilvl, sort by ilvl descending (highest first)
-                            if (aIlvl !== null && bIlvl !== null) {
-                              return bIlvl - aIlvl;
-                            }
-                            // If only one has ilvl, prioritize it
-                            if (aIlvl !== null) return -1;
-                            if (bIlvl !== null) return 1;
-                            // If neither has ilvl, sort by ID descending
-                            return b - a;
-                          });
-                          
-                          // Limit to MAX_ITEMS_LIMIT
-                          tradeableItemIds = tradeableItemIds.slice(0, MAX_ITEMS_LIMIT);
-                          
-                          // Fetch item details for display
-                          // Use batch query instead of individual queries (optimized)
-                          const { getTwItemsByIds } = await import('../services/gameData');
-                          const itemsData = await getTwItemsByIds(tradeableItemIds);
-                          const items = tradeableItemIds.map(id => {
-                            const itemData = itemsData[id];
-                            if (!itemData || !itemData.tw) {
-                              return null;
-                            }
-                            const cleanName = itemData.tw.replace(/^["']|["']$/g, '').trim();
-                            return {
-                              id,
-                              name: cleanName,
-                              nameTW: cleanName,
-                              searchLanguageName: null,
-                              description: '',
-                              itemLevel: '',
-                              shopPrice: '',
-                              inShop: false,
-                            };
-                          }).filter(item => item !== null);
-                          setSearchResults(items);
-                          
-                          // Fetch market data with limit flag (updates state progressively)
-                          const marketData = await fetchMarketData(tradeableItemIds, true);
-                          
-                          if (!marketData) {
-                            setIsRecipeSearching(false);
-                            return;
-                          }
-
-                          // State is already updated progressively by fetchMarketData
-                          addToast(`搜索完成！找到 ${items.length} 個可交易物品（已限制）`, 'success');
-                        } catch (error) {
-                          console.error('Search error:', error);
-                          addToast('搜索失敗，請稍後再試', 'error');
-                          setIsLoadingVelocities(false);
-                        } finally {
-                          setIsRecipeSearching(false);
-                        }
+                      type="button"
+                      onClick={() => {
+                        tooManyItemsContinueModeRef.current = 'tradeable500';
+                        void runTooManyRecipeContinue();
                       }}
-                      className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg font-semibold text-sm transition-colors"
+                      className="confirm-button-attention py-3 text-sm font-semibold"
                     >
-                      繼續搜索（限制為前 {MAX_ITEMS_LIMIT} 個）
+                      <span>搜尋可交易物品</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        tooManyItemsContinueModeRef.current = 'mixed500';
+                        void runTooManyRecipeContinue();
+                      }}
+                      className="px-4 py-2 bg-slate-700/50 border border-gray-500/50 rounded-lg text-gray-300 hover:bg-slate-700/70 transition-all text-sm font-medium"
+                    >
+                      搜尋全部物品
                     </button>
                     <button
                       onClick={() => {
