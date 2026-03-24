@@ -22,7 +22,7 @@ import { generateBracketPatterns } from './utils/searchNormalization';
 import { addSearchToHistory } from './utils/searchHistory';
 import { useHistory } from './hooks/useHistory';
 import { useMultiItemCombinedTree } from './hooks/useMultiItemCombinedTree';
-import { hasRecipe, buildCraftingTree, findRelatedItems } from './services/recipeDatabase';
+import { hasRecipe, buildCraftingTree, findRelatedItems, isCompanyCraftResultItem } from './services/recipeDatabase';
 import { getIlvls, getItemPatch, getPatchNames, getItemSetFromDB, getTwItemsByIds } from './services/gameData';
 import { getUICategoriesByIds, getTwItemUICategories } from './services/uiCategoriesDataService';
 import TopBar from './components/TopBar';
@@ -74,6 +74,7 @@ const ObtainMethods = createLazyComponent(() => import('./components/ObtainMetho
 const MultiItemListModal = createLazyComponent(() => import('./components/MultiItemListModal.jsx'), 'MultiItemListModal');
 const MultiItemCombinedTree = createLazyComponent(() => import('./components/MultiItemCombinedTree.jsx'), 'MultiItemCombinedTree');
 const CraftingSimulatorDrawer = createLazyComponent(() => import('./components/CraftingSimulatorDrawer.jsx'), 'CraftingSimulatorDrawer');
+const CompanyCraftItemsPage = createLazyComponent(() => import('./components/CompanyCraftItemsPage.jsx'), 'CompanyCraftItemsPage');
 
 const TAX_SERVER_STORAGE_KEY = 'tax_server';
 
@@ -425,6 +426,8 @@ function App() {
   /** True after we've attempted to load TW name for selected item (so we don't show "查無此物" before load completes, e.g. on reload with empty cache) */
   const [twNameLoadAttempted, setTwNameLoadAttempted] = useState(false);
   const [selectedItemCategory, setSelectedItemCategory] = useState(null); // { id, name }
+  /** True when selected item appears as a Company Craft (部隊合建) product in recipe DB */
+  const [selectedItemIsCompanyCraft, setSelectedItemIsCompanyCraft] = useState(false);
 
   // Load ilvl and patch data lazily (only when needed, not on mount)
   // This prevents unnecessary data loading on initial page load
@@ -608,6 +611,28 @@ function App() {
     })();
     return () => { cancelled = true; };
   }, [selectedItem, loadPatchNamesData]);
+
+  useEffect(() => {
+    if (!selectedItem?.id) {
+      setSelectedItemIsCompanyCraft(false);
+      return;
+    }
+    let cancelled = false;
+    isCompanyCraftResultItem(selectedItem.id)
+      .then((yes) => {
+        if (!cancelled) setSelectedItemIsCompanyCraft(!!yes);
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedItemIsCompanyCraft(false);
+      });
+    return () => { cancelled = true; };
+  }, [selectedItem]);
+
+  useEffect(() => {
+    if (selectedItemIsCompanyCraft) {
+      setIsCraftingSimulatorOpen(false);
+    }
+  }, [selectedItemIsCompanyCraft]);
 
   // Version color palette - colors are assigned sequentially by major version number
   // This ensures consistent colors across sessions and automatic color assignment for new versions
@@ -795,9 +820,10 @@ function App() {
     const isOnHistoryPage = location.pathname === '/history';
     const isOnCraftingInspirationPage = location.pathname === '/crafting-inspiration';
     const isOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
+    const isOnCompanyCraftPage = location.pathname === '/company-craft';
     
     // Only run on home page (empty state)
-    if (selectedItem || (tradeableResults.length > 0 || untradeableResults.length > 0) || isSearching || isOnHistoryPage || isOnCraftingInspirationPage || isOnMSQPriceCheckerPage) {
+    if (selectedItem || (tradeableResults.length > 0 || untradeableResults.length > 0) || isSearching || isOnHistoryPage || isOnCraftingInspirationPage || isOnMSQPriceCheckerPage || isOnCompanyCraftPage) {
       if (imageIntervalRef.current) {
         clearTimeout(imageIntervalRef.current);
         imageIntervalRef.current = null;
@@ -851,8 +877,9 @@ function App() {
         const currentIsOnHistoryPage = location.pathname === '/history';
         const currentIsOnCraftingInspirationPage = location.pathname === '/crafting-inspiration';
         const currentIsOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
+        const currentIsOnCompanyCraftPage = location.pathname === '/company-craft';
         
-        if (!isManualMode && !selectedItem && tradeableResults.length === 0 && untradeableResults.length === 0 && !isSearching && !currentIsOnHistoryPage && !currentIsOnCraftingInspirationPage && !currentIsOnMSQPriceCheckerPage && !isShattering) {
+        if (!isManualMode && !selectedItem && tradeableResults.length === 0 && untradeableResults.length === 0 && !isSearching && !currentIsOnHistoryPage && !currentIsOnCraftingInspirationPage && !currentIsOnMSQPriceCheckerPage && !currentIsOnCompanyCraftPage && !isShattering) {
           switchCountRef.current++;
           
           // Check if we should trigger shatter effect
@@ -2511,6 +2538,12 @@ function App() {
       return;
     }
 
+    if (location.pathname === '/company-craft') {
+      lastProcessedURLRef.current = currentURLKey;
+      isInitializingFromURLRef.current = false;
+      return;
+    }
+
     // Handle secret page - don't interfere with it
     if (location.pathname === '/crafting-inspiration') {
       lastProcessedURLRef.current = currentURLKey;
@@ -2952,7 +2985,7 @@ function App() {
         setError(null);
         setRateLimitMessage(null);
         // Don't navigate if we're on crafting-inspiration, msq-price-checker, advanced-search or history page
-        if (!skipNavigation && !currentItemId && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker' && location.pathname !== '/advanced-search' && location.pathname !== '/history') {
+        if (!skipNavigation && !currentItemId && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker' && location.pathname !== '/advanced-search' && location.pathname !== '/company-craft' && location.pathname !== '/history') {
           navigate('/');
         }
       }
@@ -3828,16 +3861,18 @@ function App() {
   const isOnCraftingInspirationPage = location.pathname === '/crafting-inspiration';
   const isOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
   const isOnAdvancedSearchPage = location.pathname === '/advanced-search';
+  const isOnCompanyCraftPage = location.pathname === '/company-craft';
 
   // Check if current route is valid
   const isValidRoute = () => {
     const pathname = location.pathname;
-    // Valid routes: /, /history, /crafting-inspiration, /msq-price-checker, /advanced-search, /item/:id, /search
+    // Valid routes: /, /history, /crafting-inspiration, /msq-price-checker, /advanced-search, /company-craft, /item/:id, /search
     if (pathname === '/' || 
         pathname === '/history' || 
         pathname === '/crafting-inspiration' || 
         pathname === '/msq-price-checker' ||
         pathname === '/advanced-search' ||
+        pathname === '/company-craft' ||
         pathname === '/search') {
       return true;
     }
@@ -3863,6 +3898,44 @@ function App() {
         </div>
       }>
         <AdvancedSearch
+          addToast={addToast}
+          removeToast={removeToast}
+          toasts={toasts}
+          datacenters={datacenters}
+          worlds={worlds}
+          selectedWorld={selectedWorld}
+          onWorldChange={setSelectedWorld}
+          selectedServerOption={selectedServerOption}
+          onServerOptionChange={handleServerOptionChange}
+          serverOptions={selectedWorld && selectedWorld.dcObj ? [selectedWorld.section, ...selectedWorld.dcObj.worlds] : []}
+          isServerDataLoaded={isServerDataLoaded}
+          onItemSelect={handleItemSelect}
+          onSearch={handleSearch}
+          searchText={searchText}
+          setSearchText={setSearchText}
+          isSearching={isSearching}
+          onTaxRatesClick={handleTaxRatesClick}
+          isTaxRatesModalOpen={isTaxRatesModalOpen}
+          setIsTaxRatesModalOpen={setIsTaxRatesModalOpen}
+          taxRates={taxRates}
+          isLoadingTaxRates={isLoadingTaxRates}
+          taxSelectedWorld={taxSelectedWorld}
+          taxServerOption={taxServerOption}
+          onTaxServerOptionChange={handleTaxServerOptionChange}
+        />
+      </Suspense>
+    );
+  }
+
+  // 部隊合建物品一覽
+  if (isOnCompanyCraftPage) {
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold"></div>
+        </div>
+      }>
+        <CompanyCraftItemsPage
           addToast={addToast}
           removeToast={removeToast}
           toasts={toasts}
@@ -4348,6 +4421,19 @@ function App() {
                                   {selectedItemCategory.name}
                                 </button>
                               )}
+                              {selectedItemIsCompanyCraft && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSearchText('');
+                                    navigate('/company-craft');
+                                  }}
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded-md border text-[10px] mid:text-xs font-semibold whitespace-nowrap bg-violet-900/20 border-violet-400/40 text-violet-200 hover:bg-violet-800/35 hover:border-violet-300/50 transition-colors cursor-pointer"
+                                  title="查看所有部隊合建物品"
+                                >
+                                  部隊合建
+                                </button>
+                              )}
                             </>
                           );
                         })()}
@@ -4545,21 +4631,31 @@ function App() {
                     <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">製作價格樹</span>
                   </button>
 
-                  {/* Crafting Simulator Button */}
+                  {/* Crafting Simulator Button — disabled for 部隊合建 (no normal craft job / simulator) */}
                   {hasCraftingRecipe && (
                     <button
-                      onClick={() => setIsCraftingSimulatorOpen(true)}
-                      disabled={isLoadingCraftingTree}
+                      type="button"
+                      onClick={() => {
+                        if (selectedItemIsCompanyCraft) return;
+                        setIsCraftingSimulatorOpen(true);
+                      }}
+                      disabled={isLoadingCraftingTree || selectedItemIsCompanyCraft}
                       className={`
                         relative flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 overflow-hidden
-                        ${isLoadingCraftingTree
+                        ${isLoadingCraftingTree || selectedItemIsCompanyCraft
                           ? 'bg-slate-800/30 border border-slate-600/20 text-gray-600 cursor-not-allowed'
                           : 'bg-gradient-to-r from-emerald-900/50 via-teal-900/40 to-cyan-900/50 border border-emerald-400/40 text-emerald-200 hover:text-ffxiv-gold hover:border-ffxiv-gold/50 hover:shadow-[0_0_18px_rgba(20,184,166,0.2)]'
                         }
                       `}
-                      title={isLoadingCraftingTree ? '配方資料載入中...' : '打開模擬製作面板'}
+                      title={
+                        selectedItemIsCompanyCraft
+                          ? '部隊合建物品不支援模擬製作'
+                          : isLoadingCraftingTree
+                            ? '配方資料載入中...'
+                            : '打開模擬製作面板'
+                      }
                     >
-                      {!isLoadingCraftingTree && (
+                      {!isLoadingCraftingTree && !selectedItemIsCompanyCraft && (
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_1]" />
                       )}
                       {isLoadingCraftingTree ? (
@@ -5166,7 +5262,7 @@ function App() {
           {/* Item page load error - no cache / network failed: show retry instead of redirecting home */}
           {(() => {
             const isOnItemPage = location.pathname.startsWith('/item/');
-            const showItemLoadError = isOnItemPage && !selectedItem && itemLoadError && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker';
+            const showItemLoadError = isOnItemPage && !selectedItem && itemLoadError && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker' && location.pathname !== '/company-craft';
             return showItemLoadError && (
               <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-red-500/30 p-12 text-center">
                 <p className="text-gray-300 mb-2">無法載入物品資料（可能為快取已清或網路異常）</p>
@@ -5190,7 +5286,7 @@ function App() {
           {(() => {
             const isOnItemPage = location.pathname.startsWith('/item/');
             // Show loading if explicitly loading OR if on item page but item not loaded yet (and no load error)
-            const shouldShowLoading = (isLoadingItemFromURL || (isOnItemPage && !selectedItem && !itemLoadError && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker'));
+            const shouldShowLoading = (isLoadingItemFromURL || (isOnItemPage && !selectedItem && !itemLoadError && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker' && location.pathname !== '/company-craft'));
             return shouldShowLoading && (
               <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-12 text-center">
                 <div className="relative inline-block">

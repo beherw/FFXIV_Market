@@ -12,6 +12,9 @@ let recipesByIngredient = null;
 let isLoading = false;
 let loadPromise = null;
 
+/** @type {Set<number>|null} Result item IDs produced only via Company Craft (部隊合建), filled when recipes load */
+let companyCraftResultItemIds = null;
+
 // Cache for recipes by result (for targeted queries)
 const recipesByResultCache = new Map();
 
@@ -83,8 +86,15 @@ export async function loadRecipeDatabase() {
       const indexStartTime = performance.now();
       recipesByResult = new Map();
       recipesByIngredient = new Map();
-      
+      companyCraftResultItemIds = new Set();
+
       recipesDatabase.forEach(recipe => {
+        const isFc =
+          recipe.companyCraft === true ||
+          (typeof recipe.id === 'string' && String(recipe.id).startsWith('fc'));
+        if (isFc && recipe.result) {
+          companyCraftResultItemIds.add(recipe.result);
+        }
         // Index by result item ID
         if (recipe.result) {
           if (!recipesByResult.has(recipe.result)) {
@@ -158,6 +168,29 @@ export async function findRecipesByResult(itemId) {
  * @param {number} itemId - The item ID to check
  * @returns {Promise<boolean>} - True if the item has at least one recipe
  */
+/**
+ * True if this item is a Company Craft (部隊合建) product (synthetic fc* recipe in DB).
+ * @param {number} itemId
+ * @returns {Promise<boolean>}
+ */
+export async function isCompanyCraftResultItem(itemId) {
+  if (!itemId || itemId <= 0) return false;
+  await loadRecipeDatabase();
+  return companyCraftResultItemIds != null && companyCraftResultItemIds.has(itemId);
+}
+
+/**
+ * All item IDs that are Company Craft (部隊合建) products in the recipe DB (sorted ascending).
+ * @returns {Promise<number[]>}
+ */
+export async function getAllCompanyCraftResultItemIds() {
+  await loadRecipeDatabase();
+  if (!companyCraftResultItemIds || companyCraftResultItemIds.size === 0) {
+    return [];
+  }
+  return Array.from(companyCraftResultItemIds).sort((a, b) => a - b);
+}
+
 export async function hasRecipe(itemId) {
   if (!itemId || itemId <= 0) {
     return false;
@@ -230,9 +263,13 @@ export async function buildCraftingTree(itemId, amount = 1, visited = new Set(),
     };
   }
 
-  // Use the first recipe (usually the main one)
-  // In FFXIV, items typically have one recipe per job, and they're usually identical
-  const recipe = recipes[0];
+  // Prefer normal crafting over Company Craft (部隊合建) when both exist for the same result
+  const recipe =
+    recipes.find(
+      (r) =>
+        r.companyCraft !== true &&
+        !(typeof r.id === 'string' && String(r.id).startsWith('fc'))
+    ) || recipes[0];
   
   // Mark this item as visited to prevent cycles
   const newVisited = new Set(visited);
@@ -242,15 +279,17 @@ export async function buildCraftingTree(itemId, amount = 1, visited = new Set(),
   const yields = recipe.yields || 1;
   const craftsNeeded = Math.ceil(amount / yields);
 
+  const rawIngredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+
   // Build children for each ingredient, optionally excluding crystals/shards
   let filteredIngredients = excludeCrystals
-    ? recipe.ingredients.filter(ingredient => !CRYSTAL_ITEM_IDS.has(ingredient.id))
-    : recipe.ingredients;
+    ? rawIngredients.filter(ingredient => !CRYSTAL_ITEM_IDS.has(ingredient.id))
+    : rawIngredients;
 
   // If not excluding crystals, sort ingredients to place crystals in the middle of non-crystals
-  if (!excludeCrystals && recipe.ingredients.length > 0) {
-    const nonCrystals = recipe.ingredients.filter(ingredient => !CRYSTAL_ITEM_IDS.has(ingredient.id));
-    const crystals = recipe.ingredients.filter(ingredient => CRYSTAL_ITEM_IDS.has(ingredient.id));
+  if (!excludeCrystals && rawIngredients.length > 0) {
+    const nonCrystals = rawIngredients.filter(ingredient => !CRYSTAL_ITEM_IDS.has(ingredient.id));
+    const crystals = rawIngredients.filter(ingredient => CRYSTAL_ITEM_IDS.has(ingredient.id));
     
     if (nonCrystals.length > 0 && crystals.length > 0) {
       // Distribute crystals evenly among non-crystals

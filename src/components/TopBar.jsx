@@ -20,7 +20,7 @@ export default function TopBar({
   
   // Optional: custom navigation buttons
   showNavigationButtons = true,
-  activePage = null, // 'crafting-inspiration', 'msq-price-checker', 'advanced-search', 'history', or null
+  activePage = null, // 'crafting-inspiration', 'msq-price-checker', 'advanced-search', 'company-craft', 'history', or null
   
   // Optional: custom handlers
   onMSQPriceCheckerClick,
@@ -67,6 +67,7 @@ export default function TopBar({
     if (location.pathname === '/crafting-inspiration') return 'crafting-inspiration';
     if (location.pathname === '/msq-price-checker') return 'msq-price-checker';
     if (location.pathname === '/advanced-search') return 'advanced-search';
+    if (location.pathname === '/company-craft') return 'company-craft';
     if (location.pathname === '/history') return 'history';
     return null;
   })();

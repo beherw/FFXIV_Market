@@ -20,6 +20,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getTwJsonPath } from './tw-json-paths.js';
+import { buildCompanyCraftRecipes } from './company-craft-from-csv.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -85,9 +86,20 @@ function buildRecipeData() {
   
   // Step 1: Load recipes from JSON source
   const recipes = loadRecipesFromJSON(JSON_SOURCE);
+
+  // Step 1b: Append Company Craft (部隊合建) from CSV when not already in JSON (avoids dupes with full Teamcraft extracts)
+  const resultIdsFromJson = new Set();
+  for (const r of recipes) {
+    if (r && r.result != null && r.result > 0) resultIdsFromJson.add(r.result);
+  }
+  const fcRecipes = buildCompanyCraftRecipes(resultIdsFromJson);
+  if (fcRecipes.length > 0) {
+    console.log(`[Recipe] Merging ${fcRecipes.length} Company Craft (部隊合建) recipes from CSV`);
+  }
+  const merged = recipes.concat(fcRecipes);
   
   // Step 2: Optimize structure
-  const optimized = optimizeRecipes(recipes);
+  const optimized = optimizeRecipes(merged);
   
   // Step 3: Encode to MessagePack
   console.log(`[Recipe] Encoding to MessagePack...`);
