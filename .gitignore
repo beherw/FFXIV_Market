@@ -43,3 +43,5 @@ tw_dataminer/library/*.csv
 tw_dataminer/csv/*
 !tw_dataminer/csv/.gitkeep
 !tw_dataminer/library/.gitkeep
+
+.agents/*
