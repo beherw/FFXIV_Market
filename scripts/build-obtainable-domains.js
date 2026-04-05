@@ -5,13 +5,15 @@
  *
  * Reads teamcraft JSON and outputs one msgpack per domain for obtainableDataService.
  * Output: npcs.msgpack, shops.msgpack, instances.msgpack, quests.msgpack,
- *         achievements.msgpack, places.msgpack, leves.msgpack, loot-sources.msgpack
+ *         achievements.msgpack, places.msgpack, leves.msgpack, loot-sources.msgpack,
+ *         voyages.msgpack (twSubmarineVoyages + twAirshipVoyages; zh fills gaps via cn→tw)
  */
 
 import * as msgpack from '@msgpack/msgpack';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { Converter as CN2TConverter } from 'opencc-js/cn2t';
 import { getTwJsonPath } from './tw-json-paths.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -55,6 +57,47 @@ function loadDb(relativePath, name) {
   const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
   console.log(`[Obtainable] Loaded ${name}: ${Object.keys(data).length} records`);
   return data;
+}
+
+const simplifiedToTraditional = CN2TConverter({ from: 'cn', to: 't' });
+
+/**
+ * Merge TW voyage names from game TW JSON; fill missing ids from ZH (converted to Traditional).
+ * @param {Record<string, object>} twMap
+ * @param {Record<string, object>} zhMap - rows use `zh` key
+ */
+function mergeVoyageTwFromZh(twMap, zhMap) {
+  const out = {};
+  Object.entries(twMap || {}).forEach(([id, row]) => {
+    if (!row || typeof row !== 'object') return;
+    const tw = row.tw ?? row.name?.tw;
+    if (tw == null || String(tw).trim() === '') return;
+    out[id] = {
+      tw: String(tw),
+      id: row.id ?? parseInt(id, 10),
+      ...(row.location != null && row.location !== '' ? { location: row.location } : {})
+    };
+  });
+  Object.entries(zhMap || {}).forEach(([id, row]) => {
+    if (!row || typeof row !== 'object') return;
+    const zh = row.zh;
+    if (!zh || typeof zh !== 'string' || zh.trim() === '') return;
+    if (out[id]?.tw && String(out[id].tw).trim() !== '') return;
+    try {
+      out[id] = {
+        tw: simplifiedToTraditional(zh),
+        id: row.id ?? parseInt(id, 10),
+        ...(row.location != null && row.location !== '' ? { location: row.location } : {})
+      };
+    } catch {
+      out[id] = {
+        tw: zh,
+        id: row.id ?? parseInt(id, 10),
+        ...(row.location != null && row.location !== '' ? { location: row.location } : {})
+      };
+    }
+  });
+  return out;
 }
 
 function writeMsgpack(filename, data, label) {
@@ -206,6 +249,22 @@ function buildLootSources() {
   writeMsgpack('loot-sources.msgpack', { lootSourcesByItemId }, 'loot-sources');
 }
 
+// --- Voyages (submarine + airship TW names) ---
+function buildVoyages() {
+  const twSub = loadTwJson('tw-submarine-voyages.json', 'tw-submarine-voyages');
+  const twAir = loadTwJson('tw-airship-voyages.json', 'tw-airship-voyages');
+  const zhSub = loadJson('zh/zh-submarine-voyages.json', 'zh-submarine-voyages');
+  const zhAir = loadJson('zh/zh-airship-voyages.json', 'zh-airship-voyages');
+
+  const twSubmarineVoyages = mergeVoyageTwFromZh(twSub, zhSub);
+  const twAirshipVoyages = mergeVoyageTwFromZh(twAir, zhAir);
+
+  console.log(
+    `[Obtainable] Voyages: submarine ${Object.keys(twSubmarineVoyages).length}, airship ${Object.keys(twAirshipVoyages).length}`
+  );
+  writeMsgpack('voyages.msgpack', { twSubmarineVoyages, twAirshipVoyages }, 'voyages');
+}
+
 function main() {
   console.log('\n[Obtainable] Building domain msgpacks...\n');
   const start = Date.now();
@@ -217,6 +276,7 @@ function main() {
   buildPlaces();
   buildLeves();
   buildLootSources();
+  buildVoyages();
   console.log(`\n[Obtainable] Done in ${Date.now() - start}ms\n`);
 }
 

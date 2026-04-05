@@ -92,7 +92,9 @@ export function getEmptyLoadedData(preserve = {}) {
     items: {},
     retainerTasksById: preserve.retainerTasksById || {},
     fateSources: [],
-    lootSources: []
+    lootSources: [],
+    twSubmarineVoyages: {},
+    twAirshipVoyages: {}
   };
 }
 
@@ -182,6 +184,21 @@ export async function loadDataForRequiredIds(requiredIds, options = {}) {
         out.twAchievements = sliceById(data.twAchievements || {}, requiredIds.achievementIds);
         out.twAchievementDescriptions = sliceById(data.twAchievementDescriptions || {}, requiredIds.achievementIds);
         out.achievements = sliceById(data.achievements || {}, requiredIds.achievementIds);
+      })
+    );
+  }
+
+  const subVoyageIds = requiredIds.submarineVoyageIds || [];
+  const airVoyageIds = requiredIds.airshipVoyageIds || [];
+  if (subVoyageIds.length > 0 || airVoyageIds.length > 0) {
+    loaders.push(
+      loadDomain('voyages', signal).then(data => {
+        if (subVoyageIds.length > 0) {
+          out.twSubmarineVoyages = sliceById(data.twSubmarineVoyages || {}, subVoyageIds);
+        }
+        if (airVoyageIds.length > 0) {
+          out.twAirshipVoyages = sliceById(data.twAirshipVoyages || {}, airVoyageIds);
+        }
       })
     );
   }

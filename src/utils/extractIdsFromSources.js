@@ -20,6 +20,8 @@ export function extractIdsFromSources(sources) {
     itemIds: new Set(),
     zoneIds: new Set(),
     fateIds: new Set(),
+    submarineVoyageIds: new Set(),
+    airshipVoyageIds: new Set(),
   };
 
   if (!sources || !Array.isArray(sources)) {
@@ -32,6 +34,8 @@ export function extractIdsFromSources(sources) {
       itemIds: [],
       zoneIds: [],
       fateIds: [],
+      submarineVoyageIds: [],
+      airshipVoyageIds: [],
     };
   }
 
@@ -343,6 +347,23 @@ export function extractIdsFromSources(sources) {
         }
       });
     }
+
+    // VOYAGES — type 1 = submarine, 0 = airship
+    if (type === DataType.VOYAGES) {
+      const voyages = source.voyages || (Array.isArray(data) ? data : null);
+      if (Array.isArray(voyages)) {
+        voyages.forEach(voyage => {
+          if (!voyage || voyage.id == null) return;
+          const vid = typeof voyage.id === 'number' ? voyage.id : parseInt(voyage.id, 10);
+          if (!vid || Number.isNaN(vid)) return;
+          if (voyage.type === 1) {
+            ids.submarineVoyageIds.add(vid);
+          } else {
+            ids.airshipVoyageIds.add(vid);
+          }
+        });
+      }
+    }
   });
 
   // Convert Sets to Arrays and sort for consistent caching
@@ -355,6 +376,8 @@ export function extractIdsFromSources(sources) {
     itemIds: Array.from(ids.itemIds).sort((a, b) => a - b),
     zoneIds: Array.from(ids.zoneIds).sort((a, b) => a - b),
     fateIds: Array.from(ids.fateIds).sort((a, b) => a - b),
+    submarineVoyageIds: Array.from(ids.submarineVoyageIds).sort((a, b) => a - b),
+    airshipVoyageIds: Array.from(ids.airshipVoyageIds).sort((a, b) => a - b),
   };
   return result;
 }

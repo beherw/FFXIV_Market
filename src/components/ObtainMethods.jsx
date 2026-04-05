@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { getItemSources, DataType, getTypeIdFromString } from '../services/extractsService';
 import { getItemById } from '../services/itemDatabase';
 import { extractIdsFromSources } from '../utils/extractIdsFromSources';
+import { getVoyageTwDisplayName, parseVoyageDestinationLabel } from '../utils/voyageDisplayName';
 import { getHuijiWikiUrlForItem } from '../utils/wikiUtils';
 import { getPlaceName as getPlaceNameUtil, getPlaceNameWithFallback } from '../utils/placeUtils';
 import { generateItemUrl } from '../utils/urlSlug';
@@ -34,7 +35,7 @@ import twMobsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-mobs.js
 import dropSourcesData from '../../teamcraft_git/libs/data/src/lib/json/drop-sources.json';
 import monstersData from '../../teamcraft_git/libs/data/src/lib/json/monsters.json';
 import { loadJsonOnce } from '../utils/lazyJsonLoader';
-import { getEorzeaTime, formatEorzeaDuration, formatEorzeaTimeOfDay, getLimitedNodeTiming } from '../utils/eorzeaTimeUtils';
+import { getEorzeaTime, getLimitedNodeTiming, getEorzeaMinutesUntilSecondNextSpawn, getSecondNextSpawnProgress, formatEorzeaTimeOfDay, formatHumanDurationFromEorzeaMinutes, formatLocalTimeAfterEorzeaMinutes } from '../utils/eorzeaTimeUtils';
 
 import MapModal from './MapModal';
 import ItemImage from './ItemImage';
@@ -3095,6 +3096,19 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               const timing = isLimited
                 ? getLimitedNodeTiming(node.spawns, node.duration, eorzeaTime.totalMinutes)
                 : null;
+              const minutesUntilSecondSpawn =
+                isLimited && node.spawns?.length && timing
+                  ? getEorzeaMinutesUntilSecondNextSpawn(node.spawns, node.duration, eorzeaTime.totalMinutes, timing)
+                  : null;
+              const windowEndAbsolute = timing ? timing.nextSpawnStart + node.duration : null;
+              const secondNextSpawnAbsolute =
+                minutesUntilSecondSpawn != null && Number.isFinite(minutesUntilSecondSpawn)
+                  ? eorzeaTime.totalMinutes + minutesUntilSecondSpawn
+                  : null;
+              const secondSpawnProgress =
+                timing && windowEndAbsolute != null && secondNextSpawnAbsolute != null
+                  ? getSecondNextSpawnProgress(eorzeaTime.totalMinutes, windowEndAbsolute, secondNextSpawnAbsolute)
+                  : 0;
 
               return (
                 <div key={nodeIndex} className={`${getInnerItemLayoutClass(totalMethodCards)} bg-slate-900/50 rounded p-2 min-h-[70px] flex flex-col justify-center`}>
@@ -3139,7 +3153,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         <span className={timing.state === 'spawned' ? 'text-emerald-300' : 'text-amber-300'}>
                           {timing.state === 'spawned' ? '可採集' : '距離下次出現'}
                         </span>
-                        <span className="text-gray-300">{formatEorzeaDuration(timing.remainingMinutes)} ET</span>
+                        <span className="text-gray-300">{formatHumanDurationFromEorzeaMinutes(timing.remainingMinutes)}</span>
                       </div>
                       <div className="mt-1 h-2 w-full rounded bg-slate-800/80 overflow-hidden">
                         <div
@@ -3147,13 +3161,47 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                           style={{ width: `${Math.round(timing.progress * 100)}%` }}
                         />
                       </div>
-                      <div className="mt-1 text-[11px] text-gray-400">
-                        {timing.state === 'spawned'
-                          ? `剩餘 ${formatEorzeaDuration(timing.remainingMinutes)} ET`
-                          : `下一次 ${formatEorzeaTimeOfDay(timing.nextSpawnStart)} ET`}
+                      <div className="mt-1 text-[11px] text-gray-400 flex flex-nowrap items-baseline gap-x-2 overflow-x-auto max-w-full">
+                        <span>
+                          本地：{formatLocalTimeAfterEorzeaMinutes(timing.remainingMinutes, clockTick)}
+                        </span>
+                        <span>
+                          ET：
+                          {timing.state === 'spawned'
+                            ? formatEorzeaTimeOfDay(timing.nextSpawnStart + node.duration)
+                            : formatEorzeaTimeOfDay(timing.nextSpawnStart)}
+                        </span>
                       </div>
                     </div>
                   )}
+
+                  {isLimited &&
+                    timing &&
+                    minutesUntilSecondSpawn != null &&
+                    Number.isFinite(minutesUntilSecondSpawn) && (
+                      <div className="mt-2 pt-2 border-t border-slate-700/50">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-amber-300">再下次出現</span>
+                          <span className="text-gray-300">
+                            {formatHumanDurationFromEorzeaMinutes(minutesUntilSecondSpawn)}
+                          </span>
+                        </div>
+                        <div className="mt-1 h-2 w-full rounded bg-slate-800/80 overflow-hidden">
+                          <div
+                            className="h-full bg-amber-400"
+                            style={{ width: `${Math.round(secondSpawnProgress * 100)}%` }}
+                          />
+                        </div>
+                        <div className="mt-1 text-[11px] text-gray-400 flex flex-nowrap items-baseline gap-x-2 overflow-x-auto max-w-full">
+                          <span>
+                            本地：{formatLocalTimeAfterEorzeaMinutes(minutesUntilSecondSpawn, clockTick)}
+                          </span>
+                          <span>
+                            ET：{formatEorzeaTimeOfDay(eorzeaTime.totalMinutes + minutesUntilSecondSpawn)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   
                   {locationInfo.hasLocation && (
                     <button
@@ -3261,19 +3309,19 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
       }
 
       return (
-        <div key={`venture-${index}`} className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start">
+        <div key={`venture-${index}`} className="bg-slate-800/50 rounded-lg border border-slate-700/50 p-2.5 w-full min-w-0 self-start">
           {/* Card header */}
-          <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-700/50">
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-slate-900/60 border border-slate-600/50">
-              <img src="https://xivapi.com/i/065000/065049.png" alt="Venture" className="w-7 h-7 object-contain" />
+          <div className="flex items-center gap-2.5 mb-2 pb-2 border-b border-slate-700/50">
+            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-slate-900/60 border border-slate-600/50 shrink-0">
+              <img src="https://xivapi.com/i/065000/065049.png" alt="" className="w-6 h-6 object-contain" />
             </div>
-            <div>
-              <span className="text-ffxiv-gold font-semibold text-base tracking-wide">雇員探險</span>
-              <p className="text-xs text-slate-400 mt-0.5">派遣雇員進行探險以獲得道具</p>
+            <div className="min-w-0">
+              <span className="text-ffxiv-gold font-semibold text-sm tracking-wide">雇員探險</span>
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">派遣雇員進行探險以獲得道具</p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 min-w-0">
+          <div className="flex flex-col gap-2 min-w-0">
             {tasks.map((task, taskIdx) => {
               const taskId = typeof task === 'object' && task !== null ? task.id : task;
               const taskFromLookup = taskId !== undefined && taskId !== null
@@ -3294,25 +3342,25 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
               return (
                 <div
                   key={taskIdx}
-                  className="w-full min-w-0 max-w-full rounded-xl p-4 flex flex-col gap-3 bg-slate-900/50 border border-slate-700/50 hover:border-slate-600/60 transition-all duration-200"
+                  className="w-full min-w-0 max-w-full rounded-lg p-2.5 flex flex-col gap-2 bg-slate-900/50 border border-slate-700/50 hover:border-slate-600/60 transition-all duration-200"
                 >
                   {/* Level & category row */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ffxiv-gold/15 border border-ffxiv-gold/40 text-ffxiv-gold font-semibold text-sm">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-ffxiv-gold/15 border border-ffxiv-gold/40 text-ffxiv-gold font-semibold text-xs">
                       Lv.{level ?? '?'}
                     </span>
                     {categoryName && (
-                      <span className="inline-flex min-w-0 max-w-full items-center gap-1 px-2.5 py-1 rounded-md bg-slate-700/50 border border-slate-600/50 text-xs text-slate-300 font-medium truncate" title={categoryName}>
+                      <span className="inline-flex min-w-0 max-w-full items-center gap-1 px-2 py-0.5 rounded-md bg-slate-700/50 border border-slate-600/50 text-[11px] text-slate-300 font-medium truncate" title={categoryName}>
                         {categoryName}
                       </span>
                     )}
                     {reqGathering > 0 && (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/30 text-xs text-blue-400 font-medium">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/30 text-[11px] text-blue-400 font-medium">
                         採集力 {reqGathering}+
                       </span>
                     )}
                     {reqIlvl > 0 && (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-violet-500/10 border border-violet-500/30 text-xs text-violet-400 font-medium">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-violet-500/10 border border-violet-500/30 text-[11px] text-violet-400 font-medium">
                         裝等 {reqIlvl}+
                       </span>
                     )}
@@ -3320,8 +3368,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
 
                   {/* Quantity tiers - one row per tier, with icon and labels */}
                   {quantities.length > 0 && (
-                    <div className="space-y-1.5">
-                      <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">獲得數量</div>
+                    <div className="space-y-1">
                       {quantities.map((entry, qIdx) => {
                         const statLabel = entry?.stat === 'perception' ? '感知' : '裝等';
                         const statValue = entry?.value !== undefined && entry?.value !== null ? entry.value : null;
@@ -3334,36 +3381,32 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
                         return (
                           <div
                             key={qIdx}
-                            className="flex items-stretch overflow-hidden rounded-lg border border-slate-600/50 bg-slate-800/40"
+                            className="flex items-stretch overflow-hidden rounded-md border border-slate-600/50 bg-slate-800/40"
                           >
-                            <div className="flex items-center justify-center w-10 shrink-0 border-r border-slate-600/50 bg-slate-700/30">
+                            <div className="flex items-center justify-center w-8 shrink-0 border-r border-slate-600/50 bg-slate-700/30">
                               {isPerception ? (
-                                <svg className="w-5 h-5 text-amber-400/90" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                                <svg className="w-4 h-4 text-amber-400/90" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                 </svg>
                               ) : isIlvl ? (
-                                <svg className="w-5 h-5 text-violet-400/90" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                                <svg className="w-4 h-4 text-violet-400/90" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                 </svg>
                               ) : (
-                                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
                               )}
                             </div>
-                            <div className="flex min-w-0 flex-1 items-center py-2.5 px-3">
-                              <div className="min-w-0">
-                                <div className="text-[11px] uppercase tracking-wider text-slate-500">條件</div>
-                                <div className="text-sm font-medium text-slate-200 break-words">{conditionText}</div>
-                              </div>
+                            <div className="flex min-w-0 flex-1 items-center py-1.5 px-2">
+                              <div className="text-xs font-medium text-slate-200 break-words leading-snug">{conditionText}</div>
                             </div>
                             <div className="w-px bg-slate-600/60 shrink-0" aria-hidden />
-                            <div className="flex shrink-0 flex-col items-center justify-center border-l border-emerald-500/30 bg-emerald-500/10 py-2.5 px-4 min-w-[4.5rem]">
-                              <div className="text-[11px] uppercase tracking-wider text-emerald-400/70">數量</div>
+                            <div className="flex shrink-0 items-center justify-center border-l border-slate-600/60 bg-slate-800/50 py-1.5 px-2.5 min-w-[3.5rem]">
                               <div className="flex items-baseline gap-0.5">
-                                <span className="font-bold text-emerald-400 text-lg tabular-nums">{qty}</span>
-                                <span className="text-xs text-emerald-400/80">個</span>
+                                <span className="font-semibold text-slate-200 text-base tabular-nums leading-none">{qty}</span>
+                                <span className="text-[11px] text-slate-500">個</span>
                               </div>
                             </div>
                           </div>
@@ -3898,25 +3941,61 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         return null;
       }
 
+      const subVoyages = voyages.filter(v => v && v.type === 1);
+      const airVoyages = voyages.filter(v => v && v.type !== 1);
+      const mixedTypes = subVoyages.length > 0 && airVoyages.length > 0;
+      const singleTypeLabel =
+        !mixedTypes && subVoyages.length > 0 ? '潛水艇' : !mixedTypes && airVoyages.length > 0 ? '飛空艇' : null;
+
+      const renderVoyageRow = (voyage, idx, keyPrefix) => {
+        const rawLabel = getVoyageTwDisplayName(voyage, currentLoadedData);
+        const { gridLetter, title } = parseVoyageDestinationLabel(rawLabel);
+        return (
+          <div
+            key={`${keyPrefix}-${idx}`}
+            className="flex items-center gap-2.5 py-2 px-2 rounded-md bg-slate-900/40 border border-slate-700/40"
+          >
+            {gridLetter ? (
+              <span
+                className="inline-flex flex-shrink-0 items-center justify-center min-w-[1.625rem] h-6 px-1.5 text-[11px] font-semibold tracking-wide text-slate-300 bg-slate-800/90 border border-slate-600/80 rounded font-mono leading-none"
+                title="航路格點"
+              >
+                {gridLetter}
+              </span>
+            ) : null}
+            <span className="text-sm text-blue-300/95 leading-normal min-w-0 flex-1">{title}</span>
+          </div>
+        );
+      };
+
       return (
         <div key={`voyage-${index}`} className={`bg-slate-800/50 rounded-lg border border-slate-700/50 p-3 w-full min-w-0 self-start`}>
-          <div className="flex items-center gap-2 mb-2">
-            <img src="https://xivapi.com/i/027000/027841_hr1.png" alt="Voyage" className="w-8 h-8" />
-            <span className="text-ffxiv-gold font-medium">遠航探索</span>
+          <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+            <div className="flex items-center gap-2 min-w-0">
+              <img src="https://xivapi.com/i/027000/027841_hr1.png" alt="" className="w-8 h-8 flex-shrink-0" />
+              <span className="text-ffxiv-gold font-medium">遠航探索</span>
+            </div>
+            {singleTypeLabel ? (
+              <span className="text-xs text-slate-500 flex-shrink-0">{singleTypeLabel}</span>
+            ) : null}
           </div>
-          <div className="flex flex-col gap-2 mt-2">
-            {voyages.map((voyage, idx) => {
-              const voyageName = voyage.name?.en || `Voyage ${voyage.id}`;
-              const voyageType = voyage.type === 1 ? '潛水艇' : '飛空艇';
-              
-              return (
-                <div key={idx} className="bg-slate-900/50 rounded p-2 border border-slate-700/50">
-                  <div className="text-sm text-blue-400">
-                    <span className="text-gray-500">[{voyageType}]</span> {voyageName}
-                  </div>
-                </div>
-              );
-            })}
+          <div className={`flex flex-col ${mixedTypes ? 'gap-3' : 'gap-1.5'} mt-2`}>
+            {subVoyages.length > 0 && (
+              <div>
+                {mixedTypes ? (
+                  <div className="text-xs font-medium text-slate-400 mb-1.5">潛水艇</div>
+                ) : null}
+                <div className="flex flex-col gap-1.5">{subVoyages.map((v, i) => renderVoyageRow(v, i, 'sub'))}</div>
+              </div>
+            )}
+            {airVoyages.length > 0 && (
+              <div>
+                {mixedTypes ? (
+                  <div className="text-xs font-medium text-slate-400 mb-1.5">飛空艇</div>
+                ) : null}
+                <div className="flex flex-col gap-1.5">{airVoyages.map((v, i) => renderVoyageRow(v, i, 'air'))}</div>
+              </div>
+            )}
           </div>
         </div>
       );

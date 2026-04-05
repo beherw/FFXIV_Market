@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "datamine": "node tw_dataminer/run-pipeline.js --extract && node scripts/resolve-tw-json.js && node scripts/build-items-data.js",
+    "datamine": "node tw_dataminer/run-pipeline.js --extract && node scripts/resolve-tw-json.js && node scripts/build-items-data.js && node scripts/build-obtainable-domains.js",
     "resolve-tw-json": "node scripts/resolve-tw-json.js",
-    "prebuild": "npm run resolve-tw-json && node scripts/build-recipe-data.js && node scripts/build-items-data.js && node scripts/build-fates-data.js && node scripts/build-obtainable-methods-optimized.js",
+    "prebuild": "npm run resolve-tw-json && node scripts/build-recipe-data.js && node scripts/build-items-data.js && node scripts/build-fates-data.js && node scripts/build-obtainable-methods-optimized.js && node scripts/build-obtainable-domains.js",
     "build": "vite build",
     "preview": "vite preview",
     "push": "./git-push.sh",
@@ -18,7 +18,8 @@
     "build-items": "node scripts/build-items-data.js",
     "build-obtainable": "node scripts/build-obtainable-methods-optimized.js",
     "build-fates": "node scripts/build-fates-data.js",
-    "build-data": "npm run build-recipe && npm run build-items && npm run build-fates && npm run build-obtainable"
+    "build-data": "npm run build-recipe && npm run build-items && npm run build-fates && npm run build-obtainable && node scripts/build-obtainable-domains.js",
+    "build-obtainable-domains": "node scripts/build-obtainable-domains.js"
   },
   "dependencies": {
     "@msgpack/msgpack": "^3.1.3",
