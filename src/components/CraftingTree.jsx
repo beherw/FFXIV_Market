@@ -1144,7 +1144,7 @@ function TreeNodeVertical({
   isDcQuery = false,
   rootQuantity,
   onRootQuantityChange,
-  rootScaleFactor = 1,
+  parentCraftScaleFactor = 1,
 }) {
   const childrenRef = useRef(null);
   const [lineStyle, setLineStyle] = useState({ left: 0, width: 0 });
@@ -1153,10 +1153,11 @@ function TreeNodeVertical({
   const priceInfo = itemPrices[node.itemId];
   const isPriceQueried = queriedItemIds.has(node.itemId);
 
-  // Scaled amount for display and price comparison (when root quantity changes, all children scale)
+  // Display amount follows the parent recipe's actual craft count, not the raw root multiplier.
+  // This keeps deeper levels correct when an intermediate node yields multiple items per craft.
   const displayAmount = isRoot
     ? (rootQuantity ?? node.amount ?? 1)
-    : (node.amount || 1) * rootScaleFactor;
+    : (node.amount || 1) * parentCraftScaleFactor;
 
   // Scale material cost by this node's actual crafts needed at current display amount.
   // This keeps multi-yield nodes accurate when parent/root quantity changes.
@@ -1390,7 +1391,7 @@ function TreeNodeVertical({
                     isLoading={isLoading}
                     parentOnGreenPath={highlightLinesToChildren}
                     isDcQuery={isDcQuery}
-                    rootScaleFactor={rootScaleFactor}
+                    parentCraftScaleFactor={nodeCraftScaleFactor}
                   />
                 </div>
               ))}
@@ -2207,7 +2208,7 @@ export default function CraftingTree({
             isDcQuery={isDcQuery}
             rootQuantity={rootQuantity}
             onRootQuantityChange={setRootQuantity}
-            rootScaleFactor={tree ? Math.ceil(rootQuantity / (tree.yields || 1)) : 1}
+            parentCraftScaleFactor={tree ? Math.ceil(rootQuantity / (tree.yields || 1)) : 1}
           />
         </div>
       </div>
