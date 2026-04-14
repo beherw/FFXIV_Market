@@ -26,6 +26,25 @@ const DEFAULT_SOLVER_OPTIONS = {
 let wasmModule = null;
 let wasmModulePromise = null;
 
+/** Maps mistaken UI / legacy ids to WASM skill names (ffxiv-best-craft / Teamcraft). */
+const WASM_ACTION_ALIASES = {
+  byregots_blessing: 'byregot_s_blessing',
+};
+
+function normalizeWasmAction(action) {
+  if (typeof action !== 'string') {
+    return action;
+  }
+  return WASM_ACTION_ALIASES[action] ?? action;
+}
+
+function normalizeWasmActions(actions) {
+  if (!Array.isArray(actions)) {
+    return actions;
+  }
+  return actions.map(normalizeWasmAction);
+}
+
 async function loadWasmModule() {
   if (wasmModule) {
     return wasmModule;
@@ -81,17 +100,17 @@ export async function createCraftingStatus(attributes, recipe) {
 
 export async function simulateCrafting(status, actions) {
   const wasm = await loadWasmModule();
-  return wasm.simulate(status, actions);
+  return wasm.simulate(status, normalizeWasmActions(actions));
 }
 
 export async function simulateCraftingDetail(status, actions) {
   const wasm = await loadWasmModule();
-  return wasm.simulate_detail(status, actions);
+  return wasm.simulate_detail(status, normalizeWasmActions(actions));
 }
 
 export async function simulateCraftingOneStep(status, action, forceSuccess = true) {
   const wasm = await loadWasmModule();
-  return wasm.simulate_one_step(status, action, forceSuccess);
+  return wasm.simulate_one_step(status, normalizeWasmAction(action), forceSuccess);
 }
 
 export async function getHighQualityProbability(status) {
@@ -101,12 +120,12 @@ export async function getHighQualityProbability(status) {
 
 export async function getAllowedActions(status, actions) {
   const wasm = await loadWasmModule();
-  return wasm.allowed_list(status, actions);
+  return wasm.allowed_list(status, normalizeWasmActions(actions));
 }
 
 export async function getCraftPointsList(status, actions) {
   const wasm = await loadWasmModule();
-  return wasm.craftpoints_list(status, actions);
+  return wasm.craftpoints_list(status, normalizeWasmActions(actions));
 }
 
 function hasUsableDetailedStatuses(entries, expectedLength) {

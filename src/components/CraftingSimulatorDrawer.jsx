@@ -154,7 +154,7 @@ const MANUAL_ACTION_CATEGORIES = {
   opening: ['reflect', 'muscle_memory', 'trained_eye'],
   durability: ['masters_mend', 'immaculate_mend', 'manipulation', 'waste_not', 'waste_not_ii', 'trained_perfection'],
   synthesis: ['basic_synthesis', 'careful_synthesis', 'rapid_synthesis', 'groundwork', 'prudent_synthesis', 'intensive_synthesis', 'delicate_synthesis', 'veneration', 'final_appraisal'],
-  touch: ['basic_touch', 'hasty_touch', 'standard_touch', 'advanced_touch', 'prudent_touch', 'preparatory_touch', 'precise_touch', 'refined_touch', 'daring_touch', 'trained_finesse', 'great_strides', 'innovation', 'quick_innovation', 'byregots_blessing'],
+  touch: ['basic_touch', 'hasty_touch', 'standard_touch', 'advanced_touch', 'prudent_touch', 'preparatory_touch', 'precise_touch', 'refined_touch', 'daring_touch', 'trained_finesse', 'great_strides', 'innovation', 'quick_innovation', 'byregot_s_blessing'],
   condition: ['tricks_of_the_trade', 'heart_and_soul', 'careful_observation'],
   utility: ['observe'],
 };
