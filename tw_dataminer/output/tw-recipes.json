@@ -315806,6 +315806,1381 @@
     "conditionsFlag": 15
   },
   {
+    "id": 6236,
+    "job": 14,
+    "lvl": 85,
+    "yields": 1,
+    "result": 44823,
+    "stars": 0,
+    "qs": true,
+    "hq": true,
+    "durability": 80,
+    "quality": 6700,
+    "progress": 3000,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2549,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 535,
+    "ingredients": [
+      {
+        "id": 44833,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 12609,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 27782,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 13,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 12,
+        "amount": 7,
+        "quality": null
+      }
+    ],
+    "progressDivider": 125,
+    "qualityDivider": 109,
+    "progressModifier": 100,
+    "qualityModifier": 100,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6237,
+    "job": 14,
+    "lvl": 85,
+    "yields": 1,
+    "result": 44824,
+    "stars": 0,
+    "qs": true,
+    "hq": true,
+    "durability": 80,
+    "quality": 6700,
+    "progress": 3000,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2549,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 535,
+    "ingredients": [
+      {
+        "id": 44834,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 12609,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 27782,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 13,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 12,
+        "amount": 7,
+        "quality": null
+      }
+    ],
+    "progressDivider": 125,
+    "qualityDivider": 109,
+    "progressModifier": 100,
+    "qualityModifier": 100,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6238,
+    "job": 14,
+    "lvl": 85,
+    "yields": 1,
+    "result": 44825,
+    "stars": 0,
+    "qs": true,
+    "hq": true,
+    "durability": 80,
+    "quality": 6700,
+    "progress": 3000,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2549,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 535,
+    "ingredients": [
+      {
+        "id": 44835,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 12609,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 27782,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 13,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 12,
+        "amount": 7,
+        "quality": null
+      }
+    ],
+    "progressDivider": 125,
+    "qualityDivider": 109,
+    "progressModifier": 100,
+    "qualityModifier": 100,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6239,
+    "job": 14,
+    "lvl": 85,
+    "yields": 1,
+    "result": 44826,
+    "stars": 0,
+    "qs": true,
+    "hq": true,
+    "durability": 80,
+    "quality": 6700,
+    "progress": 3000,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2549,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 535,
+    "ingredients": [
+      {
+        "id": 44836,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 12609,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 27782,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 13,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 12,
+        "amount": 7,
+        "quality": null
+      }
+    ],
+    "progressDivider": 125,
+    "qualityDivider": 109,
+    "progressModifier": 100,
+    "qualityModifier": 100,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6240,
+    "job": 14,
+    "lvl": 85,
+    "yields": 1,
+    "result": 44827,
+    "stars": 0,
+    "qs": true,
+    "hq": true,
+    "durability": 80,
+    "quality": 6700,
+    "progress": 3000,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2549,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 535,
+    "ingredients": [
+      {
+        "id": 44837,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 12609,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 27782,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 13,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 12,
+        "amount": 7,
+        "quality": null
+      }
+    ],
+    "progressDivider": 125,
+    "qualityDivider": 109,
+    "progressModifier": 100,
+    "qualityModifier": 100,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6241,
+    "job": 14,
+    "lvl": 85,
+    "yields": 1,
+    "result": 44828,
+    "stars": 0,
+    "qs": true,
+    "hq": true,
+    "durability": 80,
+    "quality": 6700,
+    "progress": 3000,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2549,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 535,
+    "ingredients": [
+      {
+        "id": 44838,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 12609,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 27782,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 13,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 12,
+        "amount": 7,
+        "quality": null
+      }
+    ],
+    "progressDivider": 125,
+    "qualityDivider": 109,
+    "progressModifier": 100,
+    "qualityModifier": 100,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6242,
+    "job": 14,
+    "lvl": 85,
+    "yields": 1,
+    "result": 44829,
+    "stars": 0,
+    "qs": true,
+    "hq": true,
+    "durability": 80,
+    "quality": 6700,
+    "progress": 3000,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2549,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 535,
+    "ingredients": [
+      {
+        "id": 44839,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 12609,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 27782,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 13,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 12,
+        "amount": 7,
+        "quality": null
+      }
+    ],
+    "progressDivider": 125,
+    "qualityDivider": 109,
+    "progressModifier": 100,
+    "qualityModifier": 100,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6243,
+    "job": 14,
+    "lvl": 85,
+    "yields": 1,
+    "result": 44830,
+    "stars": 0,
+    "qs": true,
+    "hq": true,
+    "durability": 80,
+    "quality": 6700,
+    "progress": 3000,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2549,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 535,
+    "ingredients": [
+      {
+        "id": 44840,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 12609,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 27782,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 13,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 12,
+        "amount": 7,
+        "quality": null
+      }
+    ],
+    "progressDivider": 125,
+    "qualityDivider": 109,
+    "progressModifier": 100,
+    "qualityModifier": 100,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6244,
+    "job": 14,
+    "lvl": 85,
+    "yields": 1,
+    "result": 44831,
+    "stars": 0,
+    "qs": true,
+    "hq": true,
+    "durability": 80,
+    "quality": 6700,
+    "progress": 3000,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2549,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 535,
+    "ingredients": [
+      {
+        "id": 44841,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 12609,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 27782,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 13,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 12,
+        "amount": 7,
+        "quality": null
+      }
+    ],
+    "progressDivider": 125,
+    "qualityDivider": 109,
+    "progressModifier": 100,
+    "qualityModifier": 100,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6245,
+    "job": 11,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44873,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 44001,
+        "amount": 3,
+        "quality": 1125.2068394925539
+      },
+      {
+        "id": 7014,
+        "amount": 4,
+        "quality": 66.18863761720904
+      },
+      {
+        "id": 7013,
+        "amount": 2,
+        "quality": 33.09431880860452
+      },
+      {
+        "id": 7016,
+        "amount": 4,
+        "quality": 33.09431880860452
+      },
+      {
+        "id": 44020,
+        "amount": 2,
+        "quality": 1080.5295091009377
+      },
+      {
+        "id": 10,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 8,
+        "amount": 8,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6246,
+    "job": 13,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44877,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 44033,
+        "amount": 4,
+        "quality": 612.6126126126127
+      },
+      {
+        "id": 44031,
+        "amount": 4,
+        "quality": 594.5945945945946
+      },
+      {
+        "id": 44019,
+        "amount": 2,
+        "quality": 585.5855855855856
+      },
+      {
+        "id": 12,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 10,
+        "amount": 8,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6247,
+    "job": 8,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44879,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 44023,
+        "amount": 4,
+        "quality": 560.2856358143367
+      },
+      {
+        "id": 44020,
+        "amount": 4,
+        "quality": 538.0390002746498
+      },
+      {
+        "id": 7030,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44049,
+        "amount": 3,
+        "quality": 535.5671518813513
+      },
+      {
+        "id": 10,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 9,
+        "amount": 8,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6248,
+    "job": 12,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44880,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 44062,
+        "amount": 2,
+        "quality": 817.963111467522
+      },
+      {
+        "id": 44061,
+        "amount": 2,
+        "quality": 805.934242181235
+      },
+      {
+        "id": 27741,
+        "amount": 2,
+        "quality": 491.9807538091419
+      },
+      {
+        "id": 27739,
+        "amount": 2,
+        "quality": 475.14033680834
+      },
+      {
+        "id": 12599,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 44023,
+        "amount": 1,
+        "quality": 817.963111467522
+      },
+      {
+        "id": 11,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 10,
+        "amount": 8,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6249,
+    "job": 15,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44882,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 43977,
+        "amount": 1,
+        "quality": 1985.8084135833753
+      },
+      {
+        "id": 43976,
+        "amount": 2,
+        "quality": 2007.0957932083122
+      },
+      {
+        "id": 36089,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 8,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 13,
+        "amount": 8,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6250,
+    "job": 14,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44885,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 44049,
+        "amount": 3,
+        "quality": 2000
+      },
+      {
+        "id": 7029,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 5513,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 13,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 12,
+        "amount": 8,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6251,
+    "job": 8,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44897,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 44023,
+        "amount": 3,
+        "quality": 992.7007299270073
+      },
+      {
+        "id": 44022,
+        "amount": 3,
+        "quality": 978.1021897810218
+      },
+      {
+        "id": 7019,
+        "amount": 2,
+        "quality": 43.7956204379562
+      },
+      {
+        "id": 10,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 9,
+        "amount": 8,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6252,
+    "job": 10,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44898,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 44001,
+        "amount": 2,
+        "quality": 502.7726432532348
+      },
+      {
+        "id": 44011,
+        "amount": 2,
+        "quality": 495.3789279112754
+      },
+      {
+        "id": 44023,
+        "amount": 4,
+        "quality": 502.7726432532348
+      },
+      {
+        "id": 44032,
+        "amount": 4,
+        "quality": 495.3789279112754
+      },
+      {
+        "id": 5510,
+        "amount": 5,
+        "quality": 2.2181146025878005
+      },
+      {
+        "id": 9,
+        "amount": 32,
+        "quality": null
+      },
+      {
+        "id": 11,
+        "amount": 32,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6253,
+    "job": 15,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44901,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 43975,
+        "amount": 1,
+        "quality": 2496.8710888610763
+      },
+      {
+        "id": 36080,
+        "amount": 1,
+        "quality": 1989.9874843554442
+      },
+      {
+        "id": 36256,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 27841,
+        "amount": 1,
+        "quality": 1513.1414267834796
+      },
+      {
+        "id": 19872,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 12893,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 8,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 13,
+        "amount": 8,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6254,
+    "job": 8,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44912,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 44023,
+        "amount": 6,
+        "quality": 494.24591156874624
+      },
+      {
+        "id": 44021,
+        "amount": 6,
+        "quality": 479.7092671108419
+      },
+      {
+        "id": 7017,
+        "amount": 5,
+        "quality": 31.253785584494246
+      },
+      {
+        "id": 10,
+        "amount": 32,
+        "quality": null
+      },
+      {
+        "id": 9,
+        "amount": 32,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6255,
+    "job": 8,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44913,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 44023,
+        "amount": 6,
+        "quality": 595.5334987593053
+      },
+      {
+        "id": 44011,
+        "amount": 2,
+        "quality": 586.7756531893154
+      },
+      {
+        "id": 44009,
+        "amount": 2,
+        "quality": 571.8873157203328
+      },
+      {
+        "id": 12528,
+        "amount": 1,
+        "quality": 109.47306962487227
+      },
+      {
+        "id": 24281,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 36094,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 10,
+        "amount": 32,
+        "quality": null
+      },
+      {
+        "id": 9,
+        "amount": 32,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6256,
+    "job": 13,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44914,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 44033,
+        "amount": 3,
+        "quality": 767.0614777213761
+      },
+      {
+        "id": 44030,
+        "amount": 3,
+        "quality": 736.6046249294981
+      },
+      {
+        "id": 43999,
+        "amount": 2,
+        "quality": 744.5008460236886
+      },
+      {
+        "id": 12,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 10,
+        "amount": 8,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6257,
+    "job": 8,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44970,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 44022,
+        "amount": 5,
+        "quality": 602.6986506746626
+      },
+      {
+        "id": 44031,
+        "amount": 3,
+        "quality": 593.7031484257872
+      },
+      {
+        "id": 44032,
+        "amount": 2,
+        "quality": 602.6986506746626
+      },
+      {
+        "id": 10,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 9,
+        "amount": 8,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6258,
+    "job": 8,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44971,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 45073,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44020,
+        "amount": 5,
+        "quality": 596.8012185833968
+      },
+      {
+        "id": 44031,
+        "amount": 5,
+        "quality": 603.1987814166032
+      },
+      {
+        "id": 23896,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 10,
+        "amount": 32,
+        "quality": null
+      },
+      {
+        "id": 9,
+        "amount": 32,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6259,
+    "job": 8,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44928,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 44023,
+        "amount": 3,
+        "quality": 1541.3675859463542
+      },
+      {
+        "id": 7606,
+        "amount": 3,
+        "quality": 204.0045334340763
+      },
+      {
+        "id": 7015,
+        "amount": 8,
+        "quality": 36.26747261050245
+      },
+      {
+        "id": 7016,
+        "amount": 4,
+        "quality": 45.33434076312807
+      },
+      {
+        "id": 7017,
+        "amount": 3,
+        "quality": 97.46883264072535
+      },
+      {
+        "id": 10,
+        "amount": 32,
+        "quality": null
+      },
+      {
+        "id": 9,
+        "amount": 32,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 6260,
+    "job": 8,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44886,
+    "stars": 0,
+    "qs": false,
+    "hq": false,
+    "durability": 80,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4207,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 690,
+    "ingredients": [
+      {
+        "id": 45579,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44021,
+        "amount": 3,
+        "quality": 602.7397260273972
+      },
+      {
+        "id": 44011,
+        "amount": 3,
+        "quality": 611.8721461187214
+      },
+      {
+        "id": 44033,
+        "amount": 3,
+        "quality": 621.0045662100456
+      },
+      {
+        "id": 7606,
+        "amount": 3,
+        "quality": 82.1917808219178
+      },
+      {
+        "id": 5187,
+        "amount": 3,
+        "quality": 82.1917808219178
+      },
+      {
+        "id": 10,
+        "amount": 32,
+        "quality": null
+      },
+      {
+        "id": 9,
+        "amount": 32,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
     "id": 30001,
     "job": 8,
     "lvl": 30,
@@ -607503,6 +608878,3768 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": true,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35957,
+    "job": 14,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44846,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 35,
+    "quality": 12848,
+    "progress": 3783,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44844,
+        "amount": 4,
+        "quality": null
+      },
+      {
+        "id": 44848,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44035,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 19,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 18,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35958,
+    "job": 10,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44847,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 35,
+    "quality": 12848,
+    "progress": 3783,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44845,
+        "amount": 4,
+        "quality": null
+      },
+      {
+        "id": 44848,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44035,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 15,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35959,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44411,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 2,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44846,
+        "amount": 1,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44062,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44036,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35960,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44412,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 3,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44001,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44036,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35961,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44413,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 3,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44001,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44036,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35962,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44414,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 3,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44001,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44036,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35963,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44415,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 2,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44846,
+        "amount": 1,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44062,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44037,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35964,
+    "job": 11,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44416,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 2,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44846,
+        "amount": 1,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44148,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44001,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44037,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35965,
+    "job": 10,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44417,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 2,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44846,
+        "amount": 1,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44012,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44037,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 15,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35966,
+    "job": 10,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44418,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 3,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44001,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44037,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 15,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35967,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44419,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 3,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44001,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44038,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35968,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44420,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 2,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44846,
+        "amount": 1,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44023,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44038,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35969,
+    "job": 8,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44421,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44846,
+        "amount": 3,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44149,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44001,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44038,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 15,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35970,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44422,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 2,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44846,
+        "amount": 1,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44023,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44037,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35971,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44423,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 2,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44846,
+        "amount": 1,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44001,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44037,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35972,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44424,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 3,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44001,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44037,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35973,
+    "job": 8,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44425,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44846,
+        "amount": 2,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44847,
+        "amount": 1,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44149,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44001,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44037,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 15,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35974,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44426,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44846,
+        "amount": 2,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44847,
+        "amount": 1,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44012,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44036,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35975,
+    "job": 8,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44427,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44846,
+        "amount": 2,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44847,
+        "amount": 1,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44149,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44001,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44036,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 15,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35976,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44428,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 3,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44001,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44036,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35977,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44429,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 3,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44012,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44036,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35978,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44430,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 2,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44846,
+        "amount": 1,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44023,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44038,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35979,
+    "job": 9,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44431,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 2,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44846,
+        "amount": 1,
+        "quality": 1274.8490945674046
+      },
+      {
+        "id": 44147,
+        "amount": 3,
+        "quality": 1257.142857142857
+      },
+      {
+        "id": 44023,
+        "amount": 1,
+        "quality": 1204.0241448692154
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44038,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35980,
+    "job": 11,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44432,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 2,
+        "quality": 1487.3239436619717
+      },
+      {
+        "id": 44846,
+        "amount": 1,
+        "quality": 1487.3239436619717
+      },
+      {
+        "id": 44148,
+        "amount": 2,
+        "quality": 1466.6666666666665
+      },
+      {
+        "id": 44012,
+        "amount": 1,
+        "quality": 1404.694835680751
+      },
+      {
+        "id": 44848,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44037,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35981,
+    "job": 13,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44433,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 2,
+        "quality": 1113.5325131810193
+      },
+      {
+        "id": 44846,
+        "amount": 2,
+        "quality": 1113.5325131810193
+      },
+      {
+        "id": 44150,
+        "amount": 3,
+        "quality": 1098.066783831283
+      },
+      {
+        "id": 44033,
+        "amount": 1,
+        "quality": 1051.6695957820739
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44037,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 18,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35982,
+    "job": 13,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44434,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44846,
+        "amount": 3,
+        "quality": 1487.3239436619717
+      },
+      {
+        "id": 44150,
+        "amount": 2,
+        "quality": 1466.6666666666665
+      },
+      {
+        "id": 44033,
+        "amount": 1,
+        "quality": 1404.694835680751
+      },
+      {
+        "id": 44848,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44036,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 18,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35983,
+    "job": 13,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44435,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44846,
+        "amount": 4,
+        "quality": 1113.5325131810193
+      },
+      {
+        "id": 44150,
+        "amount": 3,
+        "quality": 1098.066783831283
+      },
+      {
+        "id": 44033,
+        "amount": 1,
+        "quality": 1051.6695957820739
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44036,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 18,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35984,
+    "job": 12,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44436,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44846,
+        "amount": 3,
+        "quality": 1487.3239436619717
+      },
+      {
+        "id": 44151,
+        "amount": 2,
+        "quality": 1466.6666666666665
+      },
+      {
+        "id": 44062,
+        "amount": 1,
+        "quality": 1404.694835680751
+      },
+      {
+        "id": 44848,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44038,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35985,
+    "job": 11,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44437,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44847,
+        "amount": 2,
+        "quality": 1487.3239436619717
+      },
+      {
+        "id": 44846,
+        "amount": 1,
+        "quality": 1487.3239436619717
+      },
+      {
+        "id": 44148,
+        "amount": 2,
+        "quality": 1466.6666666666665
+      },
+      {
+        "id": 44012,
+        "amount": 1,
+        "quality": 1404.694835680751
+      },
+      {
+        "id": 44848,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44037,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35986,
+    "job": 13,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44438,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44846,
+        "amount": 4,
+        "quality": 1113.5325131810193
+      },
+      {
+        "id": 44150,
+        "amount": 3,
+        "quality": 1098.066783831283
+      },
+      {
+        "id": 44033,
+        "amount": 1,
+        "quality": 1051.6695957820739
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44037,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 18,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35987,
+    "job": 12,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44439,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44846,
+        "amount": 3,
+        "quality": 1487.3239436619717
+      },
+      {
+        "id": 44151,
+        "amount": 2,
+        "quality": 1466.6666666666665
+      },
+      {
+        "id": 44062,
+        "amount": 1,
+        "quality": 1404.694835680751
+      },
+      {
+        "id": 44848,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44036,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35988,
+    "job": 13,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44440,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44846,
+        "amount": 4,
+        "quality": 1113.5325131810193
+      },
+      {
+        "id": 44150,
+        "amount": 3,
+        "quality": 1098.066783831283
+      },
+      {
+        "id": 44033,
+        "amount": 1,
+        "quality": 1051.6695957820739
+      },
+      {
+        "id": 44848,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 44036,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 18,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35989,
+    "job": 12,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44441,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44846,
+        "amount": 3,
+        "quality": 1487.3239436619717
+      },
+      {
+        "id": 44151,
+        "amount": 2,
+        "quality": 1466.6666666666665
+      },
+      {
+        "id": 44062,
+        "amount": 1,
+        "quality": 1404.694835680751
+      },
+      {
+        "id": 44848,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44038,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35990,
+    "job": 15,
+    "lvl": 100,
+    "yields": 3,
+    "result": 44842,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44347,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 43976,
+        "amount": 2,
+        "quality": 3156.5217391304345
+      },
+      {
+        "id": 36078,
+        "amount": 1,
+        "quality": 2486.95652173913
+      },
+      {
+        "id": 36098,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 27835,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44035,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 19,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 35991,
+    "job": 15,
+    "lvl": 100,
+    "yields": 3,
+    "result": 44843,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 17600,
+    "progress": 8050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4780,
+    "controlReq": 4450,
+    "craftsmanshipReq": 4780,
+    "rlvl": 720,
+    "ingredients": [
+      {
+        "id": 44347,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 43976,
+        "amount": 2,
+        "quality": 3370.8647707486944
+      },
+      {
+        "id": 27841,
+        "amount": 1,
+        "quality": 2058.2704585026117
+      },
+      {
+        "id": 36255,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 27835,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44035,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 19,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36033,
+    "job": 10,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44887,
+    "stars": 1,
+    "qs": false,
+    "hq": false,
+    "durability": 70,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4352,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 700,
+    "ingredients": [
+      {
+        "id": 44849,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44001,
+        "amount": 3,
+        "quality": 1003.690036900369
+      },
+      {
+        "id": 44012,
+        "amount": 2,
+        "quality": 1003.690036900369
+      },
+      {
+        "id": 44013,
+        "amount": 1,
+        "quality": 981.549815498155
+      },
+      {
+        "id": 15,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": true,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36034,
+    "job": 10,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44495,
+    "stars": 1,
+    "qs": false,
+    "hq": false,
+    "durability": 70,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4352,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 700,
+    "ingredients": [
+      {
+        "id": 44849,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44147,
+        "amount": 2,
+        "quality": 1220.6303724928368
+      },
+      {
+        "id": 44148,
+        "amount": 1,
+        "quality": 1220.6303724928368
+      },
+      {
+        "id": 44012,
+        "amount": 2,
+        "quality": 1169.054441260745
+      },
+      {
+        "id": 15,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": true,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36035,
+    "job": 14,
+    "lvl": 100,
+    "yields": 1,
+    "result": 45016,
+    "stars": 1,
+    "qs": false,
+    "hq": false,
+    "durability": 70,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4352,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 700,
+    "ingredients": [
+      {
+        "id": 14183,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44050,
+        "amount": 1,
+        "quality": 6000
+      },
+      {
+        "id": 45039,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 19,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 18,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": true,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36036,
+    "job": 14,
+    "lvl": 100,
+    "yields": 1,
+    "result": 45017,
+    "stars": 1,
+    "qs": false,
+    "hq": false,
+    "durability": 70,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4352,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 700,
+    "ingredients": [
+      {
+        "id": 14183,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44050,
+        "amount": 1,
+        "quality": 6000
+      },
+      {
+        "id": 45039,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 19,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 18,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": true,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36037,
+    "job": 13,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44650,
+    "stars": 1,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4352,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 700,
+    "ingredients": [
+      {
+        "id": 45072,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44033,
+        "amount": 1,
+        "quality": 3022.2222222222217
+      },
+      {
+        "id": 44032,
+        "amount": 1,
+        "quality": 2977.777777777778
+      },
+      {
+        "id": 18,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36038,
+    "job": 13,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44651,
+    "stars": 1,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4352,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 700,
+    "ingredients": [
+      {
+        "id": 45072,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44033,
+        "amount": 2,
+        "quality": 2009.8522167487683
+      },
+      {
+        "id": 44032,
+        "amount": 1,
+        "quality": 1980.2955665024629
+      },
+      {
+        "id": 18,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36039,
+    "job": 13,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44652,
+    "stars": 1,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4352,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 700,
+    "ingredients": [
+      {
+        "id": 45072,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44033,
+        "amount": 2,
+        "quality": 2000
+      },
+      {
+        "id": 44062,
+        "amount": 1,
+        "quality": 2000
+      },
+      {
+        "id": 18,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36040,
+    "job": 12,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44653,
+    "stars": 1,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4352,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 700,
+    "ingredients": [
+      {
+        "id": 45072,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44062,
+        "amount": 1,
+        "quality": 3022.2222222222217
+      },
+      {
+        "id": 44032,
+        "amount": 1,
+        "quality": 2977.777777777778
+      },
+      {
+        "id": 17,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36041,
+    "job": 13,
+    "lvl": 100,
+    "yields": 1,
+    "result": 44654,
+    "stars": 1,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 12000,
+    "progress": 6600,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 4352,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 700,
+    "ingredients": [
+      {
+        "id": 45072,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 44033,
+        "amount": 3,
+        "quality": 2000
+      },
+      {
+        "id": 18,
+        "amount": 3,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 3,
+        "quality": null
+      }
+    ],
+    "progressDivider": 170,
+    "qualityDivider": 150,
+    "progressModifier": 90,
+    "qualityModifier": 75,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36042,
+    "job": 9,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44977,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28715,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 27714,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36043,
+    "job": 9,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44978,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28714,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 27714,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36044,
+    "job": 9,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44979,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28715,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 27693,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36045,
+    "job": 9,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44980,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28715,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 27693,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36046,
+    "job": 9,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44981,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28714,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 27714,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36047,
+    "job": 9,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44982,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28714,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 27714,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36048,
+    "job": 9,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44983,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 586.6336633663366
+      },
+      {
+        "id": 28715,
+        "amount": 2,
+        "quality": 586.6336633663366
+      },
+      {
+        "id": 27955,
+        "amount": 2,
+        "quality": 508.41584158415844
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36049,
+    "job": 11,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44984,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27717,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28714,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 27693,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36050,
+    "job": 11,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44985,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27717,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28714,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 27693,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36051,
+    "job": 14,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44986,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27781,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28715,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 19,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 18,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36052,
+    "job": 14,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44987,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27781,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28715,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 19,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 18,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36053,
+    "job": 11,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44988,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27717,
+        "amount": 3,
+        "quality": 663.2462686567164
+      },
+      {
+        "id": 28714,
+        "amount": 2,
+        "quality": 663.2462686567164
+      },
+      {
+        "id": 27725,
+        "amount": 1,
+        "quality": 633.7686567164179
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36054,
+    "job": 9,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44989,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28714,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 27714,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36055,
+    "job": 11,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44990,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27717,
+        "amount": 3,
+        "quality": 663.2462686567164
+      },
+      {
+        "id": 28714,
+        "amount": 2,
+        "quality": 663.2462686567164
+      },
+      {
+        "id": 27725,
+        "amount": 1,
+        "quality": 633.7686567164179
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 16,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36056,
+    "job": 9,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44991,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28714,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 27714,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36057,
+    "job": 9,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44992,
+    "stars": 2,
+    "qs": false,
+    "hq": true,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28715,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 27714,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36058,
+    "job": 9,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44994,
+    "stars": 2,
+    "qs": false,
+    "hq": false,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28714,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 27714,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 14,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
+    "conditionsFlag": 15
+  },
+  {
+    "id": 36059,
+    "job": 10,
+    "lvl": 80,
+    "yields": 1,
+    "result": 44994,
+    "stars": 2,
+    "qs": false,
+    "hq": false,
+    "durability": 70,
+    "quality": 7900,
+    "progress": 2050,
+    "suggestedControl": null,
+    "suggestedCraftsmanship": 2140,
+    "controlReq": 0,
+    "craftsmanshipReq": 0,
+    "rlvl": 450,
+    "ingredients": [
+      {
+        "id": 27716,
+        "amount": 3,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 28714,
+        "amount": 2,
+        "quality": 666.9793621013133
+      },
+      {
+        "id": 27714,
+        "amount": 1,
+        "quality": 615.1031894934334
+      },
+      {
+        "id": 33819,
+        "amount": 1,
+        "quality": null
+      },
+      {
+        "id": 23181,
+        "amount": 8,
+        "quality": null
+      },
+      {
+        "id": 15,
+        "amount": 2,
+        "quality": null
+      },
+      {
+        "id": 17,
+        "amount": 2,
+        "quality": null
+      }
+    ],
+    "progressDivider": 110,
+    "qualityDivider": 90,
+    "progressModifier": 80,
+    "qualityModifier": 70,
+    "expert": false,
     "conditionsFlag": 15
   }
 ]
