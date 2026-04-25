@@ -498,20 +498,44 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
         // Get daily sale velocity - add NQ and HQ together (use whichever is available)
         let velocityWorld = null;
         let velocityDc = null;
-        
+
         const nqVelocityWorld = item.nq?.dailySaleVelocity?.world?.quantity;
         const hqVelocityWorld = item.hq?.dailySaleVelocity?.world?.quantity;
         const nqVelocityDc = item.nq?.dailySaleVelocity?.dc?.quantity;
         const hqVelocityDc = item.hq?.dailySaleVelocity?.dc?.quantity;
-        
+
         // Add NQ and HQ velocity together for world
         if (nqVelocityWorld !== undefined || hqVelocityWorld !== undefined) {
           velocityWorld = (nqVelocityWorld || 0) + (hqVelocityWorld || 0);
         }
-        
+
         // Add NQ and HQ velocity together for DC
         if (nqVelocityDc !== undefined || hqVelocityDc !== undefined) {
           velocityDc = (nqVelocityDc || 0) + (hqVelocityDc || 0);
+        }
+
+        // Get average sale prices for world and DC levels
+        const nqAvgSalePriceWorld = item.nq?.averageSalePrice?.world?.price;
+        const hqAvgSalePriceWorld = item.hq?.averageSalePrice?.world?.price;
+        const nqAvgSalePriceDc = item.nq?.averageSalePrice?.dc?.price;
+        const hqAvgSalePriceDc = item.hq?.averageSalePrice?.dc?.price;
+
+        let averagePriceWorld = null;
+        if (nqAvgSalePriceWorld && hqAvgSalePriceWorld) {
+          averagePriceWorld = Math.round(Math.min(nqAvgSalePriceWorld, hqAvgSalePriceWorld));
+        } else if (hqAvgSalePriceWorld) {
+          averagePriceWorld = Math.round(hqAvgSalePriceWorld);
+        } else if (nqAvgSalePriceWorld) {
+          averagePriceWorld = Math.round(nqAvgSalePriceWorld);
+        }
+
+        let averagePriceDc = null;
+        if (nqAvgSalePriceDc && hqAvgSalePriceDc) {
+          averagePriceDc = Math.round(Math.min(nqAvgSalePriceDc, hqAvgSalePriceDc));
+        } else if (hqAvgSalePriceDc) {
+          averagePriceDc = Math.round(hqAvgSalePriceDc);
+        } else if (nqAvgSalePriceDc) {
+          averagePriceDc = Math.round(nqAvgSalePriceDc);
         }
 
         // Always include velocity data even if price is null
@@ -544,7 +568,14 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
         if (velocityDc !== null) {
           result.velocityDc = velocityDc;
         }
-        
+        // Include average sale price data
+        if (averagePriceWorld !== null) {
+          result.averagePriceWorld = averagePriceWorld;
+        }
+        if (averagePriceDc !== null) {
+          result.averagePriceDc = averagePriceDc;
+        }
+
         // Only add to results if we have price OR velocity data
         if (bestPrice !== null || velocityWorld !== null || velocityDc !== null) {
           results[itemId] = result;

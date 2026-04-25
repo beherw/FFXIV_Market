@@ -3387,7 +3387,7 @@ function App() {
 
         setMarketInfo(data);
         const velocityInfo = aggregatedResult[requestItemId] || null;
-        setItemVelocity(velocityInfo ? { velocityWorld: velocityInfo.velocityWorld, velocityDc: velocityInfo.velocityDc } : null);
+        setItemVelocity(velocityInfo ? { velocityWorld: velocityInfo.velocityWorld, velocityDc: velocityInfo.velocityDc, averagePriceWorld: velocityInfo.averagePriceWorld, averagePriceDc: velocityInfo.averagePriceDc } : null);
 
         if (data) {
           const isDataCenterSearch = selectedWorld && requestServerOption === selectedWorld.section;
@@ -5138,6 +5138,41 @@ function App() {
                               </svg>
                               <span className="text-gray-400">日均銷量:</span>
                               <span className="text-emerald-300" title="全服日均銷量">全服 {velocityDcValue.toFixed(1)}</span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                      {/* Average sale price: DC = 全服 only; Server = 單服 + 全服 */}
+                      {(() => {
+                        const isDcQuery = selectedWorld && selectedServerOption === selectedWorld.section;
+                        const avgPriceWorld = itemVelocity?.averagePriceWorld;
+                        const avgPriceDc = itemVelocity?.averagePriceDc;
+                        if (!isDcQuery && avgPriceWorld !== undefined) {
+                          return (
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-800/60 border border-slate-600/40 text-xs w-fit">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-ffxiv-gold flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span className="text-gray-400">平均成交:</span>
+                              <span className="text-cyan-300" title="單服平均成交價">單服 {avgPriceWorld.toLocaleString()}</span>
+                              {avgPriceDc !== undefined && (
+                                <>
+                                  <span className="text-gray-500">/</span>
+                                  <span className="text-ffxiv-gold" title="全服平均成交價">全服 {avgPriceDc.toLocaleString()}</span>
+                                </>
+                              )}
+                            </div>
+                          );
+                        }
+                        if (isDcQuery && avgPriceDc !== undefined) {
+                          return (
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-800/60 border border-slate-600/40 text-xs w-fit">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-ffxiv-gold flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span className="text-gray-400">平均成交:</span>
+                              <span className="text-ffxiv-gold" title="全服平均成交價">全服 {avgPriceDc.toLocaleString()}</span>
                             </div>
                           );
                         }
