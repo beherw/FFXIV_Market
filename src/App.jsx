@@ -7,6 +7,8 @@ import TaxRatesModal from './components/TaxRatesModal';
 import SearchResultsTable from './components/SearchResultsTable.jsx';
 import MarketListings from './components/MarketListings';
 import MarketHistory from './components/MarketHistory';
+import PriceHistoryChart from './components/PriceHistoryChart';
+import StackSizeChart from './components/StackSizeChart';
 import ServerUploadTimes from './components/ServerUploadTimes';
 import Toast from './components/Toast';
 import { formatRelativeTime, formatLocalTime } from './utils/timeFormat';
@@ -119,6 +121,8 @@ function App() {
   const [marketInfo, setMarketInfo] = useState(null);
   const [marketListings, setMarketListings] = useState([]);
   const [marketHistory, setMarketHistory] = useState([]);
+  const [marketChartHistory, setMarketChartHistory] = useState([]);
+  const [stackSizeHistogram, setStackSizeHistogram] = useState(null);
   /** Current item's daily sale velocity for 在售列表: { velocityWorld, velocityDc } or null */
   const [itemVelocity, setItemVelocity] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -2406,6 +2410,8 @@ function App() {
     setMarketInfo(null);
     setMarketListings([]);
     setMarketHistory([]);
+    setMarketChartHistory([]);
+    setStackSizeHistogram(null);
     setItemVelocity(null);
     setError(null);
     setRateLimitMessage(null);
@@ -2686,6 +2692,8 @@ function App() {
         setMarketInfo(null);
         setMarketListings([]);
         setMarketHistory([]);
+    setMarketChartHistory([]);
+    setStackSizeHistogram(null);
         setItemVelocity(null);
         setRateLimitMessage(null);
         
@@ -2916,6 +2924,8 @@ function App() {
         setMarketInfo(null);
         setMarketListings([]);
         setMarketHistory([]);
+    setMarketChartHistory([]);
+    setStackSizeHistogram(null);
         setItemVelocity(null);
       }
     }
@@ -2936,6 +2946,8 @@ function App() {
     setMarketInfo(null);
     setMarketListings([]);
     setMarketHistory([]);
+    setMarketChartHistory([]);
+    setStackSizeHistogram(null);
     setItemVelocity(null);
     setError(null);
     setRateLimitMessage(null);
@@ -2981,6 +2993,8 @@ function App() {
         setMarketInfo(null);
         setMarketListings([]);
         setMarketHistory([]);
+    setMarketChartHistory([]);
+    setStackSizeHistogram(null);
         setItemVelocity(null);
         setError(null);
         setRateLimitMessage(null);
@@ -3013,6 +3027,8 @@ function App() {
     setMarketInfo(null);
     setMarketListings([]);
     setMarketHistory([]);
+    setMarketChartHistory([]);
+    setStackSizeHistogram(null);
     setItemVelocity(null);
     setRateLimitMessage(null);
     
@@ -3277,6 +3293,8 @@ function App() {
       setMarketInfo(null);
       setMarketListings([]);
       setMarketHistory([]);
+    setMarketChartHistory([]);
+    setStackSizeHistogram(null);
       setItemVelocity(null);
       return;
     }
@@ -3284,6 +3302,8 @@ function App() {
     setMarketInfo(null);
     setMarketListings([]);
     setMarketHistory([]);
+    setMarketChartHistory([]);
+    setStackSizeHistogram(null);
     setItemVelocity(null);
     setError(null);
     setRateLimitMessage(null);
@@ -3353,7 +3373,7 @@ function App() {
       try {
         const options = {
           listings: listSize,
-          entries: listSize,
+          entries: 500,
           signal: abortControllerRef.current.signal,
         };
 
@@ -3422,13 +3442,15 @@ function App() {
           const history = allHistory.slice(0, listSize);
 
           if (
-            currentRequestId === requestIdRef.current && 
+            currentRequestId === requestIdRef.current &&
             !abortControllerRef.current?.signal.aborted &&
             selectedItem?.id === requestItemId &&
             selectedServerOption === requestServerOption
           ) {
             setMarketListings(listings);
             setMarketHistory(history);
+            setMarketChartHistory(allHistory);
+            setStackSizeHistogram(data.stackSizeHistogram || null);
             if (isRetry && retryCountRef.current > 0) {
               addToast('數據加載成功', 'success');
             }
@@ -5290,6 +5312,18 @@ function App() {
                   </div>
                 </div>
               </div>
+
+              {/* Price History Chart & Stack Size Histogram */}
+              {!isLoadingMarket && (marketChartHistory.length > 0 || stackSizeHistogram) && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  {marketChartHistory.length > 0 && (
+                    <PriceHistoryChart history={marketChartHistory} />
+                  )}
+                  {stackSizeHistogram && (
+                    <StackSizeChart stackSizeHistogram={stackSizeHistogram} />
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}

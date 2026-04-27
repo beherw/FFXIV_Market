@@ -60,6 +60,15 @@ export default defineConfig({
     // ObtainMethods + data deps are ~4.5MB; index/main bundle ~1.6MB. Avoid warning when code-split is already applied.
     chunkSizeWarningLimit: 5000
   },
+  optimizeDeps: {
+    include: [
+      'recharts',
+      '@reduxjs/toolkit',
+      'react-redux',
+      'reselect',
+      'immer',
+    ],
+  },
   logLevel: 'info',
   customLogger: {
     info(msg) {
