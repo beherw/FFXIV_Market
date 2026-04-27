@@ -42,7 +42,7 @@ export default function StackSizeChart({ stackSizeHistogram }) {
   }
 
   return (
-    <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-3 sm:p-4">
+    <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-3 sm:p-4 select-none">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold">堆疊數量分佈</h3>
         <span className="text-xs text-gray-500">{data.length} 種堆疊</span>
