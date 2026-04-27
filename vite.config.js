@@ -31,10 +31,15 @@ export default defineConfig({
         manualChunks(id) {
           // Vendor chunks
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')
-              || id.includes('recharts') || id.includes('react-redux') || id.includes('@reduxjs/toolkit')
-              || id.includes('victory-vendor') || id.includes('reselect') || id.includes('immer')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
               return 'react-vendor';
+            }
+            // Recharts and its deps are lazy-loaded — let Rollup assign them to the dynamic chunk
+            if (id.includes('recharts') || id.includes('@reduxjs/toolkit') || id.includes('react-redux')
+              || id.includes('victory-vendor') || id.includes('reselect') || id.includes('immer')
+              || id.includes('es-toolkit') || id.includes('eventemitter3') || id.includes('decimal.js-light')
+              || id.includes('tiny-invariant') || id.includes('use-sync-external-store')) {
+              return undefined;
             }
             if (id.includes('axios')) {
               return 'axios';

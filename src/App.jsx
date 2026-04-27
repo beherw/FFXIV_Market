@@ -7,8 +7,8 @@ import TaxRatesModal from './components/TaxRatesModal';
 import SearchResultsTable from './components/SearchResultsTable.jsx';
 import MarketListings from './components/MarketListings';
 import MarketHistory from './components/MarketHistory';
-import PriceHistoryChart from './components/PriceHistoryChart';
-import StackSizeChart from './components/StackSizeChart';
+const PriceHistoryChart = lazy(() => import('./components/PriceHistoryChart'));
+const StackSizeChart = lazy(() => import('./components/StackSizeChart'));
 import ServerUploadTimes from './components/ServerUploadTimes';
 import Toast from './components/Toast';
 import { formatRelativeTime, formatLocalTime } from './utils/timeFormat';
@@ -5315,14 +5315,16 @@ function App() {
 
               {/* Price History Chart & Stack Size Histogram */}
               {!isLoadingMarket && (marketChartHistory.length > 0 || stackSizeHistogram) && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  {marketChartHistory.length > 0 && (
-                    <PriceHistoryChart history={marketChartHistory} />
-                  )}
-                  {stackSizeHistogram && (
-                    <StackSizeChart stackSizeHistogram={stackSizeHistogram} />
-                  )}
-                </div>
+                <Suspense fallback={null}>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    {marketChartHistory.length > 0 && (
+                      <PriceHistoryChart history={marketChartHistory} />
+                    )}
+                    {stackSizeHistogram && (
+                      <StackSizeChart stackSizeHistogram={stackSizeHistogram} />
+                    )}
+                  </div>
+                </Suspense>
               )}
             </div>
           </>
