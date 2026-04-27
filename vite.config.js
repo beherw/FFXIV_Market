@@ -31,7 +31,9 @@ export default defineConfig({
         manualChunks(id) {
           // Vendor chunks
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')
+              || id.includes('recharts') || id.includes('react-redux') || id.includes('@reduxjs/toolkit')
+              || id.includes('victory-vendor') || id.includes('reselect') || id.includes('immer')) {
               return 'react-vendor';
             }
             if (id.includes('axios')) {
