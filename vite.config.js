@@ -16,6 +16,7 @@ export default defineConfig({
   base: process.env.GITHUB_PAGES === 'true' ? '/FFXIV_Market/' : '/',
   plugins: [wasm(), topLevelAwait(), react()],
   resolve: {
+    dedupe: ['react', 'react-dom', 'react-router-dom'],
     alias: [
       // Prefer resolved tw-*.json (by mtime) over teamcraft so deploy uses ours when newer
       { find: TC_TW_JSON_DIR, replacement: TW_JSON_DIR },
