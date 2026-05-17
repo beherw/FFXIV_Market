@@ -203,7 +203,7 @@ export default function TaxRatesModal({
                                 <span>{name}:</span>
                                 <span className={`font-medium ${
                                   isLowest
-                                    ? 'text-green-400 font-bold text-sm'
+                                    ? 'text-green-400 font-bold'
                                     : isSecondLowest
                                       ? 'text-green-300 font-semibold'
                                       : isSelectedServer
