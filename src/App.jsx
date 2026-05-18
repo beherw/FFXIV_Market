@@ -77,6 +77,7 @@ const MultiItemListModal = createLazyComponent(() => import('./components/MultiI
 const MultiItemCombinedTree = createLazyComponent(() => import('./components/MultiItemCombinedTree.jsx'), 'MultiItemCombinedTree');
 const CraftingSimulatorDrawer = createLazyComponent(() => import('./components/CraftingSimulatorDrawer.jsx'), 'CraftingSimulatorDrawer');
 const CompanyCraftItemsPage = createLazyComponent(() => import('./components/CompanyCraftItemsPage.jsx'), 'CompanyCraftItemsPage');
+const VenturesPricePage = createLazyComponent(() => import('./components/VenturesPricePage.jsx'), 'VenturesPricePage');
 
 const TAX_SERVER_STORAGE_KEY = 'tax_server';
 
@@ -825,9 +826,10 @@ function App() {
     const isOnCraftingInspirationPage = location.pathname === '/crafting-inspiration';
     const isOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
     const isOnCompanyCraftPage = location.pathname === '/company-craft';
-    
+    const isOnVenturesPageLocal = location.pathname === '/ventures';
+
     // Only run on home page (empty state)
-    if (selectedItem || (tradeableResults.length > 0 || untradeableResults.length > 0) || isSearching || isOnHistoryPage || isOnCraftingInspirationPage || isOnMSQPriceCheckerPage || isOnCompanyCraftPage) {
+    if (selectedItem || (tradeableResults.length > 0 || untradeableResults.length > 0) || isSearching || isOnHistoryPage || isOnCraftingInspirationPage || isOnMSQPriceCheckerPage || isOnCompanyCraftPage || isOnVenturesPageLocal) {
       if (imageIntervalRef.current) {
         clearTimeout(imageIntervalRef.current);
         imageIntervalRef.current = null;
@@ -882,8 +884,9 @@ function App() {
         const currentIsOnCraftingInspirationPage = location.pathname === '/crafting-inspiration';
         const currentIsOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
         const currentIsOnCompanyCraftPage = location.pathname === '/company-craft';
-        
-        if (!isManualMode && !selectedItem && tradeableResults.length === 0 && untradeableResults.length === 0 && !isSearching && !currentIsOnHistoryPage && !currentIsOnCraftingInspirationPage && !currentIsOnMSQPriceCheckerPage && !currentIsOnCompanyCraftPage && !isShattering) {
+        const currentIsOnVenturesPage = location.pathname === '/ventures';
+
+        if (!isManualMode && !selectedItem && tradeableResults.length === 0 && untradeableResults.length === 0 && !isSearching && !currentIsOnHistoryPage && !currentIsOnCraftingInspirationPage && !currentIsOnMSQPriceCheckerPage && !currentIsOnCompanyCraftPage && !currentIsOnVenturesPage && !isShattering) {
           switchCountRef.current++;
           
           // Check if we should trigger shatter effect
@@ -2544,7 +2547,7 @@ function App() {
       return;
     }
 
-    if (location.pathname === '/company-craft') {
+    if (location.pathname === '/company-craft' || location.pathname === '/ventures') {
       lastProcessedURLRef.current = currentURLKey;
       isInitializingFromURLRef.current = false;
       return;
@@ -2999,7 +3002,7 @@ function App() {
         setError(null);
         setRateLimitMessage(null);
         // Don't navigate if we're on crafting-inspiration, msq-price-checker, advanced-search or history page
-        if (!skipNavigation && !currentItemId && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker' && location.pathname !== '/advanced-search' && location.pathname !== '/company-craft' && location.pathname !== '/history') {
+        if (!skipNavigation && !currentItemId && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker' && location.pathname !== '/advanced-search' && location.pathname !== '/company-craft' && location.pathname !== '/ventures' && location.pathname !== '/history') {
           navigate('/');
         }
       }
@@ -3884,17 +3887,19 @@ function App() {
   const isOnMSQPriceCheckerPage = location.pathname === '/msq-price-checker';
   const isOnAdvancedSearchPage = location.pathname === '/advanced-search';
   const isOnCompanyCraftPage = location.pathname === '/company-craft';
+  const isOnVenturesPage = location.pathname === '/ventures';
 
   // Check if current route is valid
   const isValidRoute = () => {
     const pathname = location.pathname;
-    // Valid routes: /, /history, /crafting-inspiration, /msq-price-checker, /advanced-search, /company-craft, /item/:id, /search
-    if (pathname === '/' || 
-        pathname === '/history' || 
-        pathname === '/crafting-inspiration' || 
+    // Valid routes: /, /history, /crafting-inspiration, /msq-price-checker, /advanced-search, /company-craft, /ventures, /item/:id, /search
+    if (pathname === '/' ||
+        pathname === '/history' ||
+        pathname === '/crafting-inspiration' ||
         pathname === '/msq-price-checker' ||
         pathname === '/advanced-search' ||
         pathname === '/company-craft' ||
+        pathname === '/ventures' ||
         pathname === '/search') {
       return true;
     }
@@ -3958,6 +3963,44 @@ function App() {
         </div>
       }>
         <CompanyCraftItemsPage
+          addToast={addToast}
+          removeToast={removeToast}
+          toasts={toasts}
+          datacenters={datacenters}
+          worlds={worlds}
+          selectedWorld={selectedWorld}
+          onWorldChange={setSelectedWorld}
+          selectedServerOption={selectedServerOption}
+          onServerOptionChange={handleServerOptionChange}
+          serverOptions={selectedWorld && selectedWorld.dcObj ? [selectedWorld.section, ...selectedWorld.dcObj.worlds] : []}
+          isServerDataLoaded={isServerDataLoaded}
+          onItemSelect={handleItemSelect}
+          onSearch={handleSearch}
+          searchText={searchText}
+          setSearchText={setSearchText}
+          isSearching={isSearching}
+          onTaxRatesClick={handleTaxRatesClick}
+          isTaxRatesModalOpen={isTaxRatesModalOpen}
+          setIsTaxRatesModalOpen={setIsTaxRatesModalOpen}
+          taxRates={taxRates}
+          isLoadingTaxRates={isLoadingTaxRates}
+          taxSelectedWorld={taxSelectedWorld}
+          taxServerOption={taxServerOption}
+          onTaxServerOptionChange={handleTaxServerOptionChange}
+        />
+      </Suspense>
+    );
+  }
+
+  // 僱員查價
+  if (isOnVenturesPage) {
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold"></div>
+        </div>
+      }>
+        <VenturesPricePage
           addToast={addToast}
           removeToast={removeToast}
           toasts={toasts}
@@ -4081,7 +4124,7 @@ function App() {
           setSearchText('');
           navigate('/crafting-inspiration');
         }}
-        activePage={isOnCraftingInspirationPage ? 'crafting-inspiration' : isOnMSQPriceCheckerPage ? 'msq-price-checker' : isOnAdvancedSearchPage ? 'advanced-search' : null}
+        activePage={isOnCraftingInspirationPage ? 'crafting-inspiration' : isOnMSQPriceCheckerPage ? 'msq-price-checker' : isOnAdvancedSearchPage ? 'advanced-search' : isOnVenturesPage ? 'ventures' : null}
         onMSQPriceCheckerClick={() => {
           setSearchText('');
           navigate('/msq-price-checker');
@@ -5333,7 +5376,7 @@ function App() {
           {/* Item page load error - no cache / network failed: show retry instead of redirecting home */}
           {(() => {
             const isOnItemPage = location.pathname.startsWith('/item/');
-            const showItemLoadError = isOnItemPage && !selectedItem && itemLoadError && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker' && location.pathname !== '/company-craft';
+            const showItemLoadError = isOnItemPage && !selectedItem && itemLoadError && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker' && location.pathname !== '/company-craft' && location.pathname !== '/ventures';
             return showItemLoadError && (
               <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-red-500/30 p-12 text-center">
                 <p className="text-gray-300 mb-2">無法載入物品資料（可能為快取已清或網路異常）</p>
@@ -5357,7 +5400,7 @@ function App() {
           {(() => {
             const isOnItemPage = location.pathname.startsWith('/item/');
             // Show loading if explicitly loading OR if on item page but item not loaded yet (and no load error)
-            const shouldShowLoading = (isLoadingItemFromURL || (isOnItemPage && !selectedItem && !itemLoadError && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker' && location.pathname !== '/company-craft'));
+            const shouldShowLoading = (isLoadingItemFromURL || (isOnItemPage && !selectedItem && !itemLoadError && !isOnHistoryPage && location.pathname !== '/crafting-inspiration' && location.pathname !== '/msq-price-checker' && location.pathname !== '/company-craft' && location.pathname !== '/ventures'));
             return shouldShowLoading && (
               <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-12 text-center">
                 <div className="relative inline-block">

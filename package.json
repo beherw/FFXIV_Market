@@ -18,7 +18,8 @@
     "build-items": "node scripts/build-items-data.js",
     "build-obtainable": "node scripts/build-obtainable-methods-optimized.js",
     "build-fates": "node scripts/build-fates-data.js",
-    "build-data": "npm run build-recipe && npm run build-items && npm run build-fates && npm run build-obtainable && node scripts/build-obtainable-domains.js",
+    "build-ventures": "node scripts/build-ventures-data.js",
+    "build-data": "npm run build-recipe && npm run build-items && npm run build-fates && npm run build-obtainable && node scripts/build-obtainable-domains.js && npm run build-ventures",
     "build-obtainable-domains": "node scripts/build-obtainable-domains.js"
   },
   "dependencies": {

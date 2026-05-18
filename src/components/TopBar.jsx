@@ -26,6 +26,7 @@ export default function TopBar({
   onMSQPriceCheckerClick,
   onCraftingInspirationClick,
   onAdvancedSearchClick,
+  onVenturesClick,
   onTaxRatesClick,
 }) {
   const navigate = useNavigate();
@@ -68,6 +69,7 @@ export default function TopBar({
     if (location.pathname === '/msq-price-checker') return 'msq-price-checker';
     if (location.pathname === '/advanced-search') return 'advanced-search';
     if (location.pathname === '/company-craft') return 'company-craft';
+    if (location.pathname === '/ventures') return 'ventures';
     if (location.pathname === '/history') return 'history';
     return null;
   })();
@@ -103,16 +105,22 @@ export default function TopBar({
   };
   
   const handleCraftingInspirationClick = () => {
-    // If already on the crafting inspiration page, do nothing
-    if (location.pathname === '/crafting-inspiration') {
-      return;
-    }
-    
+    if (location.pathname === '/crafting-inspiration') return;
     if (onCraftingInspirationClick) {
       onCraftingInspirationClick();
     } else {
       setSearchText('');
       navigate('/crafting-inspiration');
+    }
+  };
+
+  const handleVenturesClick = () => {
+    if (location.pathname === '/ventures') return;
+    if (onVenturesClick) {
+      onVenturesClick();
+    } else {
+      if (setSearchText) setSearchText('');
+      navigate('/ventures');
     }
   };
   
@@ -259,6 +267,32 @@ export default function TopBar({
                     </svg>
                     <span className="topbar-nav-text">主線裝備</span>
                     <span className="topbar-nav-text narrow-only">裝備</span>
+                  </button>
+                </div>
+
+                {/* Ventures Price Checker Button */}
+                <div className="topbar-nav-button-container">
+                  <button
+                    onClick={handleVenturesClick}
+                    className={`topbar-nav-button ${currentActivePage === 'ventures' ? 'active' : ''}`}
+                    title="僱員查價"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="topbar-nav-icon"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                      />
+                    </svg>
+                    <span className="topbar-nav-text">僱員查價</span>
+                    <span className="topbar-nav-text narrow-only">僱員</span>
                   </button>
                 </div>
 
