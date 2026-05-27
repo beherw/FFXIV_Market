@@ -2419,6 +2419,10 @@ function App() {
     setError(null);
     setRateLimitMessage(null);
     
+    // Reset HQ only filter when selecting a new item
+    // This ensures the item info page always starts in normal (NQ+HQ) mode
+    setHqOnly(false);
+    
     // Clear search text to prevent auto-search from triggering when entering item page
     setSearchText('');
     
