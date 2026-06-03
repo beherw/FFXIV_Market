@@ -13,7 +13,7 @@ import ServerUploadTimes from './components/ServerUploadTimes';
 import Toast from './components/Toast';
 import { formatRelativeTime, formatLocalTime } from './utils/timeFormat';
 import { searchItems, searchItemsOCR, getItemById, getSimplifiedChineseName, cancelSimplifiedNameFetch } from './services/itemDatabase';
-import { getMarketData, getMarketableItems, getItemsVelocity, getTaxRates, getAggregatedMarketData } from './services/universalis';
+import { getMarketData, getMarketableItems, getItemsVelocity, getTaxRates, getAggregatedMarketData, getMarketSaleHistory } from './services/universalis';
 // Removed containsChinese import - no longer restricting to Chinese input
 import { getAssetPath } from './utils/assetPath.js';
 import ItemImage from './components/ItemImage';
@@ -79,7 +79,38 @@ const CraftingSimulatorDrawer = createLazyComponent(() => import('./components/C
 const CompanyCraftItemsPage = createLazyComponent(() => import('./components/CompanyCraftItemsPage.jsx'), 'CompanyCraftItemsPage');
 const VenturesPricePage = createLazyComponent(() => import('./components/VenturesPricePage.jsx'), 'VenturesPricePage');
 
+const MARKET_HISTORY_RANGE_STORAGE_KEY = 'ffxiv_market_history_range_days';
+const MARKET_HISTORY_RANGE_OPTIONS = [
+  { days: 1, label: '1天' },
+  { days: 3, label: '3天' },
+  { days: 7, label: '7天' },
+  { days: 14, label: '14天' },
+  { days: 30, label: '30天' },
+];
+const DEFAULT_MARKET_HISTORY_RANGE_DAYS = 7;
+
 const TAX_SERVER_STORAGE_KEY = 'tax_server';
+
+function normalizeMarketHistoryEntries(entries, itemName, fallbackWorldName) {
+  return (entries || [])
+    .map(entry => {
+      const pricePerUnit = Number(entry.pricePerUnit);
+      const quantity = Number(entry.quantity);
+      return {
+        itemName,
+        pricePerUnit,
+        quantity,
+        total: Number.isFinite(Number(entry.total))
+          ? Number(entry.total)
+          : (Number.isFinite(pricePerUnit) && Number.isFinite(quantity) ? pricePerUnit * quantity : null),
+        buyerName: entry.buyerName,
+        worldName: entry.worldName || fallbackWorldName,
+        timestamp: entry.timestamp,
+        hq: entry.hq || false,
+      };
+    })
+    .sort((a, b) => b.timestamp - a.timestamp);
+}
 
 function App() {
   const navigate = useNavigate();
@@ -123,6 +154,13 @@ function App() {
   const [marketListings, setMarketListings] = useState([]);
   const [marketHistory, setMarketHistory] = useState([]);
   const [marketChartHistory, setMarketChartHistory] = useState([]);
+  const [isLoadingMarketChart, setIsLoadingMarketChart] = useState(false);
+  const [marketHistoryRangeDays, setMarketHistoryRangeDays] = useState(() => {
+    const saved = Number(localStorage.getItem(MARKET_HISTORY_RANGE_STORAGE_KEY));
+    return MARKET_HISTORY_RANGE_OPTIONS.some(option => option.days === saved)
+      ? saved
+      : DEFAULT_MARKET_HISTORY_RANGE_DAYS;
+  });
   const [stackSizeHistogram, setStackSizeHistogram] = useState(null);
   /** Current item's daily sale velocity for 在售列表: { velocityWorld, velocityDc } or null */
   const [itemVelocity, setItemVelocity] = useState(null);
@@ -156,6 +194,44 @@ function App() {
   const craftingTreeRef = useRef(null);
   const prevCraftingTreeExpandedRef = useRef(false);
   const prevExcludeCrystalsRef = useRef(null); // Track previous excludeCrystals to avoid rebuilding tree on selectedItem change
+  const historyAbortControllerRef = useRef(null);
+  const historyRequestIdRef = useRef(0);
+  const marketChartSectionRef = useRef(null);
+  const preserveMarketChartTopRef = useRef(null);
+
+  const handleMarketHistoryRangeChange = useCallback((days) => {
+    const nextDays = Number(days);
+    if (!MARKET_HISTORY_RANGE_OPTIONS.some(option => option.days === nextDays)) {
+      return;
+    }
+    const chartElement = marketChartSectionRef.current;
+    preserveMarketChartTopRef.current = chartElement
+      ? chartElement.getBoundingClientRect().top
+      : null;
+    setMarketHistoryRangeDays(nextDays);
+    try {
+      localStorage.setItem(MARKET_HISTORY_RANGE_STORAGE_KEY, `${nextDays}`);
+    } catch {
+      // Ignore storage errors.
+    }
+  }, []);
+
+  const restoreMarketChartScrollPosition = useCallback(() => {
+    const previousTop = preserveMarketChartTopRef.current;
+    if (previousTop === null) return;
+
+    requestAnimationFrame(() => {
+      const chartElement = marketChartSectionRef.current;
+      if (!chartElement) {
+        preserveMarketChartTopRef.current = null;
+        return;
+      }
+
+      const nextTop = chartElement.getBoundingClientRect().top;
+      window.scrollBy({ top: nextTop - previousTop, left: 0, behavior: 'instant' });
+      preserveMarketChartTopRef.current = null;
+    });
+  }, []);
   
   // Crafting tree states
   const [craftingTree, setCraftingTree] = useState(null);
@@ -3300,8 +3376,9 @@ function App() {
       setMarketInfo(null);
       setMarketListings([]);
       setMarketHistory([]);
-    setMarketChartHistory([]);
-    setStackSizeHistogram(null);
+      setMarketChartHistory([]);
+      setStackSizeHistogram(null);
+      setIsLoadingMarketChart(false);
       setItemVelocity(null);
       return;
     }
@@ -3380,7 +3457,7 @@ function App() {
       try {
         const options = {
           listings: listSize,
-          entries: 500,
+          entries: listSize,
           signal: abortControllerRef.current.signal,
         };
 
@@ -3389,6 +3466,7 @@ function App() {
         }
 
         const signal = abortControllerRef.current.signal;
+
         const [data, aggregatedResult] = await Promise.all([
           getMarketData(requestServerOption, requestItemId, options),
           getAggregatedMarketData(requestServerOption, [requestItemId], worlds, { signal }).catch(() => ({})),
@@ -3433,19 +3511,11 @@ function App() {
           
           const listings = allListings.slice(0, listSize);
 
-          const allHistory = (data.recentHistory || [])
-            .map(entry => ({
-              itemName: requestItemName,
-              pricePerUnit: entry.pricePerUnit,
-              quantity: entry.quantity,
-              total: entry.total,
-              buyerName: entry.buyerName,
-              worldName: entry.worldName || (isDataCenterSearch ? (data.dcName || requestServerOption) : (data.worldName || requestServerOption)),
-              timestamp: entry.timestamp,
-              hq: entry.hq || false,
-            }))
-            .sort((a, b) => b.timestamp - a.timestamp);
-          
+          const allHistory = normalizeMarketHistoryEntries(
+            data.recentHistory || [],
+            requestItemName,
+            isDataCenterSearch ? (data.dcName || requestServerOption) : (data.worldName || requestServerOption)
+          );
           const history = allHistory.slice(0, listSize);
 
           if (
@@ -3456,8 +3526,6 @@ function App() {
           ) {
             setMarketListings(listings);
             setMarketHistory(history);
-            setMarketChartHistory(allHistory);
-            setStackSizeHistogram(data.stackSizeHistogram || null);
             if (isRetry && retryCountRef.current > 0) {
               addToast('數據加載成功', 'success');
             }
@@ -3533,6 +3601,90 @@ function App() {
       }
     };
   }, [isLoadingDB, selectedItem, selectedServerOption, listSize, hqOnly, worlds, refreshKey, addToast, selectedWorld]);
+
+  useEffect(() => {
+    if (historyAbortControllerRef.current) {
+      historyAbortControllerRef.current.abort();
+      historyAbortControllerRef.current = null;
+    }
+
+    if (isLoadingDB || !selectedItem || !selectedServerOption) {
+      setMarketChartHistory([]);
+      setStackSizeHistogram(null);
+      setIsLoadingMarketChart(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    historyAbortControllerRef.current = controller;
+    const historyRequestId = ++historyRequestIdRef.current;
+    const requestItemId = selectedItem.id;
+    const requestItemName = selectedItem.name;
+    const requestServerOption = selectedServerOption;
+    const requestSelectedWorld = selectedWorld;
+
+    const loadMarketHistory = async () => {
+      setIsLoadingMarketChart(true);
+
+      try {
+        const historyOptions = {
+          days: marketHistoryRangeDays,
+          signal: controller.signal,
+        };
+
+        if (selectedItem.canBeHQ && hqOnly) {
+          historyOptions.hq = true;
+        }
+
+        const historyData = await getMarketSaleHistory(requestServerOption, requestItemId, historyOptions);
+
+        if (
+          controller.signal.aborted ||
+          historyRequestId !== historyRequestIdRef.current ||
+          selectedItem?.id !== requestItemId ||
+          selectedServerOption !== requestServerOption
+        ) {
+          return;
+        }
+
+        const isDataCenterSearch = requestSelectedWorld && requestServerOption === requestSelectedWorld.section;
+        const fallbackWorldName = isDataCenterSearch
+          ? (historyData?.dcName || requestServerOption)
+          : (historyData?.worldName || requestServerOption);
+        const allHistory = normalizeMarketHistoryEntries(historyData?.entries || [], requestItemName, fallbackWorldName);
+
+        setMarketChartHistory(allHistory);
+        setStackSizeHistogram(historyData?.stackSizeHistogram || null);
+      } catch (err) {
+        if (err.name === 'AbortError' || err.code === 'ERR_CANCELED' || controller.signal.aborted) {
+          return;
+        }
+
+        if (
+          historyRequestId === historyRequestIdRef.current &&
+          selectedItem?.id === requestItemId &&
+          selectedServerOption === requestServerOption
+        ) {
+          addToast('加載成交歷史失敗', 'error');
+        }
+      } finally {
+        if (
+          historyRequestId === historyRequestIdRef.current &&
+          selectedItem?.id === requestItemId &&
+          selectedServerOption === requestServerOption
+        ) {
+          setIsLoadingMarketChart(false);
+          restoreMarketChartScrollPosition();
+        }
+      }
+    };
+
+    loadMarketHistory();
+
+    return () => {
+      controller.abort();
+    };
+  }, [isLoadingDB, selectedItem, selectedServerOption, hqOnly, marketHistoryRangeDays, addToast, selectedWorld, restoreMarketChartScrollPosition]);
 
   // Clear item load error when leaving item page
   useEffect(() => {
@@ -5298,8 +5450,8 @@ function App() {
                       刷新
                     </button>
                   </div>
-                  <div className="flex-1 flex flex-col">
-                    {isLoadingMarket ? (
+                  <div className="flex-1 flex flex-col min-h-[280px] relative">
+                    {isLoadingMarket && marketListings.length === 0 ? (
                       <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-12 text-center flex-1 flex items-center justify-center">
                         {rateLimitMessage ? (
                           <>
@@ -5324,14 +5476,21 @@ function App() {
                         <MarketListings listings={marketListings} onRefresh={() => setRefreshKey(prev => prev + 1)} />
                       </div>
                     )}
+                    {isLoadingMarket && marketListings.length > 0 && (
+                      <div className="absolute inset-0 rounded-lg bg-slate-950/35 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
+                        <div className="px-3 py-2 rounded-md bg-slate-900/85 border border-purple-500/30 text-xs text-gray-300">
+                          正在更新市場數據...
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Market History */}
                 <div className="flex flex-col">
                   <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold mb-2 sm:mb-3">歷史交易</h3>
-                  <div className="flex-1 flex flex-col">
-                    {isLoadingMarket ? (
+                  <div className="flex-1 flex flex-col min-h-[280px] relative">
+                    {isLoadingMarket && marketHistory.length === 0 ? (
                       <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-12 text-center flex-1 flex items-center justify-center">
                         {rateLimitMessage ? (
                           <>
@@ -5361,12 +5520,30 @@ function App() {
               </div>
 
               {/* Price History Chart & Stack Size Histogram */}
-              {!isLoadingMarket && (marketChartHistory.length > 0 || stackSizeHistogram) && (
+              {(marketChartHistory.length > 0 || stackSizeHistogram || isLoadingMarketChart) && (
                 <Suspense fallback={null}>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                    {marketChartHistory.length > 0 && (
-                      <PriceHistoryChart history={marketChartHistory} />
-                    )}
+                  <div ref={marketChartSectionRef} className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <div className="relative min-h-[324px]">
+                      {marketChartHistory.length > 0 ? (
+                        <PriceHistoryChart
+                          history={marketChartHistory}
+                          rangeDays={marketHistoryRangeDays}
+                          rangeOptions={MARKET_HISTORY_RANGE_OPTIONS}
+                          onRangeChange={handleMarketHistoryRangeChange}
+                        />
+                      ) : (
+                        <div className="h-full min-h-[324px] bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-3 sm:p-4 flex items-center justify-center text-sm text-gray-400">
+                          正在加載成交價格走勢...
+                        </div>
+                      )}
+                      {isLoadingMarketChart && marketChartHistory.length > 0 && (
+                        <div className="absolute inset-0 rounded-lg bg-slate-950/35 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
+                          <div className="px-3 py-2 rounded-md bg-slate-900/85 border border-purple-500/30 text-xs text-gray-300">
+                            正在更新成交價格走勢...
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     {stackSizeHistogram && (
                       <StackSizeChart stackSizeHistogram={stackSizeHistogram} />
                     )}

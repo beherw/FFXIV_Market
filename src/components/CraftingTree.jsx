@@ -26,6 +26,81 @@ function formatPrice(value) {
   return Math.round(value).toLocaleString();
 }
 
+const PRICE_MODE_MIN_LISTING = 'minListing';
+const PRICE_MODE_AVERAGE = 'average';
+const PRICE_MODE_LABELS = {
+  [PRICE_MODE_MIN_LISTING]: '最低在售',
+  [PRICE_MODE_AVERAGE]: '平均成交',
+};
+
+const DEFAULT_PRICE_MODE_OPTIONS = {
+  purchase: PRICE_MODE_MIN_LISTING,
+  materials: PRICE_MODE_MIN_LISTING,
+};
+
+function getModeVariant(priceInfo, mode) {
+  if (!priceInfo) return null;
+  const selectedMode = mode === PRICE_MODE_AVERAGE ? PRICE_MODE_AVERAGE : PRICE_MODE_MIN_LISTING;
+  const modeData = priceInfo.priceModes?.[selectedMode];
+
+  if (!modeData) {
+    return {
+      ...priceInfo,
+      price: null,
+      isHQ: false,
+      priceType: selectedMode,
+      nqPrice: null,
+      hqPrice: null,
+      nqWorldName: null,
+      hqWorldName: null,
+      worldName: null,
+    };
+  }
+
+  return {
+    ...priceInfo,
+    ...modeData,
+    priceType: selectedMode,
+    modeLabel: PRICE_MODE_LABELS[selectedMode],
+  };
+}
+
+function buildPricesForMode(itemPrices, mode, hqOverrides = {}) {
+  const nextPrices = {};
+
+  Object.entries(itemPrices).forEach(([itemIdKey, priceInfo]) => {
+    const modePriceInfo = getModeVariant(priceInfo, mode);
+    if (!modePriceInfo) {
+      return;
+    }
+
+    const override = hqOverrides[itemIdKey];
+    if (override === 'hq' && modePriceInfo.hqPrice !== undefined && modePriceInfo.hqPrice !== null) {
+      nextPrices[itemIdKey] = {
+        ...modePriceInfo,
+        price: modePriceInfo.hqPrice,
+        isHQ: true,
+        worldName: modePriceInfo.hqWorldName || modePriceInfo.worldName || null,
+      };
+      return;
+    }
+
+    if (override === 'nq' && modePriceInfo.nqPrice !== undefined && modePriceInfo.nqPrice !== null) {
+      nextPrices[itemIdKey] = {
+        ...modePriceInfo,
+        price: modePriceInfo.nqPrice,
+        isHQ: false,
+        worldName: modePriceInfo.nqWorldName || modePriceInfo.worldName || null,
+      };
+      return;
+    }
+
+    nextPrices[itemIdKey] = modePriceInfo;
+  });
+
+  return nextPrices;
+}
+
 /**
  * Copy button component
  */
@@ -66,6 +141,38 @@ function CopyButton({ text, onCopy }) {
         </svg>
       )}
     </button>
+  );
+}
+
+function PriceModeSegment({ value, onChange }) {
+  const modes = [
+    { key: PRICE_MODE_MIN_LISTING, label: '最低', title: '使用目前最低在售價格' },
+    { key: PRICE_MODE_AVERAGE, label: '平均', title: '使用平均成交價格' },
+  ];
+
+  return (
+    <div className="inline-flex rounded-md border border-slate-600/60 bg-slate-950/50 p-0.5">
+      {modes.map((mode) => {
+        const isActive = value === mode.key;
+        return (
+          <button
+            key={mode.key}
+            type="button"
+            onClick={() => onChange(mode.key)}
+            className={`rounded px-2.5 py-1 text-[11px] font-semibold transition ${
+              isActive
+                ? mode.key === PRICE_MODE_MIN_LISTING
+                  ? 'bg-ffxiv-gold/15 text-ffxiv-gold shadow-[0_0_8px_rgba(212,175,55,0.18)]'
+                  : 'bg-cyan-500/15 text-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.16)]'
+                : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
+            }`}
+            title={mode.title}
+          >
+            {mode.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -411,16 +518,6 @@ function ItemCard({
               <span className={`text-xs font-semibold ${priceInfo.isHQ ? 'text-yellow-400' : 'text-green-400'}`}>
                 {formatPrice(priceInfo.price)}
               </span>
-              {/* Fallback indicator - show when using minListing for server query (fallback from average) */}
-              {/* Only show for non-DC queries where average price was not available */}
-              {!isDcQuery && priceInfo.priceType === 'minListing' && (
-                <span 
-                  className="text-[8px] text-blue-400 cursor-help" 
-                  title="最近四天無銷售發生，改為用最低價格"
-                >
-                  ⚠
-                </span>
-              )}
             </div>
             {priceInfo.worldName && (
               <span className="text-[10px] text-gray-500 truncate max-w-[80px]" title={priceInfo.worldName}>
@@ -429,7 +526,9 @@ function ItemCard({
             )}
           </div>
         ) : isPriceQueried ? (
-          <span className="text-xs text-gray-500">無販售</span>
+          <span className="text-xs text-gray-500">
+            {priceInfo?.priceType === PRICE_MODE_AVERAGE ? '無成交' : '無販售'}
+          </span>
         ) : (
           <div className="text-xs text-gray-500 animate-pulse">查詢中...</div>
         )}
@@ -584,11 +683,11 @@ function calculateCraftingCost(node, itemPrices, queriedItemIds) {
  * Root item price comparison badge - uses cheapest route calculation
  * Compares: main item market price vs optimal crafting route (cheapest for each sub-item)
  */
-function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames, rootDisplayAmount }) {
+function RootPriceComparisonBadge({ tree, purchaseItemPrices, materialItemPrices, queriedItemIds, itemNames, rootDisplayAmount }) {
   const [showModal, setShowModal] = useState(false);
   
   // Get root unit price and amount (use rootDisplayAmount when provided, e.g. from quantity control)
-  const rootUnitPrice = itemPrices[tree.itemId]?.price ?? null;
+  const rootUnitPrice = purchaseItemPrices[tree.itemId]?.price ?? null;
   const rootAmount = rootDisplayAmount ?? tree.amount ?? 1;
   const yields = tree.yields || 1;
   const rootScaleFactor = Math.ceil(rootAmount / yields);
@@ -616,15 +715,15 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames,
     }
     
     // Get cheapest cost with breakdown
-    const cheapestResult = getCheapestCost(tree, itemPrices, queriedItemIds);
-    const craftingCost = calculateCraftingCost(tree, itemPrices, queriedItemIds);
+    const cheapestResult = getCheapestCost(tree, materialItemPrices, queriedItemIds);
+    const craftingCost = calculateCraftingCost(tree, materialItemPrices, queriedItemIds);
     
     // If we can't calculate crafting cost (still loading), don't show badge yet
     if (craftingCost === null) {
       return null;
     }
     
-    const rootPrice = itemPrices[tree.itemId]?.price ?? null;
+    const rootPrice = purchaseItemPrices[tree.itemId]?.price ?? null;
     const cheapestRouteCost = craftingCost; // Use crafting cost, not getCheapestCost result
     const rootIsNA = rootPrice === null;
     const materialsIsNA = cheapestRouteCost === 'N/A';
@@ -681,7 +780,7 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames,
     }
     
     return { canCraft: false };
-  }, [tree, itemPrices, queriedItemIds]);
+  }, [tree, purchaseItemPrices, materialItemPrices, queriedItemIds]);
   
   if (!result) return null;
   
@@ -746,7 +845,7 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames,
           onClose={() => setShowModal(false)}
           breakdown={scaledBreakdown}
           itemNames={itemNames}
-          itemPrices={itemPrices}
+          itemPrices={materialItemPrices}
           parentPrice={buyTotal}
           childrenTotalPrice={null}
           yields={result.yields}
@@ -784,7 +883,7 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames,
           onClose={() => setShowModal(false)}
           breakdown={scaledBreakdown}
           itemNames={itemNames}
-          itemPrices={itemPrices}
+          itemPrices={materialItemPrices}
           parentPrice={null}
           childrenTotalPrice={craftTotal}
           yields={result.yields}
@@ -833,7 +932,7 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames,
           onClose={() => setShowModal(false)}
           breakdown={scaledBreakdown}
           itemNames={itemNames}
-          itemPrices={itemPrices}
+          itemPrices={materialItemPrices}
           parentPrice={buyTotal}
           childrenTotalPrice={craftTotal}
           yields={result.yields}
@@ -891,7 +990,7 @@ function RootPriceComparisonBadge({ tree, itemPrices, queriedItemIds, itemNames,
         onClose={() => setShowModal(false)}
         breakdown={scaledBreakdown}
         itemNames={itemNames}
-        itemPrices={itemPrices}
+        itemPrices={materialItemPrices}
         parentPrice={buyTotal}
         childrenTotalPrice={craftTotal}
         yields={result.yields}
@@ -1135,6 +1234,7 @@ function TreeNodeVertical({
   node,
   itemNames,
   itemPrices,
+  materialItemPrices,
   queriedItemIds,
   onItemClick,
   onOpenObtainMethods,
@@ -1149,6 +1249,7 @@ function TreeNodeVertical({
   const childrenRef = useRef(null);
   const [lineStyle, setLineStyle] = useState({ left: 0, width: 0 });
   const hasChildren = node.children && node.children.length > 0;
+  const effectiveMaterialPrices = materialItemPrices || itemPrices;
   const itemName = itemNames[node.itemId] || `物品 ${node.itemId}`;
   const priceInfo = itemPrices[node.itemId];
   const isPriceQueried = queriedItemIds.has(node.itemId);
@@ -1188,7 +1289,7 @@ function TreeNodeVertical({
     const breakdownData = [];
 
     for (const child of node.children) {
-      const childPrice = itemPrices[child.itemId]?.price;
+      const childPrice = effectiveMaterialPrices[child.itemId]?.price;
       if (childPrice === null || childPrice === undefined) {
         return { childrenTotalPrice: 'N/A', breakdown: null };
       }
@@ -1207,7 +1308,7 @@ function TreeNodeVertical({
     return { childrenTotalPrice: total, breakdown: breakdownData };
     
     return { childrenTotalPrice: null, breakdown: null };
-  }, [hasChildren, node, itemPrices, queriedItemIds]);
+  }, [hasChildren, node, effectiveMaterialPrices, queriedItemIds]);
 
       const scaledChildrenTotalPrice = typeof childrenTotalPrice === 'number'
         ? childrenTotalPrice * nodeCraftScaleFactor
@@ -1337,7 +1438,8 @@ function TreeNodeVertical({
           {isRoot ? (
             <RootPriceComparisonBadge 
               tree={node}
-              itemPrices={itemPrices}
+              purchaseItemPrices={itemPrices}
+              materialItemPrices={effectiveMaterialPrices}
               queriedItemIds={queriedItemIds}
               itemNames={itemNames}
               rootDisplayAmount={rootQuantity}
@@ -1354,7 +1456,7 @@ function TreeNodeVertical({
                 totalCost: b.totalCost * nodeCraftScaleFactor,
               })) ?? breakdown}
               itemNames={itemNames}
-              itemPrices={itemPrices}
+              itemPrices={effectiveMaterialPrices}
               yields={node.yields || 1}
               parentUnitPrice={priceInfo?.price ?? null}
             />
@@ -1385,6 +1487,7 @@ function TreeNodeVertical({
                     node={child}
                     itemNames={itemNames}
                     itemPrices={itemPrices}
+                    materialItemPrices={effectiveMaterialPrices}
                     queriedItemIds={queriedItemIds}
                     onItemClick={onItemClick}
                     onOpenObtainMethods={onOpenObtainMethods}
@@ -1429,6 +1532,8 @@ export default function CraftingTree({
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartScrollLeft, setDragStartScrollLeft] = useState(0);
   const [isHqOptionsOpen, setIsHqOptionsOpen] = useState(false);
+  const [isPriceOptionsOpen, setIsPriceOptionsOpen] = useState(false);
+  const [priceModeOptions, setPriceModeOptions] = useState(DEFAULT_PRICE_MODE_OPTIONS);
   const [hqOverrides, setHqOverrides] = useState({});
   const [hqOverridesDraft, setHqOverridesDraft] = useState({});
   const [isObtainModalOpen, setIsObtainModalOpen] = useState(false);
@@ -1491,41 +1596,26 @@ export default function CraftingTree({
     if (!isTreeLoaded) return false;
     return allTreeItemIds.some((itemId) => {
       const priceInfo = itemPrices[itemId];
-      return priceInfo && (priceInfo.nqPrice !== undefined || priceInfo.hqPrice !== undefined);
+      if (!priceInfo) return false;
+      return Object.values(priceInfo.priceModes || {}).some((modePriceInfo) => (
+        modePriceInfo &&
+        modePriceInfo.nqPrice !== undefined &&
+        modePriceInfo.nqPrice !== null &&
+        modePriceInfo.hqPrice !== undefined &&
+        modePriceInfo.hqPrice !== null
+      ));
     });
   }, [allTreeItemIds, isTreeLoaded, itemPrices]);
 
-  const effectiveItemPrices = useMemo(() => {
-    const nextPrices = { ...itemPrices };
+  const purchaseItemPrices = useMemo(
+    () => buildPricesForMode(itemPrices, priceModeOptions.purchase, hqOverrides),
+    [itemPrices, priceModeOptions.purchase, hqOverrides]
+  );
 
-    Object.entries(itemPrices).forEach(([itemIdKey, priceInfo]) => {
-      const override = hqOverrides[itemIdKey];
-      if (!override || !priceInfo) {
-        return;
-      }
-
-      if (override === 'hq' && priceInfo.hqPrice !== undefined && priceInfo.hqPrice !== null) {
-        nextPrices[itemIdKey] = {
-          ...priceInfo,
-          price: priceInfo.hqPrice,
-          isHQ: true,
-          worldName: priceInfo.hqWorldName || priceInfo.worldName || null,
-        };
-        return;
-      }
-
-      if (override === 'nq' && priceInfo.nqPrice !== undefined && priceInfo.nqPrice !== null) {
-        nextPrices[itemIdKey] = {
-          ...priceInfo,
-          price: priceInfo.nqPrice,
-          isHQ: false,
-          worldName: priceInfo.nqWorldName || priceInfo.worldName || null,
-        };
-      }
-    });
-
-    return nextPrices;
-  }, [itemPrices, hqOverrides]);
+  const materialItemPrices = useMemo(
+    () => buildPricesForMode(itemPrices, priceModeOptions.materials, hqOverrides),
+    [itemPrices, priceModeOptions.materials, hqOverrides]
+  );
 
   // Load item names + market prices (with short-lived cache to avoid API spam on expand/collapse)
   useEffect(() => {
@@ -1621,9 +1711,14 @@ export default function CraftingTree({
 
   useEffect(() => {
     setIsHqOptionsOpen(false);
+    setIsPriceOptionsOpen(false);
     setHqOverrides({});
     setHqOverridesDraft({});
   }, [tree, selectedServerOption]);
+
+  useEffect(() => {
+    setPriceModeOptions(DEFAULT_PRICE_MODE_OPTIONS);
+  }, [tree?.itemId]);
 
   useEffect(() => {
     setIsObtainModalOpen(false);
@@ -1814,7 +1909,7 @@ export default function CraftingTree({
   const applyDraftQualityForAll = (targetMode) => {
     const nextDraft = {};
     allTreeItemIds.forEach((itemId) => {
-      const priceInfo = itemPrices[itemId];
+      const priceInfo = purchaseItemPrices[itemId] || materialItemPrices[itemId] || itemPrices[itemId];
       if (!priceInfo) return;
 
       if (targetMode === 'hq') {
@@ -1940,6 +2035,80 @@ export default function CraftingTree({
           <div className="relative">
             <button
               type="button"
+              onClick={() => {
+                if (!isTreeLoaded) return;
+                setIsPriceOptionsOpen((prev) => !prev);
+              }}
+              disabled={!isTreeLoaded}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition ${
+                isTreeLoaded
+                  ? isPriceOptionsOpen
+                    ? 'bg-slate-800/70 border-ffxiv-gold/40 text-ffxiv-gold shadow-[0_0_10px_rgba(212,175,55,0.18)]'
+                    : 'bg-slate-800/60 border-slate-600/40 text-gray-400 hover:border-ffxiv-gold/40 hover:text-ffxiv-gold'
+                  : 'bg-slate-800/40 border-slate-700/50 text-slate-500 cursor-not-allowed opacity-70'
+              }`}
+              title={isTreeLoaded ? '設定直購物品與材料使用的價格計算方式' : '請等待製作樹完成載入後再設定價格選項'}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              材料價格選項
+            </button>
+
+            {isPriceOptionsOpen && (
+              <div className="absolute left-0 top-[calc(100%+8px)] z-40 w-[min(88vw,360px)] rounded-xl border border-ffxiv-gold/30 bg-slate-900/95 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-sm">
+                <div className="mb-3">
+                  <h4 className="text-sm font-semibold text-ffxiv-gold">材料價格選項</h4>
+                  <p className="mt-0.5 text-xs text-slate-400">分別設定直購成品與材料成本的計算價格。</p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-700/70 bg-slate-950/55 px-2.5 py-2">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-slate-100">直購物品</div>
+                      <div className="text-[11px] text-slate-500">成品、半成品直購比較</div>
+                    </div>
+                    <PriceModeSegment
+                      value={priceModeOptions.purchase}
+                      onChange={(mode) => setPriceModeOptions((prev) => ({ ...prev, purchase: mode }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-700/70 bg-slate-950/55 px-2.5 py-2">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-slate-100">材料</div>
+                      <div className="text-[11px] text-slate-500">材料總成本與最優製作路線</div>
+                    </div>
+                    <PriceModeSegment
+                      value={priceModeOptions.materials}
+                      onChange={(mode) => setPriceModeOptions((prev) => ({ ...prev, materials: mode }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-700/70 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setPriceModeOptions(DEFAULT_PRICE_MODE_OPTIONS)}
+                    className="rounded-md border border-slate-600/70 bg-slate-800/80 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-500"
+                  >
+                    重設
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPriceOptionsOpen(false)}
+                    className="rounded-md border border-ffxiv-gold/35 bg-ffxiv-gold/10 px-3 py-1.5 text-xs font-semibold text-ffxiv-gold hover:border-ffxiv-gold/55"
+                  >
+                    完成
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              type="button"
               onClick={openHqOptionsDrawer}
               disabled={!canOpenHqOptions}
               className={`px-2.5 py-1 rounded-md border text-xs font-medium transition ${canOpenHqOptions ? (isHqOptionsOpen ? 'bg-slate-800/70 border-cyan-500/35 text-cyan-300 hover:border-cyan-400/60 hover:text-cyan-200' : 'bg-slate-800/60 border-slate-600/40 text-gray-400 hover:border-purple-500/40 hover:text-purple-300') : 'bg-slate-800/40 border-slate-700/50 text-slate-500 cursor-not-allowed opacity-70'}`}
@@ -1976,13 +2145,13 @@ export default function CraftingTree({
                 <div className="mt-3 max-h-[58vh] overflow-y-auto space-y-1.5 pr-1">
                   {allTreeItemIds
                     .filter((itemId) => {
-                      const priceInfo = itemPrices[itemId] || {};
+                      const priceInfo = purchaseItemPrices[itemId] || materialItemPrices[itemId] || itemPrices[itemId] || {};
                       const hasNq = priceInfo.nqPrice !== undefined && priceInfo.nqPrice !== null;
                       const hasHq = priceInfo.hqPrice !== undefined && priceInfo.hqPrice !== null;
                       return hasNq && hasHq;
                     })
                     .map((itemId) => {
-                      const priceInfo = itemPrices[itemId] || {};
+                      const priceInfo = purchaseItemPrices[itemId] || materialItemPrices[itemId] || itemPrices[itemId] || {};
                       const itemName = itemNames[itemId] || `物品 ${itemId}`;
                       const fallbackMode = priceInfo.isHQ ? 'hq' : 'nq';
                       const selectedMode = hqOverridesDraft[itemId] || fallbackMode;
@@ -2080,55 +2249,32 @@ export default function CraftingTree({
         </div>
         <div className="flex items-center gap-3">
           {/* Price type explanation and Daily Sale Velocity for root item */}
-          {!isLoadingPrices && tree && effectiveItemPrices[tree.itemId] && (() => {
-            const rootPriceInfo = effectiveItemPrices[tree.itemId];
-            const rootPriceType = rootPriceInfo?.priceType || (isDcQuery ? 'minListing' : 'average');
-            const isFallback = !isDcQuery && rootPriceType === 'minListing';
+          {!isLoadingPrices && tree && (purchaseItemPrices[tree.itemId] || materialItemPrices[tree.itemId]) && (() => {
+            const rootPriceInfo = purchaseItemPrices[tree.itemId] || materialItemPrices[tree.itemId];
             const hasPrice = rootPriceInfo.price !== null && rootPriceInfo.price !== undefined;
             const hasVelocityWorld = rootPriceInfo.velocityWorld !== undefined;
             const hasVelocityDc = rootPriceInfo.velocityDc !== undefined;
             const velocityWorldValue = rootPriceInfo.velocityWorld ?? 0;
             const velocityDcValue = rootPriceInfo.velocityDc ?? 0;
-            
-            // Check if no price at all (no average and no minListing fallback)
-            const noPriceAtAll = !isDcQuery && !hasPrice;
+            const scopeLabel = isDcQuery ? '全服' : '該服';
+            const describeMode = (mode) => (
+              mode === PRICE_MODE_AVERAGE
+                ? `4天內${scopeLabel}平均成交價格`
+                : `${scopeLabel}最低在售價格`
+            );
+            const priceModeMessage = priceModeOptions.purchase === priceModeOptions.materials
+              ? `價格為${describeMode(priceModeOptions.purchase)}`
+              : `直購：${describeMode(priceModeOptions.purchase)} / 材料：${describeMode(priceModeOptions.materials)}`;
             
             return (
               <div className="flex flex-col gap-1">
                 {/* Price type explanation - always show */}
-                {isDcQuery ? (
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-blue-900/30 border border-blue-500/20 text-xs text-blue-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="whitespace-nowrap">價格為全服最低在售價格</span>
-                  </div>
-                ) : noPriceAtAll ? (
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-red-900/50 border border-red-500/40 text-xs text-red-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <span className="whitespace-nowrap">該服無平均價格且無最低價格，無法顯示價格</span>
-                  </div>
-                ) : isFallback ? (
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-orange-900/50 border border-orange-500/40 text-xs text-orange-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-orange-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <span className="whitespace-nowrap">
-                      {hasVelocityWorld || hasVelocityDc 
-                        ? '部分物品4天內無銷售記錄，無平均值改用該服最低價格' 
-                        : '最近四天沒有成功銷售記錄，無平均值和日均銷售，部分價格會使用該服最低價格'}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-blue-900/30 border border-blue-500/20 text-xs text-blue-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="whitespace-nowrap">價格為4天內該服賣出平均價格</span>
-                  </div>
-                )}
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-md border text-xs ${hasPrice ? 'bg-blue-900/30 border-blue-500/20 text-blue-300' : 'bg-orange-900/45 border-orange-500/35 text-orange-300'}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 flex-shrink-0 ${hasPrice ? 'text-blue-400' : 'text-orange-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={hasPrice ? 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' : 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'} />
+                  </svg>
+                  <span className="whitespace-nowrap">{priceModeMessage}</span>
+                </div>
                 
                 {/* Daily Sale Velocity - show for server queries (always show single server, even if 0) */}
                 {/* For DC queries, only show DC velocity */}
@@ -2198,7 +2344,8 @@ export default function CraftingTree({
           <TreeNodeVertical
             node={tree}
             itemNames={itemNames}
-            itemPrices={effectiveItemPrices}
+            itemPrices={purchaseItemPrices}
+            materialItemPrices={materialItemPrices}
             queriedItemIds={queriedItemIds}
             onItemClick={handleItemClick}
             onOpenObtainMethods={handleOpenObtainMethods}
@@ -2301,12 +2448,12 @@ export default function CraftingTree({
         )}
         <div className="flex items-center gap-1.5">
           <span className="text-green-400 font-semibold">價格</span>
-          <span>= NQ{isDcQuery ? '最低價' : '平均價'}</span>
+          <span>= NQ{priceModeOptions.purchase === PRICE_MODE_AVERAGE ? '平均價' : '最低價'}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="px-1 py-0.5 text-[10px] font-bold text-ffxiv-gold border border-ffxiv-gold/50 rounded bg-ffxiv-gold/10 cursor-default">HQ</span>
           <span className="text-yellow-400 font-semibold">價格</span>
-          <span>= HQ{isDcQuery ? '最低價' : '平均價'}</span>
+          <span>= HQ{priceModeOptions.purchase === PRICE_MODE_AVERAGE ? '平均價' : '最低價'}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

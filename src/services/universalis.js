@@ -3,6 +3,7 @@ import { requestManager } from '../utils/requestManager';
 import { getMarketItems, getMarketItemsByIds } from './gameData';
 
 const UNIVERSALIS_BASE_URL = 'https://universalis.app/api/v2';
+const MAX_HISTORY_ENTRIES_TO_RETURN = 99999;
 
 // Cache for marketable items
 let marketableItemsSet = null;
@@ -277,6 +278,62 @@ export async function getMarketData(server, itemId, options = {}) {
 }
 
 /**
+ * Get sale history for an item over a selected time window.
+ * Universalis accepts entriesWithin in seconds and entriesToReturn up to 99999.
+ * @param {string|number} worldDcRegion - World ID/name or data center name
+ * @param {number} itemId - Item ID
+ * @param {Object} options - { days, hq, signal, entriesToReturn }
+ * @returns {Promise<Object|null>} - Sale history response
+ */
+export async function getMarketSaleHistory(worldDcRegion, itemId, options = {}) {
+  if (options.signal && options.signal.aborted) {
+    return null;
+  }
+
+  const days = Number(options.days) > 0 ? Number(options.days) : 7;
+  const entriesToReturn = Math.min(
+    Math.max(Number(options.entriesToReturn) || MAX_HISTORY_ENTRIES_TO_RETURN, 1),
+    MAX_HISTORY_ENTRIES_TO_RETURN
+  );
+
+  try {
+    const config = {
+      params: {
+        entriesWithin: Math.round(days * 24 * 60 * 60),
+        entriesToReturn,
+      },
+    };
+
+    if (options.signal) {
+      config.signal = options.signal;
+    }
+
+    const encodedRegion = encodeURIComponent(worldDcRegion);
+    const response = await axios.get(`${UNIVERSALIS_BASE_URL}/history/${encodedRegion}/${itemId}`, config);
+
+    if (options.hq) {
+      return {
+        ...response.data,
+        entries: (response.data?.entries || []).filter(entry => entry.hq),
+      };
+    }
+
+    return response.data;
+  } catch (error) {
+    if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || (options.signal && options.signal.aborted)) {
+      return null;
+    }
+
+    if (error.response?.status === 404) {
+      return null;
+    }
+
+    console.error(`Error fetching sale history for ${worldDcRegion}:`, error);
+    throw error;
+  }
+}
+
+/**
  * Get market data for an item from a specific world/server (legacy function)
  */
 export async function getMarketDataByWorld(itemId, worldName) {
@@ -403,6 +460,39 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
         let hqPrice = null;
         let nqWorldName = null;
         let hqWorldName = null;
+        let minListingMode = null;
+        let averageMode = null;
+
+        const buildModePrice = ({
+          nqPrice: modeNqPrice,
+          hqPrice: modeHqPrice,
+          priceType: modePriceType,
+          nqWorldName: modeNqWorldName = null,
+          hqWorldName: modeHqWorldName = null,
+        }) => {
+          const nqValue = modeNqPrice !== null && modeNqPrice !== undefined ? Math.round(modeNqPrice) : null;
+          const hqValue = modeHqPrice !== null && modeHqPrice !== undefined ? Math.round(modeHqPrice) : null;
+          const hasNq = nqValue !== null;
+          const hasHq = hqValue !== null;
+
+          if (!hasNq && !hasHq) {
+            return null;
+          }
+
+          const useHq = hasHq && (!hasNq || hqValue <= nqValue);
+          const selectedWorldName = useHq ? modeHqWorldName : modeNqWorldName;
+
+          return {
+            price: useHq ? hqValue : nqValue,
+            isHQ: useHq,
+            priceType: modePriceType,
+            nqPrice: nqValue,
+            hqPrice: hqValue,
+            nqWorldName: modeNqWorldName,
+            hqWorldName: modeHqWorldName,
+            worldName: selectedWorldName,
+          };
+        };
 
         if (isSpecificWorld) {
           // When querying specific world, use AVERAGE SALE PRICE (world level)
@@ -411,6 +501,17 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
           const hqAvgPrice = item.hq?.averageSalePrice?.world?.price;
           const nqMinListing = item.nq?.minListing?.world;
           const hqMinListing = item.hq?.minListing?.world;
+
+          averageMode = buildModePrice({
+            nqPrice: nqAvgPrice,
+            hqPrice: hqAvgPrice,
+            priceType: 'average',
+          });
+          minListingMode = buildModePrice({
+            nqPrice: nqMinListing?.price,
+            hqPrice: hqMinListing?.price,
+            priceType: 'minListing',
+          });
           
           // Try average price first
           if (nqAvgPrice && hqAvgPrice) {
@@ -465,8 +566,23 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
           // When querying DC, use MIN LISTING PRICE with server name
           const nqMinListing = item.nq?.minListing?.dc;
           const hqMinListing = item.hq?.minListing?.dc;
+          const nqAvgPrice = item.nq?.averageSalePrice?.dc?.price;
+          const hqAvgPrice = item.hq?.averageSalePrice?.dc?.price;
           
           priceType = 'minListing';
+
+          averageMode = buildModePrice({
+            nqPrice: nqAvgPrice,
+            hqPrice: hqAvgPrice,
+            priceType: 'average',
+          });
+          minListingMode = buildModePrice({
+            nqPrice: nqMinListing?.price,
+            hqPrice: hqMinListing?.price,
+            priceType: 'minListing',
+            nqWorldName: nqMinListing?.worldId ? (worlds[nqMinListing.worldId] || `伺服器 ${nqMinListing.worldId}`) : null,
+            hqWorldName: hqMinListing?.worldId ? (worlds[hqMinListing.worldId] || `伺服器 ${hqMinListing.worldId}`) : null,
+          });
 
           // Compare NQ and HQ min listing prices, pick the cheaper one
           if (nqMinListing?.price && hqMinListing?.price) {
@@ -545,6 +661,14 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
           priceType: priceType,
         };
 
+        result.priceModes = {};
+        if (minListingMode) {
+          result.priceModes.minListing = minListingMode;
+        }
+        if (averageMode) {
+          result.priceModes.average = averageMode;
+        }
+
         if (nqPrice !== null) {
           result.nqPrice = nqPrice;
         }
@@ -577,7 +701,7 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
         }
 
         // Only add to results if we have price OR velocity data
-        if (bestPrice !== null || velocityWorld !== null || velocityDc !== null) {
+        if (bestPrice !== null || velocityWorld !== null || velocityDc !== null || minListingMode || averageMode) {
           results[itemId] = result;
         }
       });

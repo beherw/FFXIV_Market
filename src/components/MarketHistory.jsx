@@ -26,44 +26,52 @@ export default function MarketHistory({ history }) {
           </tr>
         </thead>
         <tbody>
-          {sortedHistory.map((entry, index) => (
-            <tr
-              key={index}
-              className="border-b border-purple-500/20 hover:bg-purple-900/30 transition-colors"
-            >
-              <td className="px-2 sm:px-3 py-2 text-white text-xs break-words" style={{ minWidth: '80px', maxWidth: '150px' }}>
-                <div className="flex items-start gap-1 flex-wrap">
-                  <span className="block min-w-0" style={{ wordBreak: 'break-word', lineHeight: '1.4' }} title={entry.itemName}>
-                    {entry.itemName}
-                  </span>
-                  {entry.hq && <span className="px-1 py-0.5 bg-ffxiv-gold/20 text-ffxiv-gold rounded text-xs whitespace-nowrap flex-shrink-0">HQ</span>}
-                </div>
-              </td>
-              <td className="px-2 sm:px-3 py-2 text-right text-green-400 font-semibold text-xs whitespace-nowrap">
-                {entry.pricePerUnit.toLocaleString()}
-              </td>
-              <td className="px-2 sm:px-3 py-2 text-right text-gray-300 text-xs whitespace-nowrap">{entry.quantity}</td>
-              <td className="px-2 sm:px-3 py-2 text-right text-ffxiv-gold font-semibold text-xs whitespace-nowrap">
-                {entry.total.toLocaleString()}
-              </td>
-              <td className="px-2 sm:px-3 py-2 text-gray-400 text-xs hidden sm:table-cell truncate max-w-[100px]" title={entry.buyerName || '-'}>
-                {entry.buyerName || '-'}
-              </td>
-              <td className="px-2 sm:px-3 py-2 text-gray-400 text-xs truncate max-w-[120px]" title={entry.worldName}>
-                {entry.worldName}
-              </td>
-              <td className="px-2 sm:px-3 py-2 text-gray-400 text-xs whitespace-nowrap">
-                {(() => {
-                  const date = new Date(entry.timestamp * 1000);
-                  const month = String(date.getMonth() + 1).padStart(2, '0');
-                  const day = String(date.getDate()).padStart(2, '0');
-                  const hours = String(date.getHours()).padStart(2, '0');
-                  const minutes = String(date.getMinutes()).padStart(2, '0');
-                  return `${month}/${day} ${hours}:${minutes}`;
-                })()}
-              </td>
-            </tr>
-          ))}
+          {sortedHistory.map((entry, index) => {
+            const pricePerUnit = Number.isFinite(entry.pricePerUnit) ? entry.pricePerUnit : null;
+            const quantity = Number.isFinite(entry.quantity) ? entry.quantity : null;
+            const total = Number.isFinite(entry.total)
+              ? entry.total
+              : (pricePerUnit !== null && quantity !== null ? pricePerUnit * quantity : null);
+
+            return (
+              <tr
+                key={index}
+                className="border-b border-purple-500/20 hover:bg-purple-900/30 transition-colors"
+              >
+                <td className="px-2 sm:px-3 py-2 text-white text-xs break-words" style={{ minWidth: '80px', maxWidth: '150px' }}>
+                  <div className="flex items-start gap-1 flex-wrap">
+                    <span className="block min-w-0" style={{ wordBreak: 'break-word', lineHeight: '1.4' }} title={entry.itemName}>
+                      {entry.itemName}
+                    </span>
+                    {entry.hq && <span className="px-1 py-0.5 bg-ffxiv-gold/20 text-ffxiv-gold rounded text-xs whitespace-nowrap flex-shrink-0">HQ</span>}
+                  </div>
+                </td>
+                <td className="px-2 sm:px-3 py-2 text-right text-green-400 font-semibold text-xs whitespace-nowrap">
+                  {pricePerUnit !== null ? pricePerUnit.toLocaleString() : '-'}
+                </td>
+                <td className="px-2 sm:px-3 py-2 text-right text-gray-300 text-xs whitespace-nowrap">{quantity !== null ? quantity : '-'}</td>
+                <td className="px-2 sm:px-3 py-2 text-right text-ffxiv-gold font-semibold text-xs whitespace-nowrap">
+                  {total !== null ? total.toLocaleString() : '-'}
+                </td>
+                <td className="px-2 sm:px-3 py-2 text-gray-400 text-xs hidden sm:table-cell truncate max-w-[100px]" title={entry.buyerName || '-'}>
+                  {entry.buyerName || '-'}
+                </td>
+                <td className="px-2 sm:px-3 py-2 text-gray-400 text-xs truncate max-w-[120px]" title={entry.worldName}>
+                  {entry.worldName}
+                </td>
+                <td className="px-2 sm:px-3 py-2 text-gray-400 text-xs whitespace-nowrap">
+                  {(() => {
+                    const date = new Date(entry.timestamp * 1000);
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    return `${month}/${day} ${hours}:${minutes}`;
+                  })()}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
