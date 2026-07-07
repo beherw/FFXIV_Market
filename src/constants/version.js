@@ -8,7 +8,7 @@
  */
 
 // Set to deploy date/time (UTC) when you release
-const DEPLOY_DATE = new Date(Date.UTC(2026, 1, 12, 0, 0, 0, 0)); // 2026-02-12 00:00 UTC
+const DEPLOY_DATE = new Date(Date.UTC(2026, 6, 7, 0, 0, 0, 0)); // 2026-07-07 00:00 UTC
 
 const y = DEPLOY_DATE.getUTCFullYear();
 const m = String(DEPLOY_DATE.getUTCMonth() + 1).padStart(2, '0');
