@@ -59,23 +59,45 @@ function CopyButton({ text, onCopy }) {
 /**
  * Single item card component
  */
-function ItemCard({ 
-  node, 
-  itemName, 
-  priceInfo, 
+function ItemCard({
+  node,
+  itemName,
+  priceInfo,
   onItemClick,
   isHighlighted = false,
   highlightMethod = null,
   isDcQuery = false,
+  isParent = false,
+  onQuantityChange,
 }) {
+  const canChangeQuantity = isParent && typeof onQuantityChange === 'function';
+  const stepAmount = (node.yields ?? 1) >= 1 ? (node.yields ?? 1) : 1;
+  const minQty = stepAmount;
+  const maxQty = stepAmount > 1 ? (Math.floor(999 / stepAmount) * stepAmount) : 999;
+  const clampToStep = (n) => {
+    const v = Math.floor(Number(n) || 0);
+    if (v <= minQty) return minQty;
+    if (v >= maxQty) return maxQty;
+    if (stepAmount <= 1) return Math.max(1, Math.min(999, v));
+    return Math.round(v / stepAmount) * stepAmount;
+  };
+  const handleQtyDelta = (delta) => {
+    if (!onQuantityChange) return;
+    const current = node.amount || minQty;
+    onQuantityChange(clampToStep(current + delta * stepAmount));
+  };
+  const currentQty = node.amount || minQty;
+
   return (
-    <div 
+    <div
       className={`flex flex-col items-center p-2 rounded-lg cursor-pointer transition-all duration-200 ${
-        isHighlighted
-          ? highlightMethod === 'craft'
-            ? 'bg-gradient-to-br from-green-900/40 to-emerald-900/30 border-2 border-green-500/60 hover:border-green-400 min-w-[100px] shadow-[0_0_10px_rgba(34,197,94,0.2)]'
-            : 'bg-gradient-to-br from-blue-900/40 to-cyan-900/30 border-2 border-blue-500/60 hover:border-blue-400 min-w-[100px] shadow-[0_0_10px_rgba(59,130,246,0.2)]'
-          : 'bg-slate-800/60 border border-purple-500/30 hover:border-purple-400/60 hover:bg-slate-700/60 min-w-[100px]'
+        isParent
+          ? 'bg-gradient-to-br from-ffxiv-gold/20 to-yellow-500/10 border-2 border-ffxiv-gold/50 hover:border-ffxiv-gold min-w-[120px]'
+          : isHighlighted
+            ? highlightMethod === 'craft'
+              ? 'bg-gradient-to-br from-green-900/40 to-emerald-900/30 border-2 border-green-500/60 hover:border-green-400 min-w-[100px] shadow-[0_0_10px_rgba(34,197,94,0.2)]'
+              : 'bg-gradient-to-br from-blue-900/40 to-cyan-900/30 border-2 border-blue-500/60 hover:border-blue-400 min-w-[100px] shadow-[0_0_10px_rgba(59,130,246,0.2)]'
+            : 'bg-slate-800/60 border border-purple-500/30 hover:border-purple-400/60 hover:bg-slate-700/60 min-w-[100px]'
       }`}
       onClick={() => onItemClick(node.itemId)}
       title={`查看 ${itemName}`}
@@ -85,24 +107,65 @@ function ItemCard({
         <ItemImage
           itemId={node.itemId}
           alt={itemName}
-          className="w-9 h-9 object-contain rounded border border-purple-500/30"
+          className={`${isParent ? 'w-12 h-12' : 'w-9 h-9'} object-contain rounded border border-purple-500/30`}
         />
         {/* Quantity badge */}
-        {node.amount > 1 && (
+        {!canChangeQuantity && node.amount > 1 && (
           <div className="absolute -bottom-1 -right-1 bg-purple-900/90 text-ffxiv-gold text-xs font-bold px-1 py-0.5 rounded-full border border-purple-500/50 min-w-[18px] text-center leading-none">
             {node.amount}
           </div>
         )}
       </div>
-      
+
       {/* Item name with copy button */}
-      <div className="mt-1.5 flex items-center gap-0.5 max-w-[100px]">
-        <p className="text-xs text-gray-300 truncate flex-1" title={itemName}>
+      <div className={`mt-1.5 flex items-center gap-0.5 ${isParent ? 'max-w-[120px]' : 'max-w-[100px]'}`}>
+        <p className={`text-xs truncate flex-1 ${isParent ? 'font-semibold text-ffxiv-gold' : 'text-gray-300'}`} title={itemName}>
           {itemName}
         </p>
         <CopyButton text={itemName} />
       </div>
-      
+
+      {/* Quantity controls for parent items */}
+      {canChangeQuantity && (
+        <div
+          className="mt-1.5 flex items-center rounded border border-purple-500/30 bg-slate-800/50 overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            aria-label="減少數量"
+            className="w-6 h-7 flex items-center justify-center text-gray-400 hover:text-ffxiv-gold hover:bg-slate-700/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            onClick={(e) => { e.stopPropagation(); handleQtyDelta(-1); }}
+            disabled={currentQty <= minQty}
+          >
+            −
+          </button>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={currentQty}
+            onChange={(e) => {
+              const raw = e.target.value.replace(/\D/g, '');
+              if (raw === '') { onQuantityChange(minQty); return; }
+              const n = parseInt(raw, 10);
+              if (!Number.isNaN(n)) onQuantityChange(clampToStep(n));
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-9 h-7 text-center text-xs font-medium text-gray-200 bg-transparent border-0 border-x border-purple-500/20 focus:outline-none focus:ring-0"
+          />
+          <button
+            type="button"
+            aria-label="增加數量"
+            className="w-6 h-7 flex items-center justify-center text-gray-400 hover:text-ffxiv-gold hover:bg-slate-700/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            onClick={(e) => { e.stopPropagation(); handleQtyDelta(1); }}
+            disabled={currentQty >= maxQty}
+          >
+            +
+          </button>
+        </div>
+      )}
+
       {/* Price info */}
       <div className={`mt-1 text-center ${priceInfo?.worldName ? 'h-[32px]' : 'h-[20px]'} flex flex-col justify-center`}>
         {priceInfo && priceInfo.price !== null && priceInfo.price !== undefined && priceInfo.price > 0 ? (
@@ -137,41 +200,55 @@ function ItemCard({
 }
 
 /**
- * Recursively merge children at each level
- * Each level independently merges duplicate materials
- * Tracks both display amount (merged) and recipe amount (for price calculation)
+ * Recursively scale a tree node's amount and cascade through sub-children,
+ * recalculating craftsNeeded at each level to handle yield rounding correctly.
+ */
+function scaleTree(node, scaleFactor) {
+  if (scaleFactor === 1) return node;
+
+  const newAmount = Math.round(node.amount * scaleFactor);
+
+  if (!node.children || node.children.length === 0) {
+    return { ...node, amount: newAmount };
+  }
+
+  const yields = node.yields || 1;
+  const oldCraftsNeeded = node.craftsNeeded || 1;
+  const newCraftsNeeded = Math.ceil(newAmount / yields);
+  const childScaleFactor = oldCraftsNeeded > 0 ? (newCraftsNeeded / oldCraftsNeeded) : 1;
+
+  return {
+    ...node,
+    amount: newAmount,
+    craftsNeeded: newCraftsNeeded,
+    children: node.children.map(child => scaleTree(child, childScaleFactor)),
+  };
+}
+
+/**
+ * Recursively merge children at each level.
+ * For duplicate craftable materials, keeps the first occurrence's sub-children
+ * and rescales them based on the merged total amount (not summing sub-trees).
+ * This ensures yield rounding is applied to the TOTAL merged amount.
  */
 function mergeChildrenAtLevel(children) {
   if (!children || children.length === 0) return [];
-  
-  // Map to track materials at this level: itemId -> merged node
+
   const mergedMap = new Map();
-  
+
   for (const child of children) {
     const childId = child.itemId;
-    
+
     if (mergedMap.has(childId)) {
-      // Same material exists at this level, add display quantities
       const existing = mergedMap.get(childId);
       existing.amount += child.amount;
       existing.occurrences = (existing.occurrences || 1) + 1;
-      
-      // Recursively merge children
-      if (child.children && child.children.length > 0) {
-        if (!existing.children) {
-          existing.children = [];
-        }
-        // Collect all children for recursive merge
-        const allSubChildren = [...existing.children, ...child.children];
-        existing.children = allSubChildren;
-      }
     } else {
-      // New material at this level, create copy
       mergedMap.set(childId, {
         itemId: child.itemId,
         amount: child.amount,
-        recipeAmount: child.amount, // Store original recipe amount for price calculation
-        occurrences: 1, // Track how many times this material appears
+        recipeAmount: child.amount,
+        occurrences: 1,
         children: child.children ? [...child.children] : [],
         recipeId: child.recipeId,
         job: child.job,
@@ -182,64 +259,73 @@ function mergeChildrenAtLevel(children) {
       });
     }
   }
-  
-  // Process each merged node's children recursively
+
   const result = Array.from(mergedMap.values());
+
   result.forEach(node => {
     if (node.children && node.children.length > 0) {
+      const yields = node.yields || 1;
+      const newCraftsNeeded = Math.ceil(node.amount / yields);
+      const oldCraftsNeeded = node.craftsNeeded || 1;
+
+      if (newCraftsNeeded !== oldCraftsNeeded && oldCraftsNeeded > 0) {
+        const scaleFactor = newCraftsNeeded / oldCraftsNeeded;
+        node.children = node.children.map(subChild => scaleTree(subChild, scaleFactor));
+      }
+
+      node.craftsNeeded = newCraftsNeeded;
       node.children = mergeChildrenAtLevel(node.children);
     }
   });
-  
+
   return result;
 }
 
 /**
- * Merge all ingredients from multiple trees
- * Creates a combined tree with all parent items at the top level
- * Each level of children independently merges duplicate materials
+ * Merge all ingredients from multiple trees with per-item quantity support.
+ * Each parent's children are scaled by its quantity before merging,
+ * so shared materials are summed correctly (not multiplied).
  */
-function mergeTrees(itemList) {
+function mergeTrees(itemList, quantities = {}) {
   if (!itemList || itemList.length === 0) return null;
-  
-  // Collect all first-level children from all parent items
+
   const allChildren = [];
-  
+
   itemList.forEach(item => {
     if (!item.tree || !item.tree.children || item.tree.children.length === 0) return;
-    
-    // Deep copy children to avoid modifying original tree
+
+    const itemId = item.itemId || item.id;
+    const qty = quantities[itemId] || (item.tree.yields || 1);
+    const yields = item.tree.yields || 1;
+    const parentScale = Math.ceil(qty / yields);
+
     for (const child of item.tree.children) {
-      allChildren.push(JSON.parse(JSON.stringify(child)));
+      const cloned = JSON.parse(JSON.stringify(child));
+      allChildren.push(parentScale > 1 ? scaleTree(cloned, parentScale) : cloned);
     }
   });
-  
-  // Recursively merge children at each level
+
   const mergedChildren = mergeChildrenAtLevel(allChildren);
-  
-  // Create a virtual root node containing all parent items
+
   const parentNodes = itemList.map(item => {
     const itemId = item.itemId || item.id;
+    const qty = quantities[itemId] || (item.tree?.yields || 1);
     return {
       itemId: itemId,
-      amount: 1,
+      amount: qty,
+      yields: item.tree?.yields || 1,
       children: [],
       isParent: true,
     };
   });
-  
-  // Create the combined tree structure
-  const combinedTree = {
+
+  return {
     itemId: 'multi-root',
     amount: 1,
     children: mergedChildren,
-    parentItems: parentNodes, // Special field for parent items
+    parentItems: parentNodes,
     isCombinedRoot: true,
   };
-  
-  console.log('=== MERGED TREE ===', JSON.stringify(combinedTree, null, 2));
-  
-  return combinedTree;
 }
 
 /**
@@ -433,12 +519,11 @@ function areAllNodesQueried(node, queriedItemIds) {
  * Calculate total cost for each parent item separately, then sum
  * This ensures accurate cost calculation based on original recipes
  */
-function calculateMultiItemPriceComparison(combinedNode, itemPrices, queriedItemIds, originalItemList) {
+function calculateMultiItemPriceComparison(combinedNode, itemPrices, queriedItemIds, originalItemList, quantities = {}) {
   if (!combinedNode) return null;
 
   const parentItems = combinedNode.parentItems || [];
 
-  // Calculate total price of all finished products (buying them)
   let totalFinishedPrice = 0;
   let hasFinishedPrice = false;
   let allFinishedQueried = true;
@@ -449,38 +534,31 @@ function calculateMultiItemPriceComparison(combinedNode, itemPrices, queriedItem
       allFinishedQueried = false;
       continue;
     }
-    
+
     const priceInfo = itemPrices[parent.itemId];
     if (priceInfo && priceInfo.price !== null && priceInfo.price !== undefined) {
-      const itemAmount = parent.amount || 1;
-      totalFinishedPrice += priceInfo.price * itemAmount;
+      const qty = quantities[parent.itemId] || parent.amount || 1;
+      totalFinishedPrice += priceInfo.price * qty;
       hasFinishedPrice = true;
-      finishedCount += itemAmount;
+      finishedCount += qty;
     }
   }
 
-  // Calculate total cost by processing ORIGINAL trees separately
-  // This avoids the problem of merged trees losing recipe ratio information
   let totalMaterialsCost = 0;
   let hasMaterialsPrice = false;
   let allMaterialsQueried = true;
   let materialsMissingPrice = false;
 
-  console.log(`[calculateMultiItemPriceComparison] Processing ${originalItemList.length} original items`);
-
   for (const item of originalItemList) {
     if (!item.tree || !item.tree.children || item.tree.children.length === 0) {
-      console.log(`[calculateMultiItemPriceComparison] Item ${item.id} has no tree, skipping`);
       continue;
     }
 
     const itemId = item.itemId || item.id;
-    console.log(`[calculateMultiItemPriceComparison] Processing item ${itemId}`);
+    const qty = quantities[itemId] || (item.tree?.yields || 1);
+    const yields = item.tree?.yields || 1;
 
-    // Calculate cost for this item's tree
     const treeResult = getCheapestCost(item.tree, itemPrices, queriedItemIds);
-    
-    console.log(`[calculateMultiItemPriceComparison] Item ${itemId} tree result:`, treeResult);
 
     if (treeResult.cost === 'N/A') {
       materialsMissingPrice = true;
@@ -493,13 +571,15 @@ function calculateMultiItemPriceComparison(combinedNode, itemPrices, queriedItem
     }
 
     if (typeof treeResult.cost === 'number') {
-      totalMaterialsCost += treeResult.cost;
+      if (treeResult.method === 'craft') {
+        const craftsNeeded = Math.ceil(qty / yields);
+        totalMaterialsCost += treeResult.cost * yields * craftsNeeded;
+      } else {
+        totalMaterialsCost += treeResult.cost * qty;
+      }
       hasMaterialsPrice = true;
-      console.log(`[calculateMultiItemPriceComparison] Item ${itemId}: added cost ${treeResult.cost}, total now ${totalMaterialsCost}`);
     }
   }
-
-  console.log(`[calculateMultiItemPriceComparison] FINAL: totalMaterialsCost=${totalMaterialsCost}, totalFinishedPrice=${totalFinishedPrice}`);
 
   // Determine comparison result
   const materialsIsNA = !hasMaterialsPrice || materialsMissingPrice;
@@ -664,6 +744,8 @@ function CombinedTreeNode({
   onItemClick,
   isDcQuery = false,
   originalItemList = [],
+  rootQuantities = {},
+  onQuantityChange,
 }) {
   const childrenRef = useRef(null);
   const [lineStyle, setLineStyle] = useState({ left: 0, width: 0 });
@@ -671,10 +753,9 @@ function CombinedTreeNode({
   const parentItems = combinedNode.parentItems || [];
   const mergedChildren = combinedNode.children || [];
   
-  // Calculate price comparison
   const priceComparison = useMemo(() => {
-    return calculateMultiItemPriceComparison(combinedNode, itemPrices, queriedItemIds, originalItemList);
-  }, [combinedNode, itemPrices, queriedItemIds, originalItemList]);
+    return calculateMultiItemPriceComparison(combinedNode, itemPrices, queriedItemIds, originalItemList, rootQuantities);
+  }, [combinedNode, itemPrices, queriedItemIds, originalItemList, rootQuantities]);
   
   // Check if all items are queried for price comparison
   const allQueried = useMemo(() => {
@@ -733,7 +814,7 @@ function CombinedTreeNode({
         {parentItems.map((parentNode, index) => {
           const itemName = itemNames[parentNode.itemId] || `物品 ${parentNode.itemId}`;
           const priceInfo = itemPrices[parentNode.itemId];
-          
+
           return (
             <ItemCard
               key={`parent-${parentNode.itemId}-${index}`}
@@ -743,6 +824,8 @@ function CombinedTreeNode({
               onItemClick={onItemClick}
               isHighlighted={false}
               isDcQuery={isDcQuery}
+              isParent={true}
+              onQuantityChange={onQuantityChange ? (newQty) => onQuantityChange(parentNode.itemId, newQty) : undefined}
             />
           );
         })}
@@ -1086,6 +1169,23 @@ export default function MultiItemCombinedTree({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartScrollLeft, setDragStartScrollLeft] = useState(0);
+  const [rootQuantities, setRootQuantities] = useState({});
+
+  useEffect(() => {
+    if (!itemList || itemList.length === 0) return;
+    setRootQuantities(prev => {
+      const next = {};
+      itemList.forEach(item => {
+        const itemId = item.itemId || item.id;
+        next[itemId] = prev[itemId] || (item.tree?.yields || 1);
+      });
+      return next;
+    });
+  }, [itemList]);
+
+  const handleQuantityChange = useCallback((itemId, newQty) => {
+    setRootQuantities(prev => ({ ...prev, [itemId]: newQty }));
+  }, []);
 
   const isDcQuery = useMemo(() => {
     if (!selectedServerOption) return false;
@@ -1268,11 +1368,10 @@ export default function MultiItemCombinedTree({
     };
   }, [itemList, itemNames, itemPrices]);
 
-  // Build combined tree
   const combinedTree = useMemo(() => {
     if (!itemList || itemList.length === 0) return null;
-    return mergeTrees(itemList);
-  }, [itemList]);
+    return mergeTrees(itemList, rootQuantities);
+  }, [itemList, rootQuantities]);
 
   // Handle drag to scroll
   const handleMouseDown = useCallback((e) => {
@@ -1280,9 +1379,10 @@ export default function MultiItemCombinedTree({
     
     const target = e.target;
     if (
-      target.closest('button, a, [data-item-id], img, svg, path') ||
+      target.closest('button, a, input, [data-item-id], img, svg, path') ||
       target.tagName === 'BUTTON' ||
       target.tagName === 'A' ||
+      target.tagName === 'INPUT' ||
       target.tagName === 'IMG' ||
       target.tagName === 'SVG' ||
       target.tagName === 'PATH' ||
@@ -1401,6 +1501,8 @@ export default function MultiItemCombinedTree({
                   onItemClick={handleItemClick}
                   isDcQuery={isDcQuery}
                   originalItemList={itemList}
+                  rootQuantities={rootQuantities}
+                  onQuantityChange={handleQuantityChange}
                 />
               </div>
             </div>
