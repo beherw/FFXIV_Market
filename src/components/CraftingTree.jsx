@@ -6,6 +6,7 @@ import { getInternalUrl } from '../utils/internalUrl.js';
 import { getAggregatedMarketData } from '../services/universalis';
 import { getTwItemsByIds } from '../services/gameData';
 import { generateItemUrl } from '../utils/urlSlug';
+import { collectLeafMaterials, downloadMaterialsCsv, formatMaterialsCsv } from '../utils/craftingMaterialsExport';
 
 // In-memory cache for tree names + prices (avoids API spam when user toggles section)
 // TTL 5 min so data refreshes on page load; same-session expand/collapse reuses cache
@@ -1539,6 +1540,7 @@ export default function CraftingTree({
   const [isObtainModalOpen, setIsObtainModalOpen] = useState(false);
   const [obtainModalItemId, setObtainModalItemId] = useState(null);
   const [isObtainModalLoading, setIsObtainModalLoading] = useState(false);
+  const [exportStatus, setExportStatus] = useState(null);
   // Root item quantity (default from recipe yields, e.g. 3, or amount 1)
   const [rootQuantity, setRootQuantity] = useState(1);
 
@@ -1925,6 +1927,19 @@ export default function CraftingTree({
     setHqOverridesDraft(nextDraft);
   };
 
+  const handleExportMaterials = async () => {
+    const rootScale = Math.ceil(rootQuantity / (tree.yields || 1));
+    const materials = collectLeafMaterials(tree, rootScale);
+    const csv = formatMaterialsCsv({
+      materials,
+      itemNames,
+      outputs: [{ itemId: tree.itemId, amount: rootQuantity }],
+    });
+    downloadMaterialsCsv(csv, 'ffxiv-製作材料清單.csv');
+    setExportStatus('已下載 CSV');
+    window.setTimeout(() => setExportStatus(null), 2000);
+  };
+
   return (
     <div className="relative bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-4">
       {/* Header */}
@@ -1945,6 +1960,30 @@ export default function CraftingTree({
               <span className="text-purple-300">{serverDisplayName}</span>
             </div>
           )}
+          <button
+            type="button"
+            onClick={handleExportMaterials}
+            disabled={isLoadingNames}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition ${
+              isLoadingNames
+                ? 'cursor-not-allowed border-slate-700/50 bg-slate-800/40 text-slate-500 opacity-70'
+                : exportStatus
+                  ? 'border-green-400/50 bg-green-500/10 text-green-300'
+                  : 'border-slate-600/40 bg-slate-800/60 text-gray-400 hover:border-ffxiv-gold/40 hover:text-ffxiv-gold'
+            }`}
+            title={isLoadingNames ? '請等待物品名稱載入完成' : '匯出 CSV 材料清單，可在試算表中逐項複製'}
+          >
+            {exportStatus ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14a2 2 0 002-2v-2M3 17v2a2 2 0 002 2" />
+              </svg>
+            )}
+            <span>{exportStatus || '匯出材料'}</span>
+          </button>
           {/* Crystal toggle switch */}
           {onExcludeCrystalsChange && (
             <div 

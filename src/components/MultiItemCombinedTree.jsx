@@ -6,6 +6,7 @@ import { getInternalUrl } from '../utils/internalUrl.js';
 import { getAggregatedMarketData } from '../services/universalis';
 import { getTwItemsByIds } from '../services/gameData';
 import { generateItemUrl } from '../utils/urlSlug';
+import { collectAllTreeMaterials, downloadMaterialsCsv, formatMaterialsCsv } from '../utils/craftingMaterialsExport';
 
 /**
  * Format number with rounding to integer and locale string
@@ -329,11 +330,15 @@ function mergeTrees(itemList, quantities = {}) {
 }
 
 /**
- * Recursively calculate the cheapest cost to obtain an item
+ * Recursively calculate the cheapest TOTAL cost to obtain the amount stored on
+ * a tree node. Using total costs is important for merged trees because recipe
+ * yields and craft rounding have already been applied to every node's amount.
  */
 function getCheapestCost(node, itemPrices, queriedItemIds) {
   const priceInfo = itemPrices[node.itemId];
   const marketPrice = priceInfo?.price ?? null;
+  const amount = Number(node.amount) || 0;
+  const marketTotal = marketPrice === null ? null : marketPrice * amount;
   const hasChildren = node.children && node.children.length > 0;
   const isQueried = queriedItemIds.has(node.itemId);
   
@@ -341,7 +346,7 @@ function getCheapestCost(node, itemPrices, queriedItemIds) {
     if (isQueried && marketPrice === null) {
       return { cost: 'N/A', method: 'buy', breakdown: null };
     }
-    return { cost: marketPrice, method: 'buy', breakdown: null };
+    return { cost: marketTotal, method: 'buy', breakdown: null };
   }
   
   let allChildrenQueried = true;
@@ -356,7 +361,7 @@ function getCheapestCost(node, itemPrices, queriedItemIds) {
     if (isQueried && marketPrice === null) {
       return { cost: 'N/A', method: 'buy', breakdown: null };
     }
-    return { cost: marketPrice, method: 'buy', breakdown: null };
+    return { cost: marketTotal, method: 'buy', breakdown: null };
   }
   
   let craftingCost = 0;
@@ -371,12 +376,12 @@ function getCheapestCost(node, itemPrices, queriedItemIds) {
     } else if (childResult.cost !== null && typeof childResult.cost === 'number') {
       // Use original amount from the tree (not recipeAmount from merged tree)
       const childAmount = child.amount;
-      const childTotal = childResult.cost * childAmount;
+      const childTotal = childResult.cost;
       craftingCost += childTotal;
       childBreakdown.push({
         itemId: child.itemId,
         amount: childAmount,
-        unitCost: childResult.cost,
+        unitCost: childAmount > 0 ? childTotal / childAmount : childTotal,
         totalCost: childTotal,
         method: childResult.method,
       });
@@ -387,8 +392,8 @@ function getCheapestCost(node, itemPrices, queriedItemIds) {
   }
   
   if (hasNAChild) {
-    if (marketPrice !== null) {
-      return { cost: marketPrice, method: 'buy', breakdown: null };
+    if (marketTotal !== null) {
+      return { cost: marketTotal, method: 'buy', breakdown: null };
     } else if (isQueried) {
       return { cost: 'N/A', method: 'buy', breakdown: null };
     } else {
@@ -396,21 +401,18 @@ function getCheapestCost(node, itemPrices, queriedItemIds) {
     }
   }
   
-  const yields = node.yields || 1;
-  const craftingCostPerUnit = yields > 1 ? craftingCost / yields : craftingCost;
-  
-  if (marketPrice === null) {
+  if (marketTotal === null) {
     if (isQueried) {
-      return { cost: craftingCostPerUnit, method: 'craft', breakdown: childBreakdown, yields };
+      return { cost: craftingCost, method: 'craft', breakdown: childBreakdown };
     } else {
       return { cost: null, method: 'buy', breakdown: null };
     }
   }
   
-  if (craftingCostPerUnit < marketPrice) {
-    return { cost: craftingCostPerUnit, method: 'craft', breakdown: childBreakdown, yields };
+  if (craftingCost < marketTotal) {
+    return { cost: craftingCost, method: 'craft', breakdown: childBreakdown };
   } else {
-    return { cost: marketPrice, method: 'buy', breakdown: null };
+    return { cost: marketTotal, method: 'buy', breakdown: null };
   }
 }
 
@@ -441,15 +443,13 @@ function calculateCraftingCost(node, itemPrices, queriedItemIds) {
     if (childResult.cost === 'N/A') {
       return 'N/A';
     } else if (childResult.cost !== null && typeof childResult.cost === 'number') {
-      const childTotal = childResult.cost * child.amount;
-      craftingCost += childTotal;
+      craftingCost += childResult.cost;
     } else {
       return null;
     }
   }
   
-  const yields = node.yields || 1;
-  return yields > 1 ? craftingCost / yields : craftingCost;
+  return craftingCost;
 }
 
 /**
@@ -483,8 +483,9 @@ function buildCraftingPathMap(node, itemPrices, queriedItemIds, pathMap = new Ma
   }
   
   const marketPrice = itemPrices[node.itemId]?.price ?? null;
+  const marketTotal = marketPrice === null ? null : marketPrice * (Number(node.amount) || 0);
   
-  if (typeof craftingCost === 'number' && (marketPrice === null || craftingCost < marketPrice)) {
+  if (typeof craftingCost === 'number' && (marketTotal === null || craftingCost < marketTotal)) {
     pathMap.set(node.itemId, 'craft');
     for (const child of node.children) {
       buildCraftingPathMap(child, itemPrices, queriedItemIds, pathMap);
@@ -516,10 +517,10 @@ function areAllNodesQueried(node, queriedItemIds) {
 }
 
 /**
- * Calculate total cost for each parent item separately, then sum
- * This ensures accurate cost calculation based on original recipes
+ * Compare buying all finished items with crafting them from the optimal
+ * acquisition route of the single merged material tree.
  */
-function calculateMultiItemPriceComparison(combinedNode, itemPrices, queriedItemIds, originalItemList, quantities = {}) {
+function calculateMultiItemPriceComparison(combinedNode, itemPrices, queriedItemIds, quantities = {}) {
   if (!combinedNode) return null;
 
   const parentItems = combinedNode.parentItems || [];
@@ -549,16 +550,8 @@ function calculateMultiItemPriceComparison(combinedNode, itemPrices, queriedItem
   let allMaterialsQueried = true;
   let materialsMissingPrice = false;
 
-  for (const item of originalItemList) {
-    if (!item.tree || !item.tree.children || item.tree.children.length === 0) {
-      continue;
-    }
-
-    const itemId = item.itemId || item.id;
-    const qty = quantities[itemId] || (item.tree?.yields || 1);
-    const yields = item.tree?.yields || 1;
-
-    const treeResult = getCheapestCost(item.tree, itemPrices, queriedItemIds);
+  for (const child of combinedNode.children || []) {
+    const treeResult = getCheapestCost(child, itemPrices, queriedItemIds);
 
     if (treeResult.cost === 'N/A') {
       materialsMissingPrice = true;
@@ -571,12 +564,7 @@ function calculateMultiItemPriceComparison(combinedNode, itemPrices, queriedItem
     }
 
     if (typeof treeResult.cost === 'number') {
-      if (treeResult.method === 'craft') {
-        const craftsNeeded = Math.ceil(qty / yields);
-        totalMaterialsCost += treeResult.cost * yields * craftsNeeded;
-      } else {
-        totalMaterialsCost += treeResult.cost * qty;
-      }
+      totalMaterialsCost += treeResult.cost;
       hasMaterialsPrice = true;
     }
   }
@@ -743,7 +731,6 @@ function CombinedTreeNode({
   queriedItemIds,
   onItemClick,
   isDcQuery = false,
-  originalItemList = [],
   rootQuantities = {},
   onQuantityChange,
 }) {
@@ -754,13 +741,19 @@ function CombinedTreeNode({
   const mergedChildren = combinedNode.children || [];
   
   const priceComparison = useMemo(() => {
-    return calculateMultiItemPriceComparison(combinedNode, itemPrices, queriedItemIds, originalItemList, rootQuantities);
-  }, [combinedNode, itemPrices, queriedItemIds, originalItemList, rootQuantities]);
+    return calculateMultiItemPriceComparison(combinedNode, itemPrices, queriedItemIds, rootQuantities);
+  }, [combinedNode, itemPrices, queriedItemIds, rootQuantities]);
+
+  const useCraftingRoute = useMemo(() => {
+    if (!priceComparison || priceComparison.materialsIsNA) return false;
+    if (priceComparison.finishedIsNA) return true;
+    return priceComparison.totalMaterialsCost < priceComparison.totalFinishedPrice;
+  }, [priceComparison]);
   
   // Check if all items are queried for price comparison
   const allQueried = useMemo(() => {
     const allParentQueried = parentItems.every(p => queriedItemIds.has(p.itemId));
-    const allChildQueried = mergedChildren.every(c => queriedItemIds.has(c.itemId));
+    const allChildQueried = mergedChildren.every(c => areAllNodesQueried(c, queriedItemIds));
     return allParentQueried && allChildQueried;
   }, [parentItems, mergedChildren, queriedItemIds]);
   
@@ -834,7 +827,7 @@ function CombinedTreeNode({
       {/* Connecting line */}
       {mergedChildren.length > 0 && (
         <>
-          <div className="w-px h-6 bg-purple-500/50"></div>
+          <div className={`${useCraftingRoute ? 'w-0.5 bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]' : 'w-px bg-purple-500/50'} h-6`}></div>
           <div className="flex flex-col items-center gap-2">
             <div className="px-3 py-1 rounded-md bg-purple-900/40 border border-purple-500/30 text-xs text-purple-300">
               合併素材清單
@@ -846,7 +839,7 @@ function CombinedTreeNode({
               isReady={allQueried}
             />
           </div>
-          <div className="w-px h-6 bg-purple-500/50"></div>
+          <div className={`${useCraftingRoute ? 'w-0.5 bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]' : 'w-px bg-purple-500/50'} h-6`}></div>
         </>
       )}
       
@@ -855,7 +848,7 @@ function CombinedTreeNode({
         <div className="relative">
           {mergedChildren.length > 1 && lineStyle.width > 0 && (
             <div 
-              className="absolute top-0 h-px bg-purple-500/50"
+              className={`absolute top-0 h-px ${useCraftingRoute ? 'bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]' : 'bg-purple-500/50'}`}
               style={{
                 left: `${lineStyle.left}px`,
                 width: `${lineStyle.width}px`,
@@ -865,49 +858,16 @@ function CombinedTreeNode({
           
           <div ref={childrenRef} className="flex gap-3 items-start">
             {mergedChildren.map((child, index) => {
-              // Calculate optimal path for each child node
-              const hasChildren = child.children && child.children.length > 0;
-              let childOptimalPathMap = null;
-              let childIsCraftingCheaper = false;
-              
-              if (hasChildren) {
-                // Check if all children of this child are queried
-                let allChildrenQueried = true;
-                const checkAllQueried = (node) => {
-                  if (!node.children || node.children.length === 0) return;
-                  for (const c of node.children) {
-                    if (!queriedItemIds.has(c.itemId)) {
-                      allChildrenQueried = false;
-                      return;
-                    }
-                    checkAllQueried(c);
-                  }
-                };
-                checkAllQueried(child);
-                
-                if (allChildrenQueried) {
-                  // Calculate crafting cost
-                  const craftingCost = calculateCraftingCost(child, itemPrices, queriedItemIds);
-                  const marketPrice = itemPrices[child.itemId]?.price ?? null;
-                  
-                  // Determine if crafting is cheaper
-                  if (craftingCost !== null && craftingCost !== 'N/A' && typeof craftingCost === 'number') {
-                    if (marketPrice === null) {
-                      // No market price, must craft
-                      childIsCraftingCheaper = true;
-                      childOptimalPathMap = buildCraftingPathMap(child, itemPrices, queriedItemIds);
-                    } else if (craftingCost < marketPrice) {
-                      // Crafting is cheaper
-                      childIsCraftingCheaper = true;
-                      childOptimalPathMap = buildCraftingPathMap(child, itemPrices, queriedItemIds);
-                    }
-                  }
-                }
-              }
+              // Once the combined decision is "craft", every first-level
+              // material belongs to that one optimal route. Each subtree then
+              // decides independently whether that material is bought or made.
+              const childOptimalPathMap = useCraftingRoute
+                ? buildCraftingPathMap(child, itemPrices, queriedItemIds)
+                : null;
               
               return (
                 <div key={`${child.itemId}-${index}`} className="flex flex-col items-center">
-                  <div className="w-px h-4 bg-purple-500/50"></div>
+                  <div className={`${useCraftingRoute ? 'w-0.5 bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.6)]' : 'w-px bg-purple-500/50'} h-4`}></div>
                   
                   <TreeNodeVertical
                     node={child}
@@ -916,7 +876,7 @@ function CombinedTreeNode({
                     queriedItemIds={queriedItemIds}
                     onItemClick={onItemClick}
                     optimalPathMap={childOptimalPathMap}
-                    isCraftingCheaper={childIsCraftingCheaper}
+                    isCraftingCheaper={useCraftingRoute}
                     isDcQuery={isDcQuery}
                   />
                 </div>
@@ -1170,6 +1130,7 @@ export default function MultiItemCombinedTree({
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartScrollLeft, setDragStartScrollLeft] = useState(0);
   const [rootQuantities, setRootQuantities] = useState({});
+  const [exportStatus, setExportStatus] = useState(null);
 
   useEffect(() => {
     if (!itemList || itemList.length === 0) return;
@@ -1373,6 +1334,24 @@ export default function MultiItemCombinedTree({
     return mergeTrees(itemList, rootQuantities);
   }, [itemList, rootQuantities]);
 
+  const handleExportMaterials = async () => {
+    if (!combinedTree) return;
+
+    const materials = collectAllTreeMaterials(combinedTree);
+    const csv = formatMaterialsCsv({
+      materials,
+      itemNames,
+      outputs: (combinedTree.parentItems || []).map((item) => ({
+        itemId: item.itemId,
+        amount: item.amount,
+      })),
+    });
+
+    downloadMaterialsCsv(csv, 'ffxiv-多物品製作樹物品清單.csv');
+    setExportStatus('已下載 CSV');
+    window.setTimeout(() => setExportStatus(null), 2000);
+  };
+
   // Handle drag to scroll
   const handleMouseDown = useCallback((e) => {
     if (!scrollContainerRef.current || !hasHorizontalScroll) return;
@@ -1455,6 +1434,30 @@ export default function MultiItemCombinedTree({
                 <span className="text-purple-300">{serverDisplayName}</span>
               </div>
             )}
+            <button
+              type="button"
+              onClick={handleExportMaterials}
+              disabled={isLoadingNames || !combinedTree}
+              className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition ${
+                isLoadingNames || !combinedTree
+                  ? 'cursor-not-allowed border-slate-700/50 bg-slate-800/40 text-slate-500 opacity-70'
+                  : exportStatus
+                    ? 'border-green-400/50 bg-green-500/10 text-green-300'
+                    : 'border-slate-600/40 bg-slate-800/60 text-gray-400 hover:border-ffxiv-gold/40 hover:text-ffxiv-gold'
+              }`}
+              title={isLoadingNames ? '請等待物品名稱載入完成' : '匯出所有成品、中間製作物與基礎材料'}
+            >
+              {exportStatus ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14a2 2 0 002-2v-2M3 17v2a2 2 0 002 2" />
+                </svg>
+              )}
+              <span>{exportStatus || '匯出全部物品'}</span>
+            </button>
           </div>
           <button
             onClick={onClose}
@@ -1500,7 +1503,6 @@ export default function MultiItemCombinedTree({
                   queriedItemIds={queriedItemIds}
                   onItemClick={handleItemClick}
                   isDcQuery={isDcQuery}
-                  originalItemList={itemList}
                   rootQuantities={rootQuantities}
                   onQuantityChange={handleQuantityChange}
                 />
