@@ -61,6 +61,7 @@ export default function GameVersionBadge() {
   return (
     <div className={`game-version ${isOutdated ? 'game-version-outdated' : ''}`}>
       <span className="game-version-badge" tabIndex="0" aria-describedby="game-version-details">
+        <span className="game-version-prefix">版本：</span>
         <span className="game-version-number">{GAME_VERSION}</span>
         {isOutdated && <span className="game-version-alert" aria-label="有新版本可用">!</span>}
       </span>

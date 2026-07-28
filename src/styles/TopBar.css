@@ -305,8 +305,9 @@
 
 /* Supporting tools should stay available without competing with search/history. */
 .topbar-nav-button-secondary {
-  background: linear-gradient(to right, rgba(88, 28, 135, 0.28), rgba(131, 24, 67, 0.2), rgba(55, 48, 163, 0.28));
-  border-color: rgba(168, 85, 247, 0.24);
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(148, 163, 184, 0.28);
+  opacity: 0.76;
 }
 
 .topbar-nav-button-secondary .topbar-nav-icon,
@@ -317,6 +318,11 @@
 .topbar-nav-button-secondary:hover {
   background: linear-gradient(to right, rgba(88, 28, 135, 0.4), rgba(131, 24, 67, 0.3), rgba(55, 48, 163, 0.4));
   border-color: rgba(251, 191, 36, 0.5);
+  opacity: 1;
+}
+
+.topbar-nav-button-secondary.active {
+  opacity: 1;
 }
 
 
@@ -496,6 +502,12 @@
   letter-spacing: 0;
   color: inherit;
   text-shadow: none;
+}
+
+.game-version-prefix {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: inherit;
 }
 .game-version-alert {
   display: grid;
