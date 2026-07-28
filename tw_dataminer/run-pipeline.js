@@ -18,12 +18,12 @@
  *   node tw_dataminer/run-pipeline.js --only items,recipes  # generate specific outputs
  *
  * Env vars:
- *   DATAMINING_TW_DIR  — Path to ffxiv-datamining-tw clone
- *   (Game path is hardcoded: D:\FINAL FANTASY XIV TC)
- *   DUMPCSV_DIR        — Path to built DumpCSV bin directory
- *   DUMPCSV_OUTPUT_DIR — DumpCSV rawexd output directory
- *   DOTNET_ROOT        — .NET runtime location (if not in PATH)
- *   SKIP_EXPORT        — Set to "1" to skip JSON generation (only copy CSVs)
+ *   DATAMINING_TW_DIR      — Path to ffxiv-datamining-tw clone
+ *   GAME_PATH / FFXIV_GAME_PATH — FFXIV client install root (defaults to D:\FINAL FANTASY XIV TC if not provided)
+ *   DUMPCSV_DIR            — Path to built DumpCSV bin directory
+ *   DUMPCSV_OUTPUT_DIR     — DumpCSV rawexd output directory
+ *   DOTNET_ROOT            — .NET runtime location (if not in PATH)
+ *   SKIP_EXPORT            — Set to "1" to skip JSON generation (only copy CSVs)
  */
 
 const path = require('path');
@@ -89,7 +89,6 @@ const OUTPUT_DIR = path.join(TW_DATAMINER_DIR, 'output');
 const DATAMINING_TW_DIR = process.env.DATAMINING_TW_DIR || path.join(TW_DATAMINER_DIR, 'ffxiv-datamining-tw');
 const DUMPCSV_OUTPUT_DIR = process.env.DUMPCSV_OUTPUT_DIR || path.join(TW_DATAMINER_DIR, 'dumpcsv-output', 'rawexd');
 const DUMPCSV_BIN_DIR = process.env.DUMPCSV_DIR || path.join(TW_DATAMINER_DIR, 'dumpcsv', 'bin', 'Release', 'net8.0');
-const GAME_PATH = 'D:\\FINAL FANTASY XIV TC';
 
 // Parse args
 const args = process.argv.slice(2);
@@ -100,6 +99,10 @@ const doPull = args.includes('--pull');
 const skipExport = process.env.SKIP_EXPORT === '1';
 const onlyArg = args.find(a => a.startsWith('--only'));
 const onlyList = onlyArg ? args[args.indexOf(onlyArg) + 1] : null;
+const gamePathArg = args.find(a => a.startsWith('--game-path='));
+const directGamePathArg = args.includes('--game-path') ? args[args.indexOf('--game-path') + 1] : null;
+const resolvedGamePath = (gamePathArg ? gamePathArg.split('=').slice(1).join('=') : null) || directGamePathArg || process.env.GAME_PATH || process.env.FFXIV_GAME_PATH || 'D:\\FINAL FANTASY XIV TC';
+const GAME_PATH = resolvedGamePath.trim();
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 

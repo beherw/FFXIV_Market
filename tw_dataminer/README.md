@@ -77,6 +77,7 @@ Game path is hardcoded in **run-pipeline.js** as `D:\FINAL FANTASY XIV TC`. If D
 - Game path — hardcoded in `run-pipeline.js` as `D:\FINAL FANTASY XIV TC`
 - **DUMPCSV_DIR** — DumpCSV bin directory (default: `tw_dataminer/dumpcsv/bin/Release/net8.0`)
 - **DUMPCSV_OUTPUT_DIR** — DumpCSV rawexd output (default: `tw_dataminer/dumpcsv-output/rawexd`)
+- **GAME_PATH / FFXIV_GAME_PATH** — FFXIV game install root (default: `D:\FINAL FANTASY XIV TC`)
 - **DOTNET_ROOT** — .NET runtime (optional)
 - **SKIP_EXPORT** — `1` = only copy CSVs, skip JSON generation
 
