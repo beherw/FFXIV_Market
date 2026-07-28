@@ -217,7 +217,7 @@ export default function TopBar({
                 <div className="topbar-nav-button-container">
                   <button
                     onClick={handleCraftingInspirationClick}
-                    className={`topbar-nav-button ${currentActivePage === 'crafting-inspiration' ? 'active' : ''}`}
+                    className={`topbar-nav-button topbar-nav-button-secondary ${currentActivePage === 'crafting-inspiration' ? 'active' : ''}`}
                     title="製造職找價"
                   >
                     <svg
@@ -249,7 +249,7 @@ export default function TopBar({
                 <div className="topbar-nav-button-container">
                   <button
                     onClick={handleMSQPriceCheckerClick}
-                    className={`topbar-nav-button ${currentActivePage === 'msq-price-checker' ? 'active' : ''}`}
+                    className={`topbar-nav-button topbar-nav-button-secondary ${currentActivePage === 'msq-price-checker' ? 'active' : ''}`}
                     title="主線裝備查價"
                   >
                     <svg
@@ -275,7 +275,7 @@ export default function TopBar({
                 <div className="topbar-nav-button-container">
                   <button
                     onClick={handleVenturesClick}
-                    className={`topbar-nav-button ${currentActivePage === 'ventures' ? 'active' : ''}`}
+                    className={`topbar-nav-button topbar-nav-button-secondary ${currentActivePage === 'ventures' ? 'active' : ''}`}
                     title="僱員查價"
                   >
                     <svg
@@ -301,7 +301,7 @@ export default function TopBar({
                 <div className="topbar-nav-button-container">
                   <button
                     onClick={onTaxRatesClick}
-                    className="topbar-nav-button"
+                    className="topbar-nav-button topbar-nav-button-secondary"
                     title="查稅"
                   >
                     <svg
