@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BUILD_DATE, GAME_VERSION } from '../constants/version';
 
-const DATA_TAGS_API = 'https://api.github.com/repos/harukaxxxx/ffxiv-datamining-tw/tags?per_page=100';
+const DATA_TAGS_API = 'https://api.github.com/repos/andycom12000/ffxiv-datamining-tw/tags?per_page=100';
 const REPORT_URL = 'https://forum.gamer.com.tw/C.php?bsn=17608&snA=28740';
 
 function parsePatchVersion(tagName) {

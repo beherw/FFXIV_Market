@@ -45,12 +45,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Resolve latest TW game-data version
+      - name: Resolve latest TW game version
         shell: bash
         run: |
-          latest_tag=$(git ls-remote --tags --refs https://github.com/harukaxxxx/ffxiv-datamining-tw.git 'refs/tags/patch-*' | sed 's#.*refs/tags/patch-##' | sort -V | tail -n 1)
-          test -n "$latest_tag"
-          echo "VITE_GAME_VERSION=$latest_tag" >> "$GITHUB_ENV"
+          # The official index is ordered newest-first.  Do not use semantic
+          # sorting here: FFXIV's 7.15 is a 7.1 sub-patch, not newer than 7.2.
+          latest_version=$(curl --fail --silent --show-error https://www.ffxiv.com.tw/web/special/patchnote_log/index.html | grep -oE 'patch_[0-9]+(\.[0-9]+)?_notes\.html' | head -n 1 | sed -E 's/^patch_//; s/_notes\.html$//')
+          test -n "$latest_version"
+          echo "VITE_GAME_VERSION=$latest_version" >> "$GITHUB_ENV"
           echo "VITE_BUILD_DATE=$(date --utc +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
 
       - name: Build
