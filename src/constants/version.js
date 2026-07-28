@@ -17,3 +17,9 @@ const d = String(DEPLOY_DATE.getUTCDate()).padStart(2, '0');
 export const APP_VERSION = `${y}-${m}-${d}`;
 
 export const CACHE_MIN_VALID_TIMESTAMP = DEPLOY_DATE.getTime();
+
+// Set by the deployment workflow from the newest patch-* tag in the TW data
+// repository.  The fallback keeps local development builds useful when the
+// workflow environment variables are not present.
+export const GAME_VERSION = import.meta.env.VITE_GAME_VERSION || '7.2';
+export const BUILD_DATE = import.meta.env.VITE_BUILD_DATE || DEPLOY_DATE.toISOString();

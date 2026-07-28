@@ -441,6 +441,85 @@
 }
 
 /* Bug Report Button - Inside TopBar Container */
+.game-version {
+  position: relative;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.game-version-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(88, 28, 135, 0.72), rgba(30, 41, 59, 0.88));
+  color: #fef3c7;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.12);
+  cursor: help;
+  white-space: nowrap;
+}
+
+.game-version-label { font-size: 0.65rem; color: #c4b5fd; }
+.game-version-number { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.02em; color: #fbbf24; }
+.game-version-alert {
+  display: grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.game-version-details {
+  position: absolute;
+  z-index: 70;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: max-content;
+  max-width: min(18rem, calc(100vw - 1rem));
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  border-radius: 0.5rem;
+  background: rgba(15, 23, 42, 0.97);
+  color: #e2e8f0;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-0.25rem);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.game-version:hover .game-version-details,
+.game-version:focus-within .game-version-details {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.game-version-details p { margin: 0; }
+.game-version-warning { margin-top: 0.45rem !important; color: #fecaca; }
+.game-version-report-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  color: #fbbf24;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 360px) {
+  .game-version-label { display: none; }
+  .game-version-badge { padding: 0.25rem 0.4rem; }
+}
+
 .topbar-bug-report-btn {
   display: flex;
   align-items: center;
@@ -466,7 +545,7 @@
 
 @media (min-width: 890px) {
   .topbar-bug-report-btn {
-    margin-left: auto;
+    margin-left: 0;
     margin-right: 0.75rem;
   }
 }

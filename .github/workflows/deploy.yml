@@ -45,6 +45,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Resolve latest TW game-data version
+        shell: bash
+        run: |
+          latest_tag=$(git ls-remote --tags --refs https://github.com/harukaxxxx/ffxiv-datamining-tw.git 'refs/tags/patch-*' | sed 's#.*refs/tags/patch-##' | sort -V | tail -n 1)
+          test -n "$latest_tag"
+          echo "VITE_GAME_VERSION=$latest_tag" >> "$GITHUB_ENV"
+          echo "VITE_BUILD_DATE=$(date --utc +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+
       - name: Build
         run: npm run build
         env:

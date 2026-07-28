@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import HistoryButton from './HistoryButton';
+import GameVersionBadge from './GameVersionBadge';
 import { getAssetPath } from '../utils/assetPath.js';
 import '../styles/TopBar.css';
 
@@ -322,6 +323,7 @@ export default function TopBar({
                 </div>
 
                 {/* Bug Report Button */}
+                <GameVersionBadge />
                 <a
                   href="https://forum.gamer.com.tw/C.php?bsn=17608&snA=28740"
                   target="_blank"
