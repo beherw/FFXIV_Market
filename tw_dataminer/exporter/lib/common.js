@@ -27,45 +27,15 @@ Array.prototype.binarySearch = function (id) {
   id = +id
   if (isNaN(id)) return -2
 
-  if (this.length > id && id === +this[id]['#']) {
-    return id
-  }
-
-  let startPos = 0
-  let endPos = this.length - 1
-  let startId = +this[startPos]['#']
-  let endId = +this[endPos]['#']
-
-  while (endPos > startPos) {
-    if (id === startId) return startPos
-    if (id === endId) return endPos
-
-    let pos = startPos + Math.ceil((endPos - startPos) / 2)
-    let posId = +this[pos]['#']
-
-    if (posId === id) {
-      return pos
-    } else if (posId > id) {
-      endPos = pos
-      endId = posId
-    } else {
-      startPos = pos
-      startId = posId
-    }
-  }
-
-  return -1
+  const index = this.findIndex(row => row && typeof row === 'object' && +row['#'] === id)
+  return index >= 0 ? index : -1
 }
 
 Array.prototype.findById = function (id) {
   let index = this.binarySearch(id)
   if (index === -1) return null
 
-  if (index < 0) {
-    return this.find(item => item['#'] == id)
-  } else {
-    return this[index]
-  }
+  return this[index]
 }
 
 Array.prototype.kvmap = function (nKey = 'Name', valueFunc = (val) => val) {

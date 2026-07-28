@@ -1,6392 +1,2590 @@
 {
   "1": {
     "value": 1,
-    "conditionValue": 30,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "靈巧 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 30
   },
   "2": {
     "value": 10,
-    "conditionValue": 2,
-    "bonus": {
-      "tw": "獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "連鎖 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2
   },
   "3": {
     "value": 15,
-    "conditionValue": 20,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "靈巧 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 20
   },
   "4": {
     "value": 20,
-    "conditionValue": 30,
-    "bonus": {
-      "tw": "低於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "靈巧 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 30
   },
   "5": {
     "value": 40,
-    "conditionValue": 42,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 42
   },
   "6": {
     "value": 40,
-    "conditionValue": 52,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 52
   },
   "7": {
     "value": 40,
-    "conditionValue": 62,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 62
   },
   "8": {
     "value": 40,
-    "conditionValue": 81,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 81
   },
   "9": {
     "value": 40,
-    "conditionValue": 98,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 98
   },
   "10": {
     "value": 40,
-    "conditionValue": 126,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 126
   },
   "11": {
     "value": 40,
-    "conditionValue": 153,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 153
   },
   "12": {
     "value": 40,
-    "conditionValue": 182,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 182
   },
   "13": {
     "value": 40,
-    "conditionValue": 198,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 198
   },
   "14": {
     "value": 40,
-    "conditionValue": 214,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 214
   },
   "15": {
     "value": 1,
-    "conditionValue": 34,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 34
   },
   "16": {
     "value": 1,
-    "conditionValue": 57,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 57
   },
   "17": {
     "value": 1,
-    "conditionValue": 89,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 89
   },
   "18": {
     "value": 1,
-    "conditionValue": 128,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 128
   },
   "19": {
     "value": 1,
-    "conditionValue": 171,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 171
   },
   "20": {
     "value": 1,
-    "conditionValue": 194,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 194
   },
   "21": {
     "value": 1,
-    "conditionValue": 216,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 216
   },
   "22": {
     "value": 1,
-    "conditionValue": 237,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 237
   },
   "23": {
     "value": 1,
-    "conditionValue": 263,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 263
   },
   "24": {
     "value": 1,
-    "conditionValue": 295,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 295
   },
   "25": {
     "value": 100,
-    "conditionValue": 89,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 89
   },
   "26": {
     "value": 100,
-    "conditionValue": 110,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 110
   },
   "27": {
     "value": 100,
-    "conditionValue": 131,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 131
   },
   "28": {
     "value": 100,
-    "conditionValue": 153,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 153
   },
   "29": {
     "value": 100,
-    "conditionValue": 174,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 174
   },
   "30": {
     "value": 100,
-    "conditionValue": 195,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 195
   },
   "31": {
     "value": 100,
-    "conditionValue": 216,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 216
   },
   "32": {
     "value": 100,
-    "conditionValue": 238,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 238
   },
   "33": {
     "value": 100,
-    "conditionValue": 259,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 259
   },
   "34": {
     "value": 100,
-    "conditionValue": 280,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 280
   },
   "35": {
     "value": 1,
-    "conditionValue": 414,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 414
   },
   "36": {
     "value": 1,
-    "conditionValue": 429,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 429
   },
   "37": {
     "value": 1,
-    "conditionValue": 436,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 436
   },
   "38": {
     "value": 1,
-    "conditionValue": 486,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 486
   },
   "39": {
     "value": 1,
-    "conditionValue": 493,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 493
   },
   "40": {
     "value": 1,
-    "conditionValue": 515,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 515
   },
   "41": {
     "value": 1,
-    "conditionValue": 521,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 521
   },
   "42": {
     "value": 1,
-    "conditionValue": 542,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 542
   },
   "43": {
     "value": 1,
-    "conditionValue": 545,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 545
   },
   "44": {
     "value": 1,
-    "conditionValue": 571,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 571
   },
   "45": {
     "value": 1,
-    "conditionValue": 33,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 33
   },
   "46": {
     "value": 1,
-    "conditionValue": 55,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 55
   },
   "47": {
     "value": 1,
-    "conditionValue": 85,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 85
   },
   "48": {
     "value": 1,
-    "conditionValue": 122,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 122
   },
   "49": {
     "value": 1,
-    "conditionValue": 163,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 163
   },
   "50": {
     "value": 1,
-    "conditionValue": 185,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 185
   },
   "51": {
     "value": 1,
-    "conditionValue": 206,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 206
   },
   "52": {
     "value": 1,
-    "conditionValue": 226,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 226
   },
   "53": {
     "value": 1,
-    "conditionValue": 251,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 251
   },
   "54": {
     "value": 1,
-    "conditionValue": 281,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 281
   },
   "55": {
     "value": 2,
-    "conditionValue": 4100,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4100
   },
   "56": {
     "value": 1,
-    "conditionValue": 302,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 302
   },
   "57": {
     "value": 1,
-    "conditionValue": 574,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 574
   },
   "58": {
     "value": 2,
-    "conditionValue": 3750,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3750
   },
   "59": {
     "value": 1,
-    "conditionValue": 804,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 804
   },
   "60": {
     "value": 1,
-    "conditionValue": 860,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 860
   },
   "61": {
     "value": 1,
-    "conditionValue": 916,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 916
   },
   "62": {
     "value": 1,
-    "conditionValue": 1169,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1169
   },
   "63": {
     "value": 1,
-    "conditionValue": 1356,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1356
   },
   "64": {
     "value": 1,
-    "conditionValue": 2040,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2040
   },
   "65": {
     "value": 1,
-    "conditionValue": 600,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 600
   },
   "66": {
     "value": 1,
-    "conditionValue": 600,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 600
   },
   "67": {
     "value": 1,
-    "conditionValue": 600,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 600
   },
   "68": {
     "value": 1,
-    "conditionValue": 680,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 680
   },
   "69": {
     "value": 1,
-    "conditionValue": 680,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 680
   },
   "70": {
     "value": 1,
-    "conditionValue": 740,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 740
   },
   "78": {
     "value": 1,
-    "conditionValue": 740,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 740
   },
   "79": {
     "value": 1,
-    "conditionValue": 2244,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2244
   },
   "81": {
     "value": 30,
-    "conditionValue": 3800,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3800
   },
   "82": {
     "value": 1,
-    "conditionValue": 3590,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3590
   },
   "83": {
     "value": 1,
-    "conditionValue": 850,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 850
   },
   "84": {
     "value": 10,
-    "conditionValue": 90,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 90
   },
   "85": {
     "value": 10,
-    "conditionValue": 90,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 90
   },
   "86": {
     "value": 10,
-    "conditionValue": 90,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 90
   },
   "87": {
     "value": 10,
-    "conditionValue": 90,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 90
   },
   "89": {
     "value": 10,
-    "conditionValue": 3300,
-    "bonus": {
-      "tw": "收藏價值最大時：昇華率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3300
   },
   "92": {
     "value": 10,
-    "conditionValue": 42,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 42
   },
   "93": {
     "value": 10,
-    "conditionValue": 42,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 42
   },
   "94": {
     "value": 10,
-    "conditionValue": 54,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 54
   },
   "95": {
     "value": 10,
-    "conditionValue": 69,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 69
   },
   "96": {
     "value": 10,
-    "conditionValue": 69,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 69
   },
   "97": {
     "value": 10,
-    "conditionValue": 69,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 69
   },
   "98": {
     "value": 10,
-    "conditionValue": 69,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 69
   },
   "99": {
     "value": 10,
-    "conditionValue": 69,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 69
   },
   "100": {
     "value": 10,
-    "conditionValue": 112,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 112
   },
   "101": {
     "value": 10,
-    "conditionValue": 112,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 112
   },
   "102": {
     "value": 10,
-    "conditionValue": 112,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 112
   },
   "103": {
     "value": 10,
-    "conditionValue": 112,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 112
   },
   "104": {
     "value": 10,
-    "conditionValue": 138,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 138
   },
   "105": {
     "value": 10,
-    "conditionValue": 138,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 138
   },
   "106": {
     "value": 10,
-    "conditionValue": 138,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 138
   },
   "108": {
     "value": 1,
-    "conditionValue": 54,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 54
   },
   "109": {
     "value": 1,
-    "conditionValue": 105,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 105
   },
   "111": {
     "value": 1,
-    "conditionValue": 188,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 188
   },
   "112": {
     "value": 1,
-    "conditionValue": 228,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 228
   },
   "113": {
     "value": 1,
-    "conditionValue": 323,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 323
   },
   "114": {
     "value": 1,
-    "conditionValue": 523,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 523
   },
   "115": {
     "value": 1,
-    "conditionValue": 619,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 619
   },
   "116": {
     "value": 1,
-    "conditionValue": 889,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 889
   },
   "117": {
     "value": 1,
-    "conditionValue": 989,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 989
   },
   "118": {
     "value": 1,
-    "conditionValue": 1546,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1546
   },
   "121": {
     "value": 1,
-    "conditionValue": 486,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 486
   },
   "123": {
     "value": 1,
-    "conditionValue": 542,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 542
   },
   "124": {
     "value": 1,
-    "conditionValue": 571,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 571
   },
   "125": {
     "value": 1,
-    "conditionValue": 589,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 589
   },
   "126": {
     "value": 1,
-    "conditionValue": 597,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 597
   },
   "127": {
     "value": 1,
-    "conditionValue": 652,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 652
   },
   "128": {
     "value": 1,
-    "conditionValue": 668,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 668
   },
   "129": {
     "value": 1,
-    "conditionValue": 694,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 694
   },
   "130": {
     "value": 1,
-    "conditionValue": 25,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 25
   },
   "131": {
     "value": 1,
-    "conditionValue": 88,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 88
   },
   "132": {
     "value": 1,
-    "conditionValue": 150,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 150
   },
   "133": {
     "value": 1,
-    "conditionValue": 182,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 182
   },
   "134": {
     "value": 1,
-    "conditionValue": 226,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 226
   },
   "135": {
     "value": 1,
-    "conditionValue": 321,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 321
   },
   "136": {
     "value": 1,
-    "conditionValue": 499,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 499
   },
   "137": {
     "value": 1,
-    "conditionValue": 611,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 611
   },
   "138": {
     "value": 1,
-    "conditionValue": 874,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 874
   },
   "139": {
     "value": 1,
-    "conditionValue": 989,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 989
   },
   "140": {
     "value": 1,
-    "conditionValue": 1535,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1535
   },
   "141": {
     "value": 30,
-    "conditionValue": 3550,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3550
   },
   "142": {
     "value": 1,
-    "conditionValue": 910,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 910
   },
   "143": {
     "value": 30,
-    "conditionValue": 4000,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4000
   },
   "144": {
     "value": 1,
-    "conditionValue": 3900,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3900
   },
   "145": {
     "value": 1,
-    "conditionValue": 900,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 900
   },
   "146": {
     "value": 2,
-    "conditionValue": 321,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 321
   },
   "147": {
     "value": 2,
-    "conditionValue": 499,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 499
   },
   "148": {
     "value": 3,
-    "conditionValue": 611,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 611
   },
   "149": {
     "value": 3,
-    "conditionValue": 874,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 874
   },
   "150": {
     "value": 3,
-    "conditionValue": 989,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 989
   },
   "151": {
     "value": 3,
-    "conditionValue": 1535,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1535
   },
   "152": {
     "value": 30,
-    "conditionValue": 3650,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3650
   },
   "153": {
     "value": 1,
-    "conditionValue": 920,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 920
   },
   "154": {
     "value": 40,
-    "conditionValue": 5254,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 5254
   },
   "155": {
     "value": 1,
-    "conditionValue": 5090,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 5090
   },
   "156": {
     "value": 1,
-    "conditionValue": 930,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 930
   },
   "157": {
     "value": 4,
-    "conditionValue": 321,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 321
   },
   "158": {
     "value": 4,
-    "conditionValue": 499,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 499
   },
   "159": {
     "value": 5,
-    "conditionValue": 611,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 611
   },
   "160": {
     "value": 5,
-    "conditionValue": 874,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 874
   },
   "161": {
     "value": 5,
-    "conditionValue": 989,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 989
   },
   "162": {
     "value": 5,
-    "conditionValue": 1535,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1535
   },
   "163": {
     "value": 5,
-    "conditionValue": 836,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 836
   },
   "164": {
     "value": 1,
-    "conditionValue": 2421,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2421
   },
   "165": {
     "value": 2,
-    "conditionValue": 2421,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2421
   },
   "166": {
     "value": 1,
-    "conditionValue": 2345,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2345
   },
   "167": {
     "value": 2,
-    "conditionValue": 2345,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2345
   },
   "168": {
     "value": 1,
-    "conditionValue": 54,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 54
   },
   "169": {
     "value": 1,
-    "conditionValue": 25,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 25
   },
   "170": {
     "value": 1,
-    "conditionValue": 400,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 400
   },
   "171": {
     "value": 1,
-    "conditionValue": 54,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 54
   },
   "172": {
     "value": 1,
-    "conditionValue": 2740,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2740
   },
   "173": {
     "value": 2,
-    "conditionValue": 2740,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2740
   },
   "174": {
     "value": 1,
-    "conditionValue": 25,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 25
   },
   "175": {
     "value": 1,
-    "conditionValue": 2642,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2642
   },
   "176": {
     "value": 2,
-    "conditionValue": 2642,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2642
   },
   "177": {
     "value": 1,
-    "conditionValue": 400,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 400
   },
   "178": {
     "value": 5,
-    "conditionValue": 858,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 858
   },
   "181": {
     "value": 1,
-    "conditionValue": 740,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 740
   },
   "182": {
     "value": 1,
-    "conditionValue": 2524,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2524
   },
   "184": {
     "value": 1,
-    "conditionValue": 54,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 54
   },
   "185": {
     "value": 1,
-    "conditionValue": 2740,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2740
   },
   "186": {
     "value": 2,
-    "conditionValue": 2740,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2740
   },
   "187": {
     "value": 1,
-    "conditionValue": 25,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 25
   },
   "188": {
     "value": 1,
-    "conditionValue": 2642,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2642
   },
   "189": {
     "value": 2,
-    "conditionValue": 2642,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2642
   },
   "190": {
     "value": 1,
-    "conditionValue": 400,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 400
   },
   "191": {
     "value": 5,
-    "conditionValue": 858,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 858
   },
   "192": {
     "value": 10,
-    "conditionValue": 1680,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1680
   },
   "193": {
     "value": 10,
-    "conditionValue": 1960,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1960
   },
   "194": {
     "value": 10,
-    "conditionValue": 2100,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2100
   },
   "195": {
     "value": 10,
-    "conditionValue": 2198,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2198
   },
   "196": {
     "value": 10,
-    "conditionValue": 2296,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2296
   },
   "197": {
     "value": 1,
-    "conditionValue": 2142,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2142
   },
   "198": {
     "value": 1,
-    "conditionValue": 2454,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2454
   },
   "199": {
     "value": 1,
-    "conditionValue": 2499,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2499
   },
   "200": {
     "value": 1,
-    "conditionValue": 2677,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2677
   },
   "201": {
     "value": 1,
-    "conditionValue": 2740,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2740
   },
   "202": {
     "value": 1,
-    "conditionValue": 2802,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2802
   },
   "203": {
     "value": 1,
-    "conditionValue": 2865,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2865
   },
   "204": {
     "value": 1,
-    "conditionValue": 3052,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3052
   },
   "205": {
     "value": 1,
-    "conditionValue": 740,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 740
   },
   "206": {
     "value": 1,
-    "conditionValue": 750,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 750
   },
   "207": {
     "value": 1,
-    "conditionValue": 760,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 760
   },
   "208": {
     "value": 1,
-    "conditionValue": 770,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 770
   },
   "209": {
     "value": 1,
-    "conditionValue": 770,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 770
   },
   "210": {
     "value": 1,
-    "conditionValue": 770,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 770
   },
   "211": {
     "value": 1,
-    "conditionValue": 780,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 780
   },
   "212": {
     "value": 1,
-    "conditionValue": 790,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 790
   },
   "213": {
     "value": 20,
-    "conditionValue": 1680,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1680
   },
   "214": {
     "value": 20,
-    "conditionValue": 1925,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1925
   },
   "215": {
     "value": 20,
-    "conditionValue": 1960,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1960
   },
   "216": {
     "value": 20,
-    "conditionValue": 2100,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2100
   },
   "217": {
     "value": 20,
-    "conditionValue": 2149,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2149
   },
   "218": {
     "value": 20,
-    "conditionValue": 2198,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2198
   },
   "219": {
     "value": 20,
-    "conditionValue": 2247,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2247
   },
   "220": {
     "value": 20,
-    "conditionValue": 2394,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2394
   },
   "221": {
     "value": 1,
-    "conditionValue": 2040,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2040
   },
   "222": {
     "value": 1,
-    "conditionValue": 2338,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2338
   },
   "223": {
     "value": 1,
-    "conditionValue": 2380,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2380
   },
   "224": {
     "value": 1,
-    "conditionValue": 2550,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2550
   },
   "225": {
     "value": 1,
-    "conditionValue": 2610,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2610
   },
   "226": {
     "value": 1,
-    "conditionValue": 2669,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2669
   },
   "227": {
     "value": 1,
-    "conditionValue": 2729,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2729
   },
   "228": {
     "value": 1,
-    "conditionValue": 2907,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2907
   },
   "229": {
     "value": 1,
-    "conditionValue": 740,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 740
   },
   "230": {
     "value": 1,
-    "conditionValue": 750,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 750
   },
   "231": {
     "value": 1,
-    "conditionValue": 760,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 760
   },
   "232": {
     "value": 1,
-    "conditionValue": 770,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 770
   },
   "233": {
     "value": 1,
-    "conditionValue": 770,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 770
   },
   "234": {
     "value": 1,
-    "conditionValue": 770,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 770
   },
   "235": {
     "value": 1,
-    "conditionValue": 780,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 780
   },
   "236": {
     "value": 1,
-    "conditionValue": 790,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 790
   },
   "237": {
     "value": 100,
-    "conditionValue": 2140,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2140
   },
   "238": {
     "value": 100,
-    "conditionValue": 2337,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2337
   },
   "239": {
     "value": 100,
-    "conditionValue": 2380,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2380
   },
   "240": {
     "value": 100,
-    "conditionValue": 2550,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2550
   },
   "241": {
     "value": 100,
-    "conditionValue": 2609,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2609
   },
   "242": {
     "value": 100,
-    "conditionValue": 2669,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2669
   },
   "243": {
     "value": 100,
-    "conditionValue": 2728,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2728
   },
   "244": {
     "value": 100,
-    "conditionValue": 2907,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2907
   },
   "245": {
     "value": 40,
-    "conditionValue": 3401,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3401
   },
   "246": {
     "value": 1,
-    "conditionValue": 3295,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3295
   },
   "247": {
     "value": 1,
-    "conditionValue": 830,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 830
   },
   "248": {
     "value": 1,
-    "conditionValue": 750,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 750
   },
   "249": {
     "value": 1,
-    "conditionValue": 760,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 760
   },
   "250": {
     "value": 1,
-    "conditionValue": 780,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 780
   },
   "251": {
     "value": 1,
-    "conditionValue": 780,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 780
   },
   "252": {
     "value": 1,
-    "conditionValue": 830,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 830
   },
   "253": {
     "value": 2,
-    "conditionValue": 3950,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3950
   },
   "254": {
     "value": 10,
-    "conditionValue": 2719,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2719
   },
   "255": {
     "value": 10,
-    "conditionValue": 3139,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3139
   },
   "256": {
     "value": 10,
-    "conditionValue": 3223,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3223
   },
   "257": {
     "value": 10,
-    "conditionValue": 3307,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3307
   },
   "258": {
     "value": 10,
-    "conditionValue": 3391,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3391
   },
   "259": {
     "value": 10,
-    "conditionValue": 165,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 165
   },
   "260": {
     "value": 10,
-    "conditionValue": 165,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 165
   },
   "261": {
     "value": 10,
-    "conditionValue": 165,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 165
   },
   "262": {
     "value": 10,
-    "conditionValue": 187,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 187
   },
   "263": {
     "value": 10,
-    "conditionValue": 187,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 187
   },
   "264": {
     "value": 10,
-    "conditionValue": 187,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 187
   },
   "265": {
     "value": 10,
-    "conditionValue": 204,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 204
   },
   "266": {
     "value": 10,
-    "conditionValue": 204,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 204
   },
   "267": {
     "value": 10,
-    "conditionValue": 204,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 204
   },
   "268": {
     "value": 10,
-    "conditionValue": 221,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 221
   },
   "269": {
     "value": 10,
-    "conditionValue": 221,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 221
   },
   "270": {
     "value": 10,
-    "conditionValue": 221,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 221
   },
   "271": {
     "value": 10,
-    "conditionValue": 42,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 42
   },
   "272": {
     "value": 10,
-    "conditionValue": 42,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 42
   },
   "273": {
     "value": 10,
-    "conditionValue": 54,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 54
   },
   "274": {
     "value": 10,
-    "conditionValue": 69,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 69
   },
   "275": {
     "value": 10,
-    "conditionValue": 69,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 69
   },
   "276": {
     "value": 10,
-    "conditionValue": 69,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 69
   },
   "277": {
     "value": 10,
-    "conditionValue": 69,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 69
   },
   "278": {
     "value": 10,
-    "conditionValue": 69,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 69
   },
   "279": {
     "value": 10,
-    "conditionValue": 90,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 90
   },
   "280": {
     "value": 10,
-    "conditionValue": 90,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 90
   },
   "281": {
     "value": 10,
-    "conditionValue": 90,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 90
   },
   "282": {
     "value": 10,
-    "conditionValue": 90,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 90
   },
   "283": {
     "value": 10,
-    "conditionValue": 112,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 112
   },
   "284": {
     "value": 10,
-    "conditionValue": 112,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 112
   },
   "285": {
     "value": 10,
-    "conditionValue": 112,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 112
   },
   "286": {
     "value": 10,
-    "conditionValue": 112,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 112
   },
   "287": {
     "value": 10,
-    "conditionValue": 138,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 138
   },
   "288": {
     "value": 10,
-    "conditionValue": 138,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 138
   },
   "289": {
     "value": 10,
-    "conditionValue": 138,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 138
   },
   "290": {
     "value": 10,
-    "conditionValue": 165,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 165
   },
   "291": {
     "value": 10,
-    "conditionValue": 165,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 165
   },
   "292": {
     "value": 10,
-    "conditionValue": 165,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 165
   },
   "293": {
     "value": 10,
-    "conditionValue": 187,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 187
   },
   "294": {
     "value": 10,
-    "conditionValue": 187,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 187
   },
   "295": {
     "value": 10,
-    "conditionValue": 187,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 187
   },
   "296": {
     "value": 10,
-    "conditionValue": 204,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 204
   },
   "297": {
     "value": 10,
-    "conditionValue": 204,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 204
   },
   "298": {
     "value": 10,
-    "conditionValue": 204,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 204
   },
   "299": {
     "value": 10,
-    "conditionValue": 221,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 221
   },
   "300": {
     "value": 10,
-    "conditionValue": 221,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 221
   },
   "301": {
     "value": 10,
-    "conditionValue": 221,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 221
   },
   "302": {
     "value": 1,
-    "conditionValue": 2000,
-    "bonus": {
-      "tw": "收藏價值＋<Value>IntegerParameter(1)</Value>（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2000
   },
   "303": {
     "value": 1,
-    "conditionValue": 2000,
-    "bonus": {
-      "tw": "慎重提煉：追加效果發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2000
   },
   "304": {
     "value": 1,
-    "conditionValue": 2000,
-    "bonus": {
-      "tw": "集中檢查：上升率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2000
   },
   "305": {
     "value": 1,
-    "conditionValue": 2000,
-    "bonus": {
-      "tw": "價值提升＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2000
   },
   "306": {
     "value": 20,
-    "conditionValue": 4000,
-    "bonus": {
-      "tw": "收藏價值＋<Value>IntegerParameter(1)</Value>"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4000
   },
   "307": {
     "value": 20,
-    "conditionValue": 4000,
-    "bonus": {
-      "tw": "慎重提煉：追加效果發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4000
   },
   "308": {
     "value": 20,
-    "conditionValue": 4000,
-    "bonus": {
-      "tw": "集中檢查：上升率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4000
   },
   "309": {
     "value": 20,
-    "conditionValue": 4000,
-    "bonus": {
-      "tw": "價值提升＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4000
   },
   "310": {
     "value": 30,
-    "conditionValue": 3650,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3650
   },
   "311": {
     "value": 1,
-    "conditionValue": 920,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 920
   },
   "312": {
     "value": 50,
-    "conditionValue": 3610,
-    "bonus": {
-      "tw": "收藏價值＋<Value>IntegerParameter(1)</Value>（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3610
   },
   "313": {
     "value": 30,
-    "conditionValue": 3650,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3650
   },
   "314": {
     "value": 1,
-    "conditionValue": 920,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 920
   },
   "315": {
     "value": 50,
-    "conditionValue": 3610,
-    "bonus": {
-      "tw": "收藏價值＋<Value>IntegerParameter(1)</Value>（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3610
   },
   "316": {
     "value": 50,
-    "conditionValue": 3820,
-    "bonus": {
-      "tw": "價值提升＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3820
   },
   "317": {
     "value": 60,
-    "conditionValue": 4020,
-    "bonus": {
-      "tw": "集中檢查：上升率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4020
   },
   "318": {
     "value": 20,
-    "conditionValue": 4020,
-    "bonus": {
-      "tw": "慎重提煉：追加效果發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4020
   },
   "319": {
-    "value": 15,
-    "conditionValue": 1,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "value": 30,
+    "conditionValue": 240
   },
   "320": {
     "value": 30,
-    "conditionValue": 1,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 235
   },
   "321": {
-    "value": 15,
-    "conditionValue": 1,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "value": 70,
+    "conditionValue": 4300
   },
   "322": {
-    "value": 30,
-    "conditionValue": 1,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "value": 70,
+    "conditionValue": 5460
   },
   "323": {
-    "value": 15,
-    "conditionValue": 1,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "value": 10,
+    "conditionValue": 4300
   },
   "324": {
-    "value": 30,
-    "conditionValue": 1,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
-  },
-  "325": {
-    "value": 15,
-    "conditionValue": 1,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
-  },
-  "326": {
-    "value": 30,
-    "conditionValue": 1,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "value": 10,
+    "conditionValue": 5460
   },
   "327": {
     "value": 20,
-    "conditionValue": 444,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 444
   },
   "328": {
     "value": 20,
-    "conditionValue": 451,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 451
   },
   "329": {
     "value": 20,
-    "conditionValue": 453,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 453
   },
   "330": {
     "value": 20,
-    "conditionValue": 455,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 455
   },
   "331": {
     "value": 20,
-    "conditionValue": 457,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 457
   },
   "332": {
     "value": 20,
-    "conditionValue": 461,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 461
   },
   "333": {
     "value": 20,
-    "conditionValue": 498,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 498
   },
   "334": {
     "value": 20,
-    "conditionValue": 505,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 505
   },
   "335": {
     "value": 20,
-    "conditionValue": 510,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 510
   },
   "336": {
     "value": 1,
-    "conditionValue": 395,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 395
   },
   "337": {
     "value": 1,
-    "conditionValue": 460,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 460
   },
   "338": {
     "value": 1,
-    "conditionValue": 462,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 462
   },
   "339": {
     "value": 1,
-    "conditionValue": 493,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 493
   },
   "340": {
     "value": 1,
-    "conditionValue": 495,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 495
   },
   "341": {
     "value": 1,
-    "conditionValue": 499,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 499
   },
   "342": {
     "value": 1,
-    "conditionValue": 504,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 504
   },
   "343": {
     "value": 1,
-    "conditionValue": 510,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 510
   },
   "344": {
     "value": 1,
-    "conditionValue": 515,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 515
   },
   "345": {
     "value": 1,
-    "conditionValue": 571,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 571
   },
   "346": {
     "value": 1,
-    "conditionValue": 577,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 577
   },
   "347": {
     "value": 1,
-    "conditionValue": 587,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 587
   },
   "348": {
     "value": 1,
-    "conditionValue": 589,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 589
   },
   "349": {
     "value": 1,
-    "conditionValue": 589,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 589
   },
   "350": {
     "value": 1,
-    "conditionValue": 591,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 591
   },
   "351": {
     "value": 1,
-    "conditionValue": 593,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 593
   },
   "352": {
     "value": 1,
-    "conditionValue": 595,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 595
   },
   "353": {
     "value": 1,
-    "conditionValue": 597,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 597
   },
   "354": {
     "value": 1,
-    "conditionValue": 597,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 597
   },
   "355": {
     "value": 100,
-    "conditionValue": 539,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 539
   },
   "356": {
     "value": 100,
-    "conditionValue": 548,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 548
   },
   "357": {
     "value": 100,
-    "conditionValue": 550,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 550
   },
   "358": {
     "value": 100,
-    "conditionValue": 553,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 553
   },
   "359": {
     "value": 100,
-    "conditionValue": 555,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 555
   },
   "360": {
     "value": 100,
-    "conditionValue": 560,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 560
   },
   "361": {
     "value": 100,
-    "conditionValue": 565,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 565
   },
   "362": {
     "value": 100,
-    "conditionValue": 572,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 572
   },
   "363": {
     "value": 100,
-    "conditionValue": 578,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 578
   },
   "364": {
     "value": 1,
-    "conditionValue": 577,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 577
   },
   "365": {
     "value": 1,
-    "conditionValue": 587,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 587
   },
   "366": {
     "value": 1,
-    "conditionValue": 589,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 589
   },
   "367": {
     "value": 1,
-    "conditionValue": 589,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 589
   },
   "368": {
     "value": 1,
-    "conditionValue": 591,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 591
   },
   "369": {
     "value": 1,
-    "conditionValue": 593,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 593
   },
   "370": {
     "value": 1,
-    "conditionValue": 595,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 595
   },
   "371": {
     "value": 1,
-    "conditionValue": 597,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 597
   },
   "372": {
     "value": 1,
-    "conditionValue": 597,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 597
   },
   "373": {
     "value": 1,
-    "conditionValue": 377,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 377
   },
   "374": {
     "value": 1,
-    "conditionValue": 439,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 439
   },
   "375": {
     "value": 1,
-    "conditionValue": 440,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 440
   },
   "376": {
     "value": 1,
-    "conditionValue": 470,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 470
   },
   "377": {
     "value": 1,
-    "conditionValue": 472,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 472
   },
   "378": {
     "value": 1,
-    "conditionValue": 476,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 476
   },
   "379": {
     "value": 1,
-    "conditionValue": 480,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 480
   },
   "380": {
     "value": 1,
-    "conditionValue": 486,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 486
   },
   "381": {
     "value": 1,
-    "conditionValue": 491,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 491
   },
   "382": {
     "value": 70,
-    "conditionValue": 4550,
-    "bonus": {
-      "tw": "收藏價值＋<Value>IntegerParameter(1)</Value>"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4550
   },
   "383": {
     "value": 70,
-    "conditionValue": 4750,
-    "bonus": {
-      "tw": "收藏價值＋<Value>IntegerParameter(1)</Value>"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4750
   },
   "384": {
     "value": 70,
-    "conditionValue": 4550,
-    "bonus": {
-      "tw": "收藏價值＋<Value>IntegerParameter(1)</Value>"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4550
   },
   "385": {
     "value": 70,
-    "conditionValue": 4750,
-    "bonus": {
-      "tw": "收藏價值＋<Value>IntegerParameter(1)</Value>"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4750
   },
   "386": {
-    "value": 75,
-    "conditionValue": 2930,
-    "bonus": {
-      "tw": "收藏價值＋<Value>IntegerParameter(1)</Value>"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "value": 140,
+    "conditionValue": 2500
+  },
+  "387": {
+    "value": 30,
+    "conditionValue": 2400
+  },
+  "388": {
+    "value": 10,
+    "conditionValue": 4550
+  },
+  "389": {
+    "value": 10,
+    "conditionValue": 4750
   },
   "390": {
     "value": 1,
-    "conditionValue": 395,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 395
   },
   "391": {
     "value": 1,
-    "conditionValue": 400,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 400
   },
   "392": {
     "value": 1,
-    "conditionValue": 495,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 495
   },
   "393": {
     "value": 1,
-    "conditionValue": 499,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 499
   },
   "394": {
     "value": 1,
-    "conditionValue": 515,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 515
+  },
+  "395": {
+    "value": 30,
+    "conditionValue": 240
+  },
+  "396": {
+    "value": 30,
+    "conditionValue": 2400
+  },
+  "397": {
+    "value": 30,
+    "conditionValue": 235
   },
   "398": {
     "value": 1,
-    "conditionValue": 577,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 577
   },
   "399": {
     "value": 1,
-    "conditionValue": 583,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 583
   },
   "400": {
     "value": 1,
-    "conditionValue": 591,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 591
   },
   "401": {
     "value": 1,
-    "conditionValue": 593,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 593
   },
   "402": {
     "value": 1,
-    "conditionValue": 597,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 597
   },
   "409": {
     "value": 20,
-    "conditionValue": 1840,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1840
   },
   "410": {
     "value": 30,
-    "conditionValue": 1840,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1840
   },
   "411": {
     "value": 1,
-    "conditionValue": 1856,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1856
   },
   "412": {
     "value": 2,
-    "conditionValue": 1856,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1856
   },
   "413": {
     "value": 1,
-    "conditionValue": 696,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 696
   },
   "414": {
     "value": 2,
-    "conditionValue": 696,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 696
   },
   "415": {
     "value": 20,
-    "conditionValue": 1898,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1898
   },
   "416": {
     "value": 30,
-    "conditionValue": 1898,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1898
   },
   "417": {
     "value": 1,
-    "conditionValue": 1929,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1929
   },
   "418": {
     "value": 2,
-    "conditionValue": 1929,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1929
   },
   "419": {
     "value": 1,
-    "conditionValue": 714,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 714
   },
   "420": {
     "value": 2,
-    "conditionValue": 714,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 714
   },
   "425": {
     "value": 20,
-    "conditionValue": 2139,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2139
   },
   "426": {
     "value": 30,
-    "conditionValue": 2139,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2139
   },
   "427": {
     "value": 1,
-    "conditionValue": 2162,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2162
   },
   "428": {
     "value": 2,
-    "conditionValue": 2162,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2162
   },
   "429": {
     "value": 1,
-    "conditionValue": 740,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 740
   },
   "430": {
     "value": 2,
-    "conditionValue": 740,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 740
   },
   "431": {
     "value": 20,
-    "conditionValue": 2156,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2156
   },
   "432": {
     "value": 30,
-    "conditionValue": 2156,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2156
   },
   "433": {
     "value": 1,
-    "conditionValue": 2192,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2192
   },
   "434": {
     "value": 2,
-    "conditionValue": 2192,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2192
   },
   "435": {
     "value": 1,
-    "conditionValue": 740,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 740
   },
   "436": {
     "value": 2,
-    "conditionValue": 740,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 740
   },
   "439": {
     "value": 20,
-    "conditionValue": 2336,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2336
   },
   "440": {
     "value": 30,
-    "conditionValue": 2336,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2336
   },
   "441": {
     "value": 1,
-    "conditionValue": 2348,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2348
   },
   "442": {
     "value": 2,
-    "conditionValue": 2348,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2348
   },
   "443": {
     "value": 1,
-    "conditionValue": 772,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 772
   },
   "444": {
     "value": 2,
-    "conditionValue": 772,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 772
   },
   "445": {
     "value": 40,
-    "conditionValue": 327,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 327
   },
   "446": {
     "value": 40,
-    "conditionValue": 612,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 612
   },
   "447": {
     "value": 40,
-    "conditionValue": 617,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 617
   },
   "448": {
     "value": 40,
-    "conditionValue": 631,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 631
   },
   "449": {
     "value": 40,
-    "conditionValue": 635,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 635
   },
   "450": {
     "value": 40,
-    "conditionValue": 656,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 656
   },
   "451": {
     "value": 40,
-    "conditionValue": 829,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 829
   },
   "452": {
     "value": 40,
-    "conditionValue": 829,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 829
   },
   "453": {
     "value": 40,
-    "conditionValue": 945,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 945
   },
   "454": {
     "value": 40,
-    "conditionValue": 1003,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1003
   },
   "455": {
     "value": 40,
-    "conditionValue": 1024,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1024
   },
   "456": {
     "value": 40,
-    "conditionValue": 1067,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1067
   },
   "457": {
     "value": 40,
-    "conditionValue": 1088,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1088
   },
   "458": {
     "value": 40,
-    "conditionValue": 1109,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1109
   },
   "459": {
     "value": 40,
-    "conditionValue": 1206,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1206
   },
   "460": {
     "value": 40,
-    "conditionValue": 1399,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1399
   },
   "461": {
     "value": 40,
-    "conditionValue": 1592,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1592
   },
   "462": {
     "value": 40,
-    "conditionValue": 1688,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1688
   },
   "463": {
     "value": 40,
-    "conditionValue": 1737,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1737
   },
   "464": {
     "value": 40,
-    "conditionValue": 1828,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1828
   },
   "465": {
     "value": 40,
-    "conditionValue": 1919,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1919
   },
   "466": {
     "value": 40,
-    "conditionValue": 2010,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2010
   },
   "467": {
     "value": 40,
-    "conditionValue": 2105,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2105
   },
   "468": {
     "value": 40,
-    "conditionValue": 2316,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2316
   },
   "469": {
     "value": 40,
-    "conditionValue": 2605,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 2605
   },
   "471": {
     "value": 30,
-    "conditionValue": 3145,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3145
   },
   "475": {
     "value": 1,
-    "conditionValue": 900,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 900
   },
   "476": {
     "value": 1,
-    "conditionValue": 3949,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3949
   },
   "477": {
     "value": 1,
-    "conditionValue": 4002,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4002
   },
   "478": {
     "value": 1,
-    "conditionValue": 4056,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4056
   },
   "479": {
     "value": 1,
-    "conditionValue": 4109,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4109
   },
   "480": {
     "value": 1,
-    "conditionValue": 4163,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4163
   },
   "481": {
     "value": 1,
-    "conditionValue": 4216,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4216
   },
   "482": {
     "value": 1,
-    "conditionValue": 4270,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4270
   },
   "483": {
     "value": 1,
-    "conditionValue": 4323,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4323
   },
   "484": {
     "value": 1,
-    "conditionValue": 4431,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4431
   },
   "485": {
     "value": 1,
-    "conditionValue": 810,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 810
   },
   "486": {
     "value": 1,
-    "conditionValue": 820,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 820
   },
   "487": {
     "value": 1,
-    "conditionValue": 820,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 820
   },
   "488": {
     "value": 1,
-    "conditionValue": 820,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 820
   },
   "489": {
     "value": 1,
-    "conditionValue": 820,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 820
   },
   "490": {
     "value": 1,
-    "conditionValue": 830,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 830
   },
   "491": {
     "value": 1,
-    "conditionValue": 830,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 830
   },
   "492": {
     "value": 1,
-    "conditionValue": 830,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 830
   },
   "493": {
     "value": 1,
-    "conditionValue": 840,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 840
   },
   "494": {
     "value": 10,
-    "conditionValue": 221,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 221
   },
   "495": {
     "value": 10,
-    "conditionValue": 448,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 448
   },
   "496": {
     "value": 10,
-    "conditionValue": 453,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 453
   },
   "497": {
     "value": 10,
-    "conditionValue": 457,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 457
   },
   "498": {
     "value": 10,
-    "conditionValue": 498,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 498
   },
   "499": {
     "value": 20,
-    "conditionValue": 3097,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3097
   },
   "500": {
     "value": 20,
-    "conditionValue": 3139,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3139
   },
   "501": {
     "value": 20,
-    "conditionValue": 3181,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3181
   },
   "502": {
     "value": 20,
-    "conditionValue": 3223,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3223
   },
   "503": {
     "value": 20,
-    "conditionValue": 3265,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3265
   },
   "504": {
     "value": 20,
-    "conditionValue": 3307,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3307
   },
   "505": {
     "value": 20,
-    "conditionValue": 3349,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3349
   },
   "506": {
     "value": 20,
-    "conditionValue": 3391,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3391
   },
   "507": {
     "value": 20,
-    "conditionValue": 3475,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3475
   },
   "508": {
     "value": 1,
-    "conditionValue": 3761,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3761
   },
   "509": {
     "value": 1,
-    "conditionValue": 3812,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3812
   },
   "510": {
     "value": 1,
-    "conditionValue": 3863,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3863
   },
   "511": {
     "value": 1,
-    "conditionValue": 3914,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3914
   },
   "512": {
     "value": 1,
-    "conditionValue": 3965,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3965
   },
   "513": {
     "value": 1,
-    "conditionValue": 4016,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4016
   },
   "514": {
     "value": 1,
-    "conditionValue": 4067,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4067
   },
   "515": {
     "value": 1,
-    "conditionValue": 4118,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4118
   },
   "516": {
     "value": 1,
-    "conditionValue": 4220,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4220
   },
   "517": {
     "value": 1,
-    "conditionValue": 810,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 810
   },
   "518": {
     "value": 1,
-    "conditionValue": 820,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 820
   },
   "519": {
     "value": 1,
-    "conditionValue": 820,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 820
   },
   "520": {
     "value": 1,
-    "conditionValue": 820,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 820
   },
   "521": {
     "value": 1,
-    "conditionValue": 820,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 820
   },
   "522": {
     "value": 1,
-    "conditionValue": 830,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 830
   },
   "523": {
     "value": 1,
-    "conditionValue": 830,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 830
   },
   "524": {
     "value": 1,
-    "conditionValue": 830,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 830
   },
   "525": {
     "value": 1,
-    "conditionValue": 840,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 840
   },
   "526": {
     "value": 100,
-    "conditionValue": 3761,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3761
   },
   "527": {
     "value": 100,
-    "conditionValue": 3812,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3812
   },
   "528": {
     "value": 100,
-    "conditionValue": 3863,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3863
   },
   "529": {
     "value": 100,
-    "conditionValue": 3914,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3914
   },
   "530": {
     "value": 100,
-    "conditionValue": 3965,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 3965
   },
   "531": {
     "value": 100,
-    "conditionValue": 4016,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4016
   },
   "532": {
     "value": 100,
-    "conditionValue": 4067,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4067
   },
   "533": {
     "value": 100,
-    "conditionValue": 4118,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4118
   },
   "534": {
     "value": 10,
-    "conditionValue": 602,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 602
   },
   "535": {
     "value": 10,
-    "conditionValue": 714,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 714
   },
   "536": {
     "value": 10,
-    "conditionValue": 733,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 733
   },
   "537": {
     "value": 10,
-    "conditionValue": 743,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 743
   },
   "538": {
     "value": 10,
-    "conditionValue": 774,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 774
   },
   "539": {
     "value": 1,
-    "conditionValue": 821,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 821
   },
   "540": {
     "value": 1,
-    "conditionValue": 892,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 892
   },
   "541": {
     "value": 1,
-    "conditionValue": 928,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 928
   },
   "542": {
     "value": 1,
-    "conditionValue": 941,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 941
   },
   "543": {
     "value": 1,
-    "conditionValue": 948,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 948
   },
   "544": {
     "value": 1,
-    "conditionValue": 987,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 987
   },
   "545": {
     "value": 1,
-    "conditionValue": 1026,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1026
   },
   "546": {
     "value": 20,
-    "conditionValue": 645,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 645
   },
   "547": {
     "value": 20,
-    "conditionValue": 700,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 700
   },
   "548": {
     "value": 20,
-    "conditionValue": 728,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 728
   },
   "549": {
     "value": 20,
-    "conditionValue": 738,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 738
   },
   "550": {
     "value": 20,
-    "conditionValue": 743,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 743
   },
   "551": {
     "value": 20,
-    "conditionValue": 774,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 774
   },
   "552": {
     "value": 20,
-    "conditionValue": 805,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 805
   },
   "553": {
     "value": 1,
-    "conditionValue": 600,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 600
   },
   "554": {
     "value": 1,
-    "conditionValue": 605,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 605
   },
   "555": {
     "value": 1,
-    "conditionValue": 610,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 610
   },
   "556": {
     "value": 1,
-    "conditionValue": 620,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 620
   },
   "557": {
     "value": 1,
-    "conditionValue": 625,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 625
   },
   "558": {
     "value": 1,
-    "conditionValue": 635,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 635
   },
   "559": {
     "value": 1,
-    "conditionValue": 645,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 645
   },
   "560": {
     "value": 100,
-    "conditionValue": 4220,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4220
   },
   "561": {
     "value": 1,
-    "conditionValue": 870,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 870
   },
   "562": {
     "value": 1,
-    "conditionValue": 900,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 900
   },
   "563": {
     "value": 1,
-    "conditionValue": 930,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 930
   },
   "564": {
     "value": 30,
-    "conditionValue": 4907,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4907
   },
   "565": {
     "value": 1,
-    "conditionValue": 4754,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4754
   },
   "566": {
     "value": 1,
-    "conditionValue": 930,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 930
   },
   "567": {
     "value": 100,
-    "conditionValue": 731,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 731
   },
   "568": {
     "value": 100,
-    "conditionValue": 850,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 850
   },
   "569": {
     "value": 100,
-    "conditionValue": 884,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 884
   },
   "570": {
     "value": 100,
-    "conditionValue": 896,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 896
   },
   "571": {
     "value": 100,
-    "conditionValue": 902,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 902
   },
   "572": {
     "value": 100,
-    "conditionValue": 940,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 940
   },
   "573": {
     "value": 100,
-    "conditionValue": 977,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 977
   },
   "574": {
     "value": 1,
-    "conditionValue": 600,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 600
   },
   "575": {
     "value": 1,
-    "conditionValue": 605,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 605
   },
   "576": {
     "value": 1,
-    "conditionValue": 610,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 610
   },
   "577": {
     "value": 1,
-    "conditionValue": 620,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 620
   },
   "578": {
     "value": 1,
-    "conditionValue": 625,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 625
   },
   "579": {
     "value": 1,
-    "conditionValue": 635,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 635
   },
   "580": {
     "value": 1,
-    "conditionValue": 645,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 645
   },
   "581": {
     "value": 1,
-    "conditionValue": 782,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 782
   },
   "582": {
     "value": 1,
-    "conditionValue": 850,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 850
   },
   "583": {
     "value": 1,
-    "conditionValue": 884,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 884
   },
   "584": {
     "value": 1,
-    "conditionValue": 897,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 897
   },
   "585": {
     "value": 1,
-    "conditionValue": 903,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 903
   },
   "586": {
     "value": 1,
-    "conditionValue": 940,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 940
   },
   "587": {
     "value": 1,
-    "conditionValue": 978,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 978
   },
   "588": {
     "value": 15,
-    "conditionValue": 4300,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4300
   },
   "589": {
     "value": 30,
-    "conditionValue": 4300,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4300
   },
   "590": {
     "value": 15,
-    "conditionValue": 4550,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4550
   },
   "591": {
     "value": 30,
-    "conditionValue": 4550,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4550
   },
   "592": {
     "value": 15,
-    "conditionValue": 4750,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4750
   },
   "593": {
     "value": 30,
-    "conditionValue": 4750,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4750
   },
   "594": {
     "value": 1,
-    "conditionValue": 4300,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4300
   },
   "595": {
     "value": 2,
-    "conditionValue": 4300,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4300
   },
   "596": {
     "value": 1,
-    "conditionValue": 4550,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4550
   },
   "597": {
     "value": 2,
-    "conditionValue": 4550,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4550
   },
   "598": {
     "value": 1,
-    "conditionValue": 4750,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4750
   },
   "599": {
     "value": 2,
-    "conditionValue": 4750,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 4750
+  },
+  "600": {
+    "value": 70,
+    "conditionValue": 5090
+  },
+  "601": {
+    "value": 10,
+    "conditionValue": 5090
+  },
+  "602": {
+    "value": 15,
+    "conditionValue": 5090
+  },
+  "603": {
+    "value": 30,
+    "conditionValue": 5090
   },
   "609": {
     "value": 1,
-    "conditionValue": 821,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 821
   },
   "610": {
     "value": 1,
-    "conditionValue": 928,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 928
   },
   "611": {
     "value": 1,
-    "conditionValue": 948,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 948
   },
   "612": {
     "value": 1,
-    "conditionValue": 987,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 987
   },
   "614": {
     "value": 1,
-    "conditionValue": 1026,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1026
   },
   "615": {
     "value": 1,
-    "conditionValue": 1116,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1116
   },
   "616": {
     "value": 1,
-    "conditionValue": 1006,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1006
   },
   "650": {
     "value": 1,
-    "conditionValue": 600,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 600
   },
   "651": {
     "value": 1,
-    "conditionValue": 610,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 610
   },
   "652": {
     "value": 1,
-    "conditionValue": 625,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 625
   },
   "653": {
     "value": 1,
-    "conditionValue": 635,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 635
   },
   "654": {
     "value": 1,
-    "conditionValue": 640,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 640
   },
   "655": {
     "value": 1,
-    "conditionValue": 645,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 645
   },
   "656": {
     "value": 1,
-    "conditionValue": 680,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 680
   },
   "669": {
     "value": 1,
-    "conditionValue": 1543,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1543
   },
   "670": {
     "value": 1,
-    "conditionValue": 680,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 680
   },
   "671": {
     "value": 10,
-    "conditionValue": 1015,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1015
   },
   "672": {
     "value": 10,
-    "conditionValue": 1225,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1225
   },
   "673": {
     "value": 10,
-    "conditionValue": 1260,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1260
   },
   "674": {
     "value": 10,
-    "conditionValue": 1326,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1326
   },
   "675": {
     "value": 10,
-    "conditionValue": 1392,
-    "bonus": {
-      "tw": "高於自身等級道具獲得率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1392
   },
   "676": {
     "value": 1,
-    "conditionValue": 1294,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1294
   },
   "677": {
     "value": 1,
-    "conditionValue": 1517,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1517
   },
   "678": {
     "value": 1,
-    "conditionValue": 1562,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1562
   },
   "679": {
     "value": 1,
-    "conditionValue": 1606,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1606
   },
   "680": {
     "value": 1,
-    "conditionValue": 1649,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1649
   },
   "681": {
     "value": 1,
-    "conditionValue": 1691,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1691
   },
   "682": {
     "value": 1,
-    "conditionValue": 1733,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1733
   },
   "683": {
     "value": 1,
-    "conditionValue": 1859,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1859
   },
   "684": {
     "value": 20,
-    "conditionValue": 1015,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1015
   },
   "685": {
     "value": 20,
-    "conditionValue": 1190,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1190
   },
   "686": {
     "value": 20,
-    "conditionValue": 1225,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1225
   },
   "687": {
     "value": 20,
-    "conditionValue": 1260,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1260
   },
   "688": {
     "value": 20,
-    "conditionValue": 1293,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1293
   },
   "689": {
     "value": 20,
-    "conditionValue": 1326,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1326
   },
   "690": {
     "value": 20,
-    "conditionValue": 1359,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1359
   },
   "691": {
     "value": 20,
-    "conditionValue": 1458,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%（上升型）"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1458
   },
   "692": {
     "value": 1,
-    "conditionValue": 680,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 680
   },
   "693": {
     "value": 1,
-    "conditionValue": 680,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 680
   },
   "694": {
     "value": 1,
-    "conditionValue": 685,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 685
   },
   "695": {
     "value": 1,
-    "conditionValue": 695,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 695
   },
   "696": {
     "value": 1,
-    "conditionValue": 700,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 700
   },
   "697": {
     "value": 1,
-    "conditionValue": 705,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 705
   },
   "698": {
     "value": 1,
-    "conditionValue": 710,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 710
   },
   "699": {
     "value": 1,
-    "conditionValue": 725,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 725
   },
   "708": {
     "value": 100,
-    "conditionValue": 1350,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1350
   },
   "709": {
     "value": 100,
-    "conditionValue": 1445,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1445
   },
   "710": {
     "value": 100,
-    "conditionValue": 1487,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1487
   },
   "711": {
     "value": 100,
-    "conditionValue": 1530,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1530
   },
   "712": {
     "value": 100,
-    "conditionValue": 1570,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1570
   },
   "713": {
     "value": 100,
-    "conditionValue": 1610,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1610
   },
   "714": {
     "value": 100,
-    "conditionValue": 1650,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1650
   },
   "715": {
     "value": 100,
-    "conditionValue": 1770,
-    "bonus": {
-      "tw": "額外採集獎勵發生率＋<Value>IntegerParameter(1)</Value>%"
-    },
-    "condition": {
-      "tw": "鑑別力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1770
   },
   "716": {
     "value": 1,
-    "conditionValue": 680,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 680
   },
   "717": {
     "value": 1,
-    "conditionValue": 680,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 680
   },
   "718": {
     "value": 1,
-    "conditionValue": 685,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 685
   },
   "719": {
     "value": 1,
-    "conditionValue": 695,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 695
   },
   "720": {
     "value": 1,
-    "conditionValue": 700,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 700
   },
   "721": {
     "value": 1,
-    "conditionValue": 705,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 705
   },
   "722": {
     "value": 1,
-    "conditionValue": 710,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 710
   },
   "723": {
     "value": 1,
-    "conditionValue": 725,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 725
   },
   "724": {
     "value": 1,
-    "conditionValue": 1233,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1233
   },
   "725": {
     "value": 1,
-    "conditionValue": 1445,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1445
   },
   "726": {
     "value": 1,
-    "conditionValue": 1488,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1488
   },
   "727": {
     "value": 1,
-    "conditionValue": 1530,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1530
   },
   "728": {
     "value": 1,
-    "conditionValue": 1571,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1571
   },
   "729": {
     "value": 1,
-    "conditionValue": 1611,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1611
   },
   "730": {
     "value": 1,
-    "conditionValue": 1651,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1651
   },
   "731": {
     "value": 1,
-    "conditionValue": 1771,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1771
   },
   "755": {
     "value": 1,
-    "conditionValue": 1294,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1294
   },
   "756": {
     "value": 1,
-    "conditionValue": 1562,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1562
   },
   "757": {
     "value": 1,
-    "conditionValue": 1606,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1606
   },
   "758": {
     "value": 1,
-    "conditionValue": 1691,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1691
   },
   "759": {
     "value": 1,
-    "conditionValue": 1775,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1775
   },
   "760": {
     "value": 1,
-    "conditionValue": 1859,
-    "bonus": {
-      "tw": "獲得數＋<Value>IntegerParameter(1)</Value>個（上升型）"
-    },
-    "condition": {
-      "tw": "獲得力 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 1859
   },
   "767": {
     "value": 1,
-    "conditionValue": 680,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 680
   },
   "768": {
     "value": 1,
-    "conditionValue": 685,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 685
   },
   "769": {
     "value": 1,
-    "conditionValue": 695,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 695
   },
   "770": {
     "value": 1,
-    "conditionValue": 705,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 705
   },
   "771": {
     "value": 1,
-    "conditionValue": 715,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 715
   },
   "772": {
     "value": 1,
-    "conditionValue": 725,
-    "bonus": {
-      "tw": "採集次數/耐久＋<Value>IntegerParameter(1)</Value>次（上升型）"
-    },
-    "condition": {
-      "tw": "GP上限 <Value>IntegerParameter(1)</Value>以上"
-    }
+    "conditionValue": 725
   }
 }
