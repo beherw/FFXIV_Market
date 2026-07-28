@@ -92,4 +92,4 @@ Copy-Item -Path "$SaintCmdOut\*" -Destination $DumpcsvBin -Recurse -Force
 
 Write-Host ""
 Write-Host "Done. You can run: node tw_dataminer/run-pipeline.js --extract"
-Write-Host "(Set GAME_PATH or FFXIV_GAME_PATH to your FFXIV TW install if needed.)"
+Write-Host "(Set GAME_PATH to your FFXIV TW install if needed.)"

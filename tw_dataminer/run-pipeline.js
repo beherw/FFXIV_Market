@@ -19,7 +19,7 @@
  *
  * Env vars:
  *   DATAMINING_TW_DIR      — Path to ffxiv-datamining-tw clone
- *   GAME_PATH / FFXIV_GAME_PATH — FFXIV client install root (defaults to D:\FINAL FANTASY XIV TC if not provided)
+ *   GAME_PATH              — FFXIV client install root
  *   DUMPCSV_DIR            — Path to built DumpCSV bin directory
  *   DUMPCSV_OUTPUT_DIR     — DumpCSV rawexd output directory
  *   DOTNET_ROOT            — .NET runtime location (if not in PATH)
@@ -99,10 +99,17 @@ const doPull = args.includes('--pull');
 const skipExport = process.env.SKIP_EXPORT === '1';
 const onlyArg = args.find(a => a.startsWith('--only'));
 const onlyList = onlyArg ? args[args.indexOf(onlyArg) + 1] : null;
-const gamePathArg = args.find(a => a.startsWith('--game-path='));
-const directGamePathArg = args.includes('--game-path') ? args[args.indexOf('--game-path') + 1] : null;
-const resolvedGamePath = (gamePathArg ? gamePathArg.split('=').slice(1).join('=') : null) || directGamePathArg || process.env.GAME_PATH || process.env.FFXIV_GAME_PATH || 'D:\\FINAL FANTASY XIV TC';
-const GAME_PATH = resolvedGamePath.trim();
+const gamePathFlag = args.find(a => a.startsWith('--game-path='));
+const gamePathFlagValue = gamePathFlag ? gamePathFlag.slice('--game-path='.length) : null;
+const gamePathIndex = args.indexOf('--game-path');
+const gamePathNextValue = gamePathIndex >= 0 ? args[gamePathIndex + 1] : null;
+const GAME_PATH = (
+  gamePathFlagValue ||
+  gamePathNextValue ||
+  process.env.GAME_PATH ||
+  process.env.FFXIV_GAME_PATH ||
+  'D:\\FINAL FANTASY XIV TC'
+).trim();
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
@@ -222,7 +229,7 @@ function extractFromClient() {
 
   if (!fs.existsSync(gameSqpackDir)) {
     console.error('Game sqpack directory not found:', gameSqpackDir);
-    console.error('Game path is set in run-pipeline.js (GAME_PATH).');
+    console.error('Set GAME_PATH or pass --game-path "<FFXIV install folder>".');
     process.exit(1);
   }
 

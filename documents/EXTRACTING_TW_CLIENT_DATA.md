@@ -10,7 +10,7 @@ This document describes how **ffxiv-teamcraft** obtained and updated the Taiwan 
 
 **Single path in this project:**
 
-1. **Extract** from your FFXIV TW install: run **`npm run datamine`** (or `node tw_dataminer/run-pipeline.js --extract`). The game path is configurable; pass `--game-path="E:\FINAL FANTASY XIV TC"` or set `GAME_PATH` / `FFXIV_GAME_PATH` to your install location. If DumpCSV is not built, the pipeline runs **`tw_dataminer/setup-dumpcsv.ps1`** automatically.
+1. **Extract** from your FFXIV TW install: run **`npm run datamine`** (or `node tw_dataminer/run-pipeline.js --extract`). Game path is hardcoded as `D:\FINAL FANTASY XIV TC`. If DumpCSV is not built, the pipeline runs **`tw_dataminer/setup-dumpcsv.ps1`** automatically.
 2. **Resolve** so the build uses that output:  
    `npm run resolve-tw-json`  
    (Uses **tw_dataminer/output/** first, then test-extract/output, then teamcraft.)

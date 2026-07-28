@@ -14,6 +14,10 @@ npm run datamine
 
 This **builds DumpCSV** (if needed), **runs setup** (SaintCoinach + DumpCSV) when missing, **extracts** from your game folder (`D:\FINAL FANTASY XIV TC`), writes tw-*.json, resolves them, and builds items data. One command handles everything. Then run **`npm run build`** — the app will use the newest data from your game.
 
+For myahaha's no-command-line workflow, copy **`myahaha_datamine.bat`** to the Windows desktop and double-click it. It defaults to the collaborator's repository on `D:` and game on `E:`, auto-detects the game on common drive letters, force-syncs the local checkout to `origin/main`, validates the extracted data, and pushes only when new data exists.
+
+> The launcher intentionally discards local repository changes before mining. This PC is treated as a dedicated datamining checkout.
+
 ---
 
 ## Other pipeline modes
@@ -69,15 +73,14 @@ To run setup manually (e.g. after setup failed during datamine):
 ```
 
 
-Game path is hardcoded in **run-pipeline.js** as `D:\FINAL FANTASY XIV TC`. If DumpCSV is already built elsewhere (with SaintCoinach at runtime), set **DUMPCSV_DIR** to its `bin/Release/net8.0` folder.
+The game path defaults to `D:\FINAL FANTASY XIV TC`. Set **GAME_PATH** (or **FFXIV_GAME_PATH**) or pass `--game-path "E:\FINAL FANTASY XIV TC"` to use another install. If DumpCSV is already built elsewhere (with SaintCoinach at runtime), set **DUMPCSV_DIR** to its `bin/Release/net8.0` folder.
 
 ## Env vars
 
 - **DATAMINING_TW_DIR** — ffxiv-datamining-tw clone path (default: `tw_dataminer/ffxiv-datamining-tw`)
-- Game path — hardcoded in `run-pipeline.js` as `D:\FINAL FANTASY XIV TC`
+- **GAME_PATH / FFXIV_GAME_PATH** — FFXIV game install root (default: `D:\FINAL FANTASY XIV TC`)
 - **DUMPCSV_DIR** — DumpCSV bin directory (default: `tw_dataminer/dumpcsv/bin/Release/net8.0`)
 - **DUMPCSV_OUTPUT_DIR** — DumpCSV rawexd output (default: `tw_dataminer/dumpcsv-output/rawexd`)
-- **GAME_PATH / FFXIV_GAME_PATH** — FFXIV game install root (default: `D:\FINAL FANTASY XIV TC`)
 - **DOTNET_ROOT** — .NET runtime (optional)
 - **SKIP_EXPORT** — `1` = only copy CSVs, skip JSON generation
 
@@ -86,4 +89,3 @@ Game path is hardcoded in **run-pipeline.js** as `D:\FINAL FANTASY XIV TC`. If D
 Before build, **resolve-tw-json** runs and picks sources in this order: (1) tw_dataminer/output, (2) test-extract/output, (3) teamcraft. So after `node tw_dataminer/run-pipeline.js --extract`, run `npm run resolve-tw-json` and `node scripts/build-items-data.js` so the app loads your data.
 
 See **scripts/resolve-tw-json.js** and **package.json** (`resolve-tw-json`, `prebuild`).
-

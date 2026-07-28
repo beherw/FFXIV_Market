@@ -27,15 +27,44 @@ Array.prototype.binarySearch = function (id) {
   id = +id
   if (isNaN(id)) return -2
 
-  const index = this.findIndex(row => row && typeof row === 'object' && +row['#'] === id)
-  return index >= 0 ? index : -1
+  if (this.length === 0) return -1
+
+  if (this.length > id && this[id] && id === +this[id]['#']) {
+    return id
+  }
+
+  let startPos = 0
+  let endPos = this.length - 1
+
+  while (startPos <= endPos) {
+    const pos = startPos + Math.floor((endPos - startPos) / 2)
+    const posId = this[pos] && +this[pos]['#']
+
+    // Sparse or malformed input is not safe to binary-search. Let findById
+    // use its guarded linear fallback instead.
+    if (!Number.isFinite(posId)) return -2
+
+    if (posId === id) {
+      return pos
+    } else if (posId > id) {
+      endPos = pos - 1
+    } else {
+      startPos = pos + 1
+    }
+  }
+
+  return -1
 }
 
 Array.prototype.findById = function (id) {
   let index = this.binarySearch(id)
   if (index === -1) return null
 
-  return this[index]
+  if (index < 0) {
+    return this.find(item => item && typeof item === 'object' && +item['#'] === +id) || null
+  } else {
+    return this[index]
+  }
 }
 
 Array.prototype.kvmap = function (nKey = 'Name', valueFunc = (val) => val) {
