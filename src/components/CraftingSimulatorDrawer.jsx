@@ -2464,6 +2464,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                 const isSelected = selectedRecipeId === candidateId;
                 const candidateJobName = JOB_NAMES[candidate.job] || `職業 ${candidate.job}`;
                 const candidateJobIcon = JOB_ICON_MAP[candidate.job];
+                const candidateCosmicMissionRankLabel = getCosmicMissionRankLabel(candidate);
 
                 return (
                   <label
@@ -2487,6 +2488,11 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                         <span>{candidateJobName}</span>
                       </span>
                       <span className="mt-0.5 block text-xs text-slate-400">
+                        {candidateCosmicMissionRankLabel ? (
+                          <span className="mr-1.5 inline-flex rounded-full border border-purple-400/35 bg-purple-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-purple-200">
+                            {candidateCosmicMissionRankLabel}
+                          </span>
+                        ) : null}
                         Lv.{candidate.lvl || 0}・<span className="font-semibold text-ffxiv-gold">耐久 {candidate.durability || 0}</span>・難度 {candidate.difficulty || 0}
                       </span>
                     </span>
