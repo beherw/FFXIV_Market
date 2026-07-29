@@ -24,7 +24,7 @@ import { generateBracketPatterns } from './utils/searchNormalization';
 import { addSearchToHistory } from './utils/searchHistory';
 import { useHistory } from './hooks/useHistory';
 import { useMultiItemCombinedTree } from './hooks/useMultiItemCombinedTree';
-import { hasRecipe, buildCraftingTree, findRelatedItems, isCompanyCraftResultItem } from './services/recipeDatabase';
+import { hasRecipe, buildCraftingTree, findRecipesByResult, findRelatedItems, isCompanyCraftResultItem } from './services/recipeDatabase';
 import { getIlvls, getItemPatch, getPatchNames, getItemSetFromDB, getTwItemsByIds } from './services/gameData';
 import { getUICategoriesByIds, getTwItemUICategories } from './services/uiCategoriesDataService';
 import TopBar from './components/TopBar';
@@ -35,6 +35,7 @@ import { generateItemSlug, generateItemUrl } from './utils/urlSlug';
 import { detectLanguage, getItemNameForUrl } from './utils/itemLanguage';
 import ItemSEO from './components/ItemSEO';
 import VersionFooter from './components/VersionFooter';
+import { getCosmicMissionRankLabel } from './utils/cosmicMission';
 
 // Lazy load route-based components with error handling
 const createLazyComponent = (importFn, componentName) => {
@@ -509,6 +510,8 @@ function App() {
   const [selectedItemCategory, setSelectedItemCategory] = useState(null); // { id, name }
   /** True when selected item appears as a Company Craft (部隊合建) product in recipe DB */
   const [selectedItemIsCompanyCraft, setSelectedItemIsCompanyCraft] = useState(false);
+  /** Cosmic Exploration ranks attached to the selected item's recipes. */
+  const [selectedItemCosmicRanks, setSelectedItemCosmicRanks] = useState([]);
 
   // Load ilvl and patch data lazily (only when needed, not on mount)
   // This prevents unnecessary data loading on initial page load
@@ -3765,6 +3768,7 @@ function App() {
     if (!selectedItem) {
       setCraftingTree(null);
       setHasCraftingRecipe(false);
+      setSelectedItemCosmicRanks([]);
       setIsCraftingTreeExpanded(false);
       setIsCraftingSimulatorOpen(false);
       setHasRelatedItems(false);
@@ -3789,6 +3793,7 @@ function App() {
     setHasItemSet(false);
     setIsLoadingItemSet(false);
     setHasObtainMethods(false); // Reset to false when new item loads, will be updated by callback
+    setSelectedItemCosmicRanks([]);
     
     // Auto-expand obtainable if we clicked from obtainable
     // Use setTimeout to ensure this happens after React has updated the DOM
@@ -3817,6 +3822,16 @@ function App() {
         setHasCraftingRecipe(hasCraft);
         
         if (hasCraft) {
+          const matchingRecipes = await findRecipesByResult(selectedItem.id);
+          if (cancelled) return;
+          setSelectedItemCosmicRanks(
+            [...new Set(
+              matchingRecipes
+                .map(getCosmicMissionRankLabel)
+                .filter(Boolean),
+            )],
+          );
+
           // Build the crafting tree with excludeCrystals parameter
           const tree = await buildCraftingTree(selectedItem.id, 1, new Set(), 0, excludeCrystals);
           if (cancelled) return;
@@ -4623,6 +4638,14 @@ function App() {
                                   版本: {version}
                                 </span>
                               )}
+                              {selectedItemCosmicRanks.map((rank) => (
+                                <span
+                                  key={rank}
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded-md border text-[10px] mid:text-xs font-semibold whitespace-nowrap bg-cyan-900/25 border-cyan-400/40 text-cyan-200"
+                                >
+                                  宇宙探索 {rank}
+                                </span>
+                              ))}
                               {ilvl !== null && (
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded-md border text-[10px] mid:text-xs font-semibold whitespace-nowrap bg-emerald-900/20 border-emerald-400/40 text-emerald-300">
                                   ilvl: {ilvl}

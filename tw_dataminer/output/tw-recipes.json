@@ -621692,6 +621692,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -621727,6 +621728,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -621762,6 +621764,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -621797,6 +621800,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -621832,6 +621836,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -621867,6 +621872,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 182,
     "qualityFactor": 5,
@@ -621902,6 +621908,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 192,
     "qualityFactor": 5,
@@ -621937,6 +621944,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -621972,6 +621980,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 62,
@@ -622007,6 +622016,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -622042,6 +622052,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 128,
     "qualityFactor": 68,
@@ -622077,6 +622088,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -622112,6 +622124,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 89,
@@ -622147,6 +622160,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -622182,6 +622196,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 14,
     "qualityFactor": 177,
@@ -622217,6 +622232,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -622252,6 +622268,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 77,
     "qualityFactor": 125,
@@ -622287,6 +622304,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 76,
@@ -622322,6 +622340,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 35,
     "qualityFactor": 70,
@@ -622357,6 +622376,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 11,
     "qualityFactor": 108,
@@ -622392,6 +622412,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 81,
@@ -622427,6 +622448,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 78,
@@ -622462,6 +622484,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 54,
     "qualityFactor": 87,
@@ -622497,6 +622520,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -622532,6 +622556,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 211,
     "qualityFactor": 70,
@@ -622567,6 +622592,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -622602,6 +622628,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 139,
@@ -622636,7 +622663,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36193,
@@ -622667,7 +622695,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36194,
@@ -622698,7 +622727,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36195,
@@ -622729,7 +622759,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36196,
@@ -622760,7 +622791,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 19
+    "conditionsFlag": 19,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36197,
@@ -622791,7 +622823,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 67
+    "conditionsFlag": 67,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36198,
@@ -622822,7 +622855,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 35
+    "conditionsFlag": 35,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36199,
@@ -622853,7 +622887,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36200,
@@ -622884,7 +622919,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36201,
@@ -622915,7 +622951,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36202,
@@ -622946,7 +622983,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 515
+    "conditionsFlag": 515,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36203,
@@ -622977,7 +623015,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 259
+    "conditionsFlag": 259,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36204,
@@ -623008,7 +623047,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 131
+    "conditionsFlag": 131,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36205,
@@ -623039,7 +623079,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36206,
@@ -623070,7 +623111,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36207,
@@ -623101,7 +623143,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36208,
@@ -623132,7 +623175,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36209,
@@ -623163,7 +623207,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36210,
@@ -623194,7 +623239,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36211,
@@ -623225,7 +623271,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36212,
@@ -623256,7 +623303,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36213,
@@ -623287,7 +623335,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36214,
@@ -623318,7 +623367,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36215,
@@ -623349,7 +623399,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36216,
@@ -623380,7 +623431,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36217,
@@ -623411,7 +623463,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36218,
@@ -623442,7 +623495,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36219,
@@ -623473,7 +623527,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36220,
@@ -623504,7 +623559,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36222,
@@ -623535,7 +623591,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36223,
@@ -623566,7 +623623,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36225,
@@ -623597,7 +623655,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36227,
@@ -623628,7 +623687,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36228,
@@ -623660,6 +623720,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -623695,6 +623756,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -623730,6 +623792,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -623765,6 +623828,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -623800,6 +623864,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -623835,6 +623900,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 182,
     "qualityFactor": 5,
@@ -623870,6 +623936,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 192,
     "qualityFactor": 5,
@@ -623905,6 +623972,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -623940,6 +624008,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 62,
@@ -623975,6 +624044,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -624010,6 +624080,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 128,
     "qualityFactor": 68,
@@ -624045,6 +624116,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -624080,6 +624152,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 89,
@@ -624115,6 +624188,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -624150,6 +624224,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 14,
     "qualityFactor": 177,
@@ -624185,6 +624260,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -624220,6 +624296,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 77,
     "qualityFactor": 125,
@@ -624255,6 +624332,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 76,
@@ -624290,6 +624368,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 35,
     "qualityFactor": 70,
@@ -624325,6 +624404,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 11,
     "qualityFactor": 108,
@@ -624360,6 +624440,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 81,
@@ -624395,6 +624476,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 78,
@@ -624430,6 +624512,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 54,
     "qualityFactor": 87,
@@ -624465,6 +624548,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -624500,6 +624584,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 211,
     "qualityFactor": 70,
@@ -624535,6 +624620,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -624570,6 +624656,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 139,
@@ -624604,7 +624691,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36256,
@@ -624635,7 +624723,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36257,
@@ -624666,7 +624755,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36258,
@@ -624697,7 +624787,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36259,
@@ -624728,7 +624819,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 19
+    "conditionsFlag": 19,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36260,
@@ -624759,7 +624851,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 67
+    "conditionsFlag": 67,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36261,
@@ -624790,7 +624883,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 35
+    "conditionsFlag": 35,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36262,
@@ -624821,7 +624915,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36263,
@@ -624852,7 +624947,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36264,
@@ -624883,7 +624979,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36265,
@@ -624914,7 +625011,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 515
+    "conditionsFlag": 515,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36266,
@@ -624945,7 +625043,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 259
+    "conditionsFlag": 259,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36267,
@@ -624976,7 +625075,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 131
+    "conditionsFlag": 131,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36268,
@@ -625007,7 +625107,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36269,
@@ -625038,7 +625139,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36270,
@@ -625069,7 +625171,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36271,
@@ -625100,7 +625203,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36272,
@@ -625131,7 +625235,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36273,
@@ -625162,7 +625267,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36274,
@@ -625193,7 +625299,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36275,
@@ -625224,7 +625331,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36276,
@@ -625255,7 +625363,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36277,
@@ -625286,7 +625395,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36278,
@@ -625317,7 +625427,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36279,
@@ -625348,7 +625459,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36280,
@@ -625379,7 +625491,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36281,
@@ -625410,7 +625523,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36282,
@@ -625441,7 +625555,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36283,
@@ -625472,7 +625587,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36285,
@@ -625503,7 +625619,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36286,
@@ -625534,7 +625651,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36288,
@@ -625565,7 +625683,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36290,
@@ -625596,7 +625715,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36291,
@@ -625628,6 +625748,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -625663,6 +625784,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -625698,6 +625820,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -625733,6 +625856,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -625768,6 +625892,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -625803,6 +625928,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 182,
     "qualityFactor": 5,
@@ -625838,6 +625964,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 192,
     "qualityFactor": 5,
@@ -625873,6 +626000,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -625908,6 +626036,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 62,
@@ -625943,6 +626072,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -625978,6 +626108,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 128,
     "qualityFactor": 68,
@@ -626013,6 +626144,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -626048,6 +626180,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 89,
@@ -626083,6 +626216,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -626118,6 +626252,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 14,
     "qualityFactor": 177,
@@ -626153,6 +626288,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -626188,6 +626324,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 77,
     "qualityFactor": 125,
@@ -626223,6 +626360,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 76,
@@ -626258,6 +626396,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 35,
     "qualityFactor": 70,
@@ -626293,6 +626432,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 11,
     "qualityFactor": 108,
@@ -626328,6 +626468,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 81,
@@ -626363,6 +626504,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 78,
@@ -626398,6 +626540,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 54,
     "qualityFactor": 87,
@@ -626433,6 +626576,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -626468,6 +626612,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 211,
     "qualityFactor": 70,
@@ -626503,6 +626648,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -626538,6 +626684,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 139,
@@ -626572,7 +626719,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36319,
@@ -626603,7 +626751,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36320,
@@ -626634,7 +626783,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36321,
@@ -626665,7 +626815,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36322,
@@ -626696,7 +626847,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 19
+    "conditionsFlag": 19,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36323,
@@ -626727,7 +626879,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 67
+    "conditionsFlag": 67,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36324,
@@ -626758,7 +626911,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 35
+    "conditionsFlag": 35,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36325,
@@ -626789,7 +626943,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36326,
@@ -626820,7 +626975,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36327,
@@ -626851,7 +627007,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36328,
@@ -626882,7 +627039,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 515
+    "conditionsFlag": 515,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36329,
@@ -626913,7 +627071,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 259
+    "conditionsFlag": 259,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36330,
@@ -626944,7 +627103,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 131
+    "conditionsFlag": 131,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36331,
@@ -626975,7 +627135,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36332,
@@ -627006,7 +627167,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36333,
@@ -627037,7 +627199,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36334,
@@ -627068,7 +627231,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36335,
@@ -627099,7 +627263,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36336,
@@ -627130,7 +627295,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36337,
@@ -627161,7 +627327,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36338,
@@ -627192,7 +627359,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36339,
@@ -627223,7 +627391,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36340,
@@ -627254,7 +627423,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36341,
@@ -627285,7 +627455,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36342,
@@ -627316,7 +627487,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36343,
@@ -627347,7 +627519,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36344,
@@ -627378,7 +627551,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36345,
@@ -627409,7 +627583,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36346,
@@ -627440,7 +627615,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36348,
@@ -627471,7 +627647,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36349,
@@ -627502,7 +627679,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36351,
@@ -627533,7 +627711,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36353,
@@ -627564,7 +627743,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36354,
@@ -627596,6 +627776,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -627631,6 +627812,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -627666,6 +627848,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -627701,6 +627884,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -627736,6 +627920,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -627771,6 +627956,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 182,
     "qualityFactor": 5,
@@ -627806,6 +627992,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 192,
     "qualityFactor": 5,
@@ -627841,6 +628028,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -627876,6 +628064,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 62,
@@ -627911,6 +628100,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -627946,6 +628136,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 128,
     "qualityFactor": 68,
@@ -627981,6 +628172,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -628016,6 +628208,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 89,
@@ -628051,6 +628244,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -628086,6 +628280,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 14,
     "qualityFactor": 177,
@@ -628121,6 +628316,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -628156,6 +628352,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 77,
     "qualityFactor": 125,
@@ -628191,6 +628388,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 76,
@@ -628226,6 +628424,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 35,
     "qualityFactor": 70,
@@ -628261,6 +628460,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 11,
     "qualityFactor": 108,
@@ -628296,6 +628496,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 81,
@@ -628331,6 +628532,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 78,
@@ -628366,6 +628568,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 54,
     "qualityFactor": 87,
@@ -628401,6 +628604,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -628436,6 +628640,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 211,
     "qualityFactor": 70,
@@ -628471,6 +628676,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -628506,6 +628712,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 139,
@@ -628540,7 +628747,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36382,
@@ -628571,7 +628779,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36383,
@@ -628602,7 +628811,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36384,
@@ -628633,7 +628843,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36385,
@@ -628664,7 +628875,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 19
+    "conditionsFlag": 19,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36386,
@@ -628695,7 +628907,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 67
+    "conditionsFlag": 67,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36387,
@@ -628726,7 +628939,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 35
+    "conditionsFlag": 35,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36388,
@@ -628757,7 +628971,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36389,
@@ -628788,7 +629003,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36390,
@@ -628819,7 +629035,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36391,
@@ -628850,7 +629067,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 515
+    "conditionsFlag": 515,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36392,
@@ -628881,7 +629099,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 259
+    "conditionsFlag": 259,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36393,
@@ -628912,7 +629131,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 131
+    "conditionsFlag": 131,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36394,
@@ -628943,7 +629163,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36395,
@@ -628974,7 +629195,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36396,
@@ -629005,7 +629227,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36397,
@@ -629036,7 +629259,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36398,
@@ -629067,7 +629291,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36399,
@@ -629098,7 +629323,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36400,
@@ -629129,7 +629355,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36401,
@@ -629160,7 +629387,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36402,
@@ -629191,7 +629419,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36403,
@@ -629222,7 +629451,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36404,
@@ -629253,7 +629483,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36405,
@@ -629284,7 +629515,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36406,
@@ -629315,7 +629547,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36407,
@@ -629346,7 +629579,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36408,
@@ -629377,7 +629611,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36409,
@@ -629408,7 +629643,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36411,
@@ -629439,7 +629675,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36412,
@@ -629470,7 +629707,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36414,
@@ -629501,7 +629739,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36416,
@@ -629532,7 +629771,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36417,
@@ -629564,6 +629804,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -629599,6 +629840,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -629634,6 +629876,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -629669,6 +629912,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -629704,6 +629948,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -629739,6 +629984,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 182,
     "qualityFactor": 5,
@@ -629774,6 +630020,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 192,
     "qualityFactor": 5,
@@ -629809,6 +630056,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -629844,6 +630092,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 62,
@@ -629879,6 +630128,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -629914,6 +630164,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 128,
     "qualityFactor": 68,
@@ -629949,6 +630200,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -629984,6 +630236,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 89,
@@ -630019,6 +630272,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -630054,6 +630308,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 14,
     "qualityFactor": 177,
@@ -630089,6 +630344,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -630124,6 +630380,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 77,
     "qualityFactor": 125,
@@ -630159,6 +630416,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 76,
@@ -630194,6 +630452,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 35,
     "qualityFactor": 70,
@@ -630229,6 +630488,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 11,
     "qualityFactor": 108,
@@ -630264,6 +630524,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 81,
@@ -630299,6 +630560,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 78,
@@ -630334,6 +630596,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 54,
     "qualityFactor": 87,
@@ -630369,6 +630632,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -630404,6 +630668,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 211,
     "qualityFactor": 70,
@@ -630439,6 +630704,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -630474,6 +630740,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 139,
@@ -630508,7 +630775,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36445,
@@ -630539,7 +630807,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36446,
@@ -630570,7 +630839,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36447,
@@ -630601,7 +630871,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36448,
@@ -630632,7 +630903,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 19
+    "conditionsFlag": 19,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36449,
@@ -630663,7 +630935,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 67
+    "conditionsFlag": 67,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36450,
@@ -630694,7 +630967,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 35
+    "conditionsFlag": 35,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36451,
@@ -630725,7 +630999,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36452,
@@ -630756,7 +631031,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36453,
@@ -630787,7 +631063,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36454,
@@ -630818,7 +631095,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 515
+    "conditionsFlag": 515,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36455,
@@ -630849,7 +631127,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 259
+    "conditionsFlag": 259,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36456,
@@ -630880,7 +631159,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 131
+    "conditionsFlag": 131,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36457,
@@ -630911,7 +631191,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36458,
@@ -630942,7 +631223,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36459,
@@ -630973,7 +631255,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36460,
@@ -631004,7 +631287,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36461,
@@ -631035,7 +631319,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36462,
@@ -631066,7 +631351,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36463,
@@ -631097,7 +631383,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36464,
@@ -631128,7 +631415,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36465,
@@ -631159,7 +631447,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36466,
@@ -631190,7 +631479,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36467,
@@ -631221,7 +631511,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36468,
@@ -631252,7 +631543,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36469,
@@ -631283,7 +631575,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36470,
@@ -631314,7 +631607,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36471,
@@ -631345,7 +631639,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36472,
@@ -631376,7 +631671,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36474,
@@ -631407,7 +631703,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36475,
@@ -631438,7 +631735,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36477,
@@ -631469,7 +631767,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36479,
@@ -631500,7 +631799,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36480,
@@ -631532,6 +631832,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -631567,6 +631868,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -631602,6 +631904,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -631637,6 +631940,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -631672,6 +631976,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -631707,6 +632012,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 182,
     "qualityFactor": 5,
@@ -631742,6 +632048,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 192,
     "qualityFactor": 5,
@@ -631777,6 +632084,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -631812,6 +632120,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 62,
@@ -631847,6 +632156,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -631882,6 +632192,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 128,
     "qualityFactor": 68,
@@ -631917,6 +632228,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -631952,6 +632264,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 89,
@@ -631987,6 +632300,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -632022,6 +632336,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 14,
     "qualityFactor": 177,
@@ -632057,6 +632372,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -632092,6 +632408,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 77,
     "qualityFactor": 125,
@@ -632127,6 +632444,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 76,
@@ -632162,6 +632480,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 35,
     "qualityFactor": 70,
@@ -632197,6 +632516,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 11,
     "qualityFactor": 108,
@@ -632232,6 +632552,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 81,
@@ -632267,6 +632588,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 78,
@@ -632302,6 +632624,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 54,
     "qualityFactor": 87,
@@ -632337,6 +632660,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -632372,6 +632696,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 211,
     "qualityFactor": 70,
@@ -632407,6 +632732,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -632442,6 +632768,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 139,
@@ -632476,7 +632803,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36508,
@@ -632507,7 +632835,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36509,
@@ -632538,7 +632867,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36510,
@@ -632569,7 +632899,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36511,
@@ -632600,7 +632931,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 19
+    "conditionsFlag": 19,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36512,
@@ -632631,7 +632963,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 67
+    "conditionsFlag": 67,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36513,
@@ -632662,7 +632995,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 35
+    "conditionsFlag": 35,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36514,
@@ -632693,7 +633027,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36515,
@@ -632724,7 +633059,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36516,
@@ -632755,7 +633091,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36517,
@@ -632786,7 +633123,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 515
+    "conditionsFlag": 515,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36518,
@@ -632817,7 +633155,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 259
+    "conditionsFlag": 259,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36519,
@@ -632848,7 +633187,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 131
+    "conditionsFlag": 131,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36520,
@@ -632879,7 +633219,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36521,
@@ -632910,7 +633251,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36522,
@@ -632941,7 +633283,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36523,
@@ -632972,7 +633315,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36524,
@@ -633003,7 +633347,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36525,
@@ -633034,7 +633379,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36526,
@@ -633065,7 +633411,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36527,
@@ -633096,7 +633443,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36528,
@@ -633127,7 +633475,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36529,
@@ -633158,7 +633507,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36530,
@@ -633189,7 +633539,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36531,
@@ -633220,7 +633571,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36532,
@@ -633251,7 +633603,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36533,
@@ -633282,7 +633635,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36534,
@@ -633313,7 +633667,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36535,
@@ -633344,7 +633699,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36537,
@@ -633375,7 +633731,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36538,
@@ -633406,7 +633763,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36540,
@@ -633437,7 +633795,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36542,
@@ -633468,7 +633827,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36543,
@@ -633500,6 +633860,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -633535,6 +633896,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -633570,6 +633932,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -633605,6 +633968,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -633640,6 +634004,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -633675,6 +634040,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 182,
     "qualityFactor": 5,
@@ -633710,6 +634076,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 192,
     "qualityFactor": 5,
@@ -633745,6 +634112,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -633780,6 +634148,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 62,
@@ -633815,6 +634184,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -633850,6 +634220,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 128,
     "qualityFactor": 68,
@@ -633885,6 +634256,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -633920,6 +634292,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 89,
@@ -633955,6 +634328,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -633990,6 +634364,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 14,
     "qualityFactor": 177,
@@ -634025,6 +634400,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -634060,6 +634436,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 77,
     "qualityFactor": 125,
@@ -634095,6 +634472,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 76,
@@ -634130,6 +634508,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 35,
     "qualityFactor": 70,
@@ -634165,6 +634544,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 11,
     "qualityFactor": 108,
@@ -634200,6 +634580,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 81,
@@ -634235,6 +634616,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 78,
@@ -634270,6 +634652,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 54,
     "qualityFactor": 87,
@@ -634305,6 +634688,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -634340,6 +634724,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 211,
     "qualityFactor": 70,
@@ -634375,6 +634760,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -634410,6 +634796,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 139,
@@ -634444,7 +634831,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36571,
@@ -634475,7 +634863,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36572,
@@ -634506,7 +634895,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36573,
@@ -634537,7 +634927,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36574,
@@ -634568,7 +634959,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 19
+    "conditionsFlag": 19,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36575,
@@ -634599,7 +634991,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 67
+    "conditionsFlag": 67,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36576,
@@ -634630,7 +635023,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 35
+    "conditionsFlag": 35,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36577,
@@ -634661,7 +635055,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36578,
@@ -634692,7 +635087,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36579,
@@ -634723,7 +635119,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36580,
@@ -634754,7 +635151,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 515
+    "conditionsFlag": 515,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36581,
@@ -634785,7 +635183,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 259
+    "conditionsFlag": 259,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36582,
@@ -634816,7 +635215,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 131
+    "conditionsFlag": 131,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36583,
@@ -634847,7 +635247,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36584,
@@ -634878,7 +635279,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36585,
@@ -634909,7 +635311,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36586,
@@ -634940,7 +635343,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36587,
@@ -634971,7 +635375,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36588,
@@ -635002,7 +635407,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36589,
@@ -635033,7 +635439,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36590,
@@ -635064,7 +635471,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36591,
@@ -635095,7 +635503,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36592,
@@ -635126,7 +635535,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36593,
@@ -635157,7 +635567,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36594,
@@ -635188,7 +635599,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36595,
@@ -635219,7 +635631,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36596,
@@ -635250,7 +635663,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36597,
@@ -635281,7 +635695,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36598,
@@ -635312,7 +635727,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36600,
@@ -635343,7 +635759,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36601,
@@ -635374,7 +635791,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36603,
@@ -635405,7 +635823,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36605,
@@ -635436,7 +635855,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36606,
@@ -635468,6 +635888,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -635503,6 +635924,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -635538,6 +635960,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -635573,6 +635996,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -635608,6 +636032,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -635643,6 +636068,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 182,
     "qualityFactor": 5,
@@ -635678,6 +636104,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 192,
     "qualityFactor": 5,
@@ -635713,6 +636140,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -635748,6 +636176,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 62,
@@ -635783,6 +636212,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -635818,6 +636248,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 128,
     "qualityFactor": 68,
@@ -635853,6 +636284,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -635888,6 +636320,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 89,
@@ -635923,6 +636356,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -635958,6 +636392,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 14,
     "qualityFactor": 177,
@@ -635993,6 +636428,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 62,
     "qualityFactor": 50,
@@ -636028,6 +636464,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 2,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 77,
     "qualityFactor": 125,
@@ -636063,6 +636500,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 76,
@@ -636098,6 +636536,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 35,
     "qualityFactor": 70,
@@ -636133,6 +636572,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 11,
     "qualityFactor": 108,
@@ -636168,6 +636608,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 81,
@@ -636203,6 +636644,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 53,
     "qualityFactor": 78,
@@ -636238,6 +636680,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 54,
     "qualityFactor": 87,
@@ -636273,6 +636716,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -636308,6 +636752,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 211,
     "qualityFactor": 70,
@@ -636343,6 +636788,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 144,
     "qualityFactor": 10,
@@ -636378,6 +636824,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 3,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 70,
     "qualityFactor": 139,
@@ -636412,7 +636859,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36634,
@@ -636443,7 +636891,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36635,
@@ -636474,7 +636923,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36636,
@@ -636505,7 +636955,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 115
+    "conditionsFlag": 115,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36637,
@@ -636536,7 +636987,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 19
+    "conditionsFlag": 19,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36638,
@@ -636567,7 +637019,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 67
+    "conditionsFlag": 67,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36639,
@@ -636598,7 +637051,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 35
+    "conditionsFlag": 35,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36640,
@@ -636629,7 +637083,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36641,
@@ -636660,7 +637115,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36642,
@@ -636691,7 +637147,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 627
+    "conditionsFlag": 627,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36643,
@@ -636722,7 +637179,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 515
+    "conditionsFlag": 515,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36644,
@@ -636753,7 +637211,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 259
+    "conditionsFlag": 259,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36645,
@@ -636784,7 +637243,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 131
+    "conditionsFlag": 131,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36646,
@@ -636815,7 +637275,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36647,
@@ -636846,7 +637307,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36648,
@@ -636877,7 +637339,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36649,
@@ -636908,7 +637371,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 995
+    "conditionsFlag": 995,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36650,
@@ -636939,7 +637403,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36651,
@@ -636970,7 +637435,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36652,
@@ -637001,7 +637467,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36653,
@@ -637032,7 +637499,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36654,
@@ -637063,7 +637531,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36655,
@@ -637094,7 +637563,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36656,
@@ -637125,7 +637595,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36657,
@@ -637156,7 +637627,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 4
   },
   {
     "id": 36658,
@@ -637187,7 +637659,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36659,
@@ -637218,7 +637691,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36660,
@@ -637249,7 +637723,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36661,
@@ -637280,7 +637755,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 243
+    "conditionsFlag": 243,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36663,
@@ -637311,7 +637787,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36664,
@@ -637342,7 +637819,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 435
+    "conditionsFlag": 435,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36666,
@@ -637373,7 +637851,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36668,
@@ -637404,7 +637883,8 @@
     "progressModifier": 100,
     "qualityModifier": 100,
     "expert": false,
-    "conditionsFlag": 1011
+    "conditionsFlag": 1011,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36669,
@@ -637440,7 +637920,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36670,
@@ -637476,7 +637957,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36671,
@@ -637512,7 +637994,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36672,
@@ -637548,7 +638031,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36673,
@@ -637584,7 +638068,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36674,
@@ -637620,7 +638105,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36675,
@@ -637656,7 +638142,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36676,
@@ -637692,7 +638179,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36677,
@@ -637728,7 +638216,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36678,
@@ -637764,7 +638253,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36679,
@@ -637800,7 +638290,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36680,
@@ -637836,7 +638327,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36681,
@@ -637872,7 +638364,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36682,
@@ -637908,7 +638401,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36683,
@@ -637944,7 +638438,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 5
   },
   {
     "id": 36684,
@@ -637980,7 +638475,8 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "cosmicMissionGrade": 6
   },
   {
     "id": 36685,
@@ -638012,6 +638508,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -638047,6 +638544,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -638082,6 +638580,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -638117,6 +638616,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -638152,6 +638652,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -638187,6 +638688,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -638222,6 +638724,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -638257,6 +638760,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -638292,6 +638796,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -638327,6 +638832,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -638362,6 +638868,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -638397,6 +638904,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -638432,6 +638940,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -638467,6 +638976,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -638502,6 +639012,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -638537,6 +639048,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -638572,6 +639084,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -638607,6 +639120,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -638642,6 +639156,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -638677,6 +639192,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -638712,6 +639228,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,
@@ -638747,6 +639264,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 61,
     "qualityFactor": 48,
@@ -638782,6 +639300,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 53,
@@ -638817,6 +639336,7 @@
     "qualityModifier": 75,
     "expert": false,
     "conditionsFlag": 15,
+    "cosmicMissionGrade": 1,
     "maxAdjustableJobLevel": 100,
     "difficultyFactor": 67,
     "qualityFactor": 59,

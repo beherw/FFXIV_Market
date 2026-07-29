@@ -111,8 +111,27 @@ output('gatherer-crafter-lv-adjust-table', () => db('GathererCrafterLvAdjustTabl
 const craftTypeJobMap = [8, 9, 10, 11, 12, 13, 14, 15]
 output('recipes', () => {
   const canBeHq = db('Item').toObject(row => row.CanBeHq === 'True')
+  // Cosmic Exploration mission data is stored separately from Recipe.
+  // WKSMissionUnit.#7 is the mission grade (1=D, 2=C, 3=B, 4+=A),
+  // while #20 points to a WKSMissionRecipe row containing Recipe IDs.
+  const cosmicMissionGradeByRecipeId = new Map()
+  const missionRecipes = db('WKSMissionRecipe', false, true)
+  db('WKSMissionUnit', false).forEach(mission => {
+    const grade = +mission['#7']
+    const missionRecipe = missionRecipes.findById(+mission['#20'])
+    if (!grade || !missionRecipe) return
+
+    for (let index = 1; index <= 5; index++) {
+      const recipeId = +missionRecipe[`#${index}`]
+      if (recipeId) {
+        cosmicMissionGradeByRecipeId.set(recipeId, grade)
+      }
+    }
+  })
+
   return db('Recipe', false).map(recipe => {
     if (!+recipe['#'] || !+recipe['Item{Result}']) return null
+    const recipeId = +recipe['#']
     const level = db('RecipeLevelTable', false, true).findById(recipe.RecipeLevelTable)
     if (!level) return null
 
@@ -138,9 +157,10 @@ output('recipes', () => {
     // exposed as #4 by the CSV reader. It marks quest-synced recipes such as
     // Cosmic Exploration crafts.
     const maxAdjustableJobLevel = +recipe.MaxAdjustableJobLevel || +recipe['#4'] || 0
+    const cosmicMissionGrade = cosmicMissionGradeByRecipeId.get(recipeId) || 0
 
     return {
-      id: +recipe['#'],
+      id: recipeId,
       job: craftTypeJobMap[+recipe.CraftType],
       lvl: +level.ClassJobLevel,
       yields: +recipe['Amount{Result}'],
@@ -167,6 +187,7 @@ output('recipes', () => {
       qualityModifier: +level.QualityModifier,
       expert: recipe.IsExpert === 'True',
       conditionsFlag: +level.ConditionsFlag,
+      ...(cosmicMissionGrade ? { cosmicMissionGrade } : {}),
       ...(maxAdjustableJobLevel ? {
         maxAdjustableJobLevel,
         difficultyFactor: +recipe.DifficultyFactor,

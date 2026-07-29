@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import ItemImage from './ItemImage';
 import { findRecipesByResult, getAdjustedRecipeForCrafterLevel } from '../services/recipeDatabase';
 import { getItemById } from '../services/itemDatabase';
+import { getCosmicMissionRankLabel } from '../utils/cosmicMission';
 import {
   convertRecipeToSimulatorRecipe,
   createCraftingStatus,
@@ -667,6 +668,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const solveRequestIdRef = useRef(0);
   const backdropPointerDownRef = useRef(null);
   const itemName = item?.nameTW || item?.name || '未知物品';
+  const cosmicMissionRankLabel = getCosmicMissionRankLabel(recipe);
+  const displayItemName = cosmicMissionRankLabel
+    ? `${itemName}（${cosmicMissionRankLabel}）`
+    : itemName;
   const effectiveRecipe = useMemo(
     () => getAdjustedRecipeForCrafterLevel(recipe, crafterStats.level),
     [crafterStats.level, recipe],
@@ -1397,7 +1402,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
           <div className="rounded-2xl border border-ffxiv-gold/25 bg-slate-800/80 p-3.5 sm:p-4 shadow-[0_0_20px_rgba(212,175,55,0.08)]">
             <div className="flex items-start gap-3">
               <div className="rounded-xl border border-ffxiv-gold/30 bg-slate-950/70 p-2">
-                <ItemImage itemId={item.id} alt={itemName} className="h-10 w-10 object-contain" priority />
+                <ItemImage itemId={item.id} alt={displayItemName} className="h-10 w-10 object-contain" priority />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -1411,7 +1416,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                     </span>
                   ) : null}
                 </div>
-                <h3 className="mt-1.5 text-sm sm:text-base font-bold text-ffxiv-gold truncate">{itemName}</h3>
+                <h3 className="mt-1.5 text-sm sm:text-base font-bold text-ffxiv-gold truncate">{displayItemName}</h3>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] sm:textjues text-slate-400">
                   {jobIcon && <img src={jobIcon} alt={jobName} className="h-4 w-4 object-contain" />}
                   <span>{jobName}</span>
