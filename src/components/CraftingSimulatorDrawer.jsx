@@ -2045,8 +2045,19 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
           {simulationResult && finalStatus && (
             <>
               {isComplete && !hasFailure && (
-                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-300">
-                  製作完成{isQualityMax ? '，物品已達最高品質。' : '。'}
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-300">
+                  <span>製作完成{isQualityMax ? '，物品已達最高品質。' : '。'}</span>
+                  {simulationMode === 'auto' && (
+                    <button
+                      type="button"
+                      onClick={handleStartSolve}
+                      disabled={runningSolver}
+                      className="rounded-lg border border-emerald-400/35 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:border-emerald-300/60 hover:bg-emerald-500/20 hover:text-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      title="依目前的角色屬性、HQ 材料與自動解設定重新求解"
+                    >
+                      重新求解
+                    </button>
+                  )}
                 </div>
               )}
 
