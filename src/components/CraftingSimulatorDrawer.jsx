@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import ItemImage from './ItemImage';
-import { findRecipesByResult } from '../services/recipeDatabase';
+import { findRecipesByResult, getAdjustedRecipeForCrafterLevel } from '../services/recipeDatabase';
 import { getItemById } from '../services/itemDatabase';
 import {
   convertRecipeToSimulatorRecipe,
@@ -667,6 +667,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const solveRequestIdRef = useRef(0);
   const backdropPointerDownRef = useRef(null);
   const itemName = item?.nameTW || item?.name || '未知物品';
+  const effectiveRecipe = useMemo(
+    () => getAdjustedRecipeForCrafterLevel(recipe, crafterStats.level),
+    [crafterStats.level, recipe],
+  );
 
   const handleCrafterStatChange = (key, nextValue, min = 0) => {
     const parsed = Number(nextValue);
@@ -740,7 +744,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       return total + hqAmount * ingredientQuality;
     }, 0);
   }, [ingredients, ingredientHqCounts]);
-  const clampedStartingQuality = Math.max(0, Math.min(startingQuality, recipe?.quality || 0));
+  const clampedStartingQuality = Math.max(0, Math.min(startingQuality, effectiveRecipe?.quality || 0));
 
   useEffect(() => {
     if (!isOpen) {
@@ -904,7 +908,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
 
     const initializeManualStatus = async () => {
       try {
-        const simulatorRecipe = convertRecipeToSimulatorRecipe(recipe);
+        const simulatorRecipe = convertRecipeToSimulatorRecipe(effectiveRecipe);
         const status = await createCraftingStatus(crafterStats, simulatorRecipe);
         status.quality = Math.floor(clampedStartingQuality);
 
@@ -934,7 +938,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     return () => {
       cancelled = true;
     };
-  }, [clampedStartingQuality, crafterStats, isOpen, recipe, simulationMode]);
+  }, [clampedStartingQuality, crafterStats, effectiveRecipe, isOpen, recipe, simulationMode]);
 
   const handleStartSolve = async () => {
     if (!isOpen || !recipe || runningSolver) {
@@ -950,7 +954,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       setCopyState('idle');
       setMacroPageIndex(0);
 
-      const result = await runAutoCraftSimulation(recipe, crafterStats, { ...solverOptions, solverType: 'raphael' }, clampedStartingQuality);
+      const result = await runAutoCraftSimulation(effectiveRecipe, crafterStats, { ...solverOptions, solverType: 'raphael' }, clampedStartingQuality);
       if (solveRequestIdRef.current !== requestId) {
         return;
       }
@@ -1112,7 +1116,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   }, [isOpen, manualInitialStatus, manualResult?.status, manualStepStatus, simulationMode, simulationResult?.initialStatus]);
 
   useEffect(() => {
-    if (!isOpen || !recipe?.ingredients?.length) {
+    if (!isOpen || !effectiveRecipe?.ingredients?.length) {
       setIngredients([]);
       return undefined;
     }
@@ -1124,7 +1128,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
         setIngredientsLoading(true);
 
         const ingredientDetails = await Promise.all(
-          recipe.ingredients.map(async (ingredient, index) => {
+          effectiveRecipe.ingredients.map(async (ingredient, index) => {
             const itemData = await getItemById(ingredient.id);
             return {
               key: `${ingredient.id}-${index}`,
@@ -1142,7 +1146,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       } catch (ingredientError) {
         if (!cancelled) {
           console.warn('[CraftingSimulator] Failed to load ingredient names:', ingredientError);
-          setIngredients((recipe.ingredients || []).map((ingredient, index) => ({
+          setIngredients((effectiveRecipe.ingredients || []).map((ingredient, index) => ({
             key: `${ingredient.id}-${index}`,
             id: ingredient.id,
             amount: ingredient.amount || 0,
@@ -1161,7 +1165,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     return () => {
       cancelled = true;
     };
-  }, [isOpen, recipe]);
+  }, [effectiveRecipe, isOpen]);
 
   const finalStatus = simulationResult?.finalStatus;
   const jobName = recipe ? (JOB_NAMES[recipe.job] || `職業 ${recipe.job}`) : '讀取中';
@@ -1184,7 +1188,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     return `${savedJobName} 尚未保存屬性`;
   }, [jobProfileState]);
   const recipeYield = recipe?.yields || 1;
-  const trainedEyeEligible = crafterStats.level >= (recipe?.lvl || 0) + 10;
+  const trainedEyeEligible = crafterStats.level >= (effectiveRecipe?.lvl || 0) + 10;
   const firstError = simulationResult?.errors?.[0];
   const errorPositions = new Set((simulationResult?.errors || []).map((entry) => entry.pos));
   const detailedStatuses = simulationResult?.detailedStatuses || [];
@@ -1401,7 +1405,11 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                     <span>自動模擬製作</span>
                   </div>
                   <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300 border border-emerald-500/20">產出 ×{recipeYield}</span>
-                  {recipe?.lvl ? <span className="rounded-full bg-purple-500/10 px-2 py-0.5 text-[11px] font-semibold text-purple-200 border border-purple-500/20">Lv.{recipe.lvl}</span> : null}
+                  {effectiveRecipe?.lvl ? (
+                    <span className="rounded-full bg-purple-500/10 px-2 py-0.5 text-[11px] font-semibold text-purple-200 border border-purple-500/20">
+                      Lv.{effectiveRecipe.lvl}{recipe?.maxAdjustableJobLevel ? '（同步）' : ''}
+                    </span>
+                  ) : null}
                 </div>
                 <h3 className="mt-1.5 text-sm sm:text-base font-bold text-ffxiv-gold truncate">{itemName}</h3>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] sm:textjues text-slate-400">
@@ -1688,7 +1696,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                         ? 'border-purple-500/20 bg-slate-950/70 text-slate-300 hover:border-cyan-400/40 hover:bg-slate-900/80'
                         : 'border-slate-700/40 bg-slate-950/40 text-slate-500 cursor-not-allowed'
                     }`}
-                    title={trainedEyeEligible ? '' : `需角色等級比配方高 10 級以上（目前：Lv.${crafterStats.level}，配方：Lv.${recipe?.lvl || '?'}）`}
+                    title={trainedEyeEligible ? '' : `需角色等級比配方高 10 級以上（目前：Lv.${crafterStats.level}，配方：Lv.${effectiveRecipe?.lvl || '?'}）`}
                   >
                     <input
                       type="checkbox"
@@ -2059,7 +2067,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
             <div className="mb-2.5 flex items-center justify-between gap-2">
               <h3 className="text-base sm:text-lg font-semibold text-white">HQ材料設定</h3>
               <div className="rounded-full border border-orange-500/25 bg-orange-500/10 px-2.5 py-1 text-[11px] font-semibold text-orange-300">
-                初始品質 {Math.round(clampedStartingQuality)} / {Math.round(recipe?.quality || 0)}
+                初始品質 {Math.round(clampedStartingQuality)} / {Math.round(effectiveRecipe?.quality || 0)}
               </div>
             </div>
 

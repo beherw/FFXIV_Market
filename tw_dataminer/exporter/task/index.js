@@ -91,6 +91,22 @@ output('quest-descriptions', () => db('Quest').toObject(row => {
 }))
 output('quests', () => db('Quest').simpleObject('Name'))
 output('races', () => db('Race').simpleObject('Masculine'))
+output('recipe-level-table', () => db('RecipeLevelTable', false, true).toObject(row => ({
+  classJobLevel: +row.ClassJobLevel,
+  stars: +row.Stars,
+  suggestedCraftsmanship: +row.SuggestedCraftsmanship,
+  difficulty: +row.Difficulty,
+  quality: +row.Quality,
+  progressDivider: +row.ProgressDivider,
+  qualityDivider: +row.QualityDivider,
+  progressModifier: +row.ProgressModifier,
+  qualityModifier: +row.QualityModifier,
+  durability: +row.Durability,
+  conditionsFlag: +row.ConditionsFlag
+})))
+output('gatherer-crafter-lv-adjust-table', () => db('GathererCrafterLvAdjustTable', false, true).toObject(row => ({
+  recipeLevel: +row['#1']
+})))
 
 const craftTypeJobMap = [8, 9, 10, 11, 12, 13, 14, 15]
 output('recipes', () => {
@@ -118,6 +134,10 @@ output('recipes', () => {
     const totalIlvl = ingredients.reduce((sum, { id, amount, ilvl }) => sum + (canBeHq[id] ? amount * ilvl : 0), 0)
     const maxQuality = Math.floor((+level.Quality) * (+recipe.QualityFactor) / 100)
     const totalContrib = maxQuality * (+recipe.MaterialQualityFactor) / 100
+    // MaxAdjustableJobLevel was unnamed in older EXD schemas and is therefore
+    // exposed as #4 by the CSV reader. It marks quest-synced recipes such as
+    // Cosmic Exploration crafts.
+    const maxAdjustableJobLevel = +recipe.MaxAdjustableJobLevel || +recipe['#4'] || 0
 
     return {
       id: +recipe['#'],
@@ -146,7 +166,13 @@ output('recipes', () => {
       progressModifier: +level.ProgressModifier,
       qualityModifier: +level.QualityModifier,
       expert: recipe.IsExpert === 'True',
-      conditionsFlag: +level.ConditionsFlag
+      conditionsFlag: +level.ConditionsFlag,
+      ...(maxAdjustableJobLevel ? {
+        maxAdjustableJobLevel,
+        difficultyFactor: +recipe.DifficultyFactor,
+        qualityFactor: +recipe.QualityFactor,
+        durabilityFactor: +recipe.DurabilityFactor
+      } : {})
     }
   }).filter(a => a)
 })

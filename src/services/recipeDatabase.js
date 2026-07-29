@@ -9,6 +9,8 @@ import { decode } from '@msgpack/msgpack';
 let recipesDatabase = null;
 let recipesByResult = null;
 let recipesByIngredient = null;
+let recipeLevelTable = null;
+let gathererCrafterLvAdjustTable = null;
 let isLoading = false;
 let loadPromise = null;
 
@@ -78,7 +80,17 @@ export async function loadRecipeDatabase() {
       
       // Decode MessagePack
       const decodeStartTime = performance.now();
-      recipesDatabase = decode(new Uint8Array(arrayBuffer));
+      const decodedPayload = decode(new Uint8Array(arrayBuffer));
+      if (Array.isArray(decodedPayload)) {
+        // Backward compatibility for older generated data.
+        recipesDatabase = decodedPayload;
+        recipeLevelTable = null;
+        gathererCrafterLvAdjustTable = null;
+      } else {
+        recipesDatabase = decodedPayload.recipes || [];
+        recipeLevelTable = decodedPayload.recipeLevelTable || null;
+        gathererCrafterLvAdjustTable = decodedPayload.gathererCrafterLvAdjustTable || null;
+      }
       const decodeTime = performance.now() - decodeStartTime;
       console.log(`[Recipe] ✓ Decoded ${recipesDatabase.length} recipes in ${decodeTime.toFixed(2)}ms`);
       
@@ -134,6 +146,59 @@ export async function loadRecipeDatabase() {
   })();
 
   return loadPromise;
+}
+
+/**
+ * Resolve a quest-synced recipe (for example Cosmic Exploration) for the
+ * crafter level selected by the user.
+ */
+export function getAdjustedRecipeForCrafterLevel(recipe, crafterLevel) {
+  const maxLevel = Number(recipe?.maxAdjustableJobLevel) || 0;
+  if (!recipe || maxLevel <= 0 || !recipeLevelTable || !gathererCrafterLvAdjustTable) {
+    return recipe;
+  }
+
+  const numericLevel = Number(crafterLevel);
+  const effectiveLevel = Math.max(1, Math.min(
+    maxLevel,
+    Number.isFinite(numericLevel) ? Math.floor(numericLevel) : maxLevel,
+  ));
+  const adjustRow = gathererCrafterLvAdjustTable[effectiveLevel];
+  const adjustedRecipeLevel = Number(adjustRow?.recipeLevel);
+  const levelRow = recipeLevelTable[adjustedRecipeLevel];
+
+  if (!Number.isFinite(adjustedRecipeLevel) || !levelRow) {
+    return recipe;
+  }
+
+  const difficultyFactor = Number(recipe.difficultyFactor) || 100;
+  const qualityFactor = Number(recipe.qualityFactor) || 100;
+  const durabilityFactor = Number(recipe.durabilityFactor) || 100;
+  const adjustedQuality = Math.floor(Number(levelRow.quality) * qualityFactor / 100);
+  const originalQuality = Number(recipe.quality) || 0;
+  const ingredientQualityRatio = originalQuality > 0 ? adjustedQuality / originalQuality : 0;
+
+  return {
+    ...recipe,
+    lvl: effectiveLevel,
+    stars: Number(levelRow.stars) || 0,
+    durability: Math.floor(80 * durabilityFactor / 100),
+    quality: adjustedQuality,
+    progress: Math.floor(Number(levelRow.difficulty) * difficultyFactor / 100),
+    suggestedCraftsmanship: Number(levelRow.suggestedCraftsmanship) || 0,
+    rlvl: adjustedRecipeLevel,
+    progressDivider: Number(levelRow.progressDivider),
+    qualityDivider: Number(levelRow.qualityDivider),
+    progressModifier: Number(levelRow.progressModifier),
+    qualityModifier: Number(levelRow.qualityModifier),
+    conditionsFlag: Number(levelRow.conditionsFlag) || 15,
+    ingredients: (recipe.ingredients || []).map((ingredient) => ({
+      ...ingredient,
+      quality: Number.isFinite(Number(ingredient.quality))
+        ? Number(ingredient.quality) * ingredientQualityRatio
+        : ingredient.quality,
+    })),
+  };
 }
 
 /**

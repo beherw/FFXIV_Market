@@ -621691,7 +621691,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36166,
@@ -621722,7 +621726,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36167,
@@ -621753,7 +621761,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36168,
@@ -621784,7 +621796,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36169,
@@ -621815,7 +621831,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36170,
@@ -621846,7 +621866,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 182,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36171,
@@ -621877,7 +621901,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 192,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36172,
@@ -621908,7 +621936,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36173,
@@ -621939,7 +621971,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 62,
+    "durabilityFactor": 100
   },
   {
     "id": 36174,
@@ -621970,7 +622006,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36175,
@@ -622001,7 +622041,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 128,
+    "qualityFactor": 68,
+    "durabilityFactor": 32
   },
   {
     "id": 36176,
@@ -622032,7 +622076,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36177,
@@ -622063,7 +622111,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 89,
+    "durabilityFactor": 100
   },
   {
     "id": 36178,
@@ -622094,7 +622146,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36179,
@@ -622125,7 +622181,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 14,
+    "qualityFactor": 177,
+    "durabilityFactor": 75
   },
   {
     "id": 36180,
@@ -622156,7 +622216,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36181,
@@ -622187,7 +622251,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 77,
+    "qualityFactor": 125,
+    "durabilityFactor": 100
   },
   {
     "id": 36182,
@@ -622218,7 +622286,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 76,
+    "durabilityFactor": 100
   },
   {
     "id": 36183,
@@ -622249,7 +622321,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 35,
+    "qualityFactor": 70,
+    "durabilityFactor": 25
   },
   {
     "id": 36184,
@@ -622280,7 +622356,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 11,
+    "qualityFactor": 108,
+    "durabilityFactor": 100
   },
   {
     "id": 36185,
@@ -622311,7 +622391,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 81,
+    "durabilityFactor": 75
   },
   {
     "id": 36186,
@@ -622342,7 +622426,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 78,
+    "durabilityFactor": 57
   },
   {
     "id": 36187,
@@ -622373,7 +622461,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 54,
+    "qualityFactor": 87,
+    "durabilityFactor": 88
   },
   {
     "id": 36188,
@@ -622404,7 +622496,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36189,
@@ -622435,7 +622531,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 211,
+    "qualityFactor": 70,
+    "durabilityFactor": 100
   },
   {
     "id": 36190,
@@ -622466,7 +622566,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36191,
@@ -622497,7 +622601,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 139,
+    "durabilityFactor": 100
   },
   {
     "id": 36192,
@@ -623551,7 +623659,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36229,
@@ -623582,7 +623694,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36230,
@@ -623613,7 +623729,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36231,
@@ -623644,7 +623764,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36232,
@@ -623675,7 +623799,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36233,
@@ -623706,7 +623834,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 182,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36234,
@@ -623737,7 +623869,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 192,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36235,
@@ -623768,7 +623904,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36236,
@@ -623799,7 +623939,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 62,
+    "durabilityFactor": 100
   },
   {
     "id": 36237,
@@ -623830,7 +623974,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36238,
@@ -623861,7 +624009,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 128,
+    "qualityFactor": 68,
+    "durabilityFactor": 32
   },
   {
     "id": 36239,
@@ -623892,7 +624044,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36240,
@@ -623923,7 +624079,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 89,
+    "durabilityFactor": 100
   },
   {
     "id": 36241,
@@ -623954,7 +624114,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36242,
@@ -623985,7 +624149,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 14,
+    "qualityFactor": 177,
+    "durabilityFactor": 75
   },
   {
     "id": 36243,
@@ -624016,7 +624184,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36244,
@@ -624047,7 +624219,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 77,
+    "qualityFactor": 125,
+    "durabilityFactor": 100
   },
   {
     "id": 36245,
@@ -624078,7 +624254,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 76,
+    "durabilityFactor": 100
   },
   {
     "id": 36246,
@@ -624109,7 +624289,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 35,
+    "qualityFactor": 70,
+    "durabilityFactor": 25
   },
   {
     "id": 36247,
@@ -624140,7 +624324,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 11,
+    "qualityFactor": 108,
+    "durabilityFactor": 100
   },
   {
     "id": 36248,
@@ -624171,7 +624359,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 81,
+    "durabilityFactor": 75
   },
   {
     "id": 36249,
@@ -624202,7 +624394,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 78,
+    "durabilityFactor": 57
   },
   {
     "id": 36250,
@@ -624233,7 +624429,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 54,
+    "qualityFactor": 87,
+    "durabilityFactor": 88
   },
   {
     "id": 36251,
@@ -624264,7 +624464,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36252,
@@ -624295,7 +624499,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 211,
+    "qualityFactor": 70,
+    "durabilityFactor": 100
   },
   {
     "id": 36253,
@@ -624326,7 +624534,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36254,
@@ -624357,7 +624569,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 139,
+    "durabilityFactor": 100
   },
   {
     "id": 36255,
@@ -625411,7 +625627,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36292,
@@ -625442,7 +625662,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36293,
@@ -625473,7 +625697,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36294,
@@ -625504,7 +625732,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36295,
@@ -625535,7 +625767,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36296,
@@ -625566,7 +625802,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 182,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36297,
@@ -625597,7 +625837,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 192,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36298,
@@ -625628,7 +625872,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36299,
@@ -625659,7 +625907,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 62,
+    "durabilityFactor": 100
   },
   {
     "id": 36300,
@@ -625690,7 +625942,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36301,
@@ -625721,7 +625977,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 128,
+    "qualityFactor": 68,
+    "durabilityFactor": 32
   },
   {
     "id": 36302,
@@ -625752,7 +626012,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36303,
@@ -625783,7 +626047,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 89,
+    "durabilityFactor": 100
   },
   {
     "id": 36304,
@@ -625814,7 +626082,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36305,
@@ -625845,7 +626117,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 14,
+    "qualityFactor": 177,
+    "durabilityFactor": 75
   },
   {
     "id": 36306,
@@ -625876,7 +626152,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36307,
@@ -625907,7 +626187,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 77,
+    "qualityFactor": 125,
+    "durabilityFactor": 100
   },
   {
     "id": 36308,
@@ -625938,7 +626222,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 76,
+    "durabilityFactor": 100
   },
   {
     "id": 36309,
@@ -625969,7 +626257,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 35,
+    "qualityFactor": 70,
+    "durabilityFactor": 25
   },
   {
     "id": 36310,
@@ -626000,7 +626292,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 11,
+    "qualityFactor": 108,
+    "durabilityFactor": 100
   },
   {
     "id": 36311,
@@ -626031,7 +626327,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 81,
+    "durabilityFactor": 75
   },
   {
     "id": 36312,
@@ -626062,7 +626362,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 78,
+    "durabilityFactor": 57
   },
   {
     "id": 36313,
@@ -626093,7 +626397,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 54,
+    "qualityFactor": 87,
+    "durabilityFactor": 88
   },
   {
     "id": 36314,
@@ -626124,7 +626432,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36315,
@@ -626155,7 +626467,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 211,
+    "qualityFactor": 70,
+    "durabilityFactor": 100
   },
   {
     "id": 36316,
@@ -626186,7 +626502,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36317,
@@ -626217,7 +626537,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 139,
+    "durabilityFactor": 100
   },
   {
     "id": 36318,
@@ -627271,7 +627595,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36355,
@@ -627302,7 +627630,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36356,
@@ -627333,7 +627665,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36357,
@@ -627364,7 +627700,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36358,
@@ -627395,7 +627735,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36359,
@@ -627426,7 +627770,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 182,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36360,
@@ -627457,7 +627805,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 192,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36361,
@@ -627488,7 +627840,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36362,
@@ -627519,7 +627875,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 62,
+    "durabilityFactor": 100
   },
   {
     "id": 36363,
@@ -627550,7 +627910,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36364,
@@ -627581,7 +627945,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 128,
+    "qualityFactor": 68,
+    "durabilityFactor": 32
   },
   {
     "id": 36365,
@@ -627612,7 +627980,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36366,
@@ -627643,7 +628015,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 89,
+    "durabilityFactor": 100
   },
   {
     "id": 36367,
@@ -627674,7 +628050,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36368,
@@ -627705,7 +628085,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 14,
+    "qualityFactor": 177,
+    "durabilityFactor": 75
   },
   {
     "id": 36369,
@@ -627736,7 +628120,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36370,
@@ -627767,7 +628155,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 77,
+    "qualityFactor": 125,
+    "durabilityFactor": 100
   },
   {
     "id": 36371,
@@ -627798,7 +628190,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 76,
+    "durabilityFactor": 100
   },
   {
     "id": 36372,
@@ -627829,7 +628225,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 35,
+    "qualityFactor": 70,
+    "durabilityFactor": 25
   },
   {
     "id": 36373,
@@ -627860,7 +628260,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 11,
+    "qualityFactor": 108,
+    "durabilityFactor": 100
   },
   {
     "id": 36374,
@@ -627891,7 +628295,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 81,
+    "durabilityFactor": 75
   },
   {
     "id": 36375,
@@ -627922,7 +628330,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 78,
+    "durabilityFactor": 57
   },
   {
     "id": 36376,
@@ -627953,7 +628365,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 54,
+    "qualityFactor": 87,
+    "durabilityFactor": 88
   },
   {
     "id": 36377,
@@ -627984,7 +628400,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36378,
@@ -628015,7 +628435,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 211,
+    "qualityFactor": 70,
+    "durabilityFactor": 100
   },
   {
     "id": 36379,
@@ -628046,7 +628470,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36380,
@@ -628077,7 +628505,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 139,
+    "durabilityFactor": 100
   },
   {
     "id": 36381,
@@ -629131,7 +629563,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36418,
@@ -629162,7 +629598,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36419,
@@ -629193,7 +629633,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36420,
@@ -629224,7 +629668,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36421,
@@ -629255,7 +629703,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36422,
@@ -629286,7 +629738,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 182,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36423,
@@ -629317,7 +629773,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 192,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36424,
@@ -629348,7 +629808,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36425,
@@ -629379,7 +629843,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 62,
+    "durabilityFactor": 100
   },
   {
     "id": 36426,
@@ -629410,7 +629878,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36427,
@@ -629441,7 +629913,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 128,
+    "qualityFactor": 68,
+    "durabilityFactor": 32
   },
   {
     "id": 36428,
@@ -629472,7 +629948,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36429,
@@ -629503,7 +629983,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 89,
+    "durabilityFactor": 100
   },
   {
     "id": 36430,
@@ -629534,7 +630018,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36431,
@@ -629565,7 +630053,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 14,
+    "qualityFactor": 177,
+    "durabilityFactor": 75
   },
   {
     "id": 36432,
@@ -629596,7 +630088,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36433,
@@ -629627,7 +630123,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 77,
+    "qualityFactor": 125,
+    "durabilityFactor": 100
   },
   {
     "id": 36434,
@@ -629658,7 +630158,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 76,
+    "durabilityFactor": 100
   },
   {
     "id": 36435,
@@ -629689,7 +630193,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 35,
+    "qualityFactor": 70,
+    "durabilityFactor": 25
   },
   {
     "id": 36436,
@@ -629720,7 +630228,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 11,
+    "qualityFactor": 108,
+    "durabilityFactor": 100
   },
   {
     "id": 36437,
@@ -629751,7 +630263,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 81,
+    "durabilityFactor": 75
   },
   {
     "id": 36438,
@@ -629782,7 +630298,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 78,
+    "durabilityFactor": 57
   },
   {
     "id": 36439,
@@ -629813,7 +630333,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 54,
+    "qualityFactor": 87,
+    "durabilityFactor": 88
   },
   {
     "id": 36440,
@@ -629844,7 +630368,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36441,
@@ -629875,7 +630403,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 211,
+    "qualityFactor": 70,
+    "durabilityFactor": 100
   },
   {
     "id": 36442,
@@ -629906,7 +630438,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36443,
@@ -629937,7 +630473,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 139,
+    "durabilityFactor": 100
   },
   {
     "id": 36444,
@@ -630991,7 +631531,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36481,
@@ -631022,7 +631566,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36482,
@@ -631053,7 +631601,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36483,
@@ -631084,7 +631636,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36484,
@@ -631115,7 +631671,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36485,
@@ -631146,7 +631706,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 182,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36486,
@@ -631177,7 +631741,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 192,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36487,
@@ -631208,7 +631776,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36488,
@@ -631239,7 +631811,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 62,
+    "durabilityFactor": 100
   },
   {
     "id": 36489,
@@ -631270,7 +631846,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36490,
@@ -631301,7 +631881,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 128,
+    "qualityFactor": 68,
+    "durabilityFactor": 32
   },
   {
     "id": 36491,
@@ -631332,7 +631916,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36492,
@@ -631363,7 +631951,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 89,
+    "durabilityFactor": 100
   },
   {
     "id": 36493,
@@ -631394,7 +631986,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36494,
@@ -631425,7 +632021,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 14,
+    "qualityFactor": 177,
+    "durabilityFactor": 75
   },
   {
     "id": 36495,
@@ -631456,7 +632056,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36496,
@@ -631487,7 +632091,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 77,
+    "qualityFactor": 125,
+    "durabilityFactor": 100
   },
   {
     "id": 36497,
@@ -631518,7 +632126,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 76,
+    "durabilityFactor": 100
   },
   {
     "id": 36498,
@@ -631549,7 +632161,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 35,
+    "qualityFactor": 70,
+    "durabilityFactor": 25
   },
   {
     "id": 36499,
@@ -631580,7 +632196,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 11,
+    "qualityFactor": 108,
+    "durabilityFactor": 100
   },
   {
     "id": 36500,
@@ -631611,7 +632231,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 81,
+    "durabilityFactor": 75
   },
   {
     "id": 36501,
@@ -631642,7 +632266,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 78,
+    "durabilityFactor": 57
   },
   {
     "id": 36502,
@@ -631673,7 +632301,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 54,
+    "qualityFactor": 87,
+    "durabilityFactor": 88
   },
   {
     "id": 36503,
@@ -631704,7 +632336,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36504,
@@ -631735,7 +632371,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 211,
+    "qualityFactor": 70,
+    "durabilityFactor": 100
   },
   {
     "id": 36505,
@@ -631766,7 +632406,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36506,
@@ -631797,7 +632441,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 139,
+    "durabilityFactor": 100
   },
   {
     "id": 36507,
@@ -632851,7 +633499,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36544,
@@ -632882,7 +633534,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36545,
@@ -632913,7 +633569,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36546,
@@ -632944,7 +633604,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36547,
@@ -632975,7 +633639,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36548,
@@ -633006,7 +633674,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 182,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36549,
@@ -633037,7 +633709,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 192,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36550,
@@ -633068,7 +633744,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36551,
@@ -633099,7 +633779,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 62,
+    "durabilityFactor": 100
   },
   {
     "id": 36552,
@@ -633130,7 +633814,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36553,
@@ -633161,7 +633849,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 128,
+    "qualityFactor": 68,
+    "durabilityFactor": 32
   },
   {
     "id": 36554,
@@ -633192,7 +633884,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36555,
@@ -633223,7 +633919,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 89,
+    "durabilityFactor": 100
   },
   {
     "id": 36556,
@@ -633254,7 +633954,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36557,
@@ -633285,7 +633989,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 14,
+    "qualityFactor": 177,
+    "durabilityFactor": 75
   },
   {
     "id": 36558,
@@ -633316,7 +634024,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36559,
@@ -633347,7 +634059,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 77,
+    "qualityFactor": 125,
+    "durabilityFactor": 100
   },
   {
     "id": 36560,
@@ -633378,7 +634094,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 76,
+    "durabilityFactor": 100
   },
   {
     "id": 36561,
@@ -633409,7 +634129,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 35,
+    "qualityFactor": 70,
+    "durabilityFactor": 25
   },
   {
     "id": 36562,
@@ -633440,7 +634164,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 11,
+    "qualityFactor": 108,
+    "durabilityFactor": 100
   },
   {
     "id": 36563,
@@ -633471,7 +634199,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 81,
+    "durabilityFactor": 75
   },
   {
     "id": 36564,
@@ -633502,7 +634234,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 78,
+    "durabilityFactor": 57
   },
   {
     "id": 36565,
@@ -633533,7 +634269,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 54,
+    "qualityFactor": 87,
+    "durabilityFactor": 88
   },
   {
     "id": 36566,
@@ -633564,7 +634304,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36567,
@@ -633595,7 +634339,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 211,
+    "qualityFactor": 70,
+    "durabilityFactor": 100
   },
   {
     "id": 36568,
@@ -633626,7 +634374,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36569,
@@ -633657,7 +634409,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 139,
+    "durabilityFactor": 100
   },
   {
     "id": 36570,
@@ -634711,7 +635467,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36607,
@@ -634742,7 +635502,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36608,
@@ -634773,7 +635537,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36609,
@@ -634804,7 +635572,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36610,
@@ -634835,7 +635607,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36611,
@@ -634866,7 +635642,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 182,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36612,
@@ -634897,7 +635677,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 192,
+    "qualityFactor": 5,
+    "durabilityFactor": 100
   },
   {
     "id": 36613,
@@ -634928,7 +635712,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36614,
@@ -634959,7 +635747,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 62,
+    "durabilityFactor": 100
   },
   {
     "id": 36615,
@@ -634990,7 +635782,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36616,
@@ -635021,7 +635817,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 128,
+    "qualityFactor": 68,
+    "durabilityFactor": 32
   },
   {
     "id": 36617,
@@ -635052,7 +635852,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36618,
@@ -635083,7 +635887,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 89,
+    "durabilityFactor": 100
   },
   {
     "id": 36619,
@@ -635114,7 +635922,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36620,
@@ -635145,7 +635957,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 14,
+    "qualityFactor": 177,
+    "durabilityFactor": 75
   },
   {
     "id": 36621,
@@ -635176,7 +635992,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 62,
+    "qualityFactor": 50,
+    "durabilityFactor": 50
   },
   {
     "id": 36622,
@@ -635207,7 +636027,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 77,
+    "qualityFactor": 125,
+    "durabilityFactor": 100
   },
   {
     "id": 36623,
@@ -635238,7 +636062,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 76,
+    "durabilityFactor": 100
   },
   {
     "id": 36624,
@@ -635269,7 +636097,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 35,
+    "qualityFactor": 70,
+    "durabilityFactor": 25
   },
   {
     "id": 36625,
@@ -635300,7 +636132,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 11,
+    "qualityFactor": 108,
+    "durabilityFactor": 100
   },
   {
     "id": 36626,
@@ -635331,7 +636167,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 81,
+    "durabilityFactor": 75
   },
   {
     "id": 36627,
@@ -635362,7 +636202,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 53,
+    "qualityFactor": 78,
+    "durabilityFactor": 57
   },
   {
     "id": 36628,
@@ -635393,7 +636237,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 54,
+    "qualityFactor": 87,
+    "durabilityFactor": 88
   },
   {
     "id": 36629,
@@ -635424,7 +636272,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36630,
@@ -635455,7 +636307,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 211,
+    "qualityFactor": 70,
+    "durabilityFactor": 100
   },
   {
     "id": 36631,
@@ -635486,7 +636342,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 144,
+    "qualityFactor": 10,
+    "durabilityFactor": 32
   },
   {
     "id": 36632,
@@ -635517,7 +636377,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 70,
+    "qualityFactor": 139,
+    "durabilityFactor": 100
   },
   {
     "id": 36633,
@@ -637147,7 +638011,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36686,
@@ -637178,7 +638046,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36687,
@@ -637209,7 +638081,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36690,
@@ -637240,7 +638116,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36691,
@@ -637271,7 +638151,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36694,
@@ -637302,7 +638186,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36695,
@@ -637333,7 +638221,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36697,
@@ -637364,7 +638256,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36699,
@@ -637395,7 +638291,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36700,
@@ -637426,7 +638326,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36701,
@@ -637457,7 +638361,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36703,
@@ -637488,7 +638396,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36705,
@@ -637519,7 +638431,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36707,
@@ -637550,7 +638466,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36708,
@@ -637581,7 +638501,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36710,
@@ -637612,7 +638536,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36711,
@@ -637643,7 +638571,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36712,
@@ -637674,7 +638606,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36715,
@@ -637705,7 +638641,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36718,
@@ -637736,7 +638676,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36719,
@@ -637767,7 +638711,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36720,
@@ -637798,7 +638746,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 61,
+    "qualityFactor": 48,
+    "durabilityFactor": 50
   },
   {
     "id": 36721,
@@ -637829,7 +638781,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 53,
+    "durabilityFactor": 75
   },
   {
     "id": 36722,
@@ -637860,7 +638816,11 @@
     "progressModifier": 90,
     "qualityModifier": 75,
     "expert": false,
-    "conditionsFlag": 15
+    "conditionsFlag": 15,
+    "maxAdjustableJobLevel": 100,
+    "difficultyFactor": 67,
+    "qualityFactor": 59,
+    "durabilityFactor": 100
   },
   {
     "id": 36725,

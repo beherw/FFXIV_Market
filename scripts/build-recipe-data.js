@@ -26,6 +26,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const JSON_SOURCE = getTwJsonPath('tw-recipes.json');
+const RECIPE_LEVEL_TABLE_SOURCE = getTwJsonPath('tw-recipe-level-table.json');
+const LEVEL_ADJUST_TABLE_SOURCE = getTwJsonPath('tw-gatherer-crafter-lv-adjust-table.json');
 const OUTPUT_DIR = path.join(__dirname, '../public/data');
 const OUTPUT_FILE = path.join(OUTPUT_DIR, 'recipes.msgpack');
 
@@ -52,6 +54,13 @@ function loadRecipesFromJSON(jsonPath) {
   
   console.log(`[Recipe] Loaded ${recipes.length} recipes`);
   return recipes;
+}
+
+function loadJSON(jsonPath, label) {
+  if (!fs.existsSync(jsonPath)) {
+    throw new Error(`${label} source not found: ${jsonPath}`);
+  }
+  return JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
 }
 
 /**
@@ -97,13 +106,20 @@ function buildRecipeData() {
     console.log(`[Recipe] Merging ${fcRecipes.length} Company Craft (部隊合建) recipes from CSV`);
   }
   const merged = recipes.concat(fcRecipes);
+
+  const recipeLevelTable = loadJSON(RECIPE_LEVEL_TABLE_SOURCE, 'Recipe level table');
+  const gathererCrafterLvAdjustTable = loadJSON(LEVEL_ADJUST_TABLE_SOURCE, 'Crafter level adjustment table');
   
   // Step 2: Optimize structure
   const optimized = optimizeRecipes(merged);
   
   // Step 3: Encode to MessagePack
   console.log(`[Recipe] Encoding to MessagePack...`);
-  const packed = msgpack.encode(optimized);
+  const packed = msgpack.encode({
+    recipes: optimized,
+    recipeLevelTable,
+    gathererCrafterLvAdjustTable,
+  });
   
   // Step 4: Save to public directory
   console.log(`[Recipe] Saving to public/data/...`);
