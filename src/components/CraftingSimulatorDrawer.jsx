@@ -1401,13 +1401,11 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const activeStatus = simulationMode === 'manual'
     ? (manualResult?.status || manualStepStatus || manualInitialStatus || simulationResult?.initialStatus)
     : finalStatus;
-  const collectabilityGrade = useMemo(() => {
-    const quality = toFiniteNumber(activeStatus?.quality, 0);
-    if (!collectability || quality < Number(collectability.low) * 10) return null;
-    if (quality >= Number(collectability.high) * 10) return '第三階段';
-    if (quality >= Number(collectability.mid) * 10) return '第二階段';
-    return '第一階段';
-  }, [activeStatus?.quality, collectability]);
+  const collectabilitySatisfaction = useMemo(() => {
+    if (!collectability || !collectabilityTarget) return null;
+    const currentRating = toFiniteNumber(finalStatus?.quality, 0) / 10;
+    return currentRating / collectabilityTarget;
+  }, [collectability, collectabilityTarget, finalStatus?.quality]);
   const isComplete = !!(activeStatus && activeStatus.progress >= activeStatus.recipe.difficulty);
   const isQualityMax = !!(activeStatus && activeStatus.recipe.quality > 0 && activeStatus.quality >= activeStatus.recipe.quality);
   const hasFailure = !!(activeStatus && activeStatus.durability <= 0 && !isComplete);
@@ -1661,7 +1659,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
               {isJobProfilesOpen ? (
                 <div className="mb-2 rounded-lg border border-cyan-500/25 bg-slate-950/70 p-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5">
+                    <div className="ml-auto flex items-center gap-1.5">
                       <button
                         type="button"
                         role="switch"
@@ -1801,15 +1799,13 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                 valueClass="text-orange-200"
               />
               {collectability && (
-                <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 px-2 py-1.5 text-[11px] text-orange-200">
-                  <div className="flex flex-wrap items-center justify-between gap-1">
-                    <span>收藏價值：第一階段 {collectability.low}／第二階段 {collectability.mid}／第三階段 {collectability.high}</span>
-                    <span className="font-semibold text-amber-300">{collectabilityGrade || '尚未達第一階段'}</span>
-                  </div>
-                  {collectabilityTarget !== null && (
-                    <div className="mt-0.5 text-orange-300/80">目前自動解目標：{collectabilityTarget}</div>
-                  )}
-                </div>
+                <ProgressBar
+                  label="收藏價值"
+                  current={toFiniteNumber(activeStatus?.quality, 0) / 10}
+                  max={collectability.max}
+                  barClass="bg-gradient-to-r from-sky-500 via-violet-500 to-amber-400"
+                  valueClass="text-amber-200"
+                />
               )}
               <ProgressBar
                 label="耐久"
@@ -1860,11 +1856,14 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                     }}
                     className="w-full rounded-xl border border-purple-500/25 bg-slate-950/90 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-ffxiv-gold/50"
                   >
-                    {recipes.map((candidate, index) => (
-                      <option key={candidate.id} value={candidate.id}>
-                        {`配方 ${index + 1}｜${JOB_NAMES[candidate.job] || `職業 ${candidate.job}`}｜Lv.${candidate.lvl || 0}｜耐久 ${candidate.durability || 0}`}
-                      </option>
-                    ))}
+                    {recipes.map((candidate, index) => {
+                      const rankLabel = getCosmicMissionRankLabel(candidate);
+                      return (
+                        <option key={candidate.id} value={candidate.id}>
+                          {`配方 ${index + 1}｜${JOB_NAMES[candidate.job] || `職業 ${candidate.job}`}${rankLabel ? `｜${rankLabel}` : ''}｜Lv.${candidate.lvl || 0}｜耐久 ${candidate.durability || 0}`}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               </div>
@@ -2184,7 +2183,11 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                     )}
                     <div className="mt-2 flex flex-wrap gap-2 text-xs sm:text-sm">
                       <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-blue-300">總步數 {activeActions.length}</span>
-                      <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-orange-300">HQ 機率 {formatPercent(simulationResult.hqProbability)}</span>
+                      <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-orange-300">
+                        {collectability
+                          ? `收藏價值滿足率 ${formatPercent(collectabilitySatisfaction)}`
+                          : `HQ 機率 ${formatPercent(simulationResult.hqProbability)}`}
+                      </span>
                     </div>
                   </div>
 
