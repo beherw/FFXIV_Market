@@ -656,7 +656,7 @@ const CollectabilityTargetSlider = memo(function CollectabilityTargetSlider({
   };
 
   return (
-    <div className="mt-3 rounded-lg border border-orange-500/25 bg-orange-500/5 px-3 py-2.5">
+    <div className="mt-3 select-none rounded-lg border border-orange-500/25 bg-orange-500/5 px-3 py-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
         <span className="font-semibold text-orange-200">目標收藏價值</span>
         <span className="font-bold text-amber-300">{draftValue} / {collectability.max}</span>
@@ -710,7 +710,7 @@ const CollectabilityTargetSlider = memo(function CollectabilityTargetSlider({
           }}
           aria-label="目標收藏價值"
         />
-        <span className="absolute bottom-0 left-0 text-[10px] text-slate-400">0</span>
+        <span className="pointer-events-none absolute bottom-0 left-0 text-[10px] text-slate-400">0</span>
         {[
           { label: '第一階', value: collectability.low, color: 'text-sky-300' },
           { label: '第二階', value: collectability.mid, color: 'text-violet-300' },
@@ -718,7 +718,7 @@ const CollectabilityTargetSlider = memo(function CollectabilityTargetSlider({
         ].map((marker) => (
           <span
             key={marker.label}
-            className={`absolute bottom-0 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium ${marker.color}`}
+            className={`pointer-events-none absolute bottom-0 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium ${marker.color}`}
             style={{ left: `${(marker.value / collectability.max) * 100}%` }}
           >
             {marker.label} {marker.value}
@@ -1402,10 +1402,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     ? (manualResult?.status || manualStepStatus || manualInitialStatus || simulationResult?.initialStatus)
     : finalStatus;
   const collectabilitySatisfaction = useMemo(() => {
-    if (!collectability || !collectabilityTarget) return null;
+    if (!collectability || !collectability.max) return null;
     const currentRating = toFiniteNumber(finalStatus?.quality, 0) / 10;
-    return currentRating / collectabilityTarget;
-  }, [collectability, collectabilityTarget, finalStatus?.quality]);
+    return currentRating / collectability.max;
+  }, [collectability, finalStatus?.quality]);
   const isComplete = !!(activeStatus && activeStatus.progress >= activeStatus.recipe.difficulty);
   const isQualityMax = !!(activeStatus && activeStatus.recipe.quality > 0 && activeStatus.quality >= activeStatus.recipe.quality);
   const hasFailure = !!(activeStatus && activeStatus.durability <= 0 && !isComplete);
