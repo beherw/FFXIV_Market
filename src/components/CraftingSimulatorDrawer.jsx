@@ -586,8 +586,10 @@ function formatDeltaOrUnchanged(delta) {
 
 const MACRO_MAX_LINES = 15;
 const MACRO_ACTIONS_PER_PAGE = MACRO_MAX_LINES - 1;
+const MACRO_PAGE_SOUND = '<se.3>';
+const MACRO_COMPLETE_SOUND = '<se.6>';
 
-function buildMacroPages(actions, chunkSize = MACRO_ACTIONS_PER_PAGE) {
+function buildMacroPages(actions, includeSounds = false) {
   if (!actions?.length) {
     return [];
   }
@@ -597,7 +599,9 @@ function buildMacroPages(actions, chunkSize = MACRO_ACTIONS_PER_PAGE) {
 
   while (index < actions.length) {
     const remaining = actions.length - index;
-    const currentChunkSize = remaining <= MACRO_MAX_LINES ? remaining : chunkSize;
+    const currentChunkSize = includeSounds
+      ? Math.min(remaining, MACRO_MAX_LINES - 1)
+      : (remaining <= MACRO_MAX_LINES ? remaining : MACRO_ACTIONS_PER_PAGE);
     chunks.push(actions.slice(index, index + currentChunkSize));
     index += currentChunkSize;
   }
@@ -605,6 +609,12 @@ function buildMacroPages(actions, chunkSize = MACRO_ACTIONS_PER_PAGE) {
   return chunks.map((chunk, chunkIndex) => {
     const isLastPage = chunkIndex === chunks.length - 1;
     const lines = chunk.map((action) => `/ac "${formatActionName(action)}" <wait.3>`);
+
+    if (includeSounds) {
+      lines.push(isLastPage
+        ? `/echo Macro Complete! ${MACRO_COMPLETE_SOUND}`
+        : `/echo Page ${chunkIndex + 1} Complete! ${MACRO_PAGE_SOUND}`);
+    }
 
     return {
       index: chunkIndex,
@@ -753,6 +763,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const [simulationResult, setSimulationResult] = useState(null);
   const [copyState, setCopyState] = useState('idle');
   const [macroPageIndex, setMacroPageIndex] = useState(0);
+  const [includeMacroSounds, setIncludeMacroSounds] = useState(false);
   const [rightPanelTab, setRightPanelTab] = useState('rotation');
   const [simulationMode, setSimulationMode] = useState(cachedPreferences.simulationMode);
   const [autoSwitchCrafterJob, setAutoSwitchCrafterJob] = useState(cachedPreferences.autoSwitchCrafterJob);
@@ -1411,7 +1422,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const hasFailure = !!(activeStatus && activeStatus.durability <= 0 && !isComplete);
   const activeErrors = simulationMode === 'manual' ? (manualResult?.errors || []) : (simulationResult?.errors || []);
   const activeErrorPositions = new Set(activeErrors.map((entry) => entry.pos));
-  const activeMacroPages = useMemo(() => buildMacroPages(activeActions), [activeActions]);
+  const activeMacroPages = useMemo(
+    () => buildMacroPages(activeActions, includeMacroSounds),
+    [activeActions, includeMacroSounds],
+  );
   const activeBuffDurations = BUFF_DURATION_CANDIDATES
     .map((buff) => {
       const value = buff.paths
@@ -1426,7 +1440,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
 
   useEffect(() => {
     setMacroPageIndex(0);
-  }, [simulationMode, activeActions.join('|')]);
+  }, [simulationMode, activeActions.join('|'), includeMacroSounds]);
 
   useEffect(() => {
     if (macroPageIndex <= Math.max(activeMacroPages.length - 1, 0)) {
@@ -1447,6 +1461,26 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       window.setTimeout(() => setCopyState('idle'), 1800);
     } catch (copyError) {
       console.warn('[CraftingSimulator] Failed to copy macro:', copyError);
+      setCopyState('failed');
+      window.setTimeout(() => setCopyState('idle'), 2200);
+    }
+  };
+
+  const handleCopyNextMacroPage = async () => {
+    const nextPageIndex = macroPageIndex + 1;
+    const nextPage = activeMacroPages[nextPageIndex];
+    if (!nextPage?.text) {
+      return;
+    }
+
+    setMacroPageIndex(nextPageIndex);
+
+    try {
+      await navigator.clipboard.writeText(nextPage.text);
+      setCopyState('nextCopied');
+      window.setTimeout(() => setCopyState('idle'), 1800);
+    } catch (copyError) {
+      console.warn('[CraftingSimulator] Failed to copy next macro page:', copyError);
       setCopyState('failed');
       window.setTimeout(() => setCopyState('idle'), 2200);
     }
@@ -2413,6 +2447,16 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
             <div className="mb-2.5 flex items-center justify-between gap-2">
               <div>
                 <h3 className="text-base sm:text-lg font-semibold text-white">巨集</h3>
+                <label className="mt-1.5 inline-flex cursor-pointer items-center gap-2 text-[11px] font-medium text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={includeMacroSounds}
+                    onChange={(event) => setIncludeMacroSounds(event.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <span className="relative h-4 w-7 rounded-full bg-slate-700 transition-colors peer-checked:bg-cyan-500/70 after:absolute after:left-0.5 after:top-0.5 after:h-3 after:w-3 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-3" />
+                  加入巨集音效
+                </label>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -2423,6 +2467,11 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                       <>
                         <span>已複製</span>
                         <span>本頁</span>
+                      </>
+                    ) : copyState === 'nextCopied' ? (
+                      <>
+                        <span>已複製</span>
+                        <span>下頁</span>
                       </>
                     ) : copyState === 'failed' ? (
                       <>
@@ -2436,6 +2485,18 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                       </>
                     )}
                 </button>
+                {activeMacroPages.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={handleCopyNextMacroPage}
+                    disabled={macroPageIndex >= activeMacroPages.length - 1}
+                    className="inline-flex min-w-[58px] flex-col items-center justify-center rounded-lg border border-violet-500/25 bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold leading-tight text-violet-200 transition hover:border-violet-400/45 hover:text-violet-100 disabled:cursor-not-allowed disabled:opacity-35"
+                    title="切換並複製下一頁巨集"
+                  >
+                    <span>複製</span>
+                    <span>下頁</span>
+                  </button>
+                )}
               </div>
             </div>
             {macroPreviewLines.length > 0 ? (
