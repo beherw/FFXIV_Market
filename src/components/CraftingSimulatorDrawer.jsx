@@ -308,6 +308,7 @@ function loadSimulatorPreferencesFromCache() {
       simulationMode: 'auto',
       autoSwitchCrafterJob: true,
       autoSaveCrafterJob: true,
+      includeMacroSounds: false,
       solverOptions: { ...DEFAULT_SOLVER_OPTIONS },
     };
   }
@@ -319,6 +320,7 @@ function loadSimulatorPreferencesFromCache() {
         simulationMode: 'auto',
         autoSwitchCrafterJob: true,
         autoSaveCrafterJob: true,
+        includeMacroSounds: false,
         solverOptions: { ...DEFAULT_SOLVER_OPTIONS },
       };
     }
@@ -327,6 +329,7 @@ function loadSimulatorPreferencesFromCache() {
     const simulationMode = parsed?.simulationMode === 'manual' ? 'manual' : 'auto';
     const autoSwitchCrafterJob = parsed?.autoSwitchCrafterJob !== false;
     const autoSaveCrafterJob = parsed?.autoSaveCrafterJob !== false;
+    const includeMacroSounds = parsed?.includeMacroSounds === true;
     const solverOptions = {
       ...DEFAULT_SOLVER_OPTIONS,
       ...(parsed?.solverOptions && typeof parsed.solverOptions === 'object' ? parsed.solverOptions : {}),
@@ -336,6 +339,7 @@ function loadSimulatorPreferencesFromCache() {
       simulationMode,
       autoSwitchCrafterJob,
       autoSaveCrafterJob,
+      includeMacroSounds,
       solverOptions,
     };
   } catch {
@@ -344,6 +348,7 @@ function loadSimulatorPreferencesFromCache() {
       simulationMode: 'auto',
       autoSwitchCrafterJob: true,
       autoSaveCrafterJob: true,
+      includeMacroSounds: false,
       solverOptions: { ...DEFAULT_SOLVER_OPTIONS },
     };
   }
@@ -586,8 +591,8 @@ function formatDeltaOrUnchanged(delta) {
 
 const MACRO_MAX_LINES = 15;
 const MACRO_ACTIONS_PER_PAGE = MACRO_MAX_LINES - 1;
-const MACRO_PAGE_SOUND = '<se.3>';
-const MACRO_COMPLETE_SOUND = '<se.6>';
+const MACRO_PAGE_SOUND = '<se.10>';
+const MACRO_COMPLETE_SOUND = '<se.15>';
 
 function buildMacroPages(actions, includeSounds = false) {
   if (!actions?.length) {
@@ -763,7 +768,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const [simulationResult, setSimulationResult] = useState(null);
   const [copyState, setCopyState] = useState('idle');
   const [macroPageIndex, setMacroPageIndex] = useState(0);
-  const [includeMacroSounds, setIncludeMacroSounds] = useState(false);
+  const [includeMacroSounds, setIncludeMacroSounds] = useState(cachedPreferences.includeMacroSounds);
   const [rightPanelTab, setRightPanelTab] = useState('rotation');
   const [simulationMode, setSimulationMode] = useState(cachedPreferences.simulationMode);
   const [autoSwitchCrafterJob, setAutoSwitchCrafterJob] = useState(cachedPreferences.autoSwitchCrafterJob);
@@ -923,9 +928,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       simulationMode,
       autoSwitchCrafterJob,
       autoSaveCrafterJob,
+      includeMacroSounds,
       solverOptions,
     });
-  }, [autoSaveCrafterJob, autoSwitchCrafterJob, simulationMode, solverOptions]);
+  }, [autoSaveCrafterJob, autoSwitchCrafterJob, includeMacroSounds, simulationMode, solverOptions]);
 
   useEffect(() => {
     if (!isOpen || !recipe || !autoSwitchCrafterJob) {
