@@ -216,6 +216,10 @@ function normalizeCrafterStats(rawStats, defaultStats) {
   return normalized;
 }
 
+function areCrafterStatsEqual(left, right) {
+  return Object.keys(CRAFTER_STAT_RULES).every((key) => left?.[key] === right?.[key]);
+}
+
 function loadCrafterStatsFromCache(defaultStats) {
   if (typeof window === 'undefined') {
     return { ...defaultStats };
@@ -303,6 +307,7 @@ function loadSimulatorPreferencesFromCache() {
     return {
       simulationMode: 'auto',
       autoSwitchCrafterJob: true,
+      autoSaveCrafterJob: true,
       solverOptions: { ...DEFAULT_SOLVER_OPTIONS },
     };
   }
@@ -313,6 +318,7 @@ function loadSimulatorPreferencesFromCache() {
       return {
         simulationMode: 'auto',
         autoSwitchCrafterJob: true,
+        autoSaveCrafterJob: true,
         solverOptions: { ...DEFAULT_SOLVER_OPTIONS },
       };
     }
@@ -320,6 +326,7 @@ function loadSimulatorPreferencesFromCache() {
     const parsed = JSON.parse(cachedRaw);
     const simulationMode = parsed?.simulationMode === 'manual' ? 'manual' : 'auto';
     const autoSwitchCrafterJob = parsed?.autoSwitchCrafterJob !== false;
+    const autoSaveCrafterJob = parsed?.autoSaveCrafterJob !== false;
     const solverOptions = {
       ...DEFAULT_SOLVER_OPTIONS,
       ...(parsed?.solverOptions && typeof parsed.solverOptions === 'object' ? parsed.solverOptions : {}),
@@ -328,6 +335,7 @@ function loadSimulatorPreferencesFromCache() {
     return {
       simulationMode,
       autoSwitchCrafterJob,
+      autoSaveCrafterJob,
       solverOptions,
     };
   } catch {
@@ -335,6 +343,7 @@ function loadSimulatorPreferencesFromCache() {
     return {
       simulationMode: 'auto',
       autoSwitchCrafterJob: true,
+      autoSaveCrafterJob: true,
       solverOptions: { ...DEFAULT_SOLVER_OPTIONS },
     };
   }
@@ -747,6 +756,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const [rightPanelTab, setRightPanelTab] = useState('rotation');
   const [simulationMode, setSimulationMode] = useState(cachedPreferences.simulationMode);
   const [autoSwitchCrafterJob, setAutoSwitchCrafterJob] = useState(cachedPreferences.autoSwitchCrafterJob);
+  const [autoSaveCrafterJob, setAutoSaveCrafterJob] = useState(cachedPreferences.autoSaveCrafterJob);
   const [manualActions, setManualActions] = useState([]);
   const [manualInitialStatus, setManualInitialStatus] = useState(null);
   const [manualResult, setManualResult] = useState(null);
@@ -784,17 +794,38 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const handleCrafterStatChange = (key, nextValue, min = 0) => {
     const parsed = Number(nextValue);
     const safeValue = Number.isFinite(parsed) ? Math.max(Math.floor(parsed), min) : min;
-    setCrafterStats((previous) => ({
-      ...previous,
-      [key]: safeValue,
-    }));
+    setCrafterStats((previous) => {
+      const nextStats = { ...previous, [key]: safeValue };
+
+      if (autoSaveCrafterJob && recipe?.job) {
+        const jobId = String(recipe.job);
+        setCrafterJobProfiles((previousProfiles) => {
+          const savedStats = normalizeCrafterStats(previousProfiles[jobId], defaultStats);
+          if (areCrafterStatsEqual(savedStats, nextStats)) {
+            return previousProfiles;
+          }
+
+          return { ...previousProfiles, [jobId]: nextStats };
+        });
+        setJobProfileState({ type: 'autoSaved', jobId });
+      }
+
+      return nextStats;
+    });
   };
 
   const handleResetCrafterStats = () => {
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(CRAFTER_STATS_CACHE_KEY);
     }
-    setCrafterStats({ ...defaultStats });
+    const nextStats = { ...defaultStats };
+    setCrafterStats(nextStats);
+
+    if (autoSaveCrafterJob && recipe?.job) {
+      const jobId = String(recipe.job);
+      setCrafterJobProfiles((previous) => ({ ...previous, [jobId]: nextStats }));
+      setJobProfileState({ type: 'autoSaved', jobId });
+    }
   };
 
   const handleToggleJobProfiles = () => {
@@ -880,9 +911,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     saveSimulatorPreferencesToCache({
       simulationMode,
       autoSwitchCrafterJob,
+      autoSaveCrafterJob,
       solverOptions,
     });
-  }, [autoSwitchCrafterJob, simulationMode, solverOptions]);
+  }, [autoSaveCrafterJob, autoSwitchCrafterJob, simulationMode, solverOptions]);
 
   useEffect(() => {
     if (!isOpen || !recipe || !autoSwitchCrafterJob) {
@@ -895,8 +927,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       return;
     }
 
-    setCrafterStats(profile);
-    setJobProfileState({ type: 'autoLoaded', jobId });
+    if (!areCrafterStatsEqual(crafterStats, profile)) {
+      setCrafterStats(profile);
+      setJobProfileState({ type: 'autoLoaded', jobId });
+    }
   }, [autoSwitchCrafterJob, crafterJobProfiles, defaultStats, isOpen, recipe]);
 
   useEffect(() => {
@@ -1351,6 +1385,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       return `已依配方職業自動切換為 ${savedJobName} 的已保存屬性`;
     }
 
+    if (jobProfileState.type === 'autoSaved') {
+      return `已自動保存目前屬性到 ${savedJobName}`;
+    }
+
     return `${savedJobName} 尚未保存屬性`;
   }, [jobProfileState]);
   const recipeYield = recipe?.yields || 1;
@@ -1622,23 +1660,39 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
               </div>
               {isJobProfilesOpen ? (
                 <div className="mb-2 rounded-lg border border-cyan-500/25 bg-slate-950/70 p-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-[10px] text-cyan-300/85">選擇製作職業，可保存目前屬性或讀取已保存屬性。</div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={autoSwitchCrafterJob}
-                      onClick={() => setAutoSwitchCrafterJob((previous) => !previous)}
-                      title="根據配方自動切換職業屬性"
-                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-1.5 py-1 text-[10px] font-semibold transition ${autoSwitchCrafterJob
-                        ? 'border-emerald-400/45 bg-emerald-500/15 text-emerald-200 hover:border-emerald-300/70'
-                        : 'border-slate-600 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-slate-200'}`}
-                    >
-                      <span>自動切換</span>
-                      <span className={`relative h-3.5 w-6 rounded-full transition ${autoSwitchCrafterJob ? 'bg-emerald-400/80' : 'bg-slate-600'}`}>
-                        <span className={`absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white shadow transition-transform ${autoSwitchCrafterJob ? 'translate-x-3' : 'translate-x-0.5'}`} />
-                      </span>
-                    </button>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={autoSwitchCrafterJob}
+                        onClick={() => setAutoSwitchCrafterJob((previous) => !previous)}
+                        title="根據配方自動切換職業屬性"
+                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-1.5 py-1 text-[10px] font-semibold transition ${autoSwitchCrafterJob
+                          ? 'border-emerald-400/45 bg-emerald-500/15 text-emerald-200 hover:border-emerald-300/70'
+                          : 'border-slate-600 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-slate-200'}`}
+                      >
+                        <span>自動切換</span>
+                        <span className={`relative flex h-3.5 w-6 items-center rounded-full px-0.5 transition ${autoSwitchCrafterJob ? 'bg-emerald-400/80 justify-end' : 'bg-slate-600 justify-start'}`}>
+                          <span className="h-2.5 w-2.5 rounded-full bg-white shadow" />
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={autoSaveCrafterJob}
+                        onClick={() => setAutoSaveCrafterJob((previous) => !previous)}
+                        title="變更屬性時，自動保存到目前配方職業"
+                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-1.5 py-1 text-[10px] font-semibold transition ${autoSaveCrafterJob
+                          ? 'border-emerald-400/45 bg-emerald-500/15 text-emerald-200 hover:border-emerald-300/70'
+                          : 'border-slate-600 bg-slate-800 text-slate-400 hover:border-slate-500 hover:text-slate-200'}`}
+                      >
+                        <span>自動保存</span>
+                        <span className={`relative flex h-3.5 w-6 items-center rounded-full px-0.5 transition ${autoSaveCrafterJob ? 'bg-emerald-400/80 justify-end' : 'bg-slate-600 justify-start'}`}>
+                          <span className="h-2.5 w-2.5 rounded-full bg-white shadow" />
+                        </span>
+                      </button>
+                    </div>
                   </div>
                   <div className="mt-1.5 space-y-1.5">
                     {CRAFTING_JOB_IDS.map((jobId) => {
