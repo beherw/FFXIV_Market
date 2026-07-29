@@ -85,11 +85,10 @@ export function convertRecipeToSimulatorRecipe(recipe) {
       durability: recipe.durability ?? 0,
       conditions_flag: recipe.conditionsFlag ?? 15,
     },
-    // `job_level` is only used by the WASM simulator to reject crafters below
-    // the recipe's required level. Recipe difficulty continues to come from
-    // `rlv`, so keep this at the minimum supported level to allow simulation
-    // at any configured crafter level.
-    job_level: 1,
+    // The WASM simulator also uses `job_level` for the in-game level
+    // correction. Keeping it at 1 incorrectly skips progress/quality
+    // modifiers (for example, a level 100 recipe with a 75% quality modifier).
+    job_level: recipe.lvl ?? 0,
     difficulty: recipe.progress ?? 0,
     quality: recipe.quality ?? 0,
     durability: recipe.durability ?? 0,
@@ -99,7 +98,21 @@ export function convertRecipeToSimulatorRecipe(recipe) {
 
 export async function createCraftingStatus(attributes, recipe) {
   const wasm = await loadWasmModule();
-  return wasm.new_status(attributes, recipe);
+  const crafterLevel = Number(attributes?.level);
+  const recipeLevel = Number(recipe?.job_level);
+  const simulatorRecipe = Number.isFinite(crafterLevel)
+    && Number.isFinite(recipeLevel)
+    && recipeLevel > crafterLevel + 5
+    ? {
+        ...recipe,
+        // Preserve the UI's unrestricted level sandbox without losing the
+        // recipe modifier: the engine rejects recipes over five levels above
+        // the crafter, while its correction formula only needs this value to
+        // remain at or above the crafter level.
+        job_level: crafterLevel,
+      }
+    : recipe;
+  return wasm.new_status(attributes, simulatorRecipe);
 }
 
 export async function simulateCrafting(status, actions) {
