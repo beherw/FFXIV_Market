@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import ItemImage from './ItemImage';
 import { findRecipesByResult, getAdjustedRecipeForCrafterLevel } from '../services/recipeDatabase';
@@ -10,6 +10,8 @@ import {
   getAllowedActions,
   getCraftPointsList,
   getDefaultCrafterAttributes,
+  getRecipeCollectability,
+  getRecipeQualityTarget,
   runAutoCraftSimulation,
   simulateCrafting,
   simulateCraftingOneStep,
@@ -21,7 +23,7 @@ const JOB_NAMES = {
   8: '刻木匠',
   9: '鍛鐵匠',
   10: '鑄甲匠',
-  11: '雕金匠',
+  11: '金工師',
   12: '製革匠',
   13: '裁縫匠',
   14: '煉金術士',
@@ -619,6 +621,100 @@ function ProgressBar({ label, current, max, barClass, valueClass = 'text-white' 
   );
 }
 
+const CollectabilityTargetSlider = memo(function CollectabilityTargetSlider({
+  collectability,
+  value,
+  onCommit,
+}) {
+  const [draftValue, setDraftValue] = useState(value);
+  const snapRef = useRef(null);
+  const lowPercent = (collectability.low / collectability.max) * 100;
+  const midPercent = (collectability.mid / collectability.max) * 100;
+  const highPercent = (collectability.high / collectability.max) * 100;
+
+  useEffect(() => {
+    setDraftValue(value);
+    snapRef.current = null;
+  }, [value, collectability]);
+
+  const commitValue = () => {
+    onCommit(draftValue);
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border border-orange-500/25 bg-orange-500/5 px-3 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span className="font-semibold text-orange-200">目標收藏價值</span>
+        <span className="font-bold text-amber-300">{draftValue} / {collectability.max}</span>
+      </div>
+      <div className="relative mt-3 pb-7">
+        <input
+          type="range"
+          min="0"
+          max={collectability.max}
+          step="1"
+          value={draftValue}
+          onChange={(event) => {
+            const nextValue = Number(event.target.value);
+            const thresholds = [collectability.low, collectability.mid, collectability.high];
+            const nearest = thresholds.reduce((closest, threshold) => (
+              Math.abs(nextValue - threshold) < Math.abs(nextValue - closest) ? threshold : closest
+            ), thresholds[0]);
+            const snapDistance = Math.max(6, Math.round(collectability.max * 0.018));
+            const releaseDistance = Math.max(12, Math.round(collectability.max * 0.035));
+            const snappedThreshold = snapRef.current;
+
+            if (snappedThreshold !== null
+              && Math.abs(nextValue - snappedThreshold) <= releaseDistance) {
+              setDraftValue(snappedThreshold);
+              return;
+            }
+
+            if (Math.abs(nextValue - nearest) <= snapDistance) {
+              snapRef.current = nearest;
+              setDraftValue(nearest);
+              return;
+            }
+
+            snapRef.current = null;
+            setDraftValue(nextValue);
+          }}
+          onPointerUp={commitValue}
+          onKeyUp={commitValue}
+          onBlur={commitValue}
+          className="h-3 w-full cursor-pointer appearance-none rounded-full border border-slate-950/70 shadow-inner outline-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-amber-400 [&::-webkit-slider-thumb]:shadow-lg [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-amber-400"
+          style={{
+            background: `linear-gradient(to right,
+              #334155 0%,
+              #334155 ${lowPercent}%,
+              #0ea5e9 ${lowPercent}%,
+              #0ea5e9 ${midPercent}%,
+              #8b5cf6 ${midPercent}%,
+              #8b5cf6 ${highPercent}%,
+              #f59e0b ${highPercent}%,
+              #f59e0b 100%)`,
+          }}
+          aria-label="目標收藏價值"
+        />
+        <span className="absolute bottom-0 left-0 text-[10px] text-slate-400">0</span>
+        {[
+          { label: '第一階', value: collectability.low, color: 'text-sky-300' },
+          { label: '第二階', value: collectability.mid, color: 'text-violet-300' },
+          { label: '第三階', value: collectability.high, color: 'text-amber-300' },
+        ].map((marker) => (
+          <span
+            key={marker.label}
+            className={`absolute bottom-0 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium ${marker.color}`}
+            style={{ left: `${(marker.value / collectability.max) * 100}%` }}
+          >
+            {marker.label} {marker.value}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+});
+
 function MetricCard({ label, value, accentClass = 'text-ffxiv-gold' }) {
   return (
     <div className="rounded-xl border border-purple-400/30 bg-slate-800/85 px-3.5 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
@@ -632,6 +728,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const cachedPreferences = useMemo(() => loadSimulatorPreferencesFromCache(), []);
   const [recipes, setRecipes] = useState([]);
   const [recipe, setRecipe] = useState(null);
+  const [selectedRecipeId, setSelectedRecipeId] = useState('');
   const [ingredients, setIngredients] = useState([]);
   const [ingredientsLoading, setIngredientsLoading] = useState(false);
   const [recipeCount, setRecipeCount] = useState(0);
@@ -658,6 +755,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const [actionDurabilityCostMap, setActionDurabilityCostMap] = useState({});
   const [isLoadingActionMeta, setIsLoadingActionMeta] = useState(false);
   const [solverOptions, setSolverOptions] = useState(cachedPreferences.solverOptions);
+  const [collectabilityTargetValue, setCollectabilityTargetValue] = useState(null);
 
   const defaultStats = useMemo(() => getDefaultCrafterAttributes(), []);
   const [crafterStats, setCrafterStats] = useState(() => loadCrafterStatsFromCache(defaultStats));
@@ -750,6 +848,11 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     }, 0);
   }, [ingredients, ingredientHqCounts]);
   const clampedStartingQuality = Math.max(0, Math.min(startingQuality, effectiveRecipe?.quality || 0));
+  const collectability = useMemo(
+    () => getRecipeCollectability(effectiveRecipe),
+    [effectiveRecipe],
+  );
+  const collectabilityTarget = collectabilityTargetValue ?? collectability?.high ?? null;
 
   useEffect(() => {
     if (!isOpen) {
@@ -797,6 +900,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     if (!isOpen || !item?.id) {
       setRecipes([]);
       setRecipe(null);
+      setSelectedRecipeId('');
       setIngredients([]);
       setRecipeCount(0);
       setSimulationResult(null);
@@ -828,6 +932,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     const loadRecipes = async () => {
       try {
         setLoadingRecipe(true);
+        setRecipes([]);
+        setRecipe(null);
+        setRecipeCount(0);
+        setSelectedRecipeId('');
         setError(null);
         setCopyState('idle');
         setMacroPageIndex(0);
@@ -852,21 +960,15 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
 
         setRecipes(foundRecipes);
         setRecipeCount(foundRecipes.length);
+        setSelectedRecipeId('');
 
         if (!foundRecipes.length) {
           throw new Error('找不到可用的製作配方');
         }
 
-        setRecipe((currentRecipe) => {
-          if (currentRecipe) {
-            const matchedRecipe = foundRecipes.find((candidate) => candidate.id === currentRecipe.id);
-            if (matchedRecipe) {
-              return matchedRecipe;
-            }
-          }
-
-          return foundRecipes[0];
-        });
+        // Multiple recipes can have different crafting jobs or requirements.
+        // Require an explicit choice before any simulation is initialized.
+        setRecipe(foundRecipes.length === 1 ? foundRecipes[0] : null);
       } catch (simulationError) {
         if (!cancelled) {
           setError(simulationError instanceof Error ? simulationError.message : '模擬製作失敗');
@@ -902,6 +1004,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     setNeedsSolve(true);
     setError(null);
   }, [clampedStartingQuality, crafterStats, isOpen, recipe, solverOptions]);
+
+  useEffect(() => {
+    setCollectabilityTargetValue(collectability?.high ?? null);
+  }, [recipe?.id, collectability?.high]);
 
   useEffect(() => {
     if (!isOpen || !recipe || simulationMode !== 'manual') {
@@ -959,7 +1065,14 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       setCopyState('idle');
       setMacroPageIndex(0);
 
-      const result = await runAutoCraftSimulation(effectiveRecipe, crafterStats, { ...solverOptions, solverType: 'raphael' }, clampedStartingQuality);
+      const requestedTargetQuality = collectability
+        ? getRecipeQualityTarget(effectiveRecipe, collectabilityTarget)
+        : solverOptions.targetQuality === 0 ? 0 : null;
+      const result = await runAutoCraftSimulation(effectiveRecipe, crafterStats, {
+        ...solverOptions,
+        solverType: 'raphael',
+        targetQuality: requestedTargetQuality,
+      }, clampedStartingQuality);
       if (solveRequestIdRef.current !== requestId) {
         return;
       }
@@ -988,6 +1101,13 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       if (solveRequestIdRef.current === requestId) {
         setRunningSolver(false);
       }
+    }
+  };
+
+  const handleConfirmRecipeSelection = () => {
+    const nextRecipe = recipes.find((candidate) => String(candidate.id) === selectedRecipeId);
+    if (nextRecipe) {
+      setRecipe(nextRecipe);
     }
   };
 
@@ -1114,9 +1234,24 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
       }
     };
 
-    loadActionMeta();
+    // Building metadata simulates every manual action. Defer that batch until
+    // after the drawer's first paint so opening the simulator stays responsive.
+    let idleCallbackId = null;
+    let fallbackTimeoutId = null;
+    if (typeof window.requestIdleCallback === 'function') {
+      idleCallbackId = window.requestIdleCallback(loadActionMeta, { timeout: 250 });
+    } else {
+      fallbackTimeoutId = window.setTimeout(loadActionMeta, 32);
+    }
+
     return () => {
       cancelled = true;
+      if (idleCallbackId !== null && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleCallbackId);
+      }
+      if (fallbackTimeoutId !== null) {
+        window.clearTimeout(fallbackTimeoutId);
+      }
     };
   }, [isOpen, manualInitialStatus, manualResult?.status, manualStepStatus, simulationMode, simulationResult?.initialStatus]);
 
@@ -1202,6 +1337,13 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
   const activeStatus = simulationMode === 'manual'
     ? (manualResult?.status || manualStepStatus || manualInitialStatus || simulationResult?.initialStatus)
     : finalStatus;
+  const collectabilityGrade = useMemo(() => {
+    const quality = toFiniteNumber(activeStatus?.quality, 0);
+    if (!collectability || quality < Number(collectability.low) * 10) return null;
+    if (quality >= Number(collectability.high) * 10) return '第三階段';
+    if (quality >= Number(collectability.mid) * 10) return '第二階段';
+    return '第一階段';
+  }, [activeStatus?.quality, collectability]);
   const isComplete = !!(activeStatus && activeStatus.progress >= activeStatus.recipe.difficulty);
   const isQualityMax = !!(activeStatus && activeStatus.recipe.quality > 0 && activeStatus.quality >= activeStatus.recipe.quality);
   const hasFailure = !!(activeStatus && activeStatus.durability <= 0 && !isComplete);
@@ -1363,17 +1505,22 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
     return null;
   }
 
+  const isRecipeSelectionRequired = recipes.length > 1 && !recipe && !loadingRecipe;
+
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-6"
+      className={`fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-6 ${isRecipeSelectionRequired
+        ? 'bg-slate-950/85'
+        : 'bg-slate-950/80'}`}
       onPointerDown={handleBackdropPointerDown}
       onPointerUp={handleBackdropPointerUp}
     >
+      {!isRecipeSelectionRequired && (
       <div
         className="relative h-[min(92vh,980px)] w-[min(96vw,1420px)] rounded-2xl bg-gradient-to-b from-slate-800 via-slate-850 to-slate-950 border border-purple-400/35 shadow-[0_24px_90px_rgba(0,0,0,0.58)] overflow-hidden"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 border-b border-purple-400/30 bg-slate-900/97 backdrop-blur-md px-4 sm:px-6 py-4">
+        <div className="sticky top-0 z-10 border-b border-purple-400/30 bg-slate-900 px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <h2 className="text-lg sm:text-xl font-bold text-ffxiv-gold break-words">製作模擬器</h2>
@@ -1533,7 +1680,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
 
           </div>
 
-          <div className="rounded-xl border border-cyan-400/30 bg-slate-900/95 backdrop-blur-md px-3 py-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
+          <div className="rounded-xl border border-cyan-400/30 bg-slate-900/95 px-3 py-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-xs font-semibold text-cyan-200">即時製作狀態</div>
               <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] text-cyan-300">
@@ -1556,6 +1703,17 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                 barClass="bg-gradient-to-r from-orange-500 to-amber-400"
                 valueClass="text-orange-200"
               />
+              {collectability && (
+                <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 px-2 py-1.5 text-[11px] text-orange-200">
+                  <div className="flex flex-wrap items-center justify-between gap-1">
+                    <span>收藏價值：第一階段 {collectability.low}／第二階段 {collectability.mid}／第三階段 {collectability.high}</span>
+                    <span className="font-semibold text-amber-300">{collectabilityGrade || '尚未達第一階段'}</span>
+                  </div>
+                  {collectabilityTarget !== null && (
+                    <div className="mt-0.5 text-orange-300/80">目前自動解目標：{collectabilityTarget}</div>
+                  )}
+                </div>
+              )}
               <ProgressBar
                 label="耐久"
                 current={toFiniteNumber(activeStatus?.durability, 0)}
@@ -1718,11 +1876,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                     <span className="transition group-hover:text-cyan-200">使用工匠的神速技巧</span>
                     {!trainedEyeEligible && <span className="ml-auto text-[10px] text-slate-600">等級不足</span>}
                   </label>
-                  <label className="group flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300 transition hover:border-cyan-400/40 hover:bg-slate-900/80">
+                  {!collectability && <label className="group flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300 transition hover:border-cyan-400/40 hover:bg-slate-900/80">
                     <input
                       type="checkbox"
                       checked={solverOptions.backloadProgress}
-                      disabled={solverOptions.targetQuality === 0}
                       onChange={(event) => {
                         const nextChecked = event.target.checked;
                         setSolverOptions((prev) => ({
@@ -1739,8 +1896,8 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                       </svg>
                     </span>
                     <span className="transition group-hover:text-cyan-200">HQ優先</span>
-                  </label>
-                  <label className="group flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300 transition hover:border-cyan-400/40 hover:bg-slate-900/80">
+                  </label>}
+                  {!collectability && <label className="group flex w-full items-center gap-2 rounded-lg border border-purple-500/20 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-300 transition hover:border-cyan-400/40 hover:bg-slate-900/80">
                     <input
                       type="checkbox"
                       checked={solverOptions.targetQuality === 0}
@@ -1760,8 +1917,15 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
                       </svg>
                     </span>
                     <span className="transition group-hover:text-cyan-200">NQ優先（無須品質）</span>
-                  </label>
+                  </label>}
                 </div>
+                {collectability && (
+                  <CollectabilityTargetSlider
+                    collectability={collectability}
+                    value={collectabilityTarget}
+                    onCommit={setCollectabilityTargetValue}
+                  />
+                )}
               </div>
             )}
 
@@ -2227,6 +2391,76 @@ export default function CraftingSimulatorDrawer({ isOpen, item, onClose }) {
           </div>
         </div>
       </div>
+      )}
+
+      {isRecipeSelectionRequired && (
+        <div
+          className="flex w-full items-center justify-center p-1"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="recipe-selection-title"
+        >
+          <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-ffxiv-gold/35 bg-gradient-to-b from-slate-800 to-slate-950 p-5 shadow-[0_24px_90px_rgba(0,0,0,0.58)] sm:p-6">
+            <h3 id="recipe-selection-title" className="text-lg font-bold text-ffxiv-gold">選擇製作配方</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-300">此物品有 {recipes.length} 個配方。請選擇要模擬的配方後再開始製作。</p>
+
+            <div className="mt-4 min-h-0 space-y-2 overflow-y-auto pr-1">
+              {recipes.map((candidate, index) => {
+                const candidateId = String(candidate.id);
+                const isSelected = selectedRecipeId === candidateId;
+                const candidateJobName = JOB_NAMES[candidate.job] || `職業 ${candidate.job}`;
+                const candidateJobIcon = JOB_ICON_MAP[candidate.job];
+
+                return (
+                  <label
+                    key={candidate.id}
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${isSelected
+                      ? 'border-ffxiv-gold/70 bg-amber-500/10'
+                      : 'border-slate-600/60 bg-slate-900/70 hover:border-purple-400/60 hover:bg-slate-800'}`}
+                  >
+                    <input
+                      type="radio"
+                      name="crafting-simulator-recipe"
+                      value={candidateId}
+                      checked={isSelected}
+                      onChange={(event) => setSelectedRecipeId(event.target.value)}
+                      className="h-4 w-4 accent-amber-400"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-100">
+                        <span>配方 {index + 1}・</span>
+                        {candidateJobIcon ? <img src={candidateJobIcon} alt="" className="h-4 w-4 object-contain" /> : null}
+                        <span>{candidateJobName}</span>
+                      </span>
+                      <span className="mt-0.5 block text-xs text-slate-400">
+                        Lv.{candidate.lvl || 0}・<span className="font-semibold text-ffxiv-gold">耐久 {candidate.durability || 0}</span>・難度 {candidate.difficulty || 0}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-xl border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-400 hover:text-white"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRecipeSelection}
+                disabled={!selectedRecipeId}
+                className="rounded-xl border border-ffxiv-gold/45 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-ffxiv-gold transition hover:border-ffxiv-gold/80 hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                確認並開始
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body,
   );

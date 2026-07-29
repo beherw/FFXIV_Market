@@ -64,6 +64,51 @@ export function getDefaultCrafterAttributes() {
   return { ...DEFAULT_CRAFTER_ATTRIBUTES };
 }
 
+/**
+ * Returns the quality target for a recipe's selected output grade.
+ * Collectables have three quality grades; their high grade is not the end of
+ * the normal quality bar.
+ */
+export function getRecipeCollectability(recipe) {
+  const maxQuality = Number(recipe?.quality) || 0;
+  const max = Math.floor(maxQuality / 10);
+  const thresholds = recipe?.collectability;
+
+  if (thresholds && typeof thresholds === 'object') {
+    const values = [thresholds.low, thresholds.mid, thresholds.high].map(Number);
+    if (values.every((value) => Number.isFinite(value) && value >= 0 && value <= max)) {
+      return { max, low: values[0], mid: values[1], high: values[2] };
+    }
+  }
+
+  // Cosmic Exploration recipes are collectables too. Their in-game rating
+  // scale is one tenth of recipe quality, with the three grade boundaries at
+  // 20%, 40%, and 70% of that scale.
+  if (recipe?.isCollectable === true && recipe?.cosmicMissionGrade && max > 0) {
+    return {
+      max,
+      low: Math.floor(max * 0.2),
+      mid: Math.floor(max * 0.4),
+      high: Math.floor(max * 0.7),
+    };
+  }
+
+  return null;
+}
+
+export function getRecipeQualityTarget(recipe, preference = 'high') {
+  const collectability = getRecipeCollectability(recipe);
+  if (!collectability) {
+    return preference === 'low' ? 0 : null;
+  }
+
+  const target = typeof preference === 'number'
+    ? preference
+    : preference === 'low' ? collectability.low : collectability.high;
+  const rating = Math.max(0, Math.min(Math.floor(Number(target) || 0), collectability.max));
+  return rating * 10;
+}
+
 export function convertRecipeToSimulatorRecipe(recipe) {
   if (!recipe) {
     throw new Error('缺少配方資料');

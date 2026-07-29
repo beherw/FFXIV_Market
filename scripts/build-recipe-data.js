@@ -28,6 +28,9 @@ const __dirname = path.dirname(__filename);
 const JSON_SOURCE = getTwJsonPath('tw-recipes.json');
 const RECIPE_LEVEL_TABLE_SOURCE = getTwJsonPath('tw-recipe-level-table.json');
 const LEVEL_ADJUST_TABLE_SOURCE = getTwJsonPath('tw-gatherer-crafter-lv-adjust-table.json');
+const COLLECTABLES_SHOP_ITEM_SOURCE = path.join(__dirname, '../tw_dataminer/dumpcsv-output/rawexd/CollectablesShopItem.csv');
+const COLLECTABLES_SHOP_REFINE_SOURCE = path.join(__dirname, '../tw_dataminer/dumpcsv-output/rawexd/CollectablesShopRefine.csv');
+const ITEM_SOURCE = path.join(__dirname, '../tw_dataminer/dumpcsv-output/rawexd/Item.csv');
 const OUTPUT_DIR = path.join(__dirname, '../public/data');
 const OUTPUT_FILE = path.join(OUTPUT_DIR, 'recipes.msgpack');
 
@@ -63,10 +66,93 @@ function loadJSON(jsonPath, label) {
   return JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
 }
 
+function parseCsvLine(line) {
+  const cells = [];
+  let cell = '';
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    if (character === '"') {
+      if (inQuotes && line[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (character === ',' && !inQuotes) {
+      cells.push(cell);
+      cell = '';
+    } else {
+      cell += character;
+    }
+  }
+
+  cells.push(cell);
+  return cells;
+}
+
+function loadCsvRows(csvPath, label) {
+  if (!fs.existsSync(csvPath)) {
+    throw new Error(`${label} source not found: ${csvPath}`);
+  }
+
+  return fs.readFileSync(csvPath, 'utf-8')
+    .split(/\r?\n/)
+    .slice(3) // CSV metadata rows: key, labels, and types.
+    .filter((line) => line.trim())
+    .map(parseCsvLine);
+}
+
+/** Build result-item -> three Collectables Shop quality thresholds. */
+function loadCollectabilityThresholds() {
+  const refineRows = loadCsvRows(COLLECTABLES_SHOP_REFINE_SOURCE, 'Collectables refine');
+  const thresholdsByRefineId = new Map(refineRows.map((row) => [
+    Number(row[0]),
+    {
+      low: Number(row[1]),
+      mid: Number(row[2]),
+      high: Number(row[3]),
+    },
+  ]));
+  const shopRows = loadCsvRows(COLLECTABLES_SHOP_ITEM_SOURCE, 'Collectables shop item');
+  const thresholdsByItemId = new Map();
+
+  for (const row of shopRows) {
+    const itemId = Number(row[1]);
+    const thresholds = thresholdsByRefineId.get(Number(row[8]));
+    if (!Number.isFinite(itemId) || itemId <= 0 || !thresholds
+      || !Object.values(thresholds).every(Number.isFinite)) {
+      continue;
+    }
+    thresholdsByItemId.set(itemId, thresholds);
+  }
+
+  console.log(`[Recipe] Loaded Collectables thresholds for ${thresholdsByItemId.size} items`);
+  return thresholdsByItemId;
+}
+
+function loadCollectableItemIds() {
+  const itemRows = loadCsvRows(ITEM_SOURCE, 'Item');
+  const collectableItemIds = new Set();
+
+  for (const row of itemRows) {
+    if (row[38] === 'True') {
+      const itemId = Number(row[0]);
+      if (Number.isFinite(itemId) && itemId > 0) {
+        collectableItemIds.add(itemId);
+      }
+    }
+  }
+
+  console.log(`[Recipe] Loaded ${collectableItemIds.size} items with the collectable flag`);
+  return collectableItemIds;
+}
+
 /**
  * Optimize recipe data structure for smaller size
  */
-function optimizeRecipes(recipes) {
+function optimizeRecipes(recipes, collectabilityThresholds, collectableItemIds) {
   console.log(`[Recipe] Optimizing data structure...`);
   
   // Remove null/undefined fields to reduce size
@@ -78,6 +164,13 @@ function optimizeRecipes(recipes) {
         cleaned[key] = value;
       }
     });
+    const collectability = collectabilityThresholds.get(Number(recipe.result));
+    if (collectability) {
+      cleaned.collectability = collectability;
+    }
+    if (collectableItemIds.has(Number(recipe.result))) {
+      cleaned.isCollectable = true;
+    }
     return cleaned;
   });
   
@@ -109,9 +202,11 @@ function buildRecipeData() {
 
   const recipeLevelTable = loadJSON(RECIPE_LEVEL_TABLE_SOURCE, 'Recipe level table');
   const gathererCrafterLvAdjustTable = loadJSON(LEVEL_ADJUST_TABLE_SOURCE, 'Crafter level adjustment table');
+  const collectabilityThresholds = loadCollectabilityThresholds();
+  const collectableItemIds = loadCollectableItemIds();
   
   // Step 2: Optimize structure
-  const optimized = optimizeRecipes(merged);
+  const optimized = optimizeRecipes(merged, collectabilityThresholds, collectableItemIds);
   
   // Step 3: Encode to MessagePack
   console.log(`[Recipe] Encoding to MessagePack...`);

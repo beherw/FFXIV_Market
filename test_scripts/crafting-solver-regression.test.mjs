@@ -4,6 +4,8 @@ import test from 'node:test';
 import {
   convertRecipeToSimulatorRecipe,
   createCraftingStatus,
+  getRecipeCollectability,
+  getRecipeQualityTarget,
   simulateCraftingOneStep,
 } from '../src/services/craftingSolver.js';
 import {
@@ -65,4 +67,25 @@ test('Cosmic Exploration mission grades use the in-game rank groups', () => {
   assert.equal(getCosmicMissionRank({ cosmicMissionGrade: 1 }), 'D');
   assert.equal(getCosmicMissionRankLabel({ cosmicMissionGrade: 4 }), 'A級');
   assert.equal(getCosmicMissionRankLabel({}), null);
+});
+
+test('collectables use their first and final grade thresholds as solver targets', () => {
+  const collectableRecipe = {
+    quality: 8100,
+    collectability: { low: 360, mid: 540, high: 720 },
+  };
+
+  assert.equal(getRecipeQualityTarget(collectableRecipe, 'low'), 3600);
+  assert.equal(getRecipeQualityTarget(collectableRecipe, 'high'), 7200);
+  assert.equal(getRecipeQualityTarget({ quality: 8100 }, 'low'), 0);
+  assert.equal(getRecipeQualityTarget({ quality: 8100 }, 'high'), null);
+});
+
+test('only flagged Cosmic Exploration collectables use the one-tenth scale', () => {
+  const cosmicRecipe = { quality: 11682, cosmicMissionGrade: 2, isCollectable: true };
+  assert.deepEqual(getRecipeCollectability(cosmicRecipe), {
+    max: 1168, low: 233, mid: 467, high: 817,
+  });
+  assert.equal(getRecipeQualityTarget(cosmicRecipe, 817), 8170);
+  assert.equal(getRecipeCollectability({ quality: 6000, cosmicMissionGrade: 2 }), null);
 });
