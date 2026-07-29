@@ -85,7 +85,11 @@ export function convertRecipeToSimulatorRecipe(recipe) {
       durability: recipe.durability ?? 0,
       conditions_flag: recipe.conditionsFlag ?? 15,
     },
-    job_level: recipe.lvl ?? 0,
+    // `job_level` is only used by the WASM simulator to reject crafters below
+    // the recipe's required level. Recipe difficulty continues to come from
+    // `rlv`, so keep this at the minimum supported level to allow simulation
+    // at any configured crafter level.
+    job_level: 1,
     difficulty: recipe.progress ?? 0,
     quality: recipe.quality ?? 0,
     durability: recipe.durability ?? 0,

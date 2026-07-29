@@ -411,10 +411,6 @@ function localizeSimulationErrorMessage(rawMessage) {
   const normalized = message.toLowerCase();
   const knownMappings = [
     {
-      patterns: ['player-level-lower-than-recipe-requirement', 'player level lower than recipe requirement'],
-      text: '角色等級低於配方需求，請提升等級後再試。',
-    },
-    {
       patterns: ['insufficient-craft-points', 'not enough cp', 'insufficient cp'],
       text: 'CP 不足，無法執行目前技能或手法。',
     },
