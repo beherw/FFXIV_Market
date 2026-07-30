@@ -6,13 +6,21 @@ import { getInternalUrl } from '../utils/internalUrl.js';
 import { generateItemUrl } from '../utils/urlSlug';
 import ItemImage from './ItemImage';
 
-export default function RelatedItems({ itemId, onItemClick }) {
-  const [relatedItemIds, setRelatedItemIds] = useState([]);
+export default function RelatedItems({ itemId, relatedItemIds: providedRelatedItemIds, onItemClick }) {
+  const [relatedItemIds, setRelatedItemIds] = useState(providedRelatedItemIds || []);
   const [relatedItems, setRelatedItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Find related items when itemId changes
   useEffect(() => {
+    // The item page can pass its already-loaded result to avoid querying the
+    // recipe database a second time (for example from the crafting simulator).
+    if (Array.isArray(providedRelatedItemIds)) {
+      setRelatedItemIds(providedRelatedItemIds);
+      setIsLoading(false);
+      return undefined;
+    }
+
     if (!itemId) {
       setRelatedItemIds([]);
       setRelatedItems([]);
@@ -31,7 +39,7 @@ export default function RelatedItems({ itemId, onItemClick }) {
         setRelatedItemIds([]);
         setIsLoading(false);
       });
-  }, [itemId]);
+  }, [itemId, providedRelatedItemIds]);
 
   // Load item details for related items (optimized - batch query instead of individual queries)
   useEffect(() => {
@@ -111,7 +119,9 @@ export default function RelatedItems({ itemId, onItemClick }) {
                 const url = `${window.location.origin}${getInternalUrl(itemUrl)}`;
                 window.open(url, '_blank', 'noopener,noreferrer');
               }}
-              className="flex flex-col items-center gap-2 p-3 rounded-lg bg-slate-800/60 border border-purple-500/30 hover:border-ffxiv-gold/60 hover:bg-slate-700/70 transition-all duration-200 group"
+              className="group relative flex items-center justify-center p-2 rounded-lg bg-slate-800/60 border border-purple-500/30 hover:border-ffxiv-gold/60 hover:bg-slate-700/70 transition-all duration-200"
+              title={item.name}
+              aria-label={item.name}
             >
               {/* Item Image */}
               <ItemImage
@@ -119,9 +129,9 @@ export default function RelatedItems({ itemId, onItemClick }) {
                 alt={item.name}
                 className="w-12 h-12 object-contain rounded border border-purple-500/30 group-hover:border-ffxiv-gold/60 transition-colors duration-200"
               />
-              
-              {/* Item name */}
-              <span className="text-xs text-gray-300 group-hover:text-ffxiv-gold text-center line-clamp-2 transition-colors duration-200" title={item.name}>
+
+              {/* Hover name tooltip */}
+              <span className="pointer-events-none absolute -bottom-2 left-1/2 z-20 max-w-[8rem] -translate-x-1/2 truncate rounded-md border border-slate-600/70 bg-slate-950/95 px-2 py-1 text-[10px] text-slate-100 opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
                 {item.name}
               </span>
             </button>

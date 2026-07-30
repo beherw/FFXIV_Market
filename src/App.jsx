@@ -249,6 +249,7 @@ function App() {
   
   // Related items states
   const [hasRelatedItems, setHasRelatedItems] = useState(false);
+  const [relatedItemIds, setRelatedItemIds] = useState([]);
   const [isRelatedItemsExpanded, setIsRelatedItemsExpanded] = useState(false);
   const [isLoadingRelatedItems, setIsLoadingRelatedItems] = useState(false);
   
@@ -3772,6 +3773,7 @@ function App() {
       setIsCraftingTreeExpanded(false);
       setIsCraftingSimulatorOpen(false);
       setHasRelatedItems(false);
+      setRelatedItemIds([]);
       setIsRelatedItemsExpanded(false);
       setIsObtainMethodsExpanded(false);
       setHasObtainMethods(true); // Reset to true when no item selected
@@ -3851,17 +3853,20 @@ function App() {
     // Check if item is used as ingredient in any recipe
     setIsLoadingRelatedItems(true);
     setIsRelatedItemsExpanded(false);
+    setRelatedItemIds([]);
     
     findRelatedItems(selectedItem.id)
       .then(ids => {
         if (cancelled) return;
         setHasRelatedItems(ids.length > 0);
+        setRelatedItemIds(ids);
         setIsLoadingRelatedItems(false);
       })
       .catch(error => {
         if (cancelled) return;
         console.error('Failed to check related items:', error);
         setHasRelatedItems(false);
+        setRelatedItemIds([]);
         setIsLoadingRelatedItems(false);
       });
       
@@ -5132,6 +5137,7 @@ function App() {
                         }>
                           <RelatedItems
                             itemId={selectedItem?.id}
+                            relatedItemIds={relatedItemIds}
                             onItemClick={handleItemSelect}
                           />
                         </Suspense>
@@ -6043,6 +6049,7 @@ function App() {
           <CraftingSimulatorDrawer
             isOpen={isCraftingSimulatorOpen}
             item={selectedItem}
+            relatedItemIds={relatedItemIds}
             onClose={() => setIsCraftingSimulatorOpen(false)}
           />
         </Suspense>
