@@ -2,7 +2,8 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import ItemImage from './ItemImage';
 import RelatedItems from './RelatedItems';
-import { findRecipesByResult, getAdjustedRecipeForCrafterLevel } from '../services/recipeDatabase';
+import CraftingSimulatorItemNavigator from './CraftingSimulatorItemNavigator';
+import { findRecipesByResult, findRelatedItems, getAdjustedRecipeForCrafterLevel } from '../services/recipeDatabase';
 import { getItemById } from '../services/itemDatabase';
 import { getCosmicMissionRankLabel } from '../utils/cosmicMission';
 import {
@@ -774,6 +775,10 @@ function MetricCard({ label, value, accentClass = 'text-ffxiv-gold' }) {
 
 export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds = [], onClose }) {
   const cachedPreferences = useMemo(() => loadSimulatorPreferencesFromCache(), []);
+  const [simulatorItem, setSimulatorItem] = useState(item);
+  const [simulatorRelatedItemIds, setSimulatorRelatedItemIds] = useState(relatedItemIds);
+  const [navigationItems, setNavigationItems] = useState(() => item ? [item] : []);
+  const [navigationIndex, setNavigationIndex] = useState(0);
   const [recipes, setRecipes] = useState([]);
   const [recipe, setRecipe] = useState(null);
   const [selectedRecipeId, setSelectedRecipeId] = useState('');
@@ -818,7 +823,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
   const [isRelatedItemsExpanded, setIsRelatedItemsExpanded] = useState(false);
   const solveRequestIdRef = useRef(0);
   const backdropPointerDownRef = useRef(null);
-  const itemName = item?.nameTW || item?.name || '未知物品';
+  const itemName = simulatorItem?.nameTW || simulatorItem?.name || '未知物品';
   const cosmicMissionRankLabel = getCosmicMissionRankLabel(recipe);
   const displayItemName = cosmicMissionRankLabel
     ? `${itemName}（${cosmicMissionRankLabel}）`
@@ -922,7 +927,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
     }, 0);
   }, [ingredients, ingredientHqCounts]);
   const clampedStartingQuality = Math.max(0, Math.min(startingQuality, effectiveRecipe?.quality || 0));
-  const hasRelatedItems = relatedItemIds.length > 0;
+  const hasRelatedItems = simulatorRelatedItemIds.length > 0;
   const collectability = useMemo(
     () => getRecipeCollectability(effectiveRecipe),
     [effectiveRecipe],
@@ -936,6 +941,48 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
 
     setCrafterStats(loadCrafterStatsFromCache(defaultStats));
   }, [defaultStats, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setSimulatorItem(item);
+    setNavigationItems(item ? [item] : []);
+    setNavigationIndex(0);
+  }, [isOpen, item?.id]);
+
+  useEffect(() => {
+    if (!isOpen || !simulatorItem?.id) {
+      setSimulatorRelatedItemIds([]);
+      return undefined;
+    }
+
+    if (simulatorItem.id === item?.id && Array.isArray(relatedItemIds)) {
+      setSimulatorRelatedItemIds(relatedItemIds);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setSimulatorRelatedItemIds([]);
+
+    findRelatedItems(simulatorItem.id)
+      .then((ids) => {
+        if (!cancelled) {
+          setSimulatorRelatedItemIds(ids);
+        }
+      })
+      .catch((relatedItemsError) => {
+        console.error('[CraftingSimulator] Failed to load related items:', relatedItemsError);
+        if (!cancelled) {
+          setSimulatorRelatedItemIds([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, item?.id, relatedItemIds, simulatorItem?.id]);
 
   useEffect(() => {
     saveCrafterStatsToCache(crafterStats);
@@ -979,7 +1026,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
     document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && document.body.style.position !== 'fixed') {
         onClose();
       }
     };
@@ -992,7 +1039,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
   }, [isOpen, onClose]);
 
   useEffect(() => {
-    if (!isOpen || !item?.id) {
+    if (!isOpen || !simulatorItem?.id) {
       setRecipes([]);
       setRecipe(null);
       setSelectedRecipeId('');
@@ -1054,7 +1101,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
         setIsRelatedItemsExpanded(false);
         setNeedsSolve(true);
 
-        const foundRecipes = await findRecipesByResult(item.id);
+        const foundRecipes = await findRecipesByResult(simulatorItem.id);
         if (cancelled) return;
 
         setRecipes(foundRecipes);
@@ -1083,7 +1130,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
     return () => {
       cancelled = true;
     };
-  }, [isOpen, item?.id]);
+  }, [isOpen, simulatorItem?.id]);
 
   useEffect(() => {
     if (!isOpen || !recipe) {
@@ -1670,7 +1717,39 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
     }
   };
 
-  if (!isOpen || !item) {
+  const handleSimulatorItemSelect = (nextItem) => {
+    if (!nextItem?.id || nextItem.id === simulatorItem?.id) {
+      return;
+    }
+
+    const retainedHistory = navigationItems.slice(0, navigationIndex + 1);
+    const nextHistory = [...retainedHistory, nextItem];
+    setNavigationItems(nextHistory);
+    setNavigationIndex(nextHistory.length - 1);
+    setSimulatorItem(nextItem);
+  };
+
+  const handlePreviousSimulatorItem = () => {
+    if (navigationIndex <= 0) {
+      return;
+    }
+
+    const nextIndex = navigationIndex - 1;
+    setNavigationIndex(nextIndex);
+    setSimulatorItem(navigationItems[nextIndex]);
+  };
+
+  const handleNextSimulatorItem = () => {
+    if (navigationIndex >= navigationItems.length - 1) {
+      return;
+    }
+
+    const nextIndex = navigationIndex + 1;
+    setNavigationIndex(nextIndex);
+    setSimulatorItem(navigationItems[nextIndex]);
+  };
+
+  if (!isOpen || !simulatorItem) {
     return null;
   }
 
@@ -1686,10 +1765,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
     >
       {!isRecipeSelectionRequired && (
       <div
-        className="relative h-[min(92vh,980px)] w-[min(96vw,1420px)] rounded-2xl bg-gradient-to-b from-slate-800 via-slate-850 to-slate-950 border border-purple-400/35 shadow-[0_24px_90px_rgba(0,0,0,0.58)] overflow-hidden"
+        className="relative flex h-[min(92vh,980px)] w-[min(96vw,1420px)] flex-col overflow-hidden rounded-2xl border border-purple-400/35 bg-gradient-to-b from-slate-800 via-slate-850 to-slate-950 shadow-[0_24px_90px_rgba(0,0,0,0.58)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 border-b border-purple-400/30 bg-slate-900 px-4 sm:px-6 py-4">
+        <div className="relative z-20 shrink-0 border-b border-purple-400/30 bg-slate-900 px-4 py-4 sm:px-6">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <h2 className="text-lg sm:text-xl font-bold text-ffxiv-gold break-words">製作模擬器</h2>
@@ -1705,10 +1784,18 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
               </svg>
             </button>
           </div>
+          <CraftingSimulatorItemNavigator
+            currentItem={simulatorItem}
+            navigationItems={navigationItems}
+            navigationIndex={navigationIndex}
+            onPrevious={handlePreviousSimulatorItem}
+            onNext={handleNextSimulatorItem}
+            onItemSelect={handleSimulatorItemSelect}
+          />
         </div>
 
         <div
-          className="h-[calc(92vh-120px)] max-h-[860px] overflow-y-auto px-4 sm:px-6 pr-6 sm:pr-8 py-4 space-y-3 bg-slate-900/35"
+          className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-900/35 px-4 py-4 pr-6 sm:px-6 sm:pr-8"
           style={{ scrollbarGutter: 'stable' }}
         >
 
@@ -1718,7 +1805,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
           <div className="rounded-2xl border border-ffxiv-gold/25 bg-slate-800/80 p-3.5 sm:p-4 shadow-[0_0_20px_rgba(212,175,55,0.08)]">
             <div className="flex items-start gap-3">
               <div className="rounded-xl border border-ffxiv-gold/30 bg-slate-950/70 p-2">
-                <ItemImage itemId={item.id} alt={displayItemName} className="h-10 w-10 object-contain" priority />
+                <ItemImage itemId={simulatorItem.id} alt={displayItemName} className="h-10 w-10 object-contain" priority />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -2485,7 +2572,12 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
 
             {isRelatedItemsExpanded && hasRelatedItems && (
               <div className="mb-3">
-                <RelatedItems itemId={item?.id} relatedItemIds={relatedItemIds} compact />
+                <RelatedItems
+                  itemId={simulatorItem.id}
+                  relatedItemIds={simulatorRelatedItemIds}
+                  onItemClick={handleSimulatorItemSelect}
+                  compact
+                />
               </div>
             )}
 

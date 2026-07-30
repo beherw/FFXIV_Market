@@ -80,18 +80,24 @@ export default function RelatedItems({ itemId, relatedItemIds: providedRelatedIt
   }
 
   return (
-    <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-4">
+    <div
+      className={
+        compact
+          ? 'min-w-0 overflow-hidden rounded-xl border border-purple-400/25 bg-slate-950/45 p-2.5'
+          : 'rounded-lg border border-purple-500/20 bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 p-4'
+      }
+    >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className={`flex items-center justify-between ${compact ? 'mb-2' : 'mb-4'}`}>
+        <div className={`flex min-w-0 items-center ${compact ? 'gap-2' : 'gap-3'}`}>
+          <h3 className={`flex items-center font-semibold text-ffxiv-gold ${compact ? 'gap-1.5 text-xs' : 'gap-2 text-base sm:text-lg'}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" className={compact ? 'h-4 w-4' : 'h-5 w-5'} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
-            相關物品
+            {compact ? '可製品' : '相關物品'}
           </h3>
           {!isLoading && relatedItemIds.length > 0 && (
-            <span className="text-xs text-gray-400 bg-purple-900/40 px-2 py-1 rounded border border-purple-500/30">
+            <span className={`shrink-0 rounded border border-purple-500/30 bg-purple-900/40 text-gray-400 ${compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-xs'}`}>
               {relatedItems.length} 個
             </span>
           )}
@@ -108,30 +114,37 @@ export default function RelatedItems({ itemId, relatedItemIds: providedRelatedIt
 
       {/* Related items list */}
       {!isLoading && relatedItems.length > 0 && (
-        <div className={`grid gap-2 sm:gap-3 ${compact ? 'grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'}`}>
+        <div
+          className={compact ? 'grid min-w-0 gap-2' : 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5'}
+          style={compact ? { gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))' } : undefined}
+        >
           {relatedItems.map((item) => (
             <button
+              type="button"
               key={item.id}
               onClick={(e) => {
                 e.preventDefault();
-                // Open in new tab
+                if (onItemClick) {
+                  onItemClick(item);
+                  return;
+                }
+
                 const itemUrl = generateItemUrl(item.id, item.nameTW || item.name || 'item');
                 const url = `${window.location.origin}${getInternalUrl(itemUrl)}`;
                 window.open(url, '_blank', 'noopener,noreferrer');
               }}
               className={`group relative transition-all duration-200 ${compact
-                ? 'flex items-center justify-center rounded-lg border border-slate-600/70 bg-slate-800/80 p-2 hover:border-ffxiv-gold/60 hover:bg-slate-700/90'
+                ? 'flex min-w-0 flex-col items-center gap-1 rounded-lg border border-slate-600/60 bg-slate-900/70 px-1 py-2 hover:border-ffxiv-gold/55 hover:bg-slate-700/90'
                 : 'flex flex-col items-center gap-2 rounded-lg border border-purple-500/30 bg-slate-800/60 p-3 hover:border-ffxiv-gold/60 hover:bg-slate-700/70'}`}
               title={item.name}
               aria-label={item.name}
             >
-              <div className={`transition-colors duration-200 ${compact
-                ? 'flex h-12 w-12 items-center justify-center rounded-lg border border-cyan-400/25 bg-cyan-500/10 p-1 group-hover:border-ffxiv-gold/60 group-hover:bg-amber-500/10'
-                : 'rounded border border-purple-500/30 group-hover:border-ffxiv-gold/60'}`}>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-purple-500/30 bg-purple-900/40 transition-colors duration-200 group-hover:border-ffxiv-gold/60 group-hover:bg-slate-800/80">
                 <ItemImage
                   itemId={item.id}
                   alt={item.name}
-                  className={`${compact ? 'h-10 w-10 object-contain' : 'h-12 w-12 object-contain rounded border border-purple-500/30 group-hover:border-ffxiv-gold/60 transition-colors duration-200'}`}
+                  noContainer
+                  className="h-10 w-10 object-contain"
                 />
               </div>
 
@@ -142,7 +155,7 @@ export default function RelatedItems({ itemId, relatedItemIds: providedRelatedIt
               )}
 
               {compact && (
-                <span className="pointer-events-none absolute -bottom-2 left-1/2 z-20 max-w-[8rem] -translate-x-1/2 truncate rounded-md border border-slate-600/70 bg-slate-950/95 px-2 py-1 text-[10px] text-slate-100 opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+                <span className="w-full truncate px-0.5 text-center text-[10px] leading-4 text-slate-300 transition-colors group-hover:text-ffxiv-gold">
                   {item.name}
                 </span>
               )}

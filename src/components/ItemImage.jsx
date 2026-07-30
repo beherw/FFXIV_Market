@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getItemImageUrl, getItemImageUrlSync, getCalculatedIconUrls } from '../utils/itemImage';
 
-export default function ItemImage({ itemId, alt, className, priority = false, loadDelay = 0, ...props }) {
+export default function ItemImage({ itemId, alt, className, priority = false, loadDelay = 0, noContainer = false, ...props }) {
   // For priority items, initialize with calculated URL immediately to prevent flickering
   // This ensures the image shows on first render instead of loading indicator
   const getInitialState = () => {
@@ -411,9 +411,9 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
   const getDimensions = () => {
     if (!className) return { width: 'w-10', height: 'h-10' };
     
-    // Match Tailwind width/height classes (w-10, w-20, h-10, etc.)
-    const widthMatch = className.match(/\bw-(\d+)\b/);
-    const heightMatch = className.match(/\bh-(\d+)\b/);
+    // Match Tailwind width/height classes, including full-size values
+    const widthMatch = className.match(/\bw-(full|\d+)\b/);
+    const heightMatch = className.match(/\bh-(full|\d+)\b/);
     
     const width = widthMatch ? `w-${widthMatch[1]}` : 'w-10';
     const height = heightMatch ? `h-${heightMatch[1]}` : 'h-10';
@@ -424,7 +424,7 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
   const { width, height } = getDimensions();
   // Preserve other classes from className but ensure dimensions are set
   const otherClasses = className?.split(' ').filter(c => !c.match(/^(w-|h-)/)).join(' ') || '';
-  const containerClasses = `${width} ${height} bg-purple-900/40 rounded border border-purple-500/30 flex items-center justify-center flex-shrink-0 ${otherClasses}`.trim();
+  const containerClasses = `${width} ${height} bg-purple-900/40 rounded border border-purple-500/30 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)] flex items-center justify-center flex-shrink-0 ${otherClasses}`.trim();
 
   // No longer using Intersection Observer - simplified sequential loading
 
@@ -476,6 +476,63 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
             {loadingDotYellow}
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (noContainer) {
+    if (!shouldLoad) {
+      return (
+        <div ref={imgRef} className="h-full w-full flex items-center justify-center">
+          {loadingDot}
+        </div>
+      );
+    }
+
+    if (imageUrl) {
+      return (
+        <div ref={imgRef} className="relative h-full w-full">
+          {imageLoaded && (
+            <img
+              src={imageUrl}
+              alt=""
+              className="h-full w-full object-contain"
+              onError={handleImageError}
+              data-item-id={itemId}
+              {...props}
+            />
+          )}
+          {!imageLoaded && (
+            <img
+              src={imageUrl}
+              alt=""
+              className="hidden"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              data-item-id={itemId}
+              {...props}
+            />
+          )}
+          {(iconIsLoading || !imageLoaded) && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded pointer-events-none">
+              {loadingDotYellow}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (iconIsLoading || hasError) {
+      return (
+        <div ref={imgRef} className="h-full w-full flex items-center justify-center">
+          {loadingDot}
+        </div>
+      );
+    }
+
+    return (
+      <div ref={imgRef} className="h-full w-full flex items-center justify-center">
+        {loadingDot}
       </div>
     );
   }
