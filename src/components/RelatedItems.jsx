@@ -6,7 +6,7 @@ import { getInternalUrl } from '../utils/internalUrl.js';
 import { generateItemUrl } from '../utils/urlSlug';
 import ItemImage from './ItemImage';
 
-export default function RelatedItems({ itemId, relatedItemIds: providedRelatedItemIds, onItemClick }) {
+export default function RelatedItems({ itemId, relatedItemIds: providedRelatedItemIds, onItemClick, compact = false }) {
   const [relatedItemIds, setRelatedItemIds] = useState(providedRelatedItemIds || []);
   const [relatedItems, setRelatedItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -108,7 +108,7 @@ export default function RelatedItems({ itemId, relatedItemIds: providedRelatedIt
 
       {/* Related items list */}
       {!isLoading && relatedItems.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <div className={`grid gap-2 sm:gap-3 ${compact ? 'grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'}`}>
           {relatedItems.map((item) => (
             <button
               key={item.id}
@@ -119,21 +119,33 @@ export default function RelatedItems({ itemId, relatedItemIds: providedRelatedIt
                 const url = `${window.location.origin}${getInternalUrl(itemUrl)}`;
                 window.open(url, '_blank', 'noopener,noreferrer');
               }}
-              className="group relative flex items-center justify-center p-2 rounded-lg bg-slate-800/60 border border-purple-500/30 hover:border-ffxiv-gold/60 hover:bg-slate-700/70 transition-all duration-200"
+              className={`group relative transition-all duration-200 ${compact
+                ? 'flex items-center justify-center rounded-lg border border-slate-600/70 bg-slate-800/80 p-2 hover:border-ffxiv-gold/60 hover:bg-slate-700/90'
+                : 'flex flex-col items-center gap-2 rounded-lg border border-purple-500/30 bg-slate-800/60 p-3 hover:border-ffxiv-gold/60 hover:bg-slate-700/70'}`}
               title={item.name}
               aria-label={item.name}
             >
-              {/* Item Image */}
-              <ItemImage
-                itemId={item.id}
-                alt={item.name}
-                className="w-12 h-12 object-contain rounded border border-purple-500/30 group-hover:border-ffxiv-gold/60 transition-colors duration-200"
-              />
+              <div className={`transition-colors duration-200 ${compact
+                ? 'flex h-12 w-12 items-center justify-center rounded-lg border border-cyan-400/25 bg-cyan-500/10 p-1 group-hover:border-ffxiv-gold/60 group-hover:bg-amber-500/10'
+                : 'rounded border border-purple-500/30 group-hover:border-ffxiv-gold/60'}`}>
+                <ItemImage
+                  itemId={item.id}
+                  alt={item.name}
+                  className={`${compact ? 'h-10 w-10 object-contain' : 'h-12 w-12 object-contain rounded border border-purple-500/30 group-hover:border-ffxiv-gold/60 transition-colors duration-200'}`}
+                />
+              </div>
 
-              {/* Hover name tooltip */}
-              <span className="pointer-events-none absolute -bottom-2 left-1/2 z-20 max-w-[8rem] -translate-x-1/2 truncate rounded-md border border-slate-600/70 bg-slate-950/95 px-2 py-1 text-[10px] text-slate-100 opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
-                {item.name}
-              </span>
+              {!compact && (
+                <span className="text-xs text-gray-300 group-hover:text-ffxiv-gold text-center line-clamp-2 transition-colors duration-200">
+                  {item.name}
+                </span>
+              )}
+
+              {compact && (
+                <span className="pointer-events-none absolute -bottom-2 left-1/2 z-20 max-w-[8rem] -translate-x-1/2 truncate rounded-md border border-slate-600/70 bg-slate-950/95 px-2 py-1 text-[10px] text-slate-100 opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+                  {item.name}
+                </span>
+              )}
             </button>
           ))}
         </div>

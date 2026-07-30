@@ -2485,7 +2485,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
 
             {isRelatedItemsExpanded && hasRelatedItems && (
               <div className="mb-3">
-                <RelatedItems itemId={item?.id} relatedItemIds={relatedItemIds} />
+                <RelatedItems itemId={item?.id} relatedItemIds={relatedItemIds} compact />
               </div>
             )}
 
