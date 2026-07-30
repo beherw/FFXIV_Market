@@ -11,6 +11,7 @@ import {
 import {
   getCosmicMissionRank,
   getCosmicMissionRankLabel,
+  sortRecipesByCosmicMissionRank,
 } from '../src/utils/cosmicMission.js';
 
 const outdoorFirewoodRecipe = {
@@ -67,6 +68,25 @@ test('Cosmic Exploration mission grades use the in-game rank groups', () => {
   assert.equal(getCosmicMissionRank({ cosmicMissionGrade: 1 }), 'D');
   assert.equal(getCosmicMissionRankLabel({ cosmicMissionGrade: 4 }), 'A級');
   assert.equal(getCosmicMissionRankLabel({}), null);
+});
+
+test('simulator recipe choices sort Cosmic Exploration ranks from A to D', () => {
+  const recipes = [
+    { id: 'normal-first' },
+    { id: 'c', cosmicMissionGrade: 2 },
+    { id: 'a', cosmicMissionGrade: 4 },
+    { id: 'd', cosmicMissionGrade: 1 },
+    { id: 'b', cosmicMissionGrade: 3 },
+    { id: 'normal-last' },
+  ];
+
+  assert.deepEqual(
+    sortRecipesByCosmicMissionRank(recipes).map(({ id }) => id),
+    ['a', 'b', 'c', 'd', 'normal-first', 'normal-last'],
+  );
+  assert.deepEqual(recipes.map(({ id }) => id), [
+    'normal-first', 'c', 'a', 'd', 'b', 'normal-last',
+  ]);
 });
 
 test('collectables use their first and final grade thresholds as solver targets', () => {

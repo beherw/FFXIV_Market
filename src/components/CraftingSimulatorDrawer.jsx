@@ -5,7 +5,7 @@ import RelatedItems from './RelatedItems';
 import CraftingSimulatorItemNavigator from './CraftingSimulatorItemNavigator';
 import { findRecipesByResult, findRelatedItems, getAdjustedRecipeForCrafterLevel } from '../services/recipeDatabase';
 import { getItemById } from '../services/itemDatabase';
-import { getCosmicMissionRankLabel } from '../utils/cosmicMission';
+import { getCosmicMissionRankLabel, sortRecipesByCosmicMissionRank } from '../utils/cosmicMission';
 import {
   convertRecipeToSimulatorRecipe,
   createCraftingStatus,
@@ -19,7 +19,6 @@ import {
   simulateCraftingOneStep,
 } from '../services/craftingSolver';
 import { getCraftingActionIconUrl } from '../utils/craftingActionIcons';
-import { generateItemUrl } from '../utils/urlSlug';
 import { resolveDisplayCraftingStatus } from '../services/craftingSimulatorState';
 
 const JOB_NAMES = {
@@ -1101,7 +1100,9 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
         setIsRelatedItemsExpanded(false);
         setNeedsSolve(true);
 
-        const foundRecipes = await findRecipesByResult(simulatorItem.id);
+        const foundRecipes = sortRecipesByCosmicMissionRank(
+          await findRecipesByResult(simulatorItem.id),
+        );
         if (cancelled) return;
 
         setRecipes(foundRecipes);
@@ -2592,18 +2593,26 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
                   return (
                     <div key={ingredient.key} className="rounded-lg border border-purple-500/15 bg-slate-950/55 px-2 py-1">
                       <div className="flex items-center gap-2">
-                        <div className="relative rounded-md border border-white/10 bg-slate-900/70 p-1">
-                          <ItemImage itemId={ingredient.id} alt={ingredient.name} className="h-6 w-6 object-contain" priority />
-                          <div className="absolute -bottom-1 -right-1 rounded-full border border-ffxiv-gold/40 bg-ffxiv-gold/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-ffxiv-gold">
-                            ×{ingredient.amount}
-                          </div>
-                        </div>
-                        <a
-                          href={`${(import.meta.env.BASE_URL || '/').replace(/\/$/, '')}${generateItemUrl(ingredient.id, ingredient.name)}`}
-                          className="min-w-0 flex-1 truncate text-xs font-medium text-slate-100 hover:text-cyan-200"
+                        <button
+                          type="button"
+                          onClick={() => handleSimulatorItemSelect({
+                            id: ingredient.id,
+                            name: ingredient.name,
+                            nameTW: ingredient.name,
+                          })}
+                          className="group flex min-w-0 flex-1 items-center gap-2 rounded-md text-left outline-none focus-visible:ring-1 focus-visible:ring-cyan-400/70"
+                          title={`在模擬製作內切換至 ${ingredient.name}`}
                         >
-                          {ingredient.name}
-                        </a>
+                          <div className="relative shrink-0 rounded-md border border-white/10 bg-slate-900/70 p-1 transition group-hover:border-cyan-400/45">
+                            <ItemImage itemId={ingredient.id} alt={ingredient.name} className="h-6 w-6 object-contain" priority />
+                            <div className="absolute -bottom-1 -right-1 rounded-full border border-ffxiv-gold/40 bg-ffxiv-gold/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-ffxiv-gold">
+                              ×{ingredient.amount}
+                            </div>
+                          </div>
+                          <span className="min-w-0 flex-1 truncate text-xs font-medium text-slate-100 transition group-hover:text-cyan-200">
+                            {ingredient.name}
+                          </span>
+                        </button>
                         <div className="ml-1 flex items-center gap-1.5">
                           <button
                             type="button"
