@@ -1597,15 +1597,21 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
     setMacroPageIndex(0);
   }, [simulationMode, activeActions.join('|'), includeMacroSounds, macroCustomization]);
 
-  const handleOpenMacroCustomization = () => {
-    setMacroCustomizationDraft(macroCustomization);
+  const handleToggleMacroCustomization = () => {
+    if (macroCustomization.enabled) {
+      setMacroCustomization((previous) => ({ ...previous, enabled: false }));
+      setIsMacroCustomizationOpen(false);
+      return;
+    }
+
+    setMacroCustomizationDraft({ ...macroCustomization, enabled: true });
     setIsMacroCustomizationOpen(true);
   };
 
   const handleSaveMacroCustomization = () => {
     const nextCustomization = {
       ...macroCustomizationDraft,
-      enabled: macroCustomizationDraft.enabled === true,
+      enabled: true,
       position: ['before', 'after', 'line'].includes(macroCustomizationDraft.position)
         ? macroCustomizationDraft.position
         : 'before',
@@ -2702,65 +2708,47 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
           </div>
 
           <div className="rounded-2xl border border-purple-400/30 bg-slate-800/75 p-3.5 sm:p-4">
-            <div className="mb-2.5 flex items-center justify-between gap-2">
-              <div>
-                <h3 className="text-base sm:text-lg font-semibold text-white">巨集</h3>
-                <label className="mt-1.5 inline-flex cursor-pointer items-center gap-2 text-[11px] font-medium text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={includeMacroSounds}
-                    onChange={(event) => setIncludeMacroSounds(event.target.checked)}
-                    className="peer sr-only"
-                  />
-                  <span className="relative h-4 w-7 rounded-full bg-slate-700 transition-colors peer-checked:bg-cyan-500/70 after:absolute after:left-0.5 after:top-0.5 after:h-3 after:w-3 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-3" />
-                  加入巨集音效
-                </label>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5">
+              <h3 className="mr-auto text-base sm:text-lg font-semibold text-white">巨集</h3>
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={handleOpenMacroCustomization}
-                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-violet-400/30 bg-violet-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-violet-200 transition hover:border-violet-300/65 hover:bg-violet-500/20"
+                  onClick={() => setIncludeMacroSounds((previous) => !previous)}
+                  aria-pressed={includeMacroSounds}
+                  className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-semibold transition ${includeMacroSounds
+                    ? 'border-cyan-300/65 bg-cyan-400/20 text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.18)]'
+                    : 'border-slate-600/80 bg-slate-900/65 text-slate-400 hover:border-cyan-400/45 hover:text-cyan-200'}`}
+                >
+                  <span aria-hidden="true">♪</span>
+                  巨集音效
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleMacroCustomization}
+                  aria-pressed={macroCustomization.enabled || isMacroCustomizationOpen}
+                  className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-semibold transition ${(macroCustomization.enabled || isMacroCustomizationOpen)
+                    ? 'border-violet-300/65 bg-violet-400/20 text-violet-100 shadow-[0_0_16px_rgba(167,139,250,0.18)]'
+                    : 'border-slate-600/80 bg-slate-900/65 text-slate-400 hover:border-violet-400/45 hover:text-violet-200'}`}
                 >
                   <span aria-hidden="true">＋</span>
-                  自訂巨集片段{macroCustomization.enabled && macroCustomization.text.trim() ? '（已啟用）' : ''}
+                  自訂片段
                 </button>
-              </div>
-              <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={handleCopyMacro}
-                    className="inline-flex min-w-[58px] flex-col items-center justify-center rounded-lg border border-cyan-500/25 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-semibold leading-tight text-cyan-300 transition hover:border-cyan-400/40 hover:text-cyan-200"
+                  className="inline-flex h-8 items-center justify-center rounded-lg border border-slate-600/80 bg-slate-900/65 px-2.5 text-[11px] font-semibold text-slate-200 transition hover:border-cyan-400/45 hover:bg-cyan-500/10 hover:text-cyan-100"
                 >
-                    {copyState === 'copied' ? (
-                      <>
-                        <span>已複製</span>
-                        <span>本頁</span>
-                      </>
-                    ) : copyState === 'nextCopied' ? (
-                      <>
-                        <span>已複製</span>
-                        <span>下頁</span>
-                      </>
-                    ) : copyState === 'failed' ? (
-                      <>
-                        <span>複製</span>
-                        <span>失敗</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>複製</span>
-                        <span>本頁</span>
-                      </>
-                    )}
+                  {copyState === 'copied' ? '已複製本頁' : copyState === 'failed' ? '複製失敗' : '複製本頁'}
                 </button>
                 {activeMacroPages.length > 1 && (
                   <button
                     type="button"
                     onClick={handleCopyNextMacroPage}
                     disabled={macroPageIndex >= activeMacroPages.length - 1}
-                    className="inline-flex min-w-[58px] flex-col items-center justify-center rounded-lg border border-violet-500/25 bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold leading-tight text-violet-200 transition hover:border-violet-400/45 hover:text-violet-100 disabled:cursor-not-allowed disabled:opacity-35"
+                    className="inline-flex h-8 items-center justify-center rounded-lg border border-slate-600/80 bg-slate-900/65 px-2.5 text-[11px] font-semibold text-slate-200 transition hover:border-cyan-400/45 hover:bg-cyan-500/10 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-35"
                     title="切換並複製下一頁巨集"
                   >
-                    <span>複製</span>
-                    <span>下頁</span>
+                    {copyState === 'nextCopied' ? '已複製下頁' : '複製下頁'}
                   </button>
                 )}
               </div>
@@ -2924,32 +2912,31 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
             </div>
 
             <div className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-5">
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-200">
-                <input
-                  type="checkbox"
-                  checked={macroCustomizationDraft.enabled}
-                  onChange={(event) => setMacroCustomizationDraft((previous) => ({ ...previous, enabled: event.target.checked }))}
-                  className="h-4 w-4 accent-cyan-400"
-                />
-                產生巨集時套用此片段
-              </label>
-
               <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                <label className="block text-xs font-semibold text-slate-300">
-                  插入位置
-                  <select
-                    value={macroCustomizationDraft.position}
-                    onChange={(event) => setMacroCustomizationDraft((previous) => ({ ...previous, position: event.target.value }))}
-                    className="mt-1.5 block w-full rounded-lg border border-purple-400/25 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/70"
-                  >
-                    <option value="before">巨集最前面</option>
-                    <option value="after">巨集最後面</option>
-                    <option value="line">指定行前</option>
-                  </select>
-                </label>
+                <div className="block text-xs font-semibold text-slate-300">
+                  <div>插入位置</div>
+                  <div className="mt-1.5 inline-flex rounded-lg border border-purple-400/25 bg-slate-950/80 p-1">
+                    {[
+                      ['before', '最前面'],
+                      ['after', '最後面'],
+                      ['line', '指定行'],
+                    ].map(([position, label]) => (
+                      <button
+                        key={position}
+                        type="button"
+                        onClick={() => setMacroCustomizationDraft((previous) => ({ ...previous, position }))}
+                        className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${macroCustomizationDraft.position === position
+                          ? 'bg-violet-400/20 text-violet-100 shadow-[inset_0_0_0_1px_rgba(196,181,253,0.35)]'
+                          : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {macroCustomizationDraft.position === 'line' && (
                   <label className="block text-xs font-semibold text-slate-300">
-                    插入至第幾行
+                    從第幾行前插入
                     <input
                       type="number"
                       min="1"
