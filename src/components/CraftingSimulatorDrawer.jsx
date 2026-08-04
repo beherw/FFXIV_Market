@@ -178,6 +178,12 @@ const ALL_MANUAL_ACTIONS = Object.values(MANUAL_ACTION_CATEGORIES).flat();
 const CRAFTER_STATS_CACHE_KEY = 'crafting-simulator-crafter-stats-v1';
 const CRAFTER_JOB_PROFILES_CACHE_KEY = 'crafting-simulator-crafter-job-profiles-v1';
 const SIMULATOR_PREFERENCES_CACHE_KEY = 'crafting-simulator-preferences-v1';
+const DEFAULT_MACRO_CUSTOMIZATION = {
+  enabled: false,
+  position: 'before',
+  lineNumber: 1,
+  text: '',
+};
 const CRAFTING_JOB_IDS = [8, 9, 10, 11, 12, 13, 14, 15];
 const CRAFTER_STAT_RULES = {
   level: { min: 1 },
@@ -311,6 +317,7 @@ function loadSimulatorPreferencesFromCache() {
       autoSwitchCrafterJob: true,
       autoSaveCrafterJob: true,
       includeMacroSounds: false,
+      macroCustomization: { ...DEFAULT_MACRO_CUSTOMIZATION },
       solverOptions: { ...DEFAULT_SOLVER_OPTIONS },
     };
   }
@@ -323,6 +330,7 @@ function loadSimulatorPreferencesFromCache() {
         autoSwitchCrafterJob: true,
         autoSaveCrafterJob: true,
         includeMacroSounds: false,
+        macroCustomization: { ...DEFAULT_MACRO_CUSTOMIZATION },
         solverOptions: { ...DEFAULT_SOLVER_OPTIONS },
       };
     }
@@ -332,6 +340,17 @@ function loadSimulatorPreferencesFromCache() {
     const autoSwitchCrafterJob = parsed?.autoSwitchCrafterJob !== false;
     const autoSaveCrafterJob = parsed?.autoSaveCrafterJob !== false;
     const includeMacroSounds = parsed?.includeMacroSounds === true;
+    const rawMacroCustomization = parsed?.macroCustomization;
+    const macroCustomization = {
+      ...DEFAULT_MACRO_CUSTOMIZATION,
+      ...(rawMacroCustomization && typeof rawMacroCustomization === 'object' ? rawMacroCustomization : {}),
+    };
+    macroCustomization.enabled = macroCustomization.enabled === true;
+    macroCustomization.position = ['before', 'after', 'line'].includes(macroCustomization.position)
+      ? macroCustomization.position
+      : 'before';
+    macroCustomization.lineNumber = Math.max(1, Math.floor(Number(macroCustomization.lineNumber) || 1));
+    macroCustomization.text = typeof macroCustomization.text === 'string' ? macroCustomization.text : '';
     const solverOptions = {
       ...DEFAULT_SOLVER_OPTIONS,
       ...(parsed?.solverOptions && typeof parsed.solverOptions === 'object' ? parsed.solverOptions : {}),
@@ -342,6 +361,7 @@ function loadSimulatorPreferencesFromCache() {
       autoSwitchCrafterJob,
       autoSaveCrafterJob,
       includeMacroSounds,
+      macroCustomization,
       solverOptions,
     };
   } catch {
@@ -351,6 +371,7 @@ function loadSimulatorPreferencesFromCache() {
       autoSwitchCrafterJob: true,
       autoSaveCrafterJob: true,
       includeMacroSounds: false,
+      macroCustomization: { ...DEFAULT_MACRO_CUSTOMIZATION },
       solverOptions: { ...DEFAULT_SOLVER_OPTIONS },
     };
   }
@@ -596,37 +617,46 @@ const MACRO_ACTIONS_PER_PAGE = MACRO_MAX_LINES - 1;
 const MACRO_PAGE_SOUND = '<se.10>';
 const MACRO_COMPLETE_SOUND = '<se.15>';
 
-function buildMacroPages(actions, includeSounds = false) {
+function buildMacroPages(actions, includeSounds = false, macroCustomization = DEFAULT_MACRO_CUSTOMIZATION) {
   if (!actions?.length) {
     return [];
   }
 
-  const chunks = [];
-  let index = 0;
+  const lines = actions.map((action) => `/ac "${formatActionName(action)}" <wait.3>`);
+  const customLines = macroCustomization.enabled
+    ? macroCustomization.text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+    : [];
 
-  while (index < actions.length) {
-    const remaining = actions.length - index;
-    const currentChunkSize = includeSounds
-      ? Math.min(remaining, MACRO_MAX_LINES - 1)
-      : (remaining <= MACRO_MAX_LINES ? remaining : MACRO_ACTIONS_PER_PAGE);
-    chunks.push(actions.slice(index, index + currentChunkSize));
-    index += currentChunkSize;
+  if (customLines.length) {
+    if (macroCustomization.position === 'before') {
+      lines.unshift(...customLines);
+    } else if (macroCustomization.position === 'after') {
+      lines.push(...customLines);
+    } else {
+      const insertionIndex = Math.min(Math.max(macroCustomization.lineNumber - 1, 0), lines.length);
+      lines.splice(insertionIndex, 0, ...customLines);
+    }
   }
+
+  const contentLinesPerPage = includeSounds ? MACRO_ACTIONS_PER_PAGE : MACRO_MAX_LINES;
+  const chunks = Array.from({ length: Math.ceil(lines.length / contentLinesPerPage) }, (_, index) => (
+    lines.slice(index * contentLinesPerPage, (index + 1) * contentLinesPerPage)
+  ));
 
   return chunks.map((chunk, chunkIndex) => {
     const isLastPage = chunkIndex === chunks.length - 1;
-    const lines = chunk.map((action) => `/ac "${formatActionName(action)}" <wait.3>`);
+    const pageLines = [...chunk];
 
     if (includeSounds) {
-      lines.push(isLastPage
+      pageLines.push(isLastPage
         ? `/echo Macro Complete! ${MACRO_COMPLETE_SOUND}`
         : `/echo Page ${chunkIndex + 1} Complete! ${MACRO_PAGE_SOUND}`);
     }
 
     return {
       index: chunkIndex,
-      text: lines.join('\n'),
-      lines,
+      text: pageLines.join('\n'),
+      lines: pageLines,
     };
   });
 }
@@ -792,6 +822,9 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
   const [copyState, setCopyState] = useState('idle');
   const [macroPageIndex, setMacroPageIndex] = useState(0);
   const [includeMacroSounds, setIncludeMacroSounds] = useState(cachedPreferences.includeMacroSounds);
+  const [macroCustomization, setMacroCustomization] = useState(cachedPreferences.macroCustomization);
+  const [isMacroCustomizationOpen, setIsMacroCustomizationOpen] = useState(false);
+  const [macroCustomizationDraft, setMacroCustomizationDraft] = useState(cachedPreferences.macroCustomization);
   const [rightPanelTab, setRightPanelTab] = useState('rotation');
   const [simulationMode, setSimulationMode] = useState(cachedPreferences.simulationMode);
   const [autoSwitchCrafterJob, setAutoSwitchCrafterJob] = useState(cachedPreferences.autoSwitchCrafterJob);
@@ -997,9 +1030,10 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
       autoSwitchCrafterJob,
       autoSaveCrafterJob,
       includeMacroSounds,
+      macroCustomization,
       solverOptions,
     });
-  }, [autoSaveCrafterJob, autoSwitchCrafterJob, includeMacroSounds, simulationMode, solverOptions]);
+  }, [autoSaveCrafterJob, autoSwitchCrafterJob, includeMacroSounds, macroCustomization, simulationMode, solverOptions]);
 
   useEffect(() => {
     if (!isOpen || !recipe || !autoSwitchCrafterJob) {
@@ -1544,8 +1578,8 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
   const activeErrors = simulationMode === 'manual' ? (manualResult?.errors || []) : (simulationResult?.errors || []);
   const activeErrorPositions = new Set(activeErrors.map((entry) => entry.pos));
   const activeMacroPages = useMemo(
-    () => buildMacroPages(activeActions, includeMacroSounds),
-    [activeActions, includeMacroSounds],
+    () => buildMacroPages(activeActions, includeMacroSounds, macroCustomization),
+    [activeActions, includeMacroSounds, macroCustomization],
   );
   const activeBuffDurations = BUFF_DURATION_CANDIDATES
     .map((buff) => {
@@ -1561,7 +1595,26 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
 
   useEffect(() => {
     setMacroPageIndex(0);
-  }, [simulationMode, activeActions.join('|'), includeMacroSounds]);
+  }, [simulationMode, activeActions.join('|'), includeMacroSounds, macroCustomization]);
+
+  const handleOpenMacroCustomization = () => {
+    setMacroCustomizationDraft(macroCustomization);
+    setIsMacroCustomizationOpen(true);
+  };
+
+  const handleSaveMacroCustomization = () => {
+    const nextCustomization = {
+      ...macroCustomizationDraft,
+      enabled: macroCustomizationDraft.enabled === true,
+      position: ['before', 'after', 'line'].includes(macroCustomizationDraft.position)
+        ? macroCustomizationDraft.position
+        : 'before',
+      lineNumber: Math.max(1, Math.floor(Number(macroCustomizationDraft.lineNumber) || 1)),
+      text: typeof macroCustomizationDraft.text === 'string' ? macroCustomizationDraft.text : '',
+    };
+    setMacroCustomization(nextCustomization);
+    setIsMacroCustomizationOpen(false);
+  };
 
   useEffect(() => {
     if (macroPageIndex <= Math.max(activeMacroPages.length - 1, 0)) {
@@ -2662,6 +2715,14 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
                   <span className="relative h-4 w-7 rounded-full bg-slate-700 transition-colors peer-checked:bg-cyan-500/70 after:absolute after:left-0.5 after:top-0.5 after:h-3 after:w-3 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-3" />
                   加入巨集音效
                 </label>
+                <button
+                  type="button"
+                  onClick={handleOpenMacroCustomization}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-violet-400/30 bg-violet-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-violet-200 transition hover:border-violet-300/65 hover:bg-violet-500/20"
+                >
+                  <span aria-hidden="true">＋</span>
+                  自訂巨集片段{macroCustomization.enabled && macroCustomization.text.trim() ? '（已啟用）' : ''}
+                </button>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -2840,6 +2901,92 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
               >
                 確認並開始
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isMacroCustomizationOpen && !isRecipeSelectionRequired && (
+        <div
+          className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/75 p-3 sm:p-6"
+          onClick={() => setIsMacroCustomizationOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="macro-customization-title"
+        >
+          <div
+            className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-purple-400/40 bg-gradient-to-b from-slate-800 to-slate-950 shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="border-b border-purple-400/25 px-4 py-4 sm:px-5">
+              <h3 id="macro-customization-title" className="text-lg font-bold text-ffxiv-gold">自訂巨集片段</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-400">可輸入多行指令。套用後會自動分頁，每頁最多 15 行。</p>
+            </div>
+
+            <div className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-5">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={macroCustomizationDraft.enabled}
+                  onChange={(event) => setMacroCustomizationDraft((previous) => ({ ...previous, enabled: event.target.checked }))}
+                  className="h-4 w-4 accent-cyan-400"
+                />
+                產生巨集時套用此片段
+              </label>
+
+              <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <label className="block text-xs font-semibold text-slate-300">
+                  插入位置
+                  <select
+                    value={macroCustomizationDraft.position}
+                    onChange={(event) => setMacroCustomizationDraft((previous) => ({ ...previous, position: event.target.value }))}
+                    className="mt-1.5 block w-full rounded-lg border border-purple-400/25 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/70"
+                  >
+                    <option value="before">巨集最前面</option>
+                    <option value="after">巨集最後面</option>
+                    <option value="line">指定行前</option>
+                  </select>
+                </label>
+                {macroCustomizationDraft.position === 'line' && (
+                  <label className="block text-xs font-semibold text-slate-300">
+                    插入至第幾行
+                    <input
+                      type="number"
+                      min="1"
+                      value={macroCustomizationDraft.lineNumber}
+                      onChange={(event) => setMacroCustomizationDraft((previous) => ({ ...previous, lineNumber: event.target.value }))}
+                      className="mt-1.5 block w-32 rounded-lg border border-purple-400/25 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-300/70"
+                    />
+                  </label>
+                )}
+              </div>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-300">
+                  <label htmlFor="macro-customization-editor">巨集內容</label>
+                  <span className="font-normal text-slate-500">空白行不會輸出</span>
+                </div>
+                <div className="grid h-56 grid-cols-[42px_1fr] overflow-hidden rounded-xl border border-purple-400/25 bg-slate-950/85 font-mono text-xs leading-6 focus-within:border-cyan-300/70">
+                  <div className="select-none overflow-hidden border-r border-white/10 bg-slate-900/80 py-2 text-right text-slate-500">
+                    {Array.from({ length: Math.max(10, macroCustomizationDraft.text.split(/\r?\n/).length) }, (_, index) => (
+                      <div key={index} className="pr-2">{index + 1}</div>
+                    ))}
+                  </div>
+                  <textarea
+                    id="macro-customization-editor"
+                    value={macroCustomizationDraft.text}
+                    onChange={(event) => setMacroCustomizationDraft((previous) => ({ ...previous, text: event.target.value }))}
+                    spellCheck="false"
+                    placeholder={'/mlock\n/ac "製作" <wait.3>'}
+                    className="h-full min-h-0 resize-none overflow-auto bg-transparent px-3 py-2 text-slate-100 outline-none placeholder:text-slate-600"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-purple-400/20 px-4 py-3 sm:px-5">
+              <button type="button" onClick={() => setIsMacroCustomizationOpen(false)} className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-400 hover:text-white">取消</button>
+              <button type="button" onClick={handleSaveMacroCustomization} className="rounded-lg border border-cyan-400/40 bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:border-cyan-300/70 hover:bg-cyan-500/25">儲存並套用</button>
             </div>
           </div>
         </div>
