@@ -5,7 +5,7 @@ import RelatedItems from './RelatedItems';
 import CraftingSimulatorItemNavigator from './CraftingSimulatorItemNavigator';
 import { findRecipesByResult, findRelatedItems, getAdjustedRecipeForCrafterLevel } from '../services/recipeDatabase';
 import { getItemById } from '../services/itemDatabase';
-import { getCosmicMissionRankLabel, sortRecipesByCosmicMissionRank } from '../utils/cosmicMission';
+import { getCosmicMissionRank, getCosmicMissionRankLabel, sortRecipesByCosmicMissionRank } from '../utils/cosmicMission';
 import {
   convertRecipeToSimulatorRecipe,
   createCraftingStatus,
@@ -811,6 +811,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
   const [recipes, setRecipes] = useState([]);
   const [recipe, setRecipe] = useState(null);
   const [selectedRecipeId, setSelectedRecipeId] = useState('');
+  const preferredRecipeRef = useRef(null);
   const [ingredients, setIngredients] = useState([]);
   const [ingredientsLoading, setIngredientsLoading] = useState(false);
   const [recipeCount, setRecipeCount] = useState(0);
@@ -1149,7 +1150,15 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
 
         // Multiple recipes can have different crafting jobs or requirements.
         // Require an explicit choice before any simulation is initialized.
-        setRecipe(foundRecipes.length === 1 ? foundRecipes[0] : null);
+        const preference = preferredRecipeRef.current;
+        preferredRecipeRef.current = null;
+        const preferredRecipe = preference
+          ? foundRecipes.find((candidate) => (
+            Number(candidate.job) === Number(preference.preferredJob)
+            && getCosmicMissionRank(candidate) === preference.preferredRank
+          ))
+          : null;
+        setRecipe(preferredRecipe || (foundRecipes.length === 1 ? foundRecipes[0] : null));
       } catch (simulationError) {
         if (!cancelled) {
           setError(simulationError instanceof Error ? simulationError.message : '模擬製作失敗');
@@ -1777,11 +1786,26 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
     }
   };
 
-  const handleSimulatorItemSelect = (nextItem) => {
-    if (!nextItem?.id || nextItem.id === simulatorItem?.id) {
+  const handleSimulatorItemSelect = (nextItem, preference = null) => {
+    if (!nextItem?.id) {
       return;
     }
 
+    if (nextItem.id === simulatorItem?.id) {
+      if (preference) {
+        const preferredRecipe = recipes.find((candidate) => (
+          Number(candidate.job) === Number(preference.preferredJob)
+          && getCosmicMissionRank(candidate) === preference.preferredRank
+        ));
+        if (preferredRecipe) {
+          setSelectedRecipeId(String(preferredRecipe.id));
+          setRecipe(preferredRecipe);
+        }
+      }
+      return;
+    }
+
+    preferredRecipeRef.current = preference;
     const retainedHistory = navigationItems.slice(0, navigationIndex + 1);
     const nextHistory = [...retainedHistory, nextItem];
     setNavigationItems(nextHistory);
@@ -1848,6 +1872,8 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
             currentItem={simulatorItem}
             navigationItems={navigationItems}
             navigationIndex={navigationIndex}
+            currentRecipe={recipe}
+            availableRecipes={recipes}
             onPrevious={handlePreviousSimulatorItem}
             onNext={handleNextSimulatorItem}
             onItemSelect={handleSimulatorItemSelect}

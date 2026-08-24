@@ -4,9 +4,10 @@ import ItemImage from './ItemImage';
 import { getItemById } from '../services/itemDatabase';
 import { getInternalUrl } from '../utils/internalUrl.js';
 import { getAggregatedMarketData } from '../services/universalis';
-import { getTwItemsByIds } from '../services/gameData';
+import { getEnItemsByIds, getTwItemsByIds, getZhItemsByIds } from '../services/gameData';
 import { generateItemUrl } from '../utils/urlSlug';
 import { collectLeafMaterials, downloadMaterialsCsv, formatMaterialsCsv } from '../utils/craftingMaterialsExport';
+import { convertSimplifiedToTraditional } from '../utils/chineseConverter';
 
 // In-memory cache for tree names + prices (avoids API spam when user toggles section)
 // TTL 5 min so data refreshes on page load; same-session expand/collapse reuses cache
@@ -1655,12 +1656,23 @@ export default function CraftingTree({
     (async () => {
       try {
         const itemsData = await getTwItemsByIds(itemIds);
+        const idsWithoutTwNames = itemIds.filter((id) => !itemsData[id]?.tw);
+        const [zhItemsData, englishItemsData] = idsWithoutTwNames.length > 0
+          ? await Promise.all([
+              getZhItemsByIds(idsWithoutTwNames),
+              getEnItemsByIds(idsWithoutTwNames),
+            ])
+          : [{}, {}];
         if (cancelled) return;
         const itemNames = {};
         itemIds.forEach((id) => {
           const itemData = itemsData[id];
           if (itemData && itemData.tw) {
             itemNames[id] = itemData.tw.replace(/^["']|["']$/g, '').trim();
+          } else if (zhItemsData[id]?.zh) {
+            itemNames[id] = convertSimplifiedToTraditional(zhItemsData[id].zh.replace(/^["']|["']$/g, '').trim());
+          } else if (englishItemsData[id]?.en) {
+            itemNames[id] = englishItemsData[id].en.replace(/^["']|["']$/g, '').trim();
           } else {
             itemNames[id] = `物品 ${id}`;
           }

@@ -2,6 +2,9 @@ const COSMIC_MISSION_RANK_BY_GRADE = {
   1: 'D',
   2: 'C',
   3: 'B',
+  4: 'A',
+  5: 'EX',
+  6: 'EX+',
 };
 
 const COSMIC_MISSION_RANK_ORDER = {
@@ -9,6 +12,8 @@ const COSMIC_MISSION_RANK_ORDER = {
   B: 3,
   C: 2,
   D: 1,
+  EX: 5,
+  'EX+': 6,
 };
 
 export function getCosmicMissionRank(recipeOrGrade) {
@@ -22,7 +27,7 @@ export function getCosmicMissionRank(recipeOrGrade) {
     return null;
   }
 
-  return COSMIC_MISSION_RANK_BY_GRADE[grade] || 'A';
+  return COSMIC_MISSION_RANK_BY_GRADE[grade] || null;
 }
 
 export function getCosmicMissionRankLabel(recipeOrGrade) {

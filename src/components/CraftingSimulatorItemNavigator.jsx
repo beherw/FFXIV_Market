@@ -1,13 +1,37 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory } from '../hooks/useHistory';
 import { hasRecipe, isCompanyCraftResultItem } from '../services/recipeDatabase';
-import { searchItems, searchItemsOCR } from '../services/itemDatabase';
+import { getItemById, searchItems, searchItemsOCR } from '../services/itemDatabase';
+import { loadLunarCraftingData } from '../services/lunarCraftingDatabase';
+import { getCosmicMissionRank } from '../utils/cosmicMission';
 import { addSearchToHistory } from '../utils/searchHistory';
 import ItemImage from './ItemImage';
 import OCRButton from './OCRButton';
 
 const MAX_SEARCH_CANDIDATES = 80;
 const MAX_SEARCH_RESULTS = 12;
+const CRAFTING_JOBS = [
+  [8, '刻木匠'],
+  [9, '鍛鐵匠'],
+  [10, '鑄甲匠'],
+  [11, '金工師'],
+  [12, '製革匠'],
+  [13, '裁縫匠'],
+  [14, '煉金術士'],
+  [15, '烹調師'],
+];
+const RANK_LABELS = { 1: 'D', 2: 'C', 3: 'B', 4: 'A', 5: 'EX', 6: 'EX+' };
+
+function getRankOrder(currentRank) {
+  const standardRanks = ['A', 'B', 'C', 'D'];
+  if (standardRanks.includes(currentRank)) {
+    const index = standardRanks.indexOf(currentRank);
+    return [...standardRanks.slice(index), ...standardRanks.slice(0, index), 'EX', 'EX+'];
+  }
+  if (currentRank === 'EX') return ['EX', 'EX+', 'A', 'B', 'C', 'D'];
+  if (currentRank === 'EX+') return ['EX+', 'EX', 'A', 'B', 'C', 'D'];
+  return ['A', 'B', 'C', 'D', 'EX', 'EX+'];
+}
 
 async function keepSimulatorItems(items, signal) {
   const candidates = items.slice(0, MAX_SEARCH_CANDIDATES);
@@ -53,6 +77,8 @@ export default function CraftingSimulatorItemNavigator({
   currentItem,
   navigationItems,
   navigationIndex,
+  currentRecipe,
+  availableRecipes = [],
   onPrevious,
   onNext,
   onItemSelect,
@@ -63,9 +89,23 @@ export default function CraftingSimulatorItemNavigator({
   const [dropdownMode, setDropdownMode] = useState(null);
   const [searchMessage, setSearchMessage] = useState('');
   const [compatibleRecentIds, setCompatibleRecentIds] = useState(() => new Set());
+  const [lunarData, setLunarData] = useState(null);
+  const [lunarItems, setLunarItems] = useState([]);
+  const [selectedLunarJobs, setSelectedLunarJobs] = useState([]);
+  const [selectedLunarRanks, setSelectedLunarRanks] = useState([]);
+  const [isLoadingLunarItems, setIsLoadingLunarItems] = useState(false);
   const rootRef = useRef(null);
   const searchAbortRef = useRef(null);
+  const lunarFiltersInitializedRef = useRef(false);
   const { historyItems } = useHistory();
+  const contextRecipe = currentRecipe || availableRecipes[0] || null;
+  const currentJob = Number(contextRecipe?.job) || null;
+  const currentRank = getCosmicMissionRank(contextRecipe);
+  const currentLunarEntry = useMemo(
+    () => lunarData?.items?.find((entry) => Number(entry.id) === Number(currentItem?.id)) || null,
+    [currentItem?.id, lunarData],
+  );
+  const rankOrder = useMemo(() => getRankOrder(currentRank), [currentRank]);
 
   const sessionHistory = useMemo(() => {
     const seen = new Set();
@@ -121,6 +161,53 @@ export default function CraftingSimulatorItemNavigator({
 
   useEffect(() => () => searchAbortRef.current?.abort(), []);
 
+  useEffect(() => {
+    let cancelled = false;
+    loadLunarCraftingData()
+      .then((data) => {
+        if (!cancelled) setLunarData(data);
+      })
+      .catch((error) => console.error('[CraftingSimulator] Lunar crafting index failed:', error));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (dropdownMode !== 'lunar' || !lunarData) return undefined;
+    let cancelled = false;
+    setIsLoadingLunarItems(true);
+
+    const selectedJobs = new Set(selectedLunarJobs);
+    const candidates = lunarData.items.filter((entry) => (
+      entry.jobs.some((job) => selectedJobs.has(Number(job)))
+    ));
+
+    Promise.all(candidates.map(async (entry) => ({
+      ...entry,
+      item: await getItemById(Number(entry.id)) || {
+        id: Number(entry.id),
+        name: entry.name,
+        nameTW: entry.name,
+      },
+    }))).then((items) => {
+      if (!cancelled) {
+        setLunarItems(items);
+        setIsLoadingLunarItems(false);
+      }
+    }).catch((error) => {
+      if (!cancelled) {
+        console.error('[CraftingSimulator] Lunar item names failed:', error);
+        setLunarItems([]);
+        setIsLoadingLunarItems(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dropdownMode, lunarData, selectedLunarJobs]);
+
   const selectItem = (item) => {
     setDropdownMode(null);
     setSearchText('');
@@ -128,6 +215,57 @@ export default function CraftingSimulatorItemNavigator({
     setSearchMessage('');
     onItemSelect(item);
   };
+
+  const toggleLunarDropdown = () => {
+    if (dropdownMode === 'lunar') {
+      setDropdownMode(null);
+      return;
+    }
+    if (!lunarFiltersInitializedRef.current) {
+      const defaultJob = currentJob && currentLunarEntry?.jobs.includes(currentJob)
+        ? currentJob
+        : Number(currentLunarEntry?.jobs?.[0]);
+      setSelectedLunarJobs(defaultJob ? [defaultJob] : []);
+      setSelectedLunarRanks(rankOrder);
+      lunarFiltersInitializedRef.current = true;
+    }
+    setDropdownMode('lunar');
+  };
+
+  const toggleLunarJob = (jobId) => {
+    setSelectedLunarJobs((previous) => (
+      previous.includes(jobId)
+        ? previous.filter((candidate) => candidate !== jobId)
+        : [...previous, jobId]
+    ));
+  };
+
+  const toggleLunarRank = (rank) => {
+    setSelectedLunarRanks((previous) => (
+      previous.includes(rank)
+        ? previous.filter((candidate) => candidate !== rank)
+        : [...previous, rank]
+    ));
+  };
+
+  const groupedLunarItems = useMemo(() => {
+    const selectedJobs = new Set(selectedLunarJobs);
+    const groups = new Map(rankOrder.map((rank) => [rank, []]));
+
+    lunarItems.forEach((entry) => {
+      const matchingJobs = entry.jobs.map(Number).filter((job) => selectedJobs.has(job));
+      const matchingRanks = matchingJobs
+        .flatMap((job) => entry.ranksByJob?.[job] || [])
+        .filter((value) => selectedLunarRanks.includes(RANK_LABELS[value]));
+      const primaryRank = rankOrder.find((rank) => matchingRanks.some((value) => RANK_LABELS[value] === rank));
+      if (primaryRank) groups.get(primaryRank).push({ ...entry, matchingJobs, primaryRank });
+    });
+
+    groups.forEach((items) => items.sort((left, right) => (
+      (left.item.nameTW || left.item.name).localeCompare(right.item.nameTW || right.item.name, 'zh-Hant')
+    )));
+    return groups;
+  }, [lunarItems, rankOrder, selectedLunarJobs, selectedLunarRanks]);
 
   const runSearch = async (rawText, isOCR = false, ocrMeta = undefined) => {
     const query = rawText.trim();
@@ -243,6 +381,18 @@ export default function CraftingSimulatorItemNavigator({
       </div>
 
       <div className="flex gap-2 lg:shrink-0">
+        {currentLunarEntry && (
+          <button
+            type="button"
+            onClick={toggleLunarDropdown}
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-indigo-300/35 bg-indigo-500/10 px-3 text-xs font-semibold text-indigo-100 transition hover:border-ffxiv-gold/60 hover:text-ffxiv-gold"
+            aria-expanded={dropdownMode === 'lunar'}
+            title="依職業瀏覽月球探索製作物品"
+          >
+            <span aria-hidden="true" className="text-base">☾</span>
+            月球探索物品
+          </button>
+        )}
         <OCRButton onTextRecognized={handleOCRTextRecognized} disabled={isSearching} />
         <button
           type="button"
@@ -265,6 +415,96 @@ export default function CraftingSimulatorItemNavigator({
               {!isSearching && searchResults.map((result) => (
                 <ItemOption key={result.id} item={result} onSelect={selectItem} />
               ))}
+            </>
+          ) : dropdownMode === 'lunar' ? (
+            <>
+              <div className="border-b border-indigo-300/25 bg-slate-950 px-3 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-indigo-100">
+                    選擇月球探索製作職業
+                  </span>
+                  <span className="text-[10px] text-slate-500">可複選職業</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {CRAFTING_JOBS.map(([jobId, jobName]) => {
+                    const selected = selectedLunarJobs.includes(jobId);
+                    return (
+                      <button
+                        key={jobId}
+                        type="button"
+                        onClick={() => toggleLunarJob(jobId)}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${selected
+                          ? 'border-ffxiv-gold/70 bg-amber-500/15 text-ffxiv-gold'
+                          : 'border-slate-600 bg-slate-900 text-slate-400 hover:border-indigo-300/50 hover:text-indigo-100'}`}
+                        aria-pressed={selected}
+                      >
+                        {jobName}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 border-t border-indigo-300/15 pt-2">
+                  <div className="mb-1.5 text-[10px] font-semibold text-slate-500">等級篩選（可複選）</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {rankOrder.map((rank) => {
+                      const selected = selectedLunarRanks.includes(rank);
+                      return (
+                        <button
+                          key={rank}
+                          type="button"
+                          onClick={() => toggleLunarRank(rank)}
+                          className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${selected
+                            ? 'border-cyan-300/70 bg-cyan-500/15 text-cyan-100'
+                            : 'border-slate-600 bg-slate-900 text-slate-400 hover:border-cyan-300/50 hover:text-cyan-100'}`}
+                          aria-pressed={selected}
+                        >
+                          {rank}級
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              {selectedLunarJobs.length === 0 ? (
+                <div className="px-3 py-8 text-center text-sm text-slate-400">請至少選擇一個製作職業</div>
+              ) : selectedLunarRanks.length === 0 ? (
+                <div className="px-3 py-8 text-center text-sm text-slate-400">請至少選擇一個等級</div>
+              ) : isLoadingLunarItems ? (
+                <div className="px-3 py-8 text-center text-sm text-slate-400">正在整理月球探索物品…</div>
+              ) : (
+                rankOrder.map((rank) => {
+                  const entries = groupedLunarItems.get(rank) || [];
+                  if (!entries.length) return null;
+                  return (
+                    <div key={rank}>
+                      <div className="border-y border-slate-700/70 bg-slate-900/95 px-3 py-1.5 text-xs font-bold text-indigo-200">
+                        {rank}級・{entries.length} 項
+                      </div>
+                      {entries.map((entry) => {
+                        const preferredRank = rank;
+                        const preferredJob = entry.matchingJobs.find((job) => (
+                          (entry.ranksByJob?.[job] || []).some((value) => RANK_LABELS[value] === preferredRank)
+                        )) || entry.matchingJobs[0];
+                        const jobNames = entry.matchingJobs
+                          .map((job) => CRAFTING_JOBS.find(([id]) => id === job)?.[1])
+                          .filter(Boolean)
+                          .join('、');
+                        return (
+                          <ItemOption
+                            key={`${rank}-${entry.id}`}
+                            item={entry.item}
+                            label={`${rank}級｜${jobNames}`}
+                            onSelect={(item) => {
+                              setDropdownMode(null);
+                              onItemSelect(item, { preferredJob, preferredRank });
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  );
+                })
+              )}
             </>
           ) : (
             <>

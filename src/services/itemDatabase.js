@@ -576,12 +576,14 @@ function performSearch(items, shopItems, shopItemIds, searchText, fuzzy = false,
       const searchLanguageName = item['9: Name'] || '';
       const twNameRaw = item['_twName'] || '';
       const twNameClean = twNameRaw ? twNameRaw.replace(/^["']|["']$/g, '').trim() : '';
-      const isNonTWSearch = twNameClean && searchLanguageName && twNameClean !== searchLanguageName;
+      const isNonTWSearch = item['_isNonTWSearch'] === true || (
+        twNameClean && searchLanguageName && twNameClean !== searchLanguageName
+      );
 
       return {
         id: parseInt(id, 10) || 0,
         name: cleanName, // Display name (search language name if non-TW search, otherwise TW)
-        nameTW: isNonTWSearch ? twNameClean : cleanName, // TW name (always available)
+        nameTW: isNonTWSearch ? (twNameClean || null) : cleanName,
         searchLanguageName: isNonTWSearch ? cleanName : null, // Original search language name if different from TW
         nameSimplified: cleanName, // Keep same for compatibility (not used for matching)
         itemLevel: itemLevel,
@@ -703,7 +705,7 @@ function transformSearchResultsToItems(searchResults, shopItems, shopItemIds, ma
       'key: #': id,
       '9: Name': itemName, // Search language name (or TW if TW search)
       '0: Singular': itemName,
-      '_twName': twName || itemName, // Store TW name separately (will be fetched if missing)
+      '_twName': twName, // Empty means this item is not in the TW data export.
       '_isNonTWSearch': !isTWSearch, // Flag to indicate if we need to fetch TW name
       '11: Level{Item}': '',
       '25: Price{Mid}': '',
@@ -1192,7 +1194,9 @@ export async function getItemById(itemId) {
       };
     }
     
-    // No Traditional Chinese name found; try EN and ZH from msgpack first, then JA/KO/DE/FR from msgpack
+    // Some items are present in the current Chinese game data before the TW
+    // export catches up. Use that name (converted for display) before falling
+    // back to English, so linked recipe materials remain normal item pages.
     const { getZhItemsByIds, getEnItemsByIds } = await import('./itemsDatabaseMsgpack.js');
     const [zhMap, enMap] = await Promise.all([
       getZhItemsByIds([itemId]),
@@ -1200,10 +1204,26 @@ export async function getItemById(itemId) {
     ]);
     const zhName = zhMap[itemId]?.zh || zhMap[String(itemId)]?.zh;
     const enName = enMap[itemId]?.en || enMap[String(itemId)]?.en;
-    const msgpackFallbacks = [
-      { name: enName },
-      { name: zhName }
-    ];
+    if (zhName && zhName.trim()) {
+      const cleanName = convertSimplifiedToTraditional(zhName.replace(/^["']|["']$/g, '').trim());
+      if (cleanName) {
+        return {
+          id: itemId,
+          name: cleanName,
+          // This is a display fallback, not a confirmed TW-export name. Keep
+          // nameTW empty so the item page retains the unavailable-on-TW-data warning.
+          nameTW: null,
+          searchLanguageName: cleanName,
+          itemLevel: '',
+          shopPrice: '',
+          inShop: false,
+          canBeHQ: true,
+          isTradable: true,
+        };
+      }
+    }
+
+    const msgpackFallbacks = [{ name: enName }];
     for (const { name } of msgpackFallbacks) {
       if (name && name.trim()) {
         const cleanName = name.replace(/^["']|["']$/g, '').trim();

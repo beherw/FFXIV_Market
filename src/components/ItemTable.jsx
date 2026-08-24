@@ -56,7 +56,7 @@ const getVersionColor = (versionString) => {
 };
 
 // Item name cell with copy button (OCR match score only in console log, not shown in UI)
-const ItemNameCell = ({ itemName, addToast }) => {
+const ItemNameCell = ({ itemName, addToast, isTwUnsupported = false }) => {
   const handleCopyClick = (e) => {
     e.stopPropagation();
     navigator.clipboard.writeText(itemName).then(() => {
@@ -82,6 +82,11 @@ const ItemNameCell = ({ itemName, addToast }) => {
         >
           {itemName}
         </span>
+        {isTwUnsupported && (
+          <span className="rounded border border-amber-500/50 bg-amber-900/40 px-1.5 py-0.5 text-[10px] font-medium text-amber-300 whitespace-nowrap">
+            繁中不支援
+          </span>
+        )}
         <button
           onClick={handleCopyClick}
           className="flex-shrink-0 p-1 text-gray-400 hover:text-ffxiv-gold hover:bg-purple-800/40 rounded-md border border-transparent hover:border-purple-500/40 transition-all duration-200"
@@ -1028,7 +1033,11 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
                 <td className="px-2 sm:px-4 py-2 text-center">
                   <VersionIcon version={getVersion(item.id)} />
                 </td>
-                <ItemNameCell itemName={item.name} addToast={addToast} />
+                <ItemNameCell
+                  itemName={item.name}
+                  addToast={addToast}
+                  isTwUnsupported={!item.nameTW}
+                />
                 <td className="px-2 sm:px-4 py-2 text-left text-xs">
                   {isLoadingVelocities ? (
                     <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-800/60 border border-slate-600/40">

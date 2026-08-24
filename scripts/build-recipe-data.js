@@ -26,6 +26,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const JSON_SOURCE = getTwJsonPath('tw-recipes.json');
+const GLOBAL_RECIPES_SOURCE = path.join(
+  __dirname,
+  '../teamcraft_git/libs/data/src/lib/json/recipes.json',
+);
 const RECIPE_LEVEL_TABLE_SOURCE = getTwJsonPath('tw-recipe-level-table.json');
 const LEVEL_ADJUST_TABLE_SOURCE = getTwJsonPath('tw-gatherer-crafter-lv-adjust-table.json');
 const COLLECTABLES_SHOP_ITEM_SOURCE = path.join(__dirname, '../tw_dataminer/dumpcsv-output/rawexd/CollectablesShopItem.csv');
@@ -57,6 +61,26 @@ function loadRecipesFromJSON(jsonPath) {
   
   console.log(`[Recipe] Loaded ${recipes.length} recipes`);
   return recipes;
+}
+
+/**
+ * Recipe IDs and crafting stats are language-neutral. Keep the TW export as
+ * the source of truth, then append only global recipes not yet exported for
+ * TW so future-version items can still use the crafting tree and simulator.
+ */
+function supplementWithGlobalRecipes(twRecipes) {
+  if (!fs.existsSync(GLOBAL_RECIPES_SOURCE)) {
+    console.warn('[Recipe] Global Teamcraft recipes not found; using TW recipes only');
+    return twRecipes;
+  }
+
+  const globalRecipes = loadRecipesFromJSON(GLOBAL_RECIPES_SOURCE);
+  const knownRecipeIds = new Set(twRecipes.map((recipe) => String(recipe.id)));
+  const supplementalRecipes = globalRecipes.filter(
+    (recipe) => !knownRecipeIds.has(String(recipe.id)),
+  );
+  console.log(`[Recipe] Supplementing ${supplementalRecipes.length} newer global recipes missing from the TW export`);
+  return twRecipes.concat(supplementalRecipes);
 }
 
 function loadJSON(jsonPath, label) {
@@ -187,7 +211,8 @@ function buildRecipeData() {
   const startTime = Date.now();
   
   // Step 1: Load recipes from JSON source
-  const recipes = loadRecipesFromJSON(JSON_SOURCE);
+  const twRecipes = loadRecipesFromJSON(JSON_SOURCE);
+  const recipes = supplementWithGlobalRecipes(twRecipes);
 
   // Step 1b: Append Company Craft (部隊合建) from CSV when not already in JSON (avoids dupes with full Teamcraft extracts)
   const resultIdsFromJson = new Set();
