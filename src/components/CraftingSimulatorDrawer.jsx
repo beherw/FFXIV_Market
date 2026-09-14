@@ -2494,19 +2494,19 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
                     </span>
                     <div className="min-w-0 flex-1 space-y-2.5">
                       <div>
-                        <div className="text-sm font-semibold text-amber-200">品質為 0：已自動改為「只推進展」</div>
+                        <div className="text-sm font-semibold text-amber-200">品質為 0 說明</div>
                         <p className="mt-1 text-xs leading-relaxed text-slate-300 sm:text-sm">
-                          「HQ優先」會要求所有推進展的技能集中在最後出手，等於品質必須先做完。目前的屬性與技能設定下，這個配方光是推完進展就用光了耐久與 CP，插不進任何一次加工，因此求解結果的品質是 0。
+                          「HQ優先」會要求所有推進展的技能集中在最後出手，也就是加工必須先做完。在目前的屬性與技能設定下，這個配方只有靠開場的進展技能才推得完進展，而那一步一旦出手，後面就不能再接任何加工，因此品質停在 0。
                         </p>
                       </div>
                       <ul className="space-y-1 text-xs leading-relaxed text-slate-400 sm:text-sm">
                         <li className="flex gap-2">
                           <span className="text-amber-400/70">・</span>
-                          <span>勾選<span className="text-amber-200">「使用掌握」</span>等回復耐久的技能，通常就能把品質做回來。</span>
+                          <span>勾選<span className="text-amber-200">「使用掌握」</span>等回復耐久的技能，通常就能在不打亂順序的前提下把品質做回來。</span>
                         </li>
                         <li className="flex gap-2">
                           <span className="text-amber-400/70">・</span>
-                          <span>或關閉<span className="text-amber-200">「HQ優先」</span>，改為在完成進展的前提下盡量衝高品質（即使推不到 100%，也會顯示目前設定能達到的最高值）。</span>
+                          <span>或關閉<span className="text-amber-200">「HQ優先」</span>，讓求解可以把加工穿插在進展之間，在完成進展的前提下盡量衝高品質（即使推不到 100%，也會顯示目前設定能達到的最高值）。</span>
                         </li>
                       </ul>
                       <div className="flex flex-wrap gap-2 pt-0.5">
