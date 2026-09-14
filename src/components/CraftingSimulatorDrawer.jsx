@@ -411,6 +411,19 @@ function formatPercent(value) {
   return `${Math.round(clampedPercent)}%`;
 }
 
+/**
+ * The simulator reports HQ chance in whole percents (1-100), so 1 means 1%.
+ * `formatPercent`'s fraction heuristic would read that as 100%.
+ */
+function formatWholePercent(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return '—';
+  }
+
+  return `${Math.round(Math.max(0, Math.min(numericValue, 100)))}%`;
+}
+
 function formatConditionName(condition) {
   return CONDITION_NAMES[condition] || condition || '通常';
 }
@@ -2550,7 +2563,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
                       <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-orange-300">
                         {collectability
                           ? `收藏價值滿足率 ${formatPercent(collectabilitySatisfaction)}`
-                          : `HQ 機率 ${formatPercent(simulationResult.hqProbability)}`}
+                          : `HQ 機率 ${formatWholePercent(simulationResult.hqProbability)}`}
                       </span>
                     </div>
                   </div>
