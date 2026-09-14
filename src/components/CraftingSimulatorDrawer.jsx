@@ -818,6 +818,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
   const [loadingRecipe, setLoadingRecipe] = useState(false);
   const [runningSolver, setRunningSolver] = useState(false);
   const [needsSolve, setNeedsSolve] = useState(true);
+  const [pendingAutoSolve, setPendingAutoSolve] = useState(false);
   const [error, setError] = useState(null);
   const [simulationResult, setSimulationResult] = useState(null);
   const [copyState, setCopyState] = useState('idle');
@@ -1325,6 +1326,26 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
     }
   };
 
+  // Re-solving right after `setSolverOptions` would be cancelled by the reset
+  // effect above, so queue it and let the next render kick it off.
+  useEffect(() => {
+    if (!pendingAutoSolve || !isOpen || !recipe || runningSolver) {
+      return;
+    }
+    setPendingAutoSolve(false);
+    handleStartSolve();
+  }, [pendingAutoSolve, isOpen, recipe, runningSolver, solverOptions]);
+
+  const handleDisableBackloadAndSolve = () => {
+    setSolverOptions((previous) => ({ ...previous, backloadProgress: false }));
+    setPendingAutoSolve(true);
+  };
+
+  const handleEnableManipulationAndSolve = () => {
+    setSolverOptions((previous) => ({ ...previous, useManipulation: true }));
+    setPendingAutoSolve(true);
+  };
+
   const handleConfirmRecipeSelection = () => {
     const nextRecipe = recipes.find((candidate) => String(candidate.id) === selectedRecipeId);
     if (nextRecipe) {
@@ -1584,6 +1605,19 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
   const isComplete = !!(activeStatus && activeStatus.progress >= activeStatus.recipe.difficulty);
   const isQualityMax = !!(activeStatus && activeStatus.recipe.quality > 0 && activeStatus.quality >= activeStatus.recipe.quality);
   const hasFailure = !!(activeStatus && activeStatus.durability <= 0 && !isComplete);
+  // `HQ優先` forces every progress action to the end of the macro. On tight
+  // recipes that constraint can leave no room for a single quality action, so
+  // the solver falls back to a progress-only rotation. Without a hint the
+  // result just looks like a broken solve.
+  const backloadQualityStarved = !!(
+    simulationMode === 'auto'
+    && solverOptions.backloadProgress
+    && !collectability
+    && isComplete
+    && !hasFailure
+    && toFiniteNumber(activeStatus?.recipe?.quality, 0) > 0
+    && toFiniteNumber(activeStatus?.quality, 0) <= clampedStartingQuality
+  );
   const activeErrors = simulationMode === 'manual' ? (manualResult?.errors || []) : (simulationResult?.errors || []);
   const activeErrorPositions = new Set(activeErrors.map((entry) => entry.pos));
   const activeMacroPages = useMemo(
@@ -2434,6 +2468,56 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
                       重新求解
                     </button>
                   )}
+                </div>
+              )}
+
+              {backloadQualityStarved && (
+                <div className="overflow-hidden rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-950/45 via-slate-900/80 to-slate-900/95 shadow-[0_0_24px_rgba(251,191,36,0.08)]">
+                  <div className="flex gap-3 px-4 py-3.5 sm:px-5">
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-400/40 bg-amber-500/15 text-amber-300">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                        <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-2.5">
+                      <div>
+                        <div className="text-sm font-semibold text-amber-200">品質為 0：已自動改為「只推進展」</div>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-300 sm:text-sm">
+                          「HQ優先」會要求所有推進展的技能集中在最後出手，等於品質必須先做完。目前的屬性與技能設定下，這個配方光是推完進展就用光了耐久與 CP，插不進任何一次加工，因此求解結果的品質是 0。
+                        </p>
+                      </div>
+                      <ul className="space-y-1 text-xs leading-relaxed text-slate-400 sm:text-sm">
+                        <li className="flex gap-2">
+                          <span className="text-amber-400/70">・</span>
+                          <span>勾選<span className="text-amber-200">「使用掌握」</span>等回復耐久的技能，通常就能把品質做回來。</span>
+                        </li>
+                        <li className="flex gap-2">
+                          <span className="text-amber-400/70">・</span>
+                          <span>或關閉<span className="text-amber-200">「HQ優先」</span>，改為在完成進展的前提下盡量衝高品質（即使推不到 100%，也會顯示目前設定能達到的最高值）。</span>
+                        </li>
+                      </ul>
+                      <div className="flex flex-wrap gap-2 pt-0.5">
+                        {!solverOptions.useManipulation && (
+                          <button
+                            type="button"
+                            onClick={handleEnableManipulationAndSolve}
+                            disabled={runningSolver}
+                            className="rounded-lg border border-cyan-400/35 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-200 transition hover:border-cyan-300/60 hover:bg-cyan-500/20 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            開啟「使用掌握」並重新求解
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleDisableBackloadAndSolve}
+                          disabled={runningSolver}
+                          className="rounded-lg border border-amber-400/35 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:border-amber-300/60 hover:bg-amber-500/20 hover:text-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          關閉「HQ優先」並重新求解
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
