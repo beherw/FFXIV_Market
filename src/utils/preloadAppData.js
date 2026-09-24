@@ -23,11 +23,11 @@ export function preloadAppData() {
   started = true;
 
   (async () => {
-    // Wave 1: search index + data the search pipeline reads (tw-items, marketable ids, ilvl, patch)
-    // and the icon table (home page and results table show icons immediately)
-    await whenIdle(() => Promise.allSettled([preloadSearchData(), loadItemIconsData()]), 1000);
-    // Wave 2: search results table (equipment level)
-    await whenIdle(() => getEquipment());
+    // Wave 1: search index + data the search pipeline reads (tw-items, marketable ids, ilvl, patch).
+    // Kept alone so it gets the full bandwidth on slow connections.
+    await whenIdle(() => preloadSearchData(), 1000);
+    // Wave 2: search results table (icons, equipment level)
+    await whenIdle(() => Promise.allSettled([loadItemIconsData(), getEquipment()]));
     // Wave 3: only needed for simplified-Chinese input fallback / OCR
     await whenIdle(() => loadChineseConverter());
   })();

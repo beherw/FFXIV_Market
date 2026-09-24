@@ -74,6 +74,14 @@ const RelatedItems = createLazyComponent(() => import('./components/RelatedItems
 const HistorySection = createLazyComponent(() => import('./components/HistorySection.jsx'), 'HistorySection');
 const RecentUpdatesSection = createLazyComponent(() => import('./components/RecentUpdatesSection.jsx'), 'RecentUpdatesSection');
 const ObtainMethods = createLazyComponent(() => import('./components/ObtainMethods.jsx'), 'ObtainMethods');
+// Warm the ObtainMethods chunk and its source index when the user hovers/focuses the button
+let obtainMethodsPrefetched = false;
+const prefetchObtainMethods = () => {
+  if (obtainMethodsPrefetched) return;
+  obtainMethodsPrefetched = true;
+  import('./components/ObtainMethods.jsx').catch(() => {});
+  import('./services/obtainableMethodsMsgpack').then(m => m.loadObtainableMethodsDatabase()).catch(() => {});
+};
 const MultiItemListModal = createLazyComponent(() => import('./components/MultiItemListModal.jsx'), 'MultiItemListModal');
 const MultiItemCombinedTree = createLazyComponent(() => import('./components/MultiItemCombinedTree.jsx'), 'MultiItemCombinedTree');
 const CraftingSimulatorDrawer = createLazyComponent(() => import('./components/CraftingSimulatorDrawer.jsx'), 'CraftingSimulatorDrawer');
@@ -284,6 +292,9 @@ function App() {
   const [isObtainMethodsExpanded, setIsObtainMethodsExpanded] = useState(false);
   const [isObtainMethodsLoading, setIsObtainMethodsLoading] = useState(false);
   const [hasObtainMethods, setHasObtainMethods] = useState(true); // Track if item has obtainable methods
+  // ObtainMethods pulls ~10MB of data, so it only mounts once the user asks for it (click / auto-expand)
+  const [obtainMethodsRequestedId, setObtainMethodsRequestedId] = useState(null);
+  const isObtainMethodsMounted = !!selectedItem?.id && obtainMethodsRequestedId === selectedItem.id;
   // Track if we should auto-expand obtainable when item changes (e.g., when clicking from obtainable)
   const shouldAutoExpandObtainableRef = useRef(false);
   
@@ -3795,6 +3806,8 @@ function App() {
     setHasItemSet(false);
     setIsLoadingItemSet(false);
     setHasObtainMethods(false); // Reset to false when new item loads, will be updated by callback
+    setIsObtainMethodsLoading(false);
+    setObtainMethodsRequestedId(null);
     setSelectedItemCosmicRanks([]);
     
     // Auto-expand obtainable if we clicked from obtainable
@@ -3803,7 +3816,9 @@ function App() {
     let autoExpandTimeoutId = null;
     if (shouldAutoExpandObtainableRef.current) {
       // Use a small delay to ensure selectedItem is fully updated in the component tree
+      const autoExpandItemId = selectedItem.id;
       autoExpandTimeoutId = setTimeout(() => {
+        setObtainMethodsRequestedId(autoExpandItemId);
         setIsObtainMethodsExpanded(true);
         setButtonOrder(prev => ({ ...prev, obtainMethods: Math.max(...Object.values(prev)) + 1 }));
         shouldAutoExpandObtainableRef.current = false; // Reset flag after using it
@@ -4765,12 +4780,19 @@ function App() {
                   
                   {/* Obtain Methods Button */}
                   <button
+                    onMouseEnter={prefetchObtainMethods}
+                    onFocus={prefetchObtainMethods}
+                    onTouchStart={prefetchObtainMethods}
                     onClick={() => {
-                      // Prevent toggling while loading to avoid confusion
-                      if (isObtainMethodsLoading || !hasObtainMethods) {
+                      if (!isObtainMethodsMounted) {
+                        // First click: mount ObtainMethods (it loads its data and reports back via callbacks)
+                        setObtainMethodsRequestedId(selectedItem.id);
+                        setIsObtainMethodsLoading(true);
+                      } else if (isObtainMethodsLoading || !hasObtainMethods) {
+                        // Prevent toggling while loading to avoid confusion
                         return;
                       }
-                      const willExpand = !isObtainMethodsExpanded;
+                      const willExpand = !isObtainMethodsMounted || !isObtainMethodsExpanded;
                       setIsObtainMethodsExpanded(willExpand);
                       // Close other tabs when opening this one
                       if (willExpand) {
@@ -4780,10 +4802,10 @@ function App() {
                       }
                       setButtonOrder(prev => ({ ...prev, obtainMethods: Math.max(...Object.values(prev)) + 1 }));
                     }}
-                    disabled={isObtainMethodsLoading || !hasObtainMethods}
+                    disabled={isObtainMethodsMounted && (isObtainMethodsLoading || !hasObtainMethods)}
                     className={`
                       relative flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 overflow-hidden
-                      ${(isObtainMethodsLoading || !hasObtainMethods)
+                      ${isObtainMethodsMounted && (isObtainMethodsLoading || !hasObtainMethods)
                         ? 'opacity-50 cursor-not-allowed'
                         : ''
                       }
@@ -4792,7 +4814,7 @@ function App() {
                         : 'bg-gradient-to-r from-blue-900/50 via-indigo-900/40 to-blue-900/50 border border-blue-400/40 text-blue-200 hover:text-blue-300 hover:border-blue-400/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]'
                       }
                     `}
-                    title={isObtainMethodsLoading ? '載入中...' : (!hasObtainMethods ? '此物品無取得方式' : (isObtainMethodsExpanded ? '收起取得方式' : '展開取得方式'))}
+                    title={!isObtainMethodsMounted ? '展開取得方式' : (isObtainMethodsLoading ? '載入中...' : (!hasObtainMethods ? '此物品無取得方式' : (isObtainMethodsExpanded ? '收起取得方式' : '展開取得方式')))}
                   >
                     {/* Shimmer effect for active button */}
                     {!isObtainMethodsExpanded && (
@@ -5045,24 +5067,23 @@ function App() {
                   {/* 灰機wiki Button */}
                   <button
                     onClick={async () => {
+                      // Open the tab synchronously (inside the click) so popup blockers allow it,
+                      // then point it at the wiki once the Simplified name has loaded
+                      const wikiWindow = window.open('', '_blank');
+                      if (wikiWindow) wikiWindow.opener = null;
                       try {
-                        if (getSimplifiedChineseName) {
-                          const simplifiedName = await getSimplifiedChineseName(selectedItem.id);
-                          if (simplifiedName) {
-                            const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
-                            const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(simplifiedName)}`;
-                            window.open(url, '_blank', 'noopener,noreferrer');
-                          } else {
-                            const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
-                            const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(selectedItem.name)}`;
-                            window.open(url, '_blank', 'noopener,noreferrer');
-                          }
+                        const simplifiedName = getSimplifiedChineseName
+                          ? await getSimplifiedChineseName(selectedItem.id)
+                          : null;
+                        const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
+                        const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(simplifiedName || selectedItem.name)}`;
+                        if (wikiWindow) {
+                          wikiWindow.location.href = url;
                         } else {
-                          const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
-                          const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(selectedItem.name)}`;
                           window.open(url, '_blank', 'noopener,noreferrer');
                         }
                       } catch (error) {
+                        if (wikiWindow) wikiWindow.close();
                         console.error('Failed to open Wiki link:', error);
                         addToast('無法打開灰機連結', 'error');
                       }
@@ -5259,7 +5280,7 @@ function App() {
                 // Obtain Methods - Always render (even when collapsed) to check if item has methods
                 // The component will load sources and notify via callback whether button should be enabled
                 // Hide the panel if item has no obtainable methods to prevent stuck UI
-                if (selectedItem && selectedItem.id) {
+                if (selectedItem && selectedItem.id && isObtainMethodsMounted) {
                   sections.push({
                     key: 'obtainMethods',
                     order: buttonOrder.obtainMethods,
