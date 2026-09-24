@@ -20,7 +20,7 @@
  * 3. Never load entire tables
  */
 
-import { convertSimplifiedToTraditional, convertTraditionalToSimplified, isTraditionalChinese, containsChinese } from '../utils/chineseConverter';
+import { convertSimplifiedToTraditional, convertTraditionalToSimplified, isTraditionalChinese, containsChinese, loadChineseConverter } from '../utils/chineseConverter';
 import {
   getTwItems as getTwItemsMsgpack,
   searchTwItems as searchTwItemsMsgpack,
@@ -38,135 +38,11 @@ let itemsDatabase = null;
 let shopItemsDatabase = null;
 let isLoading = false;
 
-// Cache for Simplified Chinese names from CSV
+// Cache for Simplified Chinese names (from local zh-items.msgpack)
 const simplifiedNameCache = new Map();
-let simplifiedItemsDatabase = null;
-let isLoadingSimplified = false;
-let simplifiedItemsAbortController = null;
 
 /**
- * Load Simplified Chinese items database from CSV (same as old method)
- * Uses the same CSV source: https://raw.githubusercontent.com/thewakingsands/ffxiv-datamining-cn/master/Item.csv
- */
-async function loadSimplifiedItemDatabase(signal = null) {
-  if (simplifiedItemsDatabase) {
-    return simplifiedItemsDatabase;
-  }
-
-  if (isLoadingSimplified) {
-    // Wait for existing load to complete
-    while (isLoadingSimplified) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    return simplifiedItemsDatabase;
-  }
-
-  isLoadingSimplified = true;
-
-  try {
-    // Cancel previous request if exists and no signal provided
-    if (!signal && simplifiedItemsAbortController) {
-      simplifiedItemsAbortController.abort();
-    }
-    
-    // Use provided signal or create new abort controller
-    let abortController;
-    let fetchSignal;
-    if (signal) {
-      // Use provided signal
-      fetchSignal = signal;
-    } else {
-      // Create new abort controller
-      abortController = new AbortController();
-      simplifiedItemsAbortController = abortController;
-      fetchSignal = abortController.signal;
-    }
-
-    // Fetch CSV from the same source as old method
-    const response = await fetch(
-      'https://raw.githubusercontent.com/thewakingsands/ffxiv-datamining-cn/master/Item.csv',
-      { signal: fetchSignal }
-    );
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const text = await response.text();
-    
-    // Parse CSV using the same method as old code
-    const lineend0 = text.indexOf('\n'); // key,0,1 ...
-    const lineend1 = text.indexOf('\n', lineend0 + 1); // #, Name, ...
-    const lineend2 = text.indexOf('\n', lineend1 + 1); // int,str, ...
-    const lineend3 = text.indexOf('\n', lineend2 + 1); // 0, '', ...
-    
-    const idxes = text.slice(0, lineend0).split(',');
-    const labels = text.slice(lineend0 + 1, lineend1).split(',');
-    
-    // Parse CSV rows
-    const dataLines = text.slice(lineend3 + 1).split('\n').filter(line => line.trim());
-    
-    const items = dataLines.map(line => {
-      // Handle CSV with quoted values that may contain commas
-      const values = parseCSVLine(line);
-      const obj = {};
-      idxes.forEach((idx, i) => {
-        if (i < labels.length) {
-          const key = `${idx}: ${labels[i]}`;
-          obj[key] = (i < values.length && values[i] !== undefined) ? values[i] : '';
-        }
-      });
-      return obj;
-    }).filter(obj => Object.keys(obj).length > 0);
-
-    simplifiedItemsDatabase = items;
-    isLoadingSimplified = false;
-    if (!signal) {
-      simplifiedItemsAbortController = null;
-    }
-    return simplifiedItemsDatabase;
-  } catch (error) {
-    isLoadingSimplified = false;
-    if (!signal) {
-      simplifiedItemsAbortController = null;
-    }
-    if (error.name === 'AbortError') {
-      // Request was cancelled, return null
-      return null;
-    }
-    console.error('Failed to load Simplified Chinese item database:', error);
-    throw error;
-  }
-}
-
-/**
- * Parse a CSV line, handling quoted values
- * Removes quotes from field values
- */
-function parseCSVLine(line) {
-  const values = [];
-  let current = '';
-  let inQuotes = false;
-  
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    
-    if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
-      values.push(current);
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-  
-  values.push(current);
-  return values.map(v => v.trim());
-}
-
-/**
- * Get Simplified Chinese name from CSV (same method as old implementation)
+ * Get Simplified Chinese name for an item (used by the 灰機wiki link)
  * @param {number} itemId - Item ID
  * @param {AbortSignal} signal - Optional abort signal to cancel the request
  * @returns {Promise<string|null>} - Simplified Chinese name or null if not found
@@ -176,52 +52,25 @@ export async function getSimplifiedChineseName(itemId, signal = null) {
     return null;
   }
 
-  // Check cache first
   if (simplifiedNameCache.has(itemId)) {
     return simplifiedNameCache.get(itemId);
   }
 
   try {
-    // Load Simplified Chinese items database from CSV
-    const items = await loadSimplifiedItemDatabase(signal);
-    
-    // Check if request was cancelled
-    if (!items) {
+    const { getZhItemsByIds } = await import('./itemsDatabaseMsgpack.js');
+    const zhMap = await getZhItemsByIds([itemId], signal);
+    if (signal && signal.aborted) {
       return null;
     }
-    
-    // Find the item by ID
-    const item = items.find(item => {
-      const id = item['key: #'];
-      return id && parseInt(id, 10) === itemId;
-    });
-
-    if (!item) {
+    const rawName = zhMap[itemId]?.zh || '';
+    const cleanName = rawName.replace(/^["']|["']$/g, '').trim();
+    if (!cleanName) {
       return null;
     }
-
-    // Get Simplified Chinese name from "9: Name" field (same as old method)
-    let simplifiedName = item['9: Name'] || '';
-    if (!simplifiedName || simplifiedName.trim() === '') {
-      simplifiedName = item['0: Singular'] || '';
-    }
-
-    if (!simplifiedName || simplifiedName.trim() === '') {
-      return null;
-    }
-
-    // Clean the name (remove quotes)
-    const cleanName = simplifiedName.replace(/^["']|["']$/g, '').trim();
-
-    // Cache the result
-    if (cleanName) {
-      simplifiedNameCache.set(itemId, cleanName);
-    }
-
+    simplifiedNameCache.set(itemId, cleanName);
     return cleanName;
   } catch (error) {
     if (error.name === 'AbortError') {
-      // Request was cancelled, return null
       return null;
     }
     console.error(`Failed to get Simplified Chinese name for item ${itemId}:`, error);
@@ -230,18 +79,12 @@ export async function getSimplifiedChineseName(itemId, signal = null) {
 }
 
 /**
- * Cancel any pending Simplified Chinese name fetches
+ * Cancel any pending Simplified Chinese name fetches (callers pass their own AbortSignal)
  */
-export function cancelSimplifiedNameFetch() {
-  if (simplifiedItemsAbortController) {
-    simplifiedItemsAbortController.abort();
-    simplifiedItemsAbortController = null;
-    isLoadingSimplified = false;
-  }
-}
+export function cancelSimplifiedNameFetch() {}
 
 /**
- * Search simplified Chinese database by name and return matching item IDs
+ * Search simplified Chinese item names and return matching item IDs
  * This is used as a fallback when main search returns no results
  * IMPORTANT: This function ONLY uses precise search (exact substring matching), NEVER fuzzy search
  * @param {string} searchText - Search text in Simplified Chinese
@@ -253,60 +96,11 @@ async function searchSimplifiedDatabaseByName(searchText) {
   }
 
   try {
-    // Load Simplified Chinese items database
-    const items = await loadSimplifiedItemDatabase();
-    
-    if (!items) {
-      return [];
-    }
-
-    const trimmedSearchText = searchText.trim();
-    
-    // Split search text into words (same logic as performSearch)
-    const hasSpaces = trimmedSearchText.includes(' ');
-    const words = hasSpaces 
-      ? trimmedSearchText.split(/\s+/).filter(w => w)
-      : [trimmedSearchText];
-
-    // Find items matching the search text
-    // NOTE: This function ONLY uses precise search (exact substring matching), never fuzzy search
-    const matchingItemIds = items
-      .filter(item => {
-        // Get Simplified Chinese name from "9: Name" field
-        let rawName = item['9: Name'] || '';
-        if (!rawName || rawName.trim() === '') {
-          rawName = item['0: Singular'] || '';
-        }
-
-        if (!rawName || rawName.trim() === '') {
-          return false;
-        }
-
-        // Clean name for search
-        const cleanName = rawName.replace(/^["']+|["']+$/g, '').trim();
-        
-        if (!cleanName) {
-          return false;
-        }
-
-        // Precise search only: Match all words using exact substring matching (AND condition)
-        // For words without spaces, require exact substring match (respects character order)
-        // For words with spaces, each word must appear as exact substring
-        // This ensures "精金" only matches if "精金" appears as a substring, not if "金" appears before "精"
-        const matches = words.every(word => {
-          // Precise search: check if word appears as exact substring (no fuzzy matching)
-          return cleanName.includes(word);
-        });
-
-        return matches;
-      })
-      .map(item => {
-        const id = item['key: #'];
-        return id ? parseInt(id, 10) : null;
-      })
-      .filter(id => id !== null && id > 0);
-
-    return matchingItemIds;
+    const { searchCnItems } = await import('./itemsDatabaseMsgpack.js');
+    const matches = await searchCnItems(searchText.trim(), false);
+    return Object.keys(matches || {})
+      .map(id => parseInt(id, 10))
+      .filter(id => !isNaN(id) && id > 0);
   } catch (error) {
     console.error('Failed to search simplified database:', error);
     return [];
@@ -987,6 +781,7 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
 
   // Step 3: If still no results, convert user input to traditional Chinese and try again
   if (results.length === 0) {
+    await loadChineseConverter().catch(() => {});
     // Convert to traditional Chinese (if input is simplified, convert to traditional)
     // If input is already traditional, convert to simplified first, then back to traditional
     // This handles cases where input might be in simplified Chinese
@@ -1205,6 +1000,7 @@ export async function getItemById(itemId) {
     const zhName = zhMap[itemId]?.zh || zhMap[String(itemId)]?.zh;
     const enName = enMap[itemId]?.en || enMap[String(itemId)]?.en;
     if (zhName && zhName.trim()) {
+      await loadChineseConverter().catch(() => {});
       const cleanName = convertSimplifiedToTraditional(zhName.replace(/^["']|["']$/g, '').trim());
       if (cleanName) {
         return {
@@ -1825,6 +1621,7 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
   let searchedSimplified = false;
 
   // Normalize OCR text (removes all spaces: "廣 折 廣 唱 石 陸 型" → "廣折廣唱石陸型")
+  await loadChineseConverter().catch(() => {});
   const normalizedQuery = normalizeOCRText(trimmedSearchText);
   const ocrWords = options && Array.isArray(options.ocrWords) ? options.ocrWords : null;
   const ocrConfidence = options && (options.ocrConfidence !== undefined && options.ocrConfidence !== null) ? options.ocrConfidence : null;

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import './styles/main.css'
+import { preloadAppData } from './utils/preloadAppData'
 // Data is loaded from local msgpack/JSON. No remote DB on startup.
 console.log('[App] 🚀 Starting application initialization...');
 const appStartTime = performance.now();
@@ -35,3 +36,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
   </BrowserRouter>
 )
+
+// Warm search data in the background once the first frame is up
+preloadAppData();
