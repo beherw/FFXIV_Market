@@ -33,7 +33,7 @@ import twMobsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-mobs.js
 // tw-places / places: loaded from data/places.msgpack via loadPlaceDataForZoneIds
 // tw-quests / tw-leves / retainer-tasks - lazy loaded via loadJsonOnce
 import dropSourcesData from '../../teamcraft_git/libs/data/src/lib/json/drop-sources.json';
-import monstersData from '../../teamcraft_git/libs/data/src/lib/json/monsters.json';
+import { loadDomainRecords } from '../services/dataShards';
 import { loadJsonOnce } from '../utils/lazyJsonLoader';
 import { getEorzeaTime, getLimitedNodeTiming, getEorzeaMinutesUntilSecondNextSpawn, getSecondNextSpawnProgress, formatEorzeaTimeOfDay, formatHumanDurationFromEorzeaMinutes, formatLocalTimeAfterEorzeaMinutes } from '../utils/eorzeaTimeUtils';
 
@@ -511,6 +511,16 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         
         // Step 2.7: Get monster drop zone IDs from drop-sources.json and add to requiredIds
         const dropSourceMonsterIds = dropSourcesData[currentItemId] || dropSourcesData[String(currentItemId)];
+        // Monster positions come from the sharded drop-monsters domain (only this item's monsters)
+        let monstersData = {};
+        if (Array.isArray(dropSourceMonsterIds) && dropSourceMonsterIds.length > 0) {
+          try {
+            monstersData = (await loadDomainRecords('drop-monsters', dropSourceMonsterIds, abortController.signal)).monsters || {};
+          } catch (err) {
+            if (err?.name === 'AbortError' || abortController.signal.aborted) return;
+            console.warn('[ObtainMethods] Failed to load drop monster data:', err);
+          }
+        }
         if (Array.isArray(dropSourceMonsterIds) && dropSourceMonsterIds.length > 0) {
           dropSourceMonsterIds.forEach(monsterId => {
             const monster = monstersData[monsterId] || monstersData[String(monsterId)];
@@ -4337,12 +4347,10 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
         return null;
       }
 
-      // Get current loaded data from ref for up-to-date access
-      const currentLoadedData = loadedDataRef.current;
-
+      // Mob names come from the static tw-mobs table via getMobName (loadedData has no twMobs field)
       const validDrops = data.filter(drop => {
         const mobId = drop.id;
-        const mobName = currentLoadedData.twMobs[mobId] || currentLoadedData.twMobs[String(mobId)];
+        const mobName = getMobName(mobId);
         return mobName;
       });
 
@@ -4363,7 +4371,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             {validDrops.map((drop, dropIndex) => {
               const mobId = drop.id;
               const amount = drop.amount || 1;
-              const mobName = currentLoadedData.twMobs[mobId] || currentLoadedData.twMobs[String(mobId)];
+              const mobName = getMobName(mobId);
 
               if (!mobName) return null;
 

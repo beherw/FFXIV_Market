@@ -12,7 +12,20 @@
 // staying within limits.
 
 import { LRUCache } from './lruCache';
-import itemIconsData from '../../teamcraft_git/libs/data/src/lib/json/item-icons.json';
+// item-icons.json (~2MB) is loaded on demand so it stays out of the initial bundle
+let itemIconsData = null;
+let itemIconsPromise = null;
+export function loadItemIconsData() {
+  if (!itemIconsPromise) {
+    itemIconsPromise = import('../../teamcraft_git/libs/data/src/lib/json/item-icons.json')
+      .then(m => (itemIconsData = m.default))
+      .catch(err => {
+        itemIconsPromise = null;
+        throw err;
+      });
+  }
+  return itemIconsPromise;
+}
 
 // LRU Cache for icon paths with maximum size of 2000 items
 // This prevents unbounded memory growth while keeping common items cached
@@ -403,8 +416,25 @@ export async function getItemImageUrl(itemId, abortSignal = null, forceReload = 
     return iconCache.get(itemId);
   }
 
-  // Check local item-icons data first (faster and more reliable than XIVAPI)
-  const localIconPath = itemIconsData[String(itemId)];
+  // Check local item-icons data first (faster and more reliable than XIVAPI). Until the full table
+  // is loaded, read just this item's shard (~4KB) so a single icon never waits on the 2MB table.
+  let localIconPath = itemIconsData?.[String(itemId)];
+  if (!itemIconsData) {
+    try {
+      const { loadDomainRecords } = await import('../services/dataShards.js');
+      const shard = await loadDomainRecords('item-icons', [itemId], abortSignal);
+      localIconPath = shard?.[String(itemId)];
+    } catch (error) {
+      if (abortSignal && abortSignal.aborted) {
+        return null;
+      }
+      await loadItemIconsData().catch(() => {});
+      localIconPath = itemIconsData?.[String(itemId)];
+    }
+    if (abortSignal && abortSignal.aborted) {
+      return null;
+    }
+  }
   if (localIconPath) {
     const iconUrl = `https://xivapi.com${localIconPath}`;
     iconCache.set(itemId, iconUrl);
@@ -463,7 +493,16 @@ export function getItemImageUrlSync(itemId) {
   if (!itemId || itemId <= 0) {
     return null;
   }
-  return iconCache.get(itemId) || null;
+  const cached = iconCache.get(itemId);
+  if (cached) return cached;
+  // Once item-icons.json is loaded, known icons resolve synchronously
+  const localIconPath = itemIconsData?.[String(itemId)];
+  if (localIconPath) {
+    const iconUrl = `https://xivapi.com${localIconPath}`;
+    iconCache.set(itemId, iconUrl);
+    return iconUrl;
+  }
+  return null;
 }
 
 /**
@@ -475,6 +514,14 @@ export function getCalculatedIconUrls(itemId) {
   if (!itemId || itemId <= 0) {
     return [];
   }
+  // While item-icons.json is still loading, don't guess: guessed URLs 404 for most items and
+  // would fire a burst of failed requests. Callers then wait for getItemImageUrl() instead.
+  if (!itemIconsData) {
+    loadItemIconsData().catch(() => {});
+    return [];
+  }
+  const localUrl = getItemImageUrlSync(itemId);
+  if (localUrl) return [localUrl];
   return calculateIconPath(itemId);
 }
 

@@ -80,7 +80,7 @@ export async function loadExtracts(signal = null) {
  */
 export async function getItemSources(itemId, signal = null) {
   try {
-    const sources = await getObtainableSourcesById(itemId);
+    const sources = await getObtainableSourcesById(itemId, signal);
     return Array.isArray(sources) ? sources : [];
   } catch (error) {
     // If loading fails, log the error but return empty array to prevent UI crash

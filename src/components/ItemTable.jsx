@@ -113,7 +113,7 @@ const ItemNameCell = ({ itemName, addToast, isTwUnsupported = false }) => {
   );
 };
 
-export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null, selectedRarities: externalSelectedRarities, setSelectedRarities: externalSetSelectedRarities, raritiesData: externalRaritiesData, externalRarityFilter = false, externalRarityCounts = null, isServerDataLoaded = true, isRaritySelectorDisabled = false, itemsAlreadyFiltered = false, preserveItemOrder = false, separateTradableInSort = true, openInNewTab = false }) {
+export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null, selectedRarities: externalSelectedRarities, setSelectedRarities: externalSetSelectedRarities, raritiesData: externalRaritiesData, externalRarityFilter = false, externalRarityCounts = null, isServerDataLoaded = true, isRaritySelectorDisabled = false, itemsAlreadyFiltered = false, preserveItemOrder = false, separateTradableInSort = true, openInNewTab = false, onItemHover = null }) {
   const [sortColumn, setSortColumn] = useState('id');
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc' - default to desc for highest ilvl first
   const [ilvlsData, setIlvlsData] = useState(null);
@@ -980,6 +980,8 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
             return (
               <tr
                 key={item.id || index}
+                onMouseEnter={onItemHover ? () => onItemHover(item) : undefined}
+                onTouchStart={onItemHover ? () => onItemHover(item) : undefined}
                 onClick={(e) => {
                   if (openInNewTab) {
                     // Open in new tab (used by batch search, advanced search, etc.)

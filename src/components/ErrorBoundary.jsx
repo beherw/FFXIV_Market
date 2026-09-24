@@ -18,6 +18,10 @@ class ErrorBoundary extends React.Component {
       error,
       errorInfo
     });
+    // Let the parent stop any "loading" state it keeps for this subtree
+    if (this.props.onError) {
+      this.props.onError(error);
+    }
   }
 
   render() {

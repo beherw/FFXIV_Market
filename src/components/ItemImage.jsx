@@ -242,11 +242,15 @@ export default function ItemImage({ itemId, alt, className, priority = false, lo
               setImageLoaded(false); // Reset loaded state when URL changes
               return url;
             }
+            // Same URL is already displayed (or loading): onLoad won't fire again for it,
+            // so clear the loading flag here; the overlay still waits on imageLoaded.
+            setUsingCalculatedUrl(false);
+            setIconIsLoading(false);
             return prevUrl;
           });
           setHasError(false);
           setRetryCount(0); // Reset retry count on success
-          // Don't set iconIsLoading to false here - wait for onLoad event
+          // For a new URL, iconIsLoading is cleared by the onLoad event
         } else {
           // API failed, but we already have calculated URL showing
           // Only retry if we don't have a calculated URL

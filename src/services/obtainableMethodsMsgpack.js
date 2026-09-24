@@ -6,6 +6,7 @@
 
 import { decode } from '@msgpack/msgpack';
 import { DataType, getTypeIdFromString, getChineseName } from '../constants/dataTypes.js';
+import { loadDomainRecords } from './dataShards.js';
 
 let dataCache = null;
 let isLoading = false;
@@ -205,8 +206,9 @@ function normalizeSource(source) {
   return normalized;
 }
 
-export async function getObtainableSourcesById(itemId) {
-  const data = await loadObtainableMethodsDatabase();
+export async function getObtainableSourcesById(itemId, signal = null) {
+  // Only the shard holding this item (~50KB) instead of the full 20MB table
+  const data = dataCache || await loadDomainRecords('obtainable-methods', [itemId], signal);
   const key = String(itemId);
   const hasKey = Object.prototype.hasOwnProperty.call(data, key)
     || Object.prototype.hasOwnProperty.call(data, itemId);

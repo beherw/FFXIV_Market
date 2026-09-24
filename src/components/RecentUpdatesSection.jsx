@@ -2,8 +2,27 @@ import { useState, useEffect, useRef } from 'react';
 import { getMostRecentlyUpdatedItems } from '../services/universalis';
 import ItemImage from './ItemImage';
 
+// Last result per data center, shown immediately on the next visit while a fresh list loads
+const CACHE_KEY = 'recent-updates-v1';
+function readCache(dcName) {
+  try {
+    return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')[dcName] || null;
+  } catch {
+    return null;
+  }
+}
+function writeCache(dcName, items) {
+  try {
+    const all = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    all[dcName] = items;
+    localStorage.setItem(CACHE_KEY, JSON.stringify(all));
+  } catch {
+    // storage unavailable; the list just loads fresh next time
+  }
+}
+
 export default function RecentUpdatesSection({ onItemSelect, selectedDcName }) {
-  const [recentItems, setRecentItems] = useState([]);
+  const [recentItems, setRecentItems] = useState(() => (selectedDcName && readCache(selectedDcName)) || []);
   const [isLoading, setIsLoading] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
   const abortControllerRef = useRef(null);
@@ -62,6 +81,7 @@ export default function RecentUpdatesSection({ onItemSelect, selectedDcName }) {
       });
       
       setRecentItems(uniqueItems);
+      writeCache(selectedDcName, uniqueItems);
     } catch (error) {
       if (error.name !== 'AbortError') {
         console.error('Failed to fetch recent items:', error);
@@ -74,6 +94,8 @@ export default function RecentUpdatesSection({ onItemSelect, selectedDcName }) {
   // Load on mount and when selectedDcName changes
   useEffect(() => {
     if (selectedDcName) {
+      const cached = readCache(selectedDcName);
+      if (cached) setRecentItems(cached);
       fetchRecentItems();
     }
     
@@ -166,10 +188,15 @@ export default function RecentUpdatesSection({ onItemSelect, selectedDcName }) {
         </button>
       </div>
       
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ffxiv-gold"></div>
-          <span className="ml-3 text-sm text-gray-400">載入中...</span>
+      {isLoading && recentItems.length === 0 ? (
+        // First visit: card-shaped placeholders (later visits show the cached list while refreshing)
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4" aria-busy="true">
+          {Array.from({ length: 10 }, (_, i) => (
+            <div key={i} className="rounded-lg p-3 sm:p-4 border border-purple-500/20 bg-purple-900/20">
+              <div className="w-10 h-10 mx-auto mb-2 rounded bg-slate-700/50 skeleton-shimmer" />
+              <div className="h-3 rounded bg-slate-700/50 skeleton-shimmer" />
+            </div>
+          ))}
         </div>
       ) : recentItems.length === 0 ? (
         <div className="py-8 text-center text-sm text-gray-400">

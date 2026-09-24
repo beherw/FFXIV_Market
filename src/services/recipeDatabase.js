@@ -249,6 +249,19 @@ export async function isCompanyCraftResultItem(itemId) {
  * @returns {Promise<number[]>}
  */
 export async function getAllCompanyCraftResultItemIds() {
+  // Prefer the precomputed list (a few KB) over loading the whole recipe table
+  if (!companyCraftResultItemIds) {
+    try {
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const res = await fetch(`${baseUrl}data/shards/company-craft-ids.json`);
+      if (res.ok) {
+        const ids = await res.json();
+        if (Array.isArray(ids) && ids.length > 0) return ids;
+      }
+    } catch {
+      // fall back to the recipe table below
+    }
+  }
   await loadRecipeDatabase();
   if (!companyCraftResultItemIds || companyCraftResultItemIds.size === 0) {
     return [];

@@ -144,7 +144,7 @@ async function loadEquipment() {
 }
 
 export async function getTwItemById(itemId) {
-  const map = await loadTwItems();
+  const map = await mapForIds('tw-items', [itemId], twItemsCache, loadTwItems, null, 1);
   const item = map[itemId] || map[String(itemId)];
   return item?.tw || null;
 }
@@ -152,7 +152,8 @@ export async function getTwItemById(itemId) {
 export async function getTwItemsByIds(itemIds, signal = null) {
   if (!itemIds || itemIds.length === 0) return {};
   if (signal && signal.aborted) throw new DOMException('Request aborted', 'AbortError');
-  const map = await loadTwItems();
+  // A single item page only needs its own name: read one ~7KB shard while the full table loads
+  const map = await mapForIds('tw-items', itemIds, twItemsCache, loadTwItems, signal, 12);
   const result = {};
   itemIds.forEach(id => {
     const item = map[id] || map[String(id)];
@@ -165,10 +166,18 @@ export async function getTwItems() {
   return loadTwItems();
 }
 
+// Small by-id lookups read a few shards instead of the whole language file (unless it is already loaded)
+const SHARD_LOOKUP_MAX_IDS = 40;
+async function mapForIds(domain, itemIds, fullCache, loadFull, signal, maxIds = SHARD_LOOKUP_MAX_IDS) {
+  if (fullCache || itemIds.length > maxIds) return fullCache || loadFull();
+  const { loadDomainRecords } = await import('./dataShards.js');
+  return loadDomainRecords(domain, itemIds, signal);
+}
+
 export async function getZhItemsByIds(itemIds, signal = null) {
   if (!itemIds || itemIds.length === 0) return {};
   if (signal && signal.aborted) throw new DOMException('Request aborted', 'AbortError');
-  const map = await loadZhItems();
+  const map = await mapForIds('zh-items', itemIds, zhItemsCache, loadZhItems, signal);
   const result = {};
   itemIds.forEach(id => {
     const item = map[id] || map[String(id)];
@@ -180,7 +189,7 @@ export async function getZhItemsByIds(itemIds, signal = null) {
 export async function getEnItemsByIds(itemIds, signal = null) {
   if (!itemIds || itemIds.length === 0) return {};
   if (signal && signal.aborted) throw new DOMException('Request aborted', 'AbortError');
-  const map = await loadEnItems();
+  const map = await mapForIds('en-items', itemIds, enItemsCache, loadEnItems, signal);
   const result = {};
   itemIds.forEach(id => {
     const item = map[id] || map[String(id)];

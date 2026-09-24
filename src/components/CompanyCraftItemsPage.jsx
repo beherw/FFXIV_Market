@@ -80,6 +80,13 @@ export default function CompanyCraftItemsPage({
           itemIdsToQuery: idsToQuery,
           finalItemIds: finalIds,
           addToast,
+          // Fill rows in as each batch arrives instead of waiting for the whole list
+          onProgress: (partial) => {
+            setItemVelocities(partial.itemVelocities);
+            setItemAveragePrices(partial.itemAveragePrices);
+            setItemMinListings(partial.itemMinListings);
+            setItemRecentPurchases(partial.itemRecentPurchases);
+          },
         });
         setItemVelocities(next.itemVelocities);
         setItemAveragePrices(next.itemAveragePrices);
@@ -113,8 +120,10 @@ export default function CompanyCraftItemsPage({
           setListError('目前配方資料中沒有部隊合建物品（請確認已執行 build-recipe 並含 CSV 合併）');
           return;
         }
-        const marketableSet = await getMarketableItemsByIds(ids);
-        const tw = await getTwItemsByIds(ids);
+        const [marketableSet, tw] = await Promise.all([
+          getMarketableItemsByIds(ids),
+          getTwItemsByIds(ids),
+        ]);
         const items = ids.map((id) => {
           const row = tw[id];
           const name = row?.tw?.replace(/^["']|["']$/g, '').trim() || `Item ${id}`;

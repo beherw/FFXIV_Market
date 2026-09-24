@@ -9,6 +9,7 @@
 import { decode } from '@msgpack/msgpack';
 import { getFatesByIds, getFateSourcesByItemId } from './fatesData.js';
 import { getTwItemsByIds, getZhItemsByIds, getEnItemsByIds } from './itemsDatabaseMsgpack.js';
+import { loadDomainRecords } from './dataShards.js';
 
 const BASE = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '') + '/data';
 
@@ -117,7 +118,7 @@ export async function loadDataForRequiredIds(requiredIds, options = {}) {
 
   if (requiredIds.npcIds && requiredIds.npcIds.length > 0) {
     loaders.push(
-      loadDomain('npcs', signal).then(data => {
+      loadDomainRecords('npcs', requiredIds.npcIds, signal).then(data => {
         out.twNpcs = sliceById(data.twNpcs || {}, requiredIds.npcIds);
         out.npcs = sliceById(data.npcs || {}, requiredIds.npcIds);
         out.npcsDatabasePages = sliceById(data.npcsDatabasePages || {}, requiredIds.npcIds);
@@ -128,7 +129,7 @@ export async function loadDataForRequiredIds(requiredIds, options = {}) {
   const needShops = (requiredIds.shopIds && requiredIds.shopIds.length > 0) || (requiredIds.npcIds && requiredIds.npcIds.length > 0);
   if (needShops) {
     loaders.push(
-      loadDomain('shops', signal).then(data => {
+      loadDomainRecords('shops', [...(requiredIds.shopIds || []), ...(requiredIds.npcIds || [])], signal).then(data => {
         if (requiredIds.shopIds && requiredIds.shopIds.length > 0) {
           out.twShops = sliceById(data.twShops || {}, requiredIds.shopIds);
           out.shops = sliceById(data.shops || {}, requiredIds.shopIds);
@@ -142,7 +143,7 @@ export async function loadDataForRequiredIds(requiredIds, options = {}) {
 
   if (requiredIds.instanceIds && requiredIds.instanceIds.length > 0) {
     loaders.push(
-      loadDomain('instances', signal).then(data => {
+      loadDomainRecords('instances', requiredIds.instanceIds, signal).then(data => {
         out.twInstances = sliceById(data.twInstances || {}, requiredIds.instanceIds);
         out.instances = sliceById(data.instances || {}, requiredIds.instanceIds);
         out.zhInstances = sliceById(data.zhInstances || {}, requiredIds.instanceIds);
@@ -152,7 +153,7 @@ export async function loadDataForRequiredIds(requiredIds, options = {}) {
 
   if (requiredIds.questIds && requiredIds.questIds.length > 0) {
     loaders.push(
-      loadDomain('quests', signal).then(data => {
+      loadDomainRecords('quests', requiredIds.questIds, signal).then(data => {
         out.twQuests = sliceById(data.twQuests || {}, requiredIds.questIds);
         out.quests = sliceById(data.quests || {}, requiredIds.questIds);
         out.zhQuests = sliceById(data.zhQuests || {}, requiredIds.questIds);
@@ -171,7 +172,7 @@ export async function loadDataForRequiredIds(requiredIds, options = {}) {
 
   if (leveIds && leveIds.length > 0) {
     loaders.push(
-      loadDomain('leves', signal).then(data => {
+      loadDomainRecords('leves', leveIds, signal).then(data => {
         const pages = data.levesDatabasePages || data.leveDatabasePages || {};
         out.levesDatabasePages = sliceById(pages, leveIds);
       })
@@ -180,7 +181,7 @@ export async function loadDataForRequiredIds(requiredIds, options = {}) {
 
   if (requiredIds.achievementIds && requiredIds.achievementIds.length > 0) {
     loaders.push(
-      loadDomain('achievements', signal).then(data => {
+      loadDomainRecords('achievements', requiredIds.achievementIds, signal).then(data => {
         out.twAchievements = sliceById(data.twAchievements || {}, requiredIds.achievementIds);
         out.twAchievementDescriptions = sliceById(data.twAchievementDescriptions || {}, requiredIds.achievementIds);
         out.achievements = sliceById(data.achievements || {}, requiredIds.achievementIds);
@@ -204,13 +205,16 @@ export async function loadDataForRequiredIds(requiredIds, options = {}) {
   }
 
   if (requiredIds.itemIds && requiredIds.itemIds.length > 0) {
+    // zh/en names are only fallbacks for items missing a TW name; skip those large files otherwise
     loaders.push(
-      Promise.all([
-        getTwItemsByIds(requiredIds.itemIds, signal),
-        getZhItemsByIds(requiredIds.itemIds, signal),
-        getEnItemsByIds(requiredIds.itemIds, signal)
-      ]).then(([tw, zh, en]) => {
+      getTwItemsByIds(requiredIds.itemIds, signal).then(async tw => {
         out.twItems = tw || {};
+        const missing = requiredIds.itemIds.filter(id => !out.twItems[id]?.tw && !out.twItems[String(id)]?.tw);
+        if (missing.length === 0) return;
+        const [zh, en] = await Promise.all([
+          getZhItemsByIds(missing, signal),
+          getEnItemsByIds(missing, signal)
+        ]);
         out.zhItems = zh || {};
         out.items = en || {};
       })
@@ -249,7 +253,7 @@ export async function loadDataForRequiredIds(requiredIds, options = {}) {
       id => id && !isNaN(id) && !(String(id) in (out.twNpcs || {}))
     );
     if (uniqueQuestNpcIds.length > 0) {
-      const npcData = await loadDomain('npcs', signal);
+      const npcData = await loadDomainRecords('npcs', uniqueQuestNpcIds, signal);
       const sliced = sliceById(npcData?.twNpcs || {}, uniqueQuestNpcIds);
       const slicedEn = sliceById(npcData?.npcs || {}, uniqueQuestNpcIds);
       const slicedDb = sliceById(npcData?.npcsDatabasePages || {}, uniqueQuestNpcIds);
@@ -272,7 +276,7 @@ export async function loadPlaceDataForZoneIds(zoneIds, signal = null) {
   if (!zoneIds || zoneIds.length === 0) {
     return { twPlaces: {}, places: {} };
   }
-  const data = await loadDomain('places', signal);
+  const data = await loadDomainRecords('places', zoneIds, signal);
   return {
     twPlaces: sliceById(data.twPlaces || {}, zoneIds),
     places: sliceById(data.places || {}, zoneIds)

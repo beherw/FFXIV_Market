@@ -37,6 +37,7 @@ export default function SearchResultsTable({
   getSimplifiedChineseName,
   addToast,
   openInNewTab = false, // Controls whether ItemTable opens new tab or calls onSelect
+  onItemHover = null, // Warm the item page's data when a row is hovered/touched
   
   // Pagination
   defaultItemsPerPage = PAGINATION_CONFIG.DEFAULT_ITEMS_PER_PAGE,
@@ -442,6 +443,7 @@ export default function SearchResultsTable({
       {/* ItemTable */}
       <ItemTable
         items={items}
+        onItemHover={onItemHover}
         onSelect={onSelect}
         selectedItem={selectedItem}
         marketableItems={marketableItems}

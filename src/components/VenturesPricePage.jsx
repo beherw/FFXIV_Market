@@ -132,6 +132,13 @@ export default function VenturesPricePage({
           itemIdsToQuery: idsToQuery,
           finalItemIds: finalIds,
           addToast,
+          // Fill rows in as each batch arrives instead of waiting for the whole list
+          onProgress: (partial) => {
+            setItemVelocities(partial.itemVelocities);
+            setItemAveragePrices(partial.itemAveragePrices);
+            setItemMinListings(partial.itemMinListings);
+            setItemRecentPurchases(partial.itemRecentPurchases);
+          },
         });
         setItemVelocities(next.itemVelocities);
         setItemAveragePrices(next.itemAveragePrices);

@@ -7,13 +7,15 @@ import TaxRatesModal from './components/TaxRatesModal';
 import SearchResultsTable from './components/SearchResultsTable.jsx';
 import MarketListings from './components/MarketListings';
 import MarketHistory from './components/MarketHistory';
+import bundledServers from './constants/universalisServers.json';
+import TableSkeleton from './components/TableSkeleton';
 const PriceHistoryChart = lazy(() => import('./components/PriceHistoryChart'));
 const StackSizeChart = lazy(() => import('./components/StackSizeChart'));
 import ServerUploadTimes from './components/ServerUploadTimes';
 import Toast from './components/Toast';
 import { formatRelativeTime, formatLocalTime } from './utils/timeFormat';
 import { searchItems, searchItemsOCR, getItemById, getSimplifiedChineseName, cancelSimplifiedNameFetch } from './services/itemDatabase';
-import { getMarketData, getMarketableItems, getItemsVelocity, getTaxRates, getAggregatedMarketData, getMarketSaleHistory } from './services/universalis';
+import { getMarketData, getMarketableItems, getItemsVelocity, getTaxRates, getAggregatedMarketData, getMarketSaleHistory, prefetchItemMarket } from './services/universalis';
 // Removed containsChinese import - no longer restricting to Chinese input
 import { getAssetPath } from './utils/assetPath.js';
 import ItemImage from './components/ItemImage';
@@ -74,6 +76,13 @@ const RelatedItems = createLazyComponent(() => import('./components/RelatedItems
 const HistorySection = createLazyComponent(() => import('./components/HistorySection.jsx'), 'HistorySection');
 const RecentUpdatesSection = createLazyComponent(() => import('./components/RecentUpdatesSection.jsx'), 'RecentUpdatesSection');
 const ObtainMethods = createLazyComponent(() => import('./components/ObtainMethods.jsx'), 'ObtainMethods');
+// Warm the ObtainMethods chunk and this item's obtain-methods shard (hover/focus on the button)
+const prefetchObtainMethods = (itemId) => {
+  import('./components/ObtainMethods.jsx').catch(() => {});
+  if (itemId) {
+    import('./services/dataShards').then(m => m.prefetchDomainRecords('obtainable-methods', [itemId])).catch(() => {});
+  }
+};
 const MultiItemListModal = createLazyComponent(() => import('./components/MultiItemListModal.jsx'), 'MultiItemListModal');
 const MultiItemCombinedTree = createLazyComponent(() => import('./components/MultiItemCombinedTree.jsx'), 'MultiItemCombinedTree');
 const CraftingSimulatorDrawer = createLazyComponent(() => import('./components/CraftingSimulatorDrawer.jsx'), 'CraftingSimulatorDrawer');
@@ -284,6 +293,17 @@ function App() {
   const [isObtainMethodsExpanded, setIsObtainMethodsExpanded] = useState(false);
   const [isObtainMethodsLoading, setIsObtainMethodsLoading] = useState(false);
   const [hasObtainMethods, setHasObtainMethods] = useState(true); // Track if item has obtainable methods
+  // ObtainMethods mounts (hidden) once the item page is idle, or immediately on click / auto-expand.
+  // It only loads the data shards for this item, so it is cheap; mounting early keeps the button state
+  // accurate and makes opening the panel instant.
+  const [obtainMethodsRequestedId, setObtainMethodsRequestedId] = useState(null);
+  const isObtainMethodsMounted = !!selectedItem?.id && obtainMethodsRequestedId === selectedItem.id;
+  // Item id whose obtain-methods result has been reported by ObtainMethods (via onSourcesChange)
+  const [obtainMethodsReportedId, setObtainMethodsReportedId] = useState(null);
+  const obtainMethodsResolved = !!selectedItem?.id && obtainMethodsReportedId === selectedItem.id;
+  const obtainMethodsResolvedEmpty = obtainMethodsResolved && !hasObtainMethods;
+  // Spinner only while the user has asked for the panel and the result isn't in yet
+  const obtainMethodsWaiting = isObtainMethodsExpanded && !obtainMethodsResolved;
   // Track if we should auto-expand obtainable when item changes (e.g., when clicking from obtainable)
   const shouldAutoExpandObtainableRef = useRef(false);
   
@@ -1095,169 +1115,89 @@ function App() {
       serverLoadTimeoutRef.current = null;
     }
 
-    const loadData = async (isRetry = false) => {
-      const currentRequestId = ++serverLoadRequestIdRef.current;
-      
-      if (isRetry && serverLoadAbortControllerRef.current) {
-        serverLoadAbortControllerRef.current.abort();
+    // Server list: apply a known list immediately (last fetched copy, else the bundled snapshot) so the
+    // search bar and server selector never wait on the network, then refresh from Universalis in the
+    // background and apply it if it changed.
+    const SERVER_CACHE_KEY = 'universalis-servers-v1';
+    let hasSelection = false;
+
+    const applyServerData = (dcData, worldsData) => {
+      if (!Array.isArray(dcData) || dcData.length === 0 || !Array.isArray(worldsData) || worldsData.length === 0) {
+        return false;
       }
-      
-      serverLoadAbortControllerRef.current = new AbortController();
-      const abortSignal = serverLoadAbortControllerRef.current.signal;
-      
-      serverLoadInProgressRef.current = true;
-      serverLoadCompletedRef.current = false;
-      
-      if (serverLoadTimeoutRef.current) {
-        clearTimeout(serverLoadTimeoutRef.current);
-        serverLoadTimeoutRef.current = null;
+      const worldsMap = {};
+      worldsData.forEach(w => {
+        worldsMap[w.id] = w.name;
+      });
+      setWorlds(worldsMap);
+      setDatacenters(dcData);
+      setIsServerDataLoaded(true);
+      // Enable server selector after server data is loaded (unless velocity fetch is in progress)
+      if (!velocityFetchInProgressRef.current) {
+        setIsServerSelectorDisabled(false);
       }
-      
-      serverLoadTimeoutRef.current = setTimeout(() => {
-        if (
-          currentRequestId === serverLoadRequestIdRef.current &&
-          serverLoadInProgressRef.current && 
-          !serverLoadCompletedRef.current && 
-          !abortSignal.aborted &&
-          serverLoadRetryCountRef.current < 3
-        ) {
-          serverLoadRetryCountRef.current++;
-          serverLoadInProgressRef.current = false;
-          addToast(`伺服器加載超時，正在重試 (${serverLoadRetryCountRef.current}/3)...`, 'warning');
-          loadData(true);
-        }
-      }, 2000);
 
-      try {
-        if (abortSignal.aborted || currentRequestId !== serverLoadRequestIdRef.current) {
-          return;
-        }
-        
-        const dcResponse = await fetch('https://universalis.app/api/v2/data-centers', {
-          signal: abortSignal
-        });
-        
-        if (abortSignal.aborted || currentRequestId !== serverLoadRequestIdRef.current) {
-          return;
-        }
-        
-        const dcData = await dcResponse.json();
-        
-        if (abortSignal.aborted || currentRequestId !== serverLoadRequestIdRef.current) {
-          return;
-        }
-        
-        const worldsResponse = await fetch('https://universalis.app/api/v2/worlds', {
-          signal: abortSignal
-        });
-        
-        if (abortSignal.aborted || currentRequestId !== serverLoadRequestIdRef.current) {
-          return;
-        }
-        
-        const worldsData = await worldsResponse.json();
-        
-        if (abortSignal.aborted || currentRequestId !== serverLoadRequestIdRef.current) {
-          return;
-        }
-        
-        if (!dcData || !Array.isArray(dcData) || dcData.length === 0 || 
-            !worldsData || !Array.isArray(worldsData) || worldsData.length === 0) {
-          if (serverLoadRetryCountRef.current < 3) {
-            serverLoadRetryCountRef.current++;
-            serverLoadInProgressRef.current = false;
-            addToast(`伺服器資料為空，正在重試 (${serverLoadRetryCountRef.current}/3)...`, 'warning');
-            setTimeout(() => {
-              if (currentRequestId === serverLoadRequestIdRef.current) {
-                loadData(true);
-              }
-            }, 2000);
-            return;
-          }
-        }
-
-        const worldsMap = {};
-        worldsData.forEach(w => {
-          worldsMap[w.id] = w.name;
-        });
-        setWorlds(worldsMap);
-        setDatacenters(dcData);
-        setIsServerDataLoaded(true);
-        // Enable server selector after server data is loaded (unless velocity fetch is in progress)
-        if (!velocityFetchInProgressRef.current) {
-          setIsServerSelectorDisabled(false);
-        }
-
-        serverLoadInProgressRef.current = false;
-        serverLoadCompletedRef.current = true;
-        
-        if (serverLoadTimeoutRef.current) {
-          clearTimeout(serverLoadTimeoutRef.current);
-          serverLoadTimeoutRef.current = null;
-        }
-
+      // Pick the default server only once; a background refresh must not reset the user's choice
+      if (!hasSelection) {
         const tradChineseDCs = dcData.filter(dc => dc.region && dc.region.startsWith('繁中服'));
-        if (tradChineseDCs.length > 0 && tradChineseDCs[0].worlds.length > 0) {
-          const firstDC = tradChineseDCs[0];
-          const firstWorld = firstDC.worlds[0];
+        const firstDC = tradChineseDCs.find(dc => dc.worlds?.length > 0) || dcData.find(dc => dc.worlds?.length > 0);
+        if (firstDC) {
           setSelectedWorld({
-            region: firstDC.region,
+            region: firstDC.region || '',
             section: firstDC.name,
             apiName: firstDC.name, // Store original English name for API calls
-            world: firstWorld,
+            world: firstDC.worlds[0],
             dcObj: firstDC,
           });
           setSelectedServerOption(firstDC.name);
-        } else if (dcData.length > 0) {
-          const firstDC = dcData[0];
-          if (firstDC.worlds && firstDC.worlds.length > 0) {
-            setSelectedWorld({
-              region: firstDC.region || '',
-              section: firstDC.name,
-              apiName: firstDC.name, // Store original English name for API calls
-              world: firstDC.worlds[0],
-              dcObj: firstDC,
-            });
-            setSelectedServerOption(firstDC.name);
+          hasSelection = true;
+        }
+      }
+      setIsLoadingDB(false);
+      return true;
+    };
+
+    let cached = null;
+    try {
+      cached = JSON.parse(localStorage.getItem(SERVER_CACHE_KEY) || 'null');
+    } catch {
+      cached = null;
+    }
+    const initial = cached?.dataCenters && cached?.worlds ? cached : bundledServers;
+    applyServerData(initial.dataCenters, initial.worlds);
+    serverLoadCompletedRef.current = true;
+
+    const refreshServers = async (attempt = 0) => {
+      serverLoadAbortControllerRef.current = new AbortController();
+      const { signal } = serverLoadAbortControllerRef.current;
+      try {
+        const [dcData, worldsData] = await Promise.all([
+          fetch('https://universalis.app/api/v2/data-centers', { signal }).then(r => r.json()),
+          fetch('https://universalis.app/api/v2/worlds', { signal }).then(r => r.json()),
+        ]);
+        if (signal.aborted) return;
+        const fresh = { dataCenters: dcData, worlds: worldsData };
+        const changed = JSON.stringify(fresh.dataCenters) !== JSON.stringify(initial.dataCenters)
+          || JSON.stringify(fresh.worlds) !== JSON.stringify(initial.worlds);
+        if (changed && applyServerData(dcData, worldsData)) {
+          try {
+            localStorage.setItem(SERVER_CACHE_KEY, JSON.stringify(fresh));
+          } catch {
+            // storage full or unavailable; the bundled snapshot still works
           }
         }
-
-        setIsLoadingDB(false);
-        if (isRetry && serverLoadRetryCountRef.current > 0) {
-          addToast('伺服器資料加載成功', 'success');
-        } else {
-          addToast('伺服器資料加載完成', 'success');
-        }
       } catch (err) {
-        if (err.name === 'AbortError' || abortSignal.aborted || currentRequestId !== serverLoadRequestIdRef.current) {
-          return;
-        }
-        
-        serverLoadInProgressRef.current = false;
-        
-        if (serverLoadTimeoutRef.current) {
-          clearTimeout(serverLoadTimeoutRef.current);
-          serverLoadTimeoutRef.current = null;
-        }
-        
-        if (serverLoadRetryCountRef.current < 3) {
-          serverLoadRetryCountRef.current++;
-          addToast(`伺服器加載失敗，正在重試 (${serverLoadRetryCountRef.current}/3)...`, 'warning');
-          setTimeout(() => {
-            if (currentRequestId === serverLoadRequestIdRef.current) {
-              loadData(true);
-            }
-          }, 2000);
+        if (err.name === 'AbortError' || signal.aborted) return;
+        // We already have a working list, so retry quietly
+        if (attempt < 2) {
+          serverLoadTimeoutRef.current = setTimeout(() => refreshServers(attempt + 1), 3000 * (attempt + 1));
         } else {
-          console.error('Failed to load data centers/worlds:', err);
-          setError('無法加載服務器列表');
-          addToast('無法加載服務器列表，請刷新頁面重試', 'error');
-          setIsLoadingDB(false);
+          console.warn('Failed to refresh data centers/worlds, using cached list:', err);
         }
       }
     };
 
-    loadData();
+    refreshServers();
     
     return () => {
       if (serverLoadTimeoutRef.current) {
@@ -3456,7 +3396,9 @@ function App() {
           addToast(`請求超時，正在重試 (${retryCountRef.current}/3)...`, 'warning');
           loadMarketData(true);
         }
-      }, 1500);
+        // Universalis often takes 1-2s; aborting at 1.5s restarted slow-but-healthy requests.
+        // Only retry requests that are genuinely stuck.
+      }, 10000);
 
       try {
         const options = {
@@ -3748,6 +3690,13 @@ function App() {
   }, [selectedItem]);
 
   // Load crafting recipe when item changes
+  // Hovering/touching a result row: start the item page's requests so they're in flight before the click
+  const handleResultHover = useCallback((item) => {
+    if (!item?.id || !selectedServerOption) return;
+    prefetchItemMarket(selectedServerOption, item.id, { listings: listSize, entries: listSize, days: marketHistoryRangeDays });
+    prefetchObtainMethods(item.id);
+  }, [selectedServerOption, listSize, marketHistoryRangeDays]);
+
   // Callback to handle obtainable methods sources change (itemId optional; when provided, only update if it matches selected item to avoid stale callbacks)
   const handleObtainMethodsSourcesChange = useCallback((sortedSources, itemId) => {
     const hasMethod = Array.isArray(sortedSources) && sortedSources.length > 0;
@@ -3757,6 +3706,7 @@ function App() {
     }
     console.log(`[App] Obtainable methods callback: ${sortedSources?.length ?? 0} sources, hasObtainMethods = ${hasMethod}`);
     setHasObtainMethods(hasMethod);
+    setObtainMethodsReportedId(itemId !== undefined ? itemId : selectedItem?.id);
     
     // If no methods available and panel is expanded, collapse it to prevent stuck UI
     if (!hasMethod && isObtainMethodsExpanded) {
@@ -3795,6 +3745,9 @@ function App() {
     setHasItemSet(false);
     setIsLoadingItemSet(false);
     setHasObtainMethods(false); // Reset to false when new item loads, will be updated by callback
+    setIsObtainMethodsLoading(false);
+    setObtainMethodsRequestedId(null);
+    setObtainMethodsReportedId(null);
     setSelectedItemCosmicRanks([]);
     
     // Auto-expand obtainable if we clicked from obtainable
@@ -3803,12 +3756,26 @@ function App() {
     let autoExpandTimeoutId = null;
     if (shouldAutoExpandObtainableRef.current) {
       // Use a small delay to ensure selectedItem is fully updated in the component tree
+      const autoExpandItemId = selectedItem.id;
       autoExpandTimeoutId = setTimeout(() => {
+        setObtainMethodsRequestedId(autoExpandItemId);
         setIsObtainMethodsExpanded(true);
         setButtonOrder(prev => ({ ...prev, obtainMethods: Math.max(...Object.values(prev)) + 1 }));
         shouldAutoExpandObtainableRef.current = false; // Reset flag after using it
       }, 0);
     }
+
+    // Mount ObtainMethods in the background once the price and recipe data had a head start
+    const obtainMountItemId = selectedItem.id;
+    let obtainIdleHandle = null;
+    const obtainMountTimeoutId = setTimeout(() => {
+      const mount = () => setObtainMethodsRequestedId(prev => prev ?? obtainMountItemId);
+      if (typeof window.requestIdleCallback === 'function') {
+        obtainIdleHandle = window.requestIdleCallback(mount, { timeout: 1500 });
+      } else {
+        mount();
+      }
+    }, 1200);
 
     // ALWAYS load crafting tree + related items regardless of navigation source
     // (Previously the shouldAutoExpandObtainableRef branch returned early, skipping all of this)
@@ -3873,6 +3840,8 @@ function App() {
     return () => {
       cancelled = true;
       if (autoExpandTimeoutId !== null) clearTimeout(autoExpandTimeoutId);
+      clearTimeout(obtainMountTimeoutId);
+      if (obtainIdleHandle !== null && typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(obtainIdleHandle);
     };
   }, [selectedItem]);
 
@@ -4416,6 +4385,7 @@ function App() {
                   datacenters={datacenters}
                   worlds={worlds}
                   serverOptions={serverOptions}
+                  onItemHover={handleResultHover}
                   isServerSelectorDisabled={isLoadingHistoryVelocities}
                   marketableItems={marketableItems}
                   itemVelocities={historyVelocities}
@@ -4472,6 +4442,7 @@ function App() {
                 datacenters={datacenters}
                 worlds={worlds}
                 serverOptions={serverOptions}
+                onItemHover={handleResultHover}
                 isServerSelectorDisabled={isServerSelectorDisabled}
                 marketableItems={marketableItems}
                 velocityLoadingProgress={velocityLoadingProgress}
@@ -4765,12 +4736,17 @@ function App() {
                   
                   {/* Obtain Methods Button */}
                   <button
+                    onMouseEnter={() => prefetchObtainMethods(selectedItem.id)}
+                    onFocus={() => prefetchObtainMethods(selectedItem.id)}
+                    onTouchStart={() => prefetchObtainMethods(selectedItem.id)}
                     onClick={() => {
-                      // Prevent toggling while loading to avoid confusion
-                      if (isObtainMethodsLoading || !hasObtainMethods) {
-                        return;
+                      if (obtainMethodsResolvedEmpty) return;
+                      if (!isObtainMethodsMounted) {
+                        // Not mounted yet: mount now; the panel opens as soon as its data arrives
+                        setObtainMethodsRequestedId(selectedItem.id);
                       }
-                      const willExpand = !isObtainMethodsExpanded;
+                      // Until the result is in, a click means "open it when ready"
+                      const willExpand = !obtainMethodsResolved || !isObtainMethodsExpanded;
                       setIsObtainMethodsExpanded(willExpand);
                       // Close other tabs when opening this one
                       if (willExpand) {
@@ -4780,10 +4756,10 @@ function App() {
                       }
                       setButtonOrder(prev => ({ ...prev, obtainMethods: Math.max(...Object.values(prev)) + 1 }));
                     }}
-                    disabled={isObtainMethodsLoading || !hasObtainMethods}
+                    disabled={obtainMethodsResolvedEmpty}
                     className={`
                       relative flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 overflow-hidden
-                      ${(isObtainMethodsLoading || !hasObtainMethods)
+                      ${obtainMethodsResolvedEmpty
                         ? 'opacity-50 cursor-not-allowed'
                         : ''
                       }
@@ -4792,7 +4768,7 @@ function App() {
                         : 'bg-gradient-to-r from-blue-900/50 via-indigo-900/40 to-blue-900/50 border border-blue-400/40 text-blue-200 hover:text-blue-300 hover:border-blue-400/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]'
                       }
                     `}
-                    title={isObtainMethodsLoading ? '載入中...' : (!hasObtainMethods ? '此物品無取得方式' : (isObtainMethodsExpanded ? '收起取得方式' : '展開取得方式'))}
+                    title={obtainMethodsResolvedEmpty ? '此物品無取得方式' : (obtainMethodsWaiting ? '載入中...' : (isObtainMethodsExpanded ? '收起取得方式' : '展開取得方式'))}
                   >
                     {/* Shimmer effect for active button */}
                     {!isObtainMethodsExpanded && (
@@ -4801,19 +4777,19 @@ function App() {
                     
                     <svg 
                       xmlns="http://www.w3.org/2000/svg" 
-                      className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isObtainMethodsExpanded ? 'rotate-90' : ''} ${isObtainMethodsLoading ? 'animate-spin' : ''}`}
+                      className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isObtainMethodsExpanded ? 'rotate-90' : ''} ${obtainMethodsWaiting ? 'animate-spin' : ''}`}
                       fill="none" 
                       viewBox="0 0 24 24" 
                       stroke="currentColor"
                     >
-                      {isObtainMethodsLoading ? (
+                      {obtainMethodsWaiting ? (
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       ) : (
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                       )}
                     </svg>
                     <span className="text-xs sm:text-sm font-semibold whitespace-nowrap tracking-wide">
-                      {isObtainMethodsLoading ? '載入中...' : '取得方式'}
+                      {obtainMethodsWaiting ? '載入中...' : '取得方式'}
                     </span>
                   </button>
 
@@ -5045,24 +5021,23 @@ function App() {
                   {/* 灰機wiki Button */}
                   <button
                     onClick={async () => {
+                      // Open the tab synchronously (inside the click) so popup blockers allow it,
+                      // then point it at the wiki once the Simplified name has loaded
+                      const wikiWindow = window.open('', '_blank');
+                      if (wikiWindow) wikiWindow.opener = null;
                       try {
-                        if (getSimplifiedChineseName) {
-                          const simplifiedName = await getSimplifiedChineseName(selectedItem.id);
-                          if (simplifiedName) {
-                            const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
-                            const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(simplifiedName)}`;
-                            window.open(url, '_blank', 'noopener,noreferrer');
-                          } else {
-                            const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
-                            const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(selectedItem.name)}`;
-                            window.open(url, '_blank', 'noopener,noreferrer');
-                          }
+                        const simplifiedName = getSimplifiedChineseName
+                          ? await getSimplifiedChineseName(selectedItem.id)
+                          : null;
+                        const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
+                        const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(simplifiedName || selectedItem.name)}`;
+                        if (wikiWindow) {
+                          wikiWindow.location.href = url;
                         } else {
-                          const prefix = selectedItem.id > 1000 || selectedItem.id < 20 ? '物品:' : '';
-                          const url = `https://ff14.huijiwiki.com/wiki/${prefix}${encodeURIComponent(selectedItem.name)}`;
                           window.open(url, '_blank', 'noopener,noreferrer');
                         }
                       } catch (error) {
+                        if (wikiWindow) wikiWindow.close();
                         console.error('Failed to open Wiki link:', error);
                         addToast('無法打開灰機連結', 'error');
                       }
@@ -5259,7 +5234,7 @@ function App() {
                 // Obtain Methods - Always render (even when collapsed) to check if item has methods
                 // The component will load sources and notify via callback whether button should be enabled
                 // Hide the panel if item has no obtainable methods to prevent stuck UI
-                if (selectedItem && selectedItem.id) {
+                if (selectedItem && selectedItem.id && isObtainMethodsMounted) {
                   sections.push({
                     key: 'obtainMethods',
                     order: buttonOrder.obtainMethods,
@@ -5275,7 +5250,14 @@ function App() {
                         <div className="absolute inset-0 pointer-events-none" style={{background: 'radial-gradient(ellipse at center, rgba(99,102,241,0.03) 0%, transparent 70%)'}}></div>
                         <div className="absolute inset-0 rounded-xl border border-indigo-500/10 pointer-events-none"></div>
                         <div className="relative z-10">
-                          <ErrorBoundary fallbackMessage="取得方式載入失敗，請重新整理頁面">
+                          <ErrorBoundary
+                            fallbackMessage="取得方式載入失敗，請重新整理頁面"
+                            onError={() => {
+                              // Show the error panel instead of leaving the button spinning
+                              setHasObtainMethods(true);
+                              setObtainMethodsReportedId(selectedItem.id);
+                            }}
+                          >
                             <Suspense fallback={
                               <div className="p-8 text-center">
                                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-400/30 border-t-indigo-400 mx-auto"></div>
@@ -5481,25 +5463,17 @@ function App() {
                   </div>
                   <div className="flex-1 flex flex-col min-h-[280px] relative">
                     {isLoadingMarket && marketListings.length === 0 ? (
-                      <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-12 text-center flex-1 flex items-center justify-center">
-                        {rateLimitMessage ? (
-                          <>
+                      rateLimitMessage ? (
+                        <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-12 text-center flex-1 flex items-center justify-center">
+                          <div>
                             <div className="text-4xl mb-4">⏳</div>
                             <p className="text-sm text-yellow-400 mb-2">{rateLimitMessage}</p>
                             <p className="text-xs text-gray-500">將在3秒後自動重試...</p>
-                          </>
-                        ) : (
-                          <>
-                            <div className="relative inline-block">
-                              <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold mx-auto"></div>
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="h-6 w-6 bg-ffxiv-gold/20 rounded-full animate-pulse"></div>
-                              </div>
-                            </div>
-                            <p className="mt-4 text-sm text-gray-400 animate-pulse">正在加載市場數據...</p>
-                          </>
-                        )}
-                      </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <TableSkeleton rows={8} columns={6} />
+                      )
                     ) : (
                       <div className="flex-1 flex flex-col">
                         <MarketListings listings={marketListings} onRefresh={() => setRefreshKey(prev => prev + 1)} />
@@ -5520,25 +5494,17 @@ function App() {
                   <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold mb-2 sm:mb-3">歷史交易</h3>
                   <div className="flex-1 flex flex-col min-h-[280px] relative">
                     {isLoadingMarket && marketHistory.length === 0 ? (
-                      <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-12 text-center flex-1 flex items-center justify-center">
-                        {rateLimitMessage ? (
-                          <>
+                      rateLimitMessage ? (
+                        <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-12 text-center flex-1 flex items-center justify-center">
+                          <div>
                             <div className="text-4xl mb-4">⏳</div>
                             <p className="text-sm text-yellow-400 mb-2">{rateLimitMessage}</p>
                             <p className="text-xs text-gray-500">將在3秒後自動重試...</p>
-                          </>
-                        ) : (
-                          <>
-                            <div className="relative inline-block">
-                              <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold mx-auto"></div>
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="h-6 w-6 bg-ffxiv-gold/20 rounded-full animate-pulse"></div>
-                              </div>
-                            </div>
-                            <p className="mt-4 text-sm text-gray-400 animate-pulse">正在加載歷史數據...</p>
-                          </>
-                        )}
-                      </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <TableSkeleton rows={8} columns={6} />
+                      )
                     ) : (
                       <div className="flex-1 flex flex-col">
                         <MarketHistory history={marketHistory} />

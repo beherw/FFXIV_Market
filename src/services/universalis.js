@@ -214,6 +214,39 @@ export async function getMostRecentlyUpdatedItems(dcName, entries = 20, options 
  * @param {string} worldName - World/server name
  * @returns {Promise<Object>} - Market data for the item
  */
+// Short-lived cache of in-flight/recent responses so a request warmed on hover (prefetchItemMarket)
+// is reused when the item page asks for the same data. An AbortSignal only stops the caller waiting.
+const SHARED_REQUEST_TTL_MS = 30000;
+const sharedRequests = new Map();
+
+function sharedRequest(key, run, signal) {
+  const hit = sharedRequests.get(key);
+  let promise;
+  if (hit && Date.now() - hit.at < SHARED_REQUEST_TTL_MS) {
+    promise = hit.promise;
+  } else {
+    promise = run();
+    sharedRequests.set(key, { promise, at: Date.now() });
+    promise.catch(() => sharedRequests.delete(key));
+  }
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(Object.assign(new Error('canceled'), { name: 'AbortError' }));
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(Object.assign(new Error('canceled'), { name: 'AbortError' }));
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+  });
+}
+
+/**
+ * Warm the item page's listings + sale history (e.g. when a search result is hovered or touched).
+ */
+export function prefetchItemMarket(server, itemId, { listings = 20, entries = 20, days = 7 } = {}) {
+  if (!server || !itemId) return;
+  getMarketData(server, itemId, { listings, entries }).catch(() => {});
+  getMarketSaleHistory(server, itemId, { days }).catch(() => {});
+}
+
 export async function getMarketData(server, itemId, options = {}) {
   // Don't use request manager if request is aborted
   if (options.signal && options.signal.aborted) {
@@ -222,37 +255,26 @@ export async function getMarketData(server, itemId, options = {}) {
 
   try {
     // Use request manager to handle rate limits
-    const data = await requestManager.makeRequest(
+    const params = {
+      listings: options.listings || 20,
+      entries: options.entries || 20,
+    };
+    if (options.hq) {
+      params.hq = true;
+    }
+    const key = `md|${server}|${itemId}|${params.listings}|${params.entries}|${params.hq ? 1 : 0}`;
+    const data = await sharedRequest(key, () => requestManager.makeRequest(
       async () => {
-        const params = {
-          listings: options.listings || 20,
-          entries: options.entries || 20,
-        };
-        
-        if (options.hq) {
-          params.hq = true;
-        }
-
-        const config = {
-          params,
-        };
-
-        // Add abort signal if provided
-        if (options.signal) {
-          config.signal = options.signal;
-        }
-
-        const response = await axios.get(`${UNIVERSALIS_BASE_URL}/${server}/${itemId}`, config);
+        const response = await axios.get(`${UNIVERSALIS_BASE_URL}/${server}/${itemId}`, { params });
         return response.data;
       },
       {
         maxRetries: 2,
-        signal: options.signal, // Pass signal to requestManager so it can check during retries
         onRateLimit: (attempt, delay) => {
           // This will be handled by the caller
         }
       }
-    );
+    ), options.signal);
 
     return data;
   } catch (error) {
@@ -304,12 +326,13 @@ export async function getMarketSaleHistory(worldDcRegion, itemId, options = {}) 
       },
     };
 
-    if (options.signal) {
-      config.signal = options.signal;
-    }
-
     const encodedRegion = encodeURIComponent(worldDcRegion);
-    const response = await axios.get(`${UNIVERSALIS_BASE_URL}/history/${encodedRegion}/${itemId}`, config);
+    const key = `hist|${worldDcRegion}|${itemId}|${config.params.entriesWithin}|${entriesToReturn}`;
+    const response = await sharedRequest(
+      key,
+      () => axios.get(`${UNIVERSALIS_BASE_URL}/history/${encodedRegion}/${itemId}`, config),
+      options.signal
+    );
 
     if (options.hq) {
       return {

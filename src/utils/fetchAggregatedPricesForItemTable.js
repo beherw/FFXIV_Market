@@ -12,6 +12,7 @@ import axios from 'axios';
  * @param {number[]} params.itemIdsToQuery - tradeable IDs to request
  * @param {number[]} params.finalItemIds - all item IDs to mark tradability for
  * @param {(msg: string, type?: string) => void} [params.addToast]
+ * @param {(partial: object) => void} [params.onProgress] - called with the results so far after each batch
  * @returns {Promise<{ itemVelocities: Object, itemAveragePrices: Object, itemMinListings: Object, itemRecentPurchases: Object, itemTradability: Object }>}
  */
 export async function fetchAggregatedPricesForItemTable({
@@ -20,6 +21,7 @@ export async function fetchAggregatedPricesForItemTable({
   itemIdsToQuery,
   finalItemIds,
   addToast,
+  onProgress,
 }) {
   const empty = {
     itemVelocities: {},
@@ -37,15 +39,30 @@ export async function fetchAggregatedPricesForItemTable({
   const isDCQuery = selectedServerOption === selectedWorld.section;
   const queryTarget = isDCQuery ? selectedWorld.section : selectedServerOption;
 
-  const batchSize = 100;
+  // Universalis response time grows with batch size (~0.4s + ~18ms/item). A small first batch puts
+  // prices on the first rows quickly; the rest go in mid-size batches, a few at a time.
+  const FIRST_BATCH_SIZE = 20;
+  const batchSize = 50;
   const allVelocities = {};
   const allAveragePrices = {};
   const allMinListings = {};
   const allRecentPurchases = {};
   const allTradability = {};
 
-  for (let i = 0; i < itemIdsToQuery.length; i += batchSize) {
-    const batch = itemIdsToQuery.slice(i, i + batchSize);
+  const batches = [];
+  if (itemIdsToQuery.length > 0) batches.push(itemIdsToQuery.slice(0, FIRST_BATCH_SIZE));
+  for (let i = FIRST_BATCH_SIZE; i < itemIdsToQuery.length; i += batchSize) {
+    batches.push(itemIdsToQuery.slice(i, i + batchSize));
+  }
+  const snapshot = () => ({
+    itemVelocities: { ...allVelocities },
+    itemAveragePrices: { ...allAveragePrices },
+    itemMinListings: { ...allMinListings },
+    itemRecentPurchases: { ...allRecentPurchases },
+    itemTradability: { ...allTradability },
+  });
+
+  const processBatch = async (batch) => {
     const itemIdsString = batch.join(',');
 
     try {
@@ -213,7 +230,20 @@ export async function fetchAggregatedPricesForItemTable({
         }
       });
     }
-  }
+  };
+
+  // Run batches a few at a time instead of one after another: a 400-item list takes about one
+  // round trip instead of four
+  const CONCURRENCY = 4;
+  let nextBatch = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, batches.length) }, async () => {
+      while (nextBatch < batches.length) {
+        await processBatch(batches[nextBatch++]);
+        if (onProgress) onProgress(snapshot());
+      }
+    })
+  );
 
   finalItemIds.forEach((itemId) => {
     if (!itemIdsToQuery.includes(itemId)) {
