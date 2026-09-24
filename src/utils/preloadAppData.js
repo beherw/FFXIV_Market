@@ -48,7 +48,13 @@ export function preloadAppData() {
       await whenIdle(() => Promise.allSettled([loadItemIconsData(), getEquipment()]));
       await whenIdle(() => loadRecipeDatabase());
     }
-    // Last: only needed for simplified-Chinese input fallback / OCR
-    await whenIdle(() => loadChineseConverter());
+    // Last: only needed for simplified-Chinese input fallback / OCR (it loads on demand otherwise).
+    // Skip the 0.5MB warm-up on slow or data-saver connections so it can't compete with what the
+    // user is actually opening.
+    const connection = navigator.connection;
+    const fastConnection = !connection || (!connection.saveData && (!connection.effectiveType || connection.effectiveType === '4g'));
+    if (fastConnection) {
+      await whenIdle(() => loadChineseConverter());
+    }
   })();
 }
