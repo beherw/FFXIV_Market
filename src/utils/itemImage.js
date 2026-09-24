@@ -12,20 +12,7 @@
 // staying within limits.
 
 import { LRUCache } from './lruCache';
-// item-icons.json (~2MB) is loaded on demand so it stays out of the initial bundle
-let itemIconsData = null;
-let itemIconsPromise = null;
-export function loadItemIconsData() {
-  if (!itemIconsPromise) {
-    itemIconsPromise = import('../../teamcraft_git/libs/data/src/lib/json/item-icons.json')
-      .then(m => (itemIconsData = m.default))
-      .catch(err => {
-        itemIconsPromise = null;
-        throw err;
-      });
-  }
-  return itemIconsPromise;
-}
+import itemIconsData from '../../teamcraft_git/libs/data/src/lib/json/item-icons.json';
 
 // LRU Cache for icon paths with maximum size of 2000 items
 // This prevents unbounded memory growth while keeping common items cached
@@ -417,13 +404,7 @@ export async function getItemImageUrl(itemId, abortSignal = null, forceReload = 
   }
 
   // Check local item-icons data first (faster and more reliable than XIVAPI)
-  if (!itemIconsData) {
-    await loadItemIconsData().catch(() => {});
-    if (abortSignal && abortSignal.aborted) {
-      return null;
-    }
-  }
-  const localIconPath = itemIconsData?.[String(itemId)];
+  const localIconPath = itemIconsData[String(itemId)];
   if (localIconPath) {
     const iconUrl = `https://xivapi.com${localIconPath}`;
     iconCache.set(itemId, iconUrl);
@@ -482,16 +463,7 @@ export function getItemImageUrlSync(itemId) {
   if (!itemId || itemId <= 0) {
     return null;
   }
-  const cached = iconCache.get(itemId);
-  if (cached) return cached;
-  // Once item-icons.json is loaded, known icons resolve synchronously
-  const localIconPath = itemIconsData?.[String(itemId)];
-  if (localIconPath) {
-    const iconUrl = `https://xivapi.com${localIconPath}`;
-    iconCache.set(itemId, iconUrl);
-    return iconUrl;
-  }
-  return null;
+  return iconCache.get(itemId) || null;
 }
 
 /**
@@ -503,14 +475,6 @@ export function getCalculatedIconUrls(itemId) {
   if (!itemId || itemId <= 0) {
     return [];
   }
-  // While item-icons.json is still loading, don't guess: guessed URLs 404 for most items and
-  // would fire a burst of failed requests. Callers then wait for getItemImageUrl() instead.
-  if (!itemIconsData) {
-    loadItemIconsData().catch(() => {});
-    return [];
-  }
-  const localUrl = getItemImageUrlSync(itemId);
-  if (localUrl) return [localUrl];
   return calculateIconPath(itemId);
 }
 

@@ -7,7 +7,7 @@ import { getAggregatedMarketData } from '../services/universalis';
 import { getEnItemsByIds, getTwItemsByIds, getZhItemsByIds } from '../services/gameData';
 import { generateItemUrl } from '../utils/urlSlug';
 import { collectLeafMaterials, downloadMaterialsCsv, formatMaterialsCsv } from '../utils/craftingMaterialsExport';
-import { convertSimplifiedToTraditional, loadChineseConverter } from '../utils/chineseConverter';
+import { convertSimplifiedToTraditional } from '../utils/chineseConverter';
 
 // In-memory cache for tree names + prices (avoids API spam when user toggles section)
 // TTL 5 min so data refreshes on page load; same-session expand/collapse reuses cache
@@ -1663,7 +1663,6 @@ export default function CraftingTree({
               getEnItemsByIds(idsWithoutTwNames),
             ])
           : [{}, {}];
-        if (idsWithoutTwNames.length > 0) await loadChineseConverter().catch(() => {});
         if (cancelled) return;
         const itemNames = {};
         itemIds.forEach((id) => {

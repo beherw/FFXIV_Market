@@ -1,31 +1,15 @@
 // Traditional ↔ Simplified Chinese conversion using opencc-js
 // Provides accurate bidirectional conversion for display and search
 
-// opencc-js dictionaries (~2MB) are loaded on demand so they stay out of the initial bundle.
-// Callers that need conversion should `await loadChineseConverter()` first; until it resolves,
-// the sync helpers below return the input unchanged (and kick off the load).
-let traditionalToSimplifiedConverter = null; // t2cn: Traditional to Simplified
-let simplifiedToTraditionalConverter = null; // cn2t: Simplified to Traditional
-let converterPromise = null;
+import { Converter as T2CNConverter } from 'opencc-js/t2cn'; // Traditional to Simplified
+import { Converter as CN2TConverter } from 'opencc-js/cn2t'; // Simplified to Traditional
 
-export function loadChineseConverter() {
-  if (!converterPromise) {
-    converterPromise = Promise.all([import('opencc-js/t2cn'), import('opencc-js/cn2t')])
-      .then(([t2cn, cn2t]) => {
-        traditionalToSimplifiedConverter = t2cn.Converter({ from: 't', to: 'cn' });
-        simplifiedToTraditionalConverter = cn2t.Converter({ from: 'cn', to: 't' });
-      })
-      .catch(err => {
-        converterPromise = null;
-        throw err;
-      });
-  }
-  return converterPromise;
-}
+// Initialize converters with proper options
+// t2cn: Traditional to Simplified (from: 't', to: 'cn')
+const traditionalToSimplifiedConverter = T2CNConverter({ from: 't', to: 'cn' });
 
-function ensureConverterLoading() {
-  if (!converterPromise) loadChineseConverter().catch(() => {});
-}
+// cn2t: Simplified to Traditional (from: 'cn', to: 't')
+const simplifiedToTraditionalConverter = CN2TConverter({ from: 'cn', to: 't' });
 
 /**
  * Converts any Chinese text (Traditional or Simplified) to Simplified Chinese (for search)
@@ -35,10 +19,6 @@ function ensureConverterLoading() {
  */
 export function convertTraditionalToSimplified(text) {
   if (!text) return text;
-  if (!traditionalToSimplifiedConverter) {
-    ensureConverterLoading();
-    return text;
-  }
   try {
     // t2cn converter can handle both Traditional and Simplified input
     // If input is already Simplified, it will mostly remain unchanged
@@ -57,10 +37,6 @@ export function convertTraditionalToSimplified(text) {
  */
 export function convertSimplifiedToTraditional(text) {
   if (!text) return text;
-  if (!simplifiedToTraditionalConverter) {
-    ensureConverterLoading();
-    return text;
-  }
   try {
     return simplifiedToTraditionalConverter(text);
   } catch (error) {

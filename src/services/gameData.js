@@ -5,69 +5,57 @@
 
 import * as itemsDb from './itemsDatabaseMsgpack.js';
 import * as uiCategories from './uiCategoriesDataService.js';
+import ilvlsJson from '../../teamcraft_git/libs/data/src/lib/json/ilvls.json';
+import raritiesJson from '../../teamcraft_git/libs/data/src/lib/json/rarities.json';
+import itemPatchJson from '../../teamcraft_git/libs/data/src/lib/json/item-patch.json';
+import marketItemsJson from '../../teamcraft_git/libs/data/src/lib/json/market-items.json';
+import patchNamesJson from '../../teamcraft_git/libs/data/src/lib/json/patch-names.json';
 import equipSlotCategoriesJson from '../../teamcraft_git/libs/data/src/lib/json/equip-slot-categories.json';
 import twJobAbbrJson from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json';
-
-// Large JSON tables are loaded on demand (dynamic import => separate chunks) so they stay out of the
-// initial bundle. preloadSearchData() warms them in the background after first paint.
-const loadIlvlsJson = () => import('../../teamcraft_git/libs/data/src/lib/json/ilvls.json').then(m => m.default);
-const loadRaritiesJson = () => import('../../teamcraft_git/libs/data/src/lib/json/rarities.json').then(m => m.default);
-const loadItemPatchJson = () => import('../../teamcraft_git/libs/data/src/lib/json/item-patch.json').then(m => m.default);
-const loadMarketItemsJson = () => import('../../teamcraft_git/libs/data/src/lib/json/market-items.json').then(m => m.default);
-const loadPatchNamesJson = () => import('../../teamcraft_git/libs/data/src/lib/json/patch-names.json').then(m => m.default);
 
 // In-memory caches (JSON)
 let ilvlsCache = null;
 let raritiesCache = null;
 let itemPatchCache = null;
 let marketItemsCache = null;
-let patchNamesPromise = null;
 
-function toIdMap(json) {
-  const map = {};
-  Object.entries(json || {}).forEach(([id, value]) => {
-    if (value !== undefined && value !== null) {
-      map[parseInt(id, 10)] = value;
+async function loadIlvlsCache() {
+  if (ilvlsCache) return ilvlsCache;
+  ilvlsCache = {};
+  Object.entries(ilvlsJson).forEach(([id, ilvl]) => {
+    if (ilvl !== undefined && ilvl !== null) {
+      ilvlsCache[parseInt(id, 10)] = ilvl;
     }
   });
-  return map;
+  return ilvlsCache;
 }
 
-// Memoize the in-flight promise so concurrent callers share one load; reset on failure so it can retry
-function memoizeLoad(load) {
-  let promise = null;
-  return () => {
-    if (!promise) {
-      promise = load().catch(err => {
-        promise = null;
-        throw err;
-      });
+async function loadRaritiesCache() {
+  if (raritiesCache) return raritiesCache;
+  raritiesCache = {};
+  Object.entries(raritiesJson).forEach(([id, rarity]) => {
+    if (rarity !== undefined && rarity !== null) {
+      raritiesCache[parseInt(id, 10)] = rarity;
     }
-    return promise;
-  };
+  });
+  return raritiesCache;
 }
 
-const loadIlvlsCache = memoizeLoad(async () => (ilvlsCache = toIdMap(await loadIlvlsJson())));
-const loadRaritiesCache = memoizeLoad(async () => (raritiesCache = toIdMap(await loadRaritiesJson())));
-const loadItemPatchCache = memoizeLoad(async () => (itemPatchCache = toIdMap(await loadItemPatchJson())));
-const loadMarketItemsCache = memoizeLoad(async () => {
-  const json = await loadMarketItemsJson();
-  marketItemsCache = new Set(json.map(id => parseInt(id, 10)).filter(id => !isNaN(id)));
-  return marketItemsCache;
-});
+async function loadItemPatchCache() {
+  if (itemPatchCache) return itemPatchCache;
+  itemPatchCache = {};
+  Object.entries(itemPatchJson).forEach(([id, patchId]) => {
+    if (patchId !== undefined && patchId !== null) {
+      itemPatchCache[parseInt(id, 10)] = patchId;
+    }
+  });
+  return itemPatchCache;
+}
 
-/**
- * Warm the data used by the main search flow (search -> results table -> item page)
- * so it is ready before the user presses Enter. Safe to call multiple times.
- */
-export function preloadSearchData() {
-  return Promise.allSettled([
-    itemsDb.getTwItems(),
-    loadMarketItemsCache(),
-    loadIlvlsCache(),
-    loadItemPatchCache(),
-    getPatchNames(),
-  ]);
+async function loadMarketItemsCache() {
+  if (marketItemsCache) return marketItemsCache;
+  marketItemsCache = new Set(marketItemsJson.map(id => parseInt(id, 10)).filter(id => !isNaN(id)));
+  return marketItemsCache;
 }
 
 // ---------- Items (msgpack) ----------
@@ -388,15 +376,7 @@ export async function getItemPatchByIds(itemIds, signal = null) {
 
 // ---------- Patch names, equip slots, job abbr (JSON) ----------
 export async function getPatchNames() {
-  if (!patchNamesPromise) {
-    patchNamesPromise = loadPatchNamesJson()
-      .then(json => (json && typeof json === 'object' ? json : {}))
-      .catch(err => {
-        patchNamesPromise = null;
-        throw err;
-      });
-  }
-  return patchNamesPromise;
+  return Promise.resolve(patchNamesJson && typeof patchNamesJson === 'object' ? patchNamesJson : {});
 }
 
 export async function getEquipSlotCategories() {
