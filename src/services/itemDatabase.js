@@ -20,7 +20,7 @@
  * 3. Never load entire tables
  */
 
-import { convertSimplifiedToTraditional, convertTraditionalToSimplified, isTraditionalChinese, containsChinese, loadChineseConverter } from '../utils/chineseConverter';
+import { convertSimplifiedToTraditional, convertTraditionalToSimplified, isTraditionalChinese, containsChinese } from '../utils/chineseConverter';
 import {
   getTwItems as getTwItemsMsgpack,
   searchTwItems as searchTwItemsMsgpack,
@@ -987,7 +987,6 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
 
   // Step 3: If still no results, convert user input to traditional Chinese and try again
   if (results.length === 0) {
-    await loadChineseConverter().catch(() => {});
     // Convert to traditional Chinese (if input is simplified, convert to traditional)
     // If input is already traditional, convert to simplified first, then back to traditional
     // This handles cases where input might be in simplified Chinese
@@ -1206,7 +1205,6 @@ export async function getItemById(itemId) {
     const zhName = zhMap[itemId]?.zh || zhMap[String(itemId)]?.zh;
     const enName = enMap[itemId]?.en || enMap[String(itemId)]?.en;
     if (zhName && zhName.trim()) {
-      await loadChineseConverter().catch(() => {});
       const cleanName = convertSimplifiedToTraditional(zhName.replace(/^["']|["']$/g, '').trim());
       if (cleanName) {
         return {
@@ -1827,7 +1825,6 @@ export async function searchItemsOCR(searchText, signal = null, options = null) 
   let searchedSimplified = false;
 
   // Normalize OCR text (removes all spaces: "廣 折 廣 唱 石 陸 型" → "廣折廣唱石陸型")
-  await loadChineseConverter().catch(() => {});
   const normalizedQuery = normalizeOCRText(trimmedSearchText);
   const ocrWords = options && Array.isArray(options.ocrWords) ? options.ocrWords : null;
   const ocrConfidence = options && (options.ocrConfidence !== undefined && options.ocrConfidence !== null) ? options.ocrConfidence : null;
