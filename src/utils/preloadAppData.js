@@ -6,6 +6,17 @@ import { preloadSearchData, getEquipment, getTwItems } from '../services/gameDat
 import { loadItemIconsData } from './itemImage';
 import { loadChineseConverter } from './chineseConverter';
 import { loadRecipeDatabase } from '../services/recipeDatabase';
+import { getTwItemUICategories } from '../services/uiCategoriesDataService';
+
+// Item-page code and data that don't depend on which item is opened: the 取得方式 panel, charts,
+// category badge. Warmed on the home page so opening an item only fetches per-item data.
+const preloadItemPageCommon = () => Promise.allSettled([
+  import('../components/ObtainMethods.jsx'),
+  import('../components/PriceHistoryChart'),
+  import('../components/StackSizeChart'),
+  import('../services/obtainableDataService').then(m => m.preloadObtainableCommonData()),
+  getTwItemUICategories(),
+]);
 
 let started = false;
 
@@ -37,6 +48,7 @@ export function preloadAppData() {
       // the recipe table drives the 製作價格樹 / 可製品 buttons, so it goes first. Full tables follow.
       await now(() => loadRecipeDatabase());
       await whenIdle(() => Promise.allSettled([getTwItems(), loadItemIconsData()]));
+      await whenIdle(() => preloadItemPageCommon());
       await whenIdle(() => preloadSearchData());
       await whenIdle(() => getEquipment());
     } else {
@@ -44,8 +56,10 @@ export function preloadAppData() {
       // Wave 1: search index + data the search pipeline reads (tw-items, marketable ids, ilvl, patch).
       // Kept alone so it gets the full bandwidth on slow connections.
       await whenIdle(() => preloadSearchData(), 1000);
-      // Wave 2: search results table (icons, equipment level), then the item page's recipe data
+      // Wave 2: search results table (icons, equipment level)
       await whenIdle(() => Promise.allSettled([loadItemIconsData(), getEquipment()]));
+      // Wave 3: what the item page needs regardless of item (取得方式 code + tables, charts), then recipes
+      await whenIdle(() => preloadItemPageCommon());
       await whenIdle(() => loadRecipeDatabase());
     }
     // Last: only needed for simplified-Chinese input fallback / OCR (it loads on demand otherwise).

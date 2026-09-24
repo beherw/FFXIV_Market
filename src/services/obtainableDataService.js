@@ -7,7 +7,7 @@
  */
 
 import { decode } from '@msgpack/msgpack';
-import { getFatesByIds, getFateSourcesByItemId } from './fatesData.js';
+import { getFatesByIds, getFateSourcesByItemId, loadFatesDatabase } from './fatesData.js';
 import { getTwItemsByIds, getZhItemsByIds, getEnItemsByIds } from './itemsDatabaseMsgpack.js';
 import { loadDomainRecords } from './dataShards.js';
 
@@ -59,6 +59,14 @@ async function loadDomain(name, signal) {
   })();
   domainLoadPromises[name] = p;
   return p;
+}
+
+/**
+ * Warm the small tables every item's 取得方式 panel reads, independent of the item
+ * (per-item records come from shards when the panel opens).
+ */
+export function preloadObtainableCommonData() {
+  return Promise.allSettled([loadDomain('loot-sources'), loadFatesDatabase()]);
 }
 
 /**

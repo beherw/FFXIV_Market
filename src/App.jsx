@@ -171,6 +171,9 @@ function App() {
       ? saved
       : DEFAULT_MARKET_HISTORY_RANGE_DAYS;
   });
+  // Read by the market-data effect without making it refetch listings when the chart range changes
+  const marketHistoryRangeDaysRef = useRef(marketHistoryRangeDays);
+  marketHistoryRangeDaysRef.current = marketHistoryRangeDays;
   const [stackSizeHistogram, setStackSizeHistogram] = useState(null);
   /** Current item's daily sale velocity for 在售列表: { velocityWorld, velocityDc } or null */
   const [itemVelocity, setItemVelocity] = useState(null);
@@ -181,6 +184,8 @@ function App() {
   const [isLoadingMarket, setIsLoadingMarket] = useState(false);
   const [error, setError] = useState(null);
   const [listSize, setListSize] = useState(20);
+  // 歷史交易 table loads separately from 在售列表 (Universalis history is much slower than listings)
+  const [isLoadingHistoryTable, setIsLoadingHistoryTable] = useState(false);
   const [hqOnly, setHqOnly] = useState(false);
   const [datacenters, setDatacenters] = useState([]);
   const [worlds, setWorlds] = useState({});
@@ -3403,20 +3408,68 @@ function App() {
       try {
         const options = {
           listings: listSize,
-          entries: listSize,
+          // Recent sales come from the history endpoint below; embedding them here makes this
+          // request ~5x slower and it is the one the user is waiting on.
+          entries: 0,
           signal: abortControllerRef.current.signal,
         };
 
-        if (selectedItem.canBeHQ && hqOnly) {
+        const wantHq = !!(selectedItem.canBeHQ && hqOnly);
+        if (wantHq) {
           options.hq = true;
         }
 
         const signal = abortControllerRef.current.signal;
+        const isStale = () =>
+          signal.aborted ||
+          currentRequestId !== requestIdRef.current ||
+          selectedItem?.id !== requestItemId ||
+          selectedServerOption !== requestServerOption;
+        const isDataCenterSearch = selectedWorld && requestServerOption === selectedWorld.section;
 
-        const [data, aggregatedResult] = await Promise.all([
-          getMarketData(requestServerOption, requestItemId, options),
-          getAggregatedMarketData(requestServerOption, [requestItemId], worlds, { signal }).catch(() => ({})),
-        ]);
+        // Velocity / average price chips: independent of the listings, fill in when they arrive
+        getAggregatedMarketData(requestServerOption, [requestItemId], worlds, { signal })
+          .then(aggregatedResult => {
+            if (isStale()) return;
+            const velocityInfo = aggregatedResult[requestItemId] || null;
+            setItemVelocity(velocityInfo ? { velocityWorld: velocityInfo.velocityWorld, velocityDc: velocityInfo.velocityDc, averagePriceWorld: velocityInfo.averagePriceWorld, averagePriceDc: velocityInfo.averagePriceDc } : null);
+          })
+          .catch(() => {});
+
+        // 歷史交易 table: reuse the chart's history request (same key, so one network call); only if
+        // that window has fewer sales than the table shows, ask for the latest sales regardless of age.
+        setIsLoadingHistoryTable(true);
+        (async () => {
+          try {
+            let historyData = await getMarketSaleHistory(requestServerOption, requestItemId, {
+              days: marketHistoryRangeDaysRef.current,
+              hq: wantHq,
+              signal,
+            });
+            if ((historyData?.entries || []).length < listSize) {
+              const recent = await getMarketSaleHistory(requestServerOption, requestItemId, {
+                recentOnly: true,
+                entriesToReturn: listSize,
+                hq: wantHq,
+                signal,
+              });
+              if ((recent?.entries || []).length > (historyData?.entries || []).length) historyData = recent;
+            }
+            if (isStale()) return;
+            const allHistory = normalizeMarketHistoryEntries(
+              historyData?.entries || [],
+              requestItemName,
+              isDataCenterSearch ? (historyData?.dcName || requestServerOption) : (historyData?.worldName || requestServerOption)
+            );
+            setMarketHistory(allHistory.slice(0, listSize));
+          } catch (err) {
+            // Listings still show; the table falls back to its empty state
+          } finally {
+            if (!isStale()) setIsLoadingHistoryTable(false);
+          }
+        })();
+
+        const data = await getMarketData(requestServerOption, requestItemId, options);
 
         if (
           abortControllerRef.current?.signal.aborted || 
@@ -3437,12 +3490,8 @@ function App() {
         }
 
         setMarketInfo(data);
-        const velocityInfo = aggregatedResult[requestItemId] || null;
-        setItemVelocity(velocityInfo ? { velocityWorld: velocityInfo.velocityWorld, velocityDc: velocityInfo.velocityDc, averagePriceWorld: velocityInfo.averagePriceWorld, averagePriceDc: velocityInfo.averagePriceDc } : null);
 
         if (data) {
-          const isDataCenterSearch = selectedWorld && requestServerOption === selectedWorld.section;
-          
           const allListings = (data.listings || [])
             .map(listing => ({
               itemName: requestItemName,
@@ -3457,13 +3506,6 @@ function App() {
           
           const listings = allListings.slice(0, listSize);
 
-          const allHistory = normalizeMarketHistoryEntries(
-            data.recentHistory || [],
-            requestItemName,
-            isDataCenterSearch ? (data.dcName || requestServerOption) : (data.worldName || requestServerOption)
-          );
-          const history = allHistory.slice(0, listSize);
-
           if (
             currentRequestId === requestIdRef.current &&
             !abortControllerRef.current?.signal.aborted &&
@@ -3471,7 +3513,6 @@ function App() {
             selectedServerOption === requestServerOption
           ) {
             setMarketListings(listings);
-            setMarketHistory(history);
             if (isRetry && retryCountRef.current > 0) {
               addToast('數據加載成功', 'success');
             }
@@ -3693,7 +3734,8 @@ function App() {
   // Hovering/touching a result row: start the item page's requests so they're in flight before the click
   const handleResultHover = useCallback((item) => {
     if (!item?.id || !selectedServerOption) return;
-    prefetchItemMarket(selectedServerOption, item.id, { listings: listSize, entries: listSize, days: marketHistoryRangeDays });
+    // Same parameters as the item page's requests so they are reused (listings without embedded history)
+    prefetchItemMarket(selectedServerOption, item.id, { listings: listSize, entries: 0, days: marketHistoryRangeDays });
     prefetchObtainMethods(item.id);
   }, [selectedServerOption, listSize, marketHistoryRangeDays]);
 
@@ -3765,7 +3807,9 @@ function App() {
       }, 0);
     }
 
-    // Mount ObtainMethods in the background once the price and recipe data had a head start
+    // Mount ObtainMethods in the background shortly after the page's Universalis requests are out.
+    // Its code and shared tables are normally prefetched on the home page, so this only fetches
+    // this item's small shards and doesn't hold up the listings.
     const obtainMountItemId = selectedItem.id;
     let obtainIdleHandle = null;
     const obtainMountTimeoutId = setTimeout(() => {
@@ -3775,7 +3819,7 @@ function App() {
       } else {
         mount();
       }
-    }, 1200);
+    }, 400);
 
     // ALWAYS load crafting tree + related items regardless of navigation source
     // (Previously the shouldAutoExpandObtainableRef branch returned early, skipping all of this)
@@ -5493,7 +5537,7 @@ function App() {
                 <div className="flex flex-col">
                   <h3 className="text-base sm:text-lg font-semibold text-ffxiv-gold mb-2 sm:mb-3">歷史交易</h3>
                   <div className="flex-1 flex flex-col min-h-[280px] relative">
-                    {isLoadingMarket && marketHistory.length === 0 ? (
+                    {(isLoadingMarket || isLoadingHistoryTable) && marketHistory.length === 0 ? (
                       rateLimitMessage ? (
                         <div className="bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20 p-12 text-center flex-1 flex items-center justify-center">
                           <div>

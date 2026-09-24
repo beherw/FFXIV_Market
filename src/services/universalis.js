@@ -99,15 +99,8 @@ export async function getItemsVelocity(dcName, itemIds, options = {}) {
   const itemIdsString = limitedIds.join(',');
 
   try {
-    const config = {};
-    if (options.signal) {
-      config.signal = options.signal;
-    }
-
-    const response = await axios.get(
-      `${UNIVERSALIS_BASE_URL}/aggregated/${encodeURIComponent(dcName)}/${itemIdsString}`,
-      config
-    );
+    const url = `${UNIVERSALIS_BASE_URL}/aggregated/${encodeURIComponent(dcName)}/${itemIdsString}`;
+    const response = await sharedRequest(`agg|${url}`, () => hedged(() => axios.get(url), 2000), options.signal);
 
     const results = {};
     const data = response.data;
@@ -219,6 +212,40 @@ export async function getMostRecentlyUpdatedItems(dcName, entries = 20, options 
 const SHARED_REQUEST_TTL_MS = 30000;
 const sharedRequests = new Map();
 
+// Universalis usually answers in well under a second but occasionally stalls for 5-10s+. Rather than
+// aborting (which restarts healthy-but-slow requests), send one backup copy if the first hasn't
+// answered after `delayMs` and use whichever returns first.
+function hedged(run, delayMs) {
+  return new Promise((resolve, reject) => {
+    let done = false;
+    let attempts = 0;
+    let failures = 0;
+    let timer = null;
+    const finish = (fn, value) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      fn(value);
+    };
+    const attempt = () => {
+      attempts++;
+      run().then(
+        value => finish(resolve, value),
+        err => {
+          failures++;
+          // 404 means "no data", not a stall; otherwise let the backup copy (if any) finish
+          if (err?.response?.status === 404 || failures >= 2) finish(reject, err);
+          else if (attempts < 2) attempt();
+        }
+      );
+    };
+    timer = setTimeout(() => {
+      if (!done && attempts < 2) attempt();
+    }, delayMs);
+    attempt();
+  });
+}
+
 function sharedRequest(key, run, signal) {
   const hit = sharedRequests.get(key);
   let promise;
@@ -245,7 +272,7 @@ const MAX_PREFETCHES_IN_FLIGHT = 2;
 let prefetchesInFlight = 0;
 const recentlyPrefetched = new Map(); // key -> timestamp
 
-export function prefetchItemMarket(server, itemId, { listings = 20, entries = 20, days = 7 } = {}) {
+export function prefetchItemMarket(server, itemId, { listings = 20, entries = 0, days = 7 } = {}) {
   if (!server || !itemId) return;
   // Stay well inside Universalis rate limits: skip repeats and cap concurrent warm-ups
   const key = `${server}|${itemId}`;
@@ -257,6 +284,7 @@ export function prefetchItemMarket(server, itemId, { listings = 20, entries = 20
   Promise.allSettled([
     getMarketData(server, itemId, { listings, entries }),
     getMarketSaleHistory(server, itemId, { days }),
+    getAggregatedMarketData(server, [itemId]),
   ]).finally(() => {
     prefetchesInFlight--;
   });
@@ -272,13 +300,15 @@ export async function getMarketData(server, itemId, options = {}) {
     // Use request manager to handle rate limits
     const params = {
       listings: options.listings || 20,
-      entries: options.entries || 20,
+      // entries = recent sales embedded in the listings response. It is by far the slowest part of
+      // this endpoint (~1.5s vs ~0.3s without), so callers that show history fetch it separately.
+      entries: options.entries ?? 20,
     };
     if (options.hq) {
       params.hq = true;
     }
     const key = `md|${server}|${itemId}|${params.listings}|${params.entries}|${params.hq ? 1 : 0}`;
-    const data = await sharedRequest(key, () => requestManager.makeRequest(
+    const data = await sharedRequest(key, () => hedged(() => requestManager.makeRequest(
       async () => {
         const response = await axios.get(`${UNIVERSALIS_BASE_URL}/${server}/${itemId}`, { params });
         return response.data;
@@ -289,7 +319,7 @@ export async function getMarketData(server, itemId, options = {}) {
           // This will be handled by the caller
         }
       }
-    ), options.signal);
+    ), 1500), options.signal);
 
     return data;
   } catch (error) {
@@ -328,6 +358,7 @@ export async function getMarketSaleHistory(worldDcRegion, itemId, options = {}) 
   }
 
   const days = Number(options.days) > 0 ? Number(options.days) : 7;
+  const recentOnly = options.recentOnly === true; // latest N sales within the past year
   const entriesToReturn = Math.min(
     Math.max(Number(options.entriesToReturn) || MAX_HISTORY_ENTRIES_TO_RETURN, 1),
     MAX_HISTORY_ENTRIES_TO_RETURN
@@ -335,17 +366,18 @@ export async function getMarketSaleHistory(worldDcRegion, itemId, options = {}) 
 
   try {
     const config = {
-      params: {
-        entriesWithin: Math.round(days * 24 * 60 * 60),
-        entriesToReturn,
-      },
+      // The history endpoint defaults to a 7-day window, so "recent" still needs one: a year covers
+      // slow-selling items without the extra latency of an unbounded window
+      params: recentOnly
+        ? { entriesWithin: 365 * 24 * 60 * 60, entriesToReturn }
+        : { entriesWithin: Math.round(days * 24 * 60 * 60), entriesToReturn },
     };
 
     const encodedRegion = encodeURIComponent(worldDcRegion);
-    const key = `hist|${worldDcRegion}|${itemId}|${config.params.entriesWithin}|${entriesToReturn}`;
+    const key = `hist|${worldDcRegion}|${itemId}|${config.params.entriesWithin ?? 'recent'}|${entriesToReturn}`;
     const response = await sharedRequest(
       key,
-      () => axios.get(`${UNIVERSALIS_BASE_URL}/history/${encodedRegion}/${itemId}`, config),
+      () => hedged(() => axios.get(`${UNIVERSALIS_BASE_URL}/history/${encodedRegion}/${itemId}`, config), 3000),
       options.signal
     );
 
@@ -473,15 +505,8 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
     (typeof worldDcRegion === 'string' && !isNaN(Number(worldDcRegion)));
 
   try {
-    const config = {};
-    if (options.signal) {
-      config.signal = options.signal;
-    }
-
-    const response = await axios.get(
-      `${UNIVERSALIS_BASE_URL}/aggregated/${encodeURIComponent(worldDcRegion)}/${itemIdsString}`,
-      config
-    );
+    const url = `${UNIVERSALIS_BASE_URL}/aggregated/${encodeURIComponent(worldDcRegion)}/${itemIdsString}`;
+    const response = await sharedRequest(`agg|${url}`, () => hedged(() => axios.get(url), 2000), options.signal);
 
     const results = {};
     const data = response.data;
