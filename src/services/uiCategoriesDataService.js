@@ -14,7 +14,7 @@ async function load() {
   if (loadPromise) return loadPromise;
   loadPromise = (async () => {
     const base = import.meta.env.BASE_URL || '/';
-    const res = await fetch(`${base}${MSGPACK_URL.replace(/^\//, '')}`);
+    const res = await fetch(`${base}${MSGPACK_URL.replace(/^\//, '')}`, { priority: 'low' }); // bulk table
     if (!res.ok) throw new Error(`Failed to fetch ui_categories: ${res.status}`);
     const buf = await res.arrayBuffer();
     cached = decode(new Uint8Array(buf));
@@ -31,6 +31,22 @@ async function load() {
  */
 export async function getUICategoriesByIds(itemIds, signal = null) {
   if (!itemIds || itemIds.length === 0) return {};
+  // A handful of ids (e.g. the item page badge): read their shards instead of the full 2MB table
+  if (!cached && itemIds.length <= 20) {
+    try {
+      const { loadDomainRecords } = await import('./dataShards.js');
+      const map = await loadDomainRecords('item-ui-category', itemIds, signal);
+      const result = {};
+      itemIds.forEach(id => {
+        const value = map[String(id)] ?? map[id];
+        if (value !== undefined) result[String(id)] = value;
+      });
+      return result;
+    } catch (err) {
+      if (err?.name === 'AbortError') throw err;
+      // fall through to the full table
+    }
+  }
   const data = await load();
   if (signal && signal.aborted) throw new DOMException('Request aborted', 'AbortError');
   const itemIdToCategory = data.itemIdToCategory || {};
@@ -65,9 +81,21 @@ export async function getItemIdsByCategories(categoryIds, signal = null) {
  * Get TW names for all UI categories (categoryId -> { tw: name }).
  * @returns {Promise<Object>}
  */
+let namesPromise = null;
 export async function getTwItemUICategories() {
-  const data = await load();
-  return data.twItemUICategories || {};
+  if (cached) return cached.twItemUICategories || {};
+  // Small names file (built with the shards); fall back to the full table if it's missing
+  if (!namesPromise) {
+    const base = import.meta.env.BASE_URL || '/';
+    namesPromise = fetch(`${base}data/shards/ui-category-names.json`)
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+      .catch(async () => {
+        namesPromise = null;
+        const data = await load();
+        return data.twItemUICategories || {};
+      });
+  }
+  return namesPromise;
 }
 
 /**

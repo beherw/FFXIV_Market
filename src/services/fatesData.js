@@ -10,6 +10,7 @@
  */
 
 import { decode } from '@msgpack/msgpack';
+import { loadDomainRecords } from './dataShards.js';
 
 let dataCache = null;
 let isLoading = false;
@@ -60,7 +61,8 @@ export async function loadFatesDatabase(signal = null) {
  */
 export async function getFatesByIds(fateIds, signal = null) {
   if (!fateIds || fateIds.length === 0) return {};
-  const { fatesById } = await loadFatesDatabase(signal);
+  // Per-item lookups read the fates' shards unless the full table is already loaded
+  const { fatesById = {} } = dataCache || await loadDomainRecords('fates', fateIds, signal);
   const result = {};
   fateIds.forEach(id => {
     const num = typeof id === 'number' ? id : parseInt(id, 10);
@@ -80,7 +82,7 @@ export async function getFatesByIds(fateIds, signal = null) {
 export async function getFateSourcesByItemId(itemId, signal = null) {
   const id = typeof itemId === 'number' ? itemId : parseInt(itemId, 10);
   if (isNaN(id)) return [];
-  const { fateSourcesByItemId } = await loadFatesDatabase(signal);
+  const { fateSourcesByItemId = {} } = dataCache || await loadDomainRecords('fates', [id], signal);
   const arr = fateSourcesByItemId[String(id)] ?? fateSourcesByItemId[id];
   return Array.isArray(arr) ? arr : [];
 }

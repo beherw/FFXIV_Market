@@ -246,10 +246,11 @@ function hedged(run, delayMs) {
   });
 }
 
-function sharedRequest(key, run, signal) {
+function sharedRequest(key, run, signal, { fresh = false } = {}) {
   const hit = sharedRequests.get(key);
   let promise;
-  if (hit && Date.now() - hit.at < SHARED_REQUEST_TTL_MS) {
+  // fresh: a retry after a stall must not wait on the same stuck promise again
+  if (!fresh && hit && Date.now() - hit.at < SHARED_REQUEST_TTL_MS) {
     promise = hit.promise;
   } else {
     promise = run();
@@ -319,7 +320,7 @@ export async function getMarketData(server, itemId, options = {}) {
           // This will be handled by the caller
         }
       }
-    ), 1500), options.signal);
+    ), 1500), options.signal, { fresh: options.fresh === true });
 
     return data;
   } catch (error) {
@@ -377,7 +378,8 @@ export async function getMarketSaleHistory(worldDcRegion, itemId, options = {}) 
     const key = `hist|${worldDcRegion}|${itemId}|${config.params.entriesWithin ?? 'recent'}|${entriesToReturn}`;
     const response = await sharedRequest(
       key,
-      () => hedged(() => axios.get(`${UNIVERSALIS_BASE_URL}/history/${encodedRegion}/${itemId}`, config), 3000),
+      // history: median ~1.1s, p90 ~2.3s; a backup copy at 2s trims the slow tail
+      () => hedged(() => axios.get(`${UNIVERSALIS_BASE_URL}/history/${encodedRegion}/${itemId}`, config), 2000),
       options.signal
     );
 

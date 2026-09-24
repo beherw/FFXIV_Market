@@ -41,6 +41,16 @@ function loadDomainSource(name) {
   if (name === 'item-icons') {
     return readJson('item-icons.json');
   }
+  if (name === 'tw-mobs') {
+    return readJson('tw/tw-mobs.json');
+  }
+  if (name === 'item-ui-category') {
+    return decode(fs.readFileSync(path.join(DATA_DIR, 'ui_categories.msgpack'))).itemIdToCategory || {};
+  }
+  if (name === 'market-items') {
+    // id list -> { id: 1 }; an id missing from its shard is not sellable on the market board
+    return Object.fromEntries(readJson('market-items.json').map(id => [id, 1]));
+  }
   const file = path.join(DATA_DIR, `${name}.msgpack`);
   return decode(fs.readFileSync(file));
 }
@@ -94,9 +104,17 @@ function buildCompanyCraftIds() {
   console.log(`  company-craft-ids: ${sorted.length} items`);
 }
 
+// UI category names (~112 entries) so the item page badge doesn't need the full ui_categories table
+function buildUiCategoryNames() {
+  const { twItemUICategories } = decode(fs.readFileSync(path.join(DATA_DIR, 'ui_categories.msgpack')));
+  fs.writeFileSync(path.join(OUT_DIR, 'ui-category-names.json'), JSON.stringify(twItemUICategories || {}));
+  console.log(`  ui-category-names: ${Object.keys(twItemUICategories || {}).length} categories`);
+}
+
 console.log('Building data shards...');
 for (const [name, config] of Object.entries(SHARDED_DOMAINS)) {
   shardDomain(name, config);
 }
 buildCompanyCraftIds();
+buildUiCategoryNames();
 console.log('Data shards written to public/data/shards');

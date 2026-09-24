@@ -29,7 +29,6 @@ import { getTwItemsByIds } from '../services/itemsDatabaseMsgpack';
 import twNpcTitlesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-npc-titles.json';
 import twJobAbbrData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json';
 import twJobCategoriesData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-categories.json';
-import twMobsData from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-mobs.json';
 // tw-places / places: loaded from data/places.msgpack via loadPlaceDataForZoneIds
 // tw-quests / tw-leves / retainer-tasks - lazy loaded via loadJsonOnce
 import dropSourcesData from '../../teamcraft_git/libs/data/src/lib/json/drop-sources.json';
@@ -138,6 +137,8 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   // Use ref to store latest loadedData so renderSource can access it immediately
   // This avoids the issue where renderSource uses stale loadedData state due to async state updates
   const loadedDataRef = useRef(getEmptyLoadedData());
+  // Monster names for this item's drop/requirement sources (tw-mobs shards, loaded with the sources)
+  const mobNamesRef = useRef({});
   
   // Sync refs with itemId prop on every render to catch prop changes before useEffect runs
   // This ensures we show loading state immediately when itemId changes, even before useEffect executes
@@ -605,6 +606,26 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
             msg => console.warn('[ObtainMethods]', msg)
           );
           applyDropsToProcessedSources(processedSources, dropObjects);
+
+          // Monster names: only the monsters these sources mention (~10KB shard instead of 650KB table)
+          const mobIds = new Set();
+          processedSources.forEach(source => {
+            if ((source.type === DataType.DROPS || source.type === DataType.REQUIREMENTS) && Array.isArray(source.data)) {
+              source.data.forEach(drop => {
+                const mobId = typeof drop === 'object' && drop !== null ? drop.id : drop;
+                if (mobId != null && mobId !== '') mobIds.add(mobId);
+              });
+            }
+          });
+          if (mobIds.size > 0) {
+            try {
+              const mobNames = await loadDomainRecords('tw-mobs', [...mobIds], abortController.signal);
+              Object.assign(mobNamesRef.current, mobNames);
+            } catch (err) {
+              if (err?.name === 'AbortError' || abortController.signal.aborted) return;
+              console.warn('[ObtainMethods] Failed to load monster names:', err);
+            }
+          }
 
           const { fateZoneIds, existingFateIdsFromSources } = convertIslandPastureToFates(processedSources);
           filterInvalidFates(processedSources);
@@ -1185,7 +1206,7 @@ export default function ObtainMethods({ itemId, onItemClick, onExpandCraftingTre
   const getMobName = (mobId) => {
     if (!mobId) return null;
     const mobIdStr = String(mobId);
-    const mob = twMobsData[mobIdStr] || twMobsData[mobId];
+    const mob = mobNamesRef.current[mobIdStr] || mobNamesRef.current[mobId];
     if (mob?.tw) {
       return mob.tw;
     }

@@ -9,6 +9,7 @@ import MarketListings from './components/MarketListings';
 import MarketHistory from './components/MarketHistory';
 import bundledServers from './constants/universalisServers.json';
 import TableSkeleton from './components/TableSkeleton';
+import { holdPrefetch } from './utils/prefetchGate';
 const PriceHistoryChart = lazy(() => import('./components/PriceHistoryChart'));
 const StackSizeChart = lazy(() => import('./components/StackSizeChart'));
 import ServerUploadTimes from './components/ServerUploadTimes';
@@ -26,8 +27,8 @@ import { generateBracketPatterns } from './utils/searchNormalization';
 import { addSearchToHistory } from './utils/searchHistory';
 import { useHistory } from './hooks/useHistory';
 import { useMultiItemCombinedTree } from './hooks/useMultiItemCombinedTree';
-import { hasRecipe, buildCraftingTree, findRecipesByResult, findRelatedItems, isCompanyCraftResultItem } from './services/recipeDatabase';
-import { getIlvls, getItemPatch, getPatchNames, getItemSetFromDB, getTwItemsByIds } from './services/gameData';
+import { hasRecipe, buildCraftingTree, findRecipesByResult, findRelatedItems, isCompanyCraftResultItem, isRecipeDatabaseLoaded } from './services/recipeDatabase';
+import { getIlvls, getItemPatch, getPatchNames, getItemSetFromDB, getTwItemsByIds, getKnownMarketability, isItemMarketable } from './services/gameData';
 import { getUICategoriesByIds, getTwItemUICategories } from './services/uiCategoriesDataService';
 import TopBar from './components/TopBar';
 import NotFound from './components/NotFound';
@@ -80,7 +81,10 @@ const ObtainMethods = createLazyComponent(() => import('./components/ObtainMetho
 const prefetchObtainMethods = (itemId) => {
   import('./components/ObtainMethods.jsx').catch(() => {});
   if (itemId) {
-    import('./services/dataShards').then(m => m.prefetchDomainRecords('obtainable-methods', [itemId])).catch(() => {});
+    import('./services/dataShards').then(m => {
+      m.prefetchDomainRecords('obtainable-methods', [itemId]);
+      m.prefetchDomainRecords('fates', [itemId]);
+    }).catch(() => {});
   }
 };
 const MultiItemListModal = createLazyComponent(() => import('./components/MultiItemListModal.jsx'), 'MultiItemListModal');
@@ -305,6 +309,8 @@ function App() {
   const isObtainMethodsMounted = !!selectedItem?.id && obtainMethodsRequestedId === selectedItem.id;
   // Item id whose obtain-methods result has been reported by ObtainMethods (via onSourcesChange)
   const [obtainMethodsReportedId, setObtainMethodsReportedId] = useState(null);
+  // Callers waiting for this item's 取得方式 result (see waitForObtainMethods)
+  const obtainReadyWaitersRef = useRef([]);
   const obtainMethodsResolved = !!selectedItem?.id && obtainMethodsReportedId === selectedItem.id;
   const obtainMethodsResolvedEmpty = obtainMethodsResolved && !hasObtainMethods;
   // Spinner only while the user has asked for the panel and the result isn't in yet
@@ -538,6 +544,11 @@ function App() {
   const [selectedItemIsCompanyCraft, setSelectedItemIsCompanyCraft] = useState(false);
   /** Cosmic Exploration ranks attached to the selected item's recipes. */
   const [selectedItemCosmicRanks, setSelectedItemCosmicRanks] = useState([]);
+  /** Whether the selected item can be sold on the market board; 非賣品 skip all Universalis requests */
+  const [marketabilityState, setMarketabilityState] = useState({ id: null, value: null });
+  const selectedItemMarketable = !selectedItem
+    ? null
+    : (marketabilityState.id === selectedItem.id ? marketabilityState.value : getKnownMarketability(selectedItem.id));
 
   // Load ilvl and patch data lazily (only when needed, not on mount)
   // This prevents unnecessary data loading on initial page load
@@ -743,6 +754,21 @@ function App() {
       setIsCraftingSimulatorOpen(false);
     }
   }, [selectedItemIsCompanyCraft]);
+
+  useEffect(() => {
+    const itemId = selectedItem?.id;
+    if (!itemId || getKnownMarketability(itemId) !== null) return;
+    let cancelled = false;
+    isItemMarketable(itemId)
+      .then((marketable) => {
+        if (!cancelled) setMarketabilityState({ id: itemId, value: marketable });
+      })
+      .catch(() => {
+        // Unknown: query the market as before rather than hide it
+        if (!cancelled) setMarketabilityState({ id: itemId, value: true });
+      });
+    return () => { cancelled = true; };
+  }, [selectedItem?.id]);
 
   // Version color palette - colors are assigned sequentially by major version number
   // This ensures consistent colors across sessions and automatic color assignment for new versions
@@ -3350,6 +3376,14 @@ function App() {
       retryTimeoutRef.current = null;
     }
 
+    // 非賣品: nothing to ask Universalis. Unknown yet: keep the skeleton until the (tiny) check returns.
+    if (selectedItemMarketable !== true) {
+      ++requestIdRef.current;
+      setIsLoadingMarket(selectedItemMarketable === null);
+      setIsLoadingHistoryTable(false);
+      return;
+    }
+
     abortControllerRef.current = new AbortController();
 
     const currentRequestId = ++requestIdRef.current;
@@ -3401,9 +3435,9 @@ function App() {
           addToast(`請求超時，正在重試 (${retryCountRef.current}/3)...`, 'warning');
           loadMarketData(true);
         }
-        // Universalis often takes 1-2s; aborting at 1.5s restarted slow-but-healthy requests.
-        // Only retry requests that are genuinely stuck.
-      }, 10000);
+        // Listings answer in ~0.3-1s (and a backup copy goes out at 1.5s), so 5s means the request
+        // is stuck rather than slow: start over with a fresh request.
+      }, 5000);
 
       try {
         const options = {
@@ -3412,6 +3446,8 @@ function App() {
           // request ~5x slower and it is the one the user is waiting on.
           entries: 0,
           signal: abortControllerRef.current.signal,
+          // A retry means the previous request stalled: send a new one instead of reusing it
+          fresh: isRetry,
         };
 
         const wantHq = !!(selectedItem.canBeHQ && hqOnly);
@@ -3587,7 +3623,7 @@ function App() {
         retryTimeoutRef.current = null;
       }
     };
-  }, [isLoadingDB, selectedItem, selectedServerOption, listSize, hqOnly, worlds, refreshKey, addToast, selectedWorld]);
+  }, [isLoadingDB, selectedItem, selectedItemMarketable, selectedServerOption, listSize, hqOnly, worlds, refreshKey, addToast, selectedWorld]);
 
   useEffect(() => {
     if (historyAbortControllerRef.current) {
@@ -3595,10 +3631,10 @@ function App() {
       historyAbortControllerRef.current = null;
     }
 
-    if (isLoadingDB || !selectedItem || !selectedServerOption) {
+    if (isLoadingDB || !selectedItem || !selectedServerOption || selectedItemMarketable !== true) {
       setMarketChartHistory([]);
       setStackSizeHistogram(null);
-      setIsLoadingMarketChart(false);
+      setIsLoadingMarketChart(!!selectedItem && selectedItemMarketable === null);
       return;
     }
 
@@ -3671,7 +3707,7 @@ function App() {
     return () => {
       controller.abort();
     };
-  }, [isLoadingDB, selectedItem, selectedServerOption, hqOnly, marketHistoryRangeDays, addToast, selectedWorld, restoreMarketChartScrollPosition]);
+  }, [isLoadingDB, selectedItem, selectedItemMarketable, selectedServerOption, hqOnly, marketHistoryRangeDays, addToast, selectedWorld, restoreMarketChartScrollPosition]);
 
   // Clear item load error when leaving item page
   useEffect(() => {
@@ -3735,7 +3771,7 @@ function App() {
   const handleResultHover = useCallback((item) => {
     if (!item?.id || !selectedServerOption) return;
     // Same parameters as the item page's requests so they are reused (listings without embedded history)
-    prefetchItemMarket(selectedServerOption, item.id, { listings: listSize, entries: 0, days: marketHistoryRangeDays });
+    if (getKnownMarketability(item.id) !== false) prefetchItemMarket(selectedServerOption, item.id, { listings: listSize, entries: 0, days: marketHistoryRangeDays });
     prefetchObtainMethods(item.id);
   }, [selectedServerOption, listSize, marketHistoryRangeDays]);
 
@@ -3748,7 +3784,13 @@ function App() {
     }
     console.log(`[App] Obtainable methods callback: ${sortedSources?.length ?? 0} sources, hasObtainMethods = ${hasMethod}`);
     setHasObtainMethods(hasMethod);
-    setObtainMethodsReportedId(itemId !== undefined ? itemId : selectedItem?.id);
+    const reportedId = itemId !== undefined ? itemId : selectedItem?.id;
+    setObtainMethodsReportedId(reportedId);
+    obtainReadyWaitersRef.current = obtainReadyWaitersRef.current.filter(waiter => {
+      if (waiter.itemId !== reportedId) return true;
+      waiter.resolve();
+      return false;
+    });
     
     // If no methods available and panel is expanded, collapse it to prevent stuck UI
     if (!hasMethod && isObtainMethodsExpanded) {
@@ -3807,6 +3849,11 @@ function App() {
       }, 0);
     }
 
+    // Pause background prefetch until this item's 取得方式 result is in (or 2s), so bulk downloads
+    // don't compete with the small requests the item page is waiting on
+    const releasePrefetch = holdPrefetch(2000);
+    obtainReadyWaitersRef.current.push({ itemId: selectedItem.id, resolve: releasePrefetch });
+
     // Mount ObtainMethods in the background shortly after the page's Universalis requests are out.
     // Its code and shared tables are normally prefetched on the home page, so this only fetches
     // this item's small shards and doesn't hold up the listings.
@@ -3828,8 +3875,18 @@ function App() {
     setIsCraftingTreeExpanded(false);
     
     let cancelled = false;
-    
-    hasRecipe(selectedItem.id)
+
+    // On slow connections the 367KB recipe table would compete with the small 取得方式 shards the user
+    // may be about to open. If it isn't loaded yet, let 取得方式 finish first (at most 1.5s).
+    const recipesReady = isRecipeDatabaseLoaded()
+      ? Promise.resolve()
+      : new Promise(resolve => {
+          const itemIdForWait = selectedItem.id;
+          const timer = setTimeout(resolve, 1500);
+          obtainReadyWaitersRef.current.push({ itemId: itemIdForWait, resolve: () => { clearTimeout(timer); resolve(); } });
+        });
+
+    recipesReady.then(() => hasRecipe(selectedItem.id))
       .then(async (hasCraft) => {
         if (cancelled) return;
         setHasCraftingRecipe(hasCraft);
@@ -3866,7 +3923,7 @@ function App() {
     setIsRelatedItemsExpanded(false);
     setRelatedItemIds([]);
     
-    findRelatedItems(selectedItem.id)
+    recipesReady.then(() => findRelatedItems(selectedItem.id))
       .then(ids => {
         if (cancelled) return;
         setHasRelatedItems(ids.length > 0);
@@ -3885,6 +3942,7 @@ function App() {
       cancelled = true;
       if (autoExpandTimeoutId !== null) clearTimeout(autoExpandTimeoutId);
       clearTimeout(obtainMountTimeoutId);
+      releasePrefetch();
       if (obtainIdleHandle !== null && typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(obtainIdleHandle);
     };
   }, [selectedItem]);
@@ -4698,6 +4756,14 @@ function App() {
                                   部隊合建
                                 </button>
                               )}
+                              {selectedItemMarketable === false && (
+                                <span
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded-md border text-[10px] mid:text-xs font-semibold whitespace-nowrap bg-rose-900/25 border-rose-400/40 text-rose-300"
+                                  title="無法在市場板交易"
+                                >
+                                  非賣品
+                                </span>
+                              )}
                             </>
                           );
                         })()}
@@ -5375,7 +5441,14 @@ function App() {
                 />
               )}
 
+              {selectedItemMarketable === false && (
+                <div className="bg-slate-800/40 rounded-lg border border-slate-700/50 px-4 py-3 text-sm text-gray-400">
+                  此物品為<span className="text-rose-300 font-semibold">非賣品</span>，無法在市場板交易，不查詢市場數據。
+                </div>
+              )}
+
               {/* Market Listings & History - Side by Side */}
+              {selectedItemMarketable !== false && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {/* Market Listings */}
                 <div className="flex flex-col">
@@ -5557,6 +5630,7 @@ function App() {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Price History Chart & Stack Size Histogram */}
               {(marketChartHistory.length > 0 || stackSizeHistogram || isLoadingMarketChart) && (

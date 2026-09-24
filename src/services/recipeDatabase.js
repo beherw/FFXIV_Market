@@ -67,7 +67,8 @@ export async function loadRecipeDatabase() {
       // Fetch MessagePack binary file
       console.log('[Recipe] 📦 Loading recipes from MessagePack...');
       const baseUrl = import.meta.env.BASE_URL || '/';
-      const response = await fetch(`${baseUrl}data/recipes.msgpack`);
+      // Bulk table: low priority so small requests the user is waiting on (listings, shards) go first
+      const response = await fetch(`${baseUrl}data/recipes.msgpack`, { priority: 'low' });
       
       if (!response.ok) {
         throw new Error(`Failed to fetch recipes: ${response.status} ${response.statusText}`);
@@ -248,6 +249,11 @@ export async function isCompanyCraftResultItem(itemId) {
  * All item IDs that are Company Craft (部隊合建) products in the recipe DB (sorted ascending).
  * @returns {Promise<number[]>}
  */
+/** True once recipes.msgpack is loaded or already downloading (waiting on it adds no extra traffic) */
+export function isRecipeDatabaseLoaded() {
+  return recipesByResult != null || loadPromise != null;
+}
+
 export async function getAllCompanyCraftResultItemIds() {
   // Prefer the precomputed list (a few KB) over loading the whole recipe table
   if (!companyCraftResultItemIds) {

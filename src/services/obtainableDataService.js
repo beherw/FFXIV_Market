@@ -7,7 +7,7 @@
  */
 
 import { decode } from '@msgpack/msgpack';
-import { getFatesByIds, getFateSourcesByItemId, loadFatesDatabase } from './fatesData.js';
+import { getFatesByIds, getFateSourcesByItemId } from './fatesData.js';
 import { getTwItemsByIds, getZhItemsByIds, getEnItemsByIds } from './itemsDatabaseMsgpack.js';
 import { loadDomainRecords } from './dataShards.js';
 
@@ -66,7 +66,7 @@ async function loadDomain(name, signal) {
  * (per-item records come from shards when the panel opens).
  */
 export function preloadObtainableCommonData() {
-  return Promise.allSettled([loadDomain('loot-sources'), loadFatesDatabase()]);
+  return Promise.allSettled([loadDomain('loot-sources')]);
 }
 
 /**

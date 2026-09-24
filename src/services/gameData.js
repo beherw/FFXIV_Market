@@ -5,6 +5,7 @@
 
 import * as itemsDb from './itemsDatabaseMsgpack.js';
 import * as uiCategories from './uiCategoriesDataService.js';
+import { loadDomainRecords } from './dataShards.js';
 import equipSlotCategoriesJson from '../../teamcraft_git/libs/data/src/lib/json/equip-slot-categories.json';
 import twJobAbbrJson from '../../teamcraft_git/libs/data/src/lib/json/tw/tw-job-abbr.json';
 
@@ -208,6 +209,31 @@ export async function getMarketItemsByIds(itemIds, signal = null) {
     if (marketItemsCache.has(itemId)) marketableSet.add(itemId);
   });
   return marketableSet;
+}
+
+// Single-item marketability for the item page: answered from the full list if it is already loaded,
+// otherwise from a ~2KB market-items shard (the full list is the fallback when shards are missing).
+const marketabilityById = new Map();
+
+/** true / false when already known, null when it still has to be loaded */
+export function getKnownMarketability(itemId) {
+  if (marketItemsCache) return marketItemsCache.has(itemId);
+  return marketabilityById.has(itemId) ? marketabilityById.get(itemId) : null;
+}
+
+export async function isItemMarketable(itemId, signal = null) {
+  const known = getKnownMarketability(itemId);
+  if (known !== null) return known;
+  let marketable;
+  try {
+    const records = await loadDomainRecords('market-items', [itemId], signal);
+    marketable = records[itemId] !== undefined;
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err;
+    marketable = (await loadMarketItemsCache()).has(itemId);
+  }
+  marketabilityById.set(itemId, marketable);
+  return marketable;
 }
 
 // ---------- Equipment (msgpack) ----------

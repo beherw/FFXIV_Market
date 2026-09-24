@@ -36,7 +36,7 @@ async function loadTwItems() {
   if (twItemsLoadPromise) return twItemsLoadPromise;
   twItemsLoadPromise = (async () => {
     const url = getDataUrl('tw-items.msgpack');
-    const res = await fetch(url);
+    const res = await fetch(url, { priority: 'low' }); // bulk table; let small user-facing requests go first
     if (!res.ok) throw new Error(`Failed to fetch tw-items.msgpack: ${res.status}`);
     const buf = await res.arrayBuffer();
     twItemsCache = decode(new Uint8Array(buf));
@@ -50,7 +50,7 @@ async function loadZhItems() {
   if (zhItemsLoadPromise) return zhItemsLoadPromise;
   zhItemsLoadPromise = (async () => {
     const url = getDataUrl('zh-items.msgpack');
-    const res = await fetch(url);
+    const res = await fetch(url, { priority: 'low' }); // bulk table; let small user-facing requests go first
     if (!res.ok) throw new Error(`Failed to fetch zh-items.msgpack: ${res.status}`);
     const buf = await res.arrayBuffer();
     zhItemsCache = decode(new Uint8Array(buf));
@@ -64,7 +64,7 @@ async function loadEnItems() {
   if (enItemsLoadPromise) return enItemsLoadPromise;
   enItemsLoadPromise = (async () => {
     const url = getDataUrl('en-items.msgpack');
-    const res = await fetch(url);
+    const res = await fetch(url, { priority: 'low' }); // bulk table; let small user-facing requests go first
     if (!res.ok) throw new Error(`Failed to fetch en-items.msgpack: ${res.status}`);
     const buf = await res.arrayBuffer();
     enItemsCache = decode(new Uint8Array(buf));
@@ -78,7 +78,7 @@ async function loadJaItems() {
   if (jaItemsLoadPromise) return jaItemsLoadPromise;
   jaItemsLoadPromise = (async () => {
     const url = getDataUrl('ja-items.msgpack');
-    const res = await fetch(url);
+    const res = await fetch(url, { priority: 'low' }); // bulk table; let small user-facing requests go first
     if (!res.ok) throw new Error(`Failed to fetch ja-items.msgpack: ${res.status}`);
     const buf = await res.arrayBuffer();
     jaItemsCache = decode(new Uint8Array(buf));
@@ -92,7 +92,7 @@ async function loadKoItems() {
   if (koItemsLoadPromise) return koItemsLoadPromise;
   koItemsLoadPromise = (async () => {
     const url = getDataUrl('ko-items.msgpack');
-    const res = await fetch(url);
+    const res = await fetch(url, { priority: 'low' }); // bulk table; let small user-facing requests go first
     if (!res.ok) throw new Error(`Failed to fetch ko-items.msgpack: ${res.status}`);
     const buf = await res.arrayBuffer();
     koItemsCache = decode(new Uint8Array(buf));
@@ -106,7 +106,7 @@ async function loadDeItems() {
   if (deItemsLoadPromise) return deItemsLoadPromise;
   deItemsLoadPromise = (async () => {
     const url = getDataUrl('de-items.msgpack');
-    const res = await fetch(url);
+    const res = await fetch(url, { priority: 'low' }); // bulk table; let small user-facing requests go first
     if (!res.ok) throw new Error(`Failed to fetch de-items.msgpack: ${res.status}`);
     const buf = await res.arrayBuffer();
     deItemsCache = decode(new Uint8Array(buf));
@@ -120,7 +120,7 @@ async function loadFrItems() {
   if (frItemsLoadPromise) return frItemsLoadPromise;
   frItemsLoadPromise = (async () => {
     const url = getDataUrl('fr-items.msgpack');
-    const res = await fetch(url);
+    const res = await fetch(url, { priority: 'low' }); // bulk table; let small user-facing requests go first
     if (!res.ok) throw new Error(`Failed to fetch fr-items.msgpack: ${res.status}`);
     const buf = await res.arrayBuffer();
     frItemsCache = decode(new Uint8Array(buf));
@@ -134,7 +134,7 @@ async function loadEquipment() {
   if (equipmentLoadPromise) return equipmentLoadPromise;
   equipmentLoadPromise = (async () => {
     const url = getDataUrl('equipment.msgpack');
-    const res = await fetch(url);
+    const res = await fetch(url, { priority: 'low' }); // bulk table; let small user-facing requests go first
     if (!res.ok) throw new Error(`Failed to fetch equipment.msgpack: ${res.status}`);
     const buf = await res.arrayBuffer();
     equipmentCache = decode(new Uint8Array(buf));

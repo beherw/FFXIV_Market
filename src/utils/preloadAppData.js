@@ -7,22 +7,27 @@ import { loadItemIconsData } from './itemImage';
 import { loadChineseConverter } from './chineseConverter';
 import { loadRecipeDatabase } from '../services/recipeDatabase';
 import { getTwItemUICategories } from '../services/uiCategoriesDataService';
+import { waitForPrefetchGate } from './prefetchGate';
 
-// Item-page code and data that don't depend on which item is opened: the 取得方式 panel, charts,
-// category badge. Warmed on the home page so opening an item only fetches per-item data.
-const preloadItemPageCommon = () => Promise.allSettled([
+// Item-page code and data that don't depend on which item is opened. Warmed on the home page so
+// opening an item only fetches per-item data (small shards + Universalis).
+const preloadObtainMethods = () => Promise.allSettled([
   import('../components/ObtainMethods.jsx'),
+  import('../services/obtainableDataService').then(m => m.preloadObtainableCommonData()),
+]);
+const preloadItemPageCommon = () => Promise.allSettled([
+  preloadObtainMethods(),
   import('../components/PriceHistoryChart'),
   import('../components/StackSizeChart'),
-  import('../services/obtainableDataService').then(m => m.preloadObtainableCommonData()),
   getTwItemUICategories(),
 ]);
 
 let started = false;
 
+// Each wave waits for idle time and for the page to lift any prefetch hold (see prefetchGate)
 const whenIdle = (fn, timeout = 2000) =>
   new Promise(resolve => {
-    const run = () => Promise.resolve().then(fn).catch(() => {}).finally(resolve);
+    const run = () => waitForPrefetchGate().then(fn).catch(() => {}).finally(resolve);
     if (typeof window.requestIdleCallback === 'function') {
       window.requestIdleCallback(run, { timeout });
     } else {
@@ -56,10 +61,11 @@ export function preloadAppData() {
       // Wave 1: search index + data the search pipeline reads (tw-items, marketable ids, ilvl, patch).
       // Kept alone so it gets the full bandwidth on slow connections.
       await whenIdle(() => preloadSearchData(), 1000);
-      // Wave 2: search results table (icons, equipment level)
-      await whenIdle(() => Promise.allSettled([loadItemIconsData(), getEquipment()]));
-      // Wave 3: what the item page needs regardless of item (取得方式 code + tables, charts), then recipes
-      await whenIdle(() => preloadItemPageCommon());
+      // Wave 2: 取得方式 code + shared tables, so the panel opens instantly from the first item
+      // (result icons meanwhile come from small per-icon shards)
+      await whenIdle(() => preloadObtainMethods());
+      // Wave 3: rest of the item page (charts, category badge), full icon table, equipment, recipes
+      await whenIdle(() => Promise.allSettled([preloadItemPageCommon(), loadItemIconsData(), getEquipment()]));
       await whenIdle(() => loadRecipeDatabase());
     }
     // Last: only needed for simplified-Chinese input fallback / OCR (it loads on demand otherwise).
