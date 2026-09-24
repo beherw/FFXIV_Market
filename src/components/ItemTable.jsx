@@ -115,6 +115,8 @@ const ItemNameCell = ({ itemName, addToast, isTwUnsupported = false }) => {
 
 export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null, selectedRarities: externalSelectedRarities, setSelectedRarities: externalSetSelectedRarities, raritiesData: externalRaritiesData, externalRarityFilter = false, externalRarityCounts = null, isServerDataLoaded = true, isRaritySelectorDisabled = false, itemsAlreadyFiltered = false, preserveItemOrder = false, separateTradableInSort = true, openInNewTab = false, onItemHover = null }) {
   const [sortColumn, setSortColumn] = useState('id');
+  const hoverTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(hoverTimerRef.current), []);
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc' - default to desc for highest ilvl first
   const [ilvlsData, setIlvlsData] = useState(null);
   const [raritiesData, setRaritiesData] = useState(null);
@@ -980,7 +982,13 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
             return (
               <tr
                 key={item.id || index}
-                onMouseEnter={onItemHover ? () => onItemHover(item) : undefined}
+                onMouseEnter={onItemHover ? () => {
+                  // Hover intent: only warm the item page if the pointer rests on the row briefly,
+                  // so sweeping the mouse across the list doesn't fire a request per row
+                  clearTimeout(hoverTimerRef.current);
+                  hoverTimerRef.current = setTimeout(() => onItemHover(item), 150);
+                } : undefined}
+                onMouseLeave={onItemHover ? () => clearTimeout(hoverTimerRef.current) : undefined}
                 onTouchStart={onItemHover ? () => onItemHover(item) : undefined}
                 onClick={(e) => {
                   if (openInNewTab) {

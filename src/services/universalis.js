@@ -241,10 +241,25 @@ function sharedRequest(key, run, signal) {
 /**
  * Warm the item page's listings + sale history (e.g. when a search result is hovered or touched).
  */
+const MAX_PREFETCHES_IN_FLIGHT = 2;
+let prefetchesInFlight = 0;
+const recentlyPrefetched = new Map(); // key -> timestamp
+
 export function prefetchItemMarket(server, itemId, { listings = 20, entries = 20, days = 7 } = {}) {
   if (!server || !itemId) return;
-  getMarketData(server, itemId, { listings, entries }).catch(() => {});
-  getMarketSaleHistory(server, itemId, { days }).catch(() => {});
+  // Stay well inside Universalis rate limits: skip repeats and cap concurrent warm-ups
+  const key = `${server}|${itemId}`;
+  const last = recentlyPrefetched.get(key);
+  if (last && Date.now() - last < SHARED_REQUEST_TTL_MS) return;
+  if (prefetchesInFlight >= MAX_PREFETCHES_IN_FLIGHT) return;
+  recentlyPrefetched.set(key, Date.now());
+  prefetchesInFlight++;
+  Promise.allSettled([
+    getMarketData(server, itemId, { listings, entries }),
+    getMarketSaleHistory(server, itemId, { days }),
+  ]).finally(() => {
+    prefetchesInFlight--;
+  });
 }
 
 export async function getMarketData(server, itemId, options = {}) {
