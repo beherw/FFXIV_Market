@@ -1029,6 +1029,15 @@ function PriceComparisonBadge({ parentPrice, childrenTotalPrice, isReady, amount
   // Calculate unit price if not provided
   const unitPrice = parentUnitPrice !== null ? parentUnitPrice : (parentPrice !== null && amount > 1 ? parentPrice / amount : parentPrice);
 
+  // At least one material is cheaper to craft than to buy, so 材料 no longer matches the
+  // market prices printed on the cards - say so on the badge.
+  const usesCraftRoute = Array.isArray(breakdown) && breakdown.some((b) => b.method === 'craft');
+  const optimalRouteHint = usesCraftRoute ? (
+    <div className="text-[10px] opacity-60 text-center whitespace-nowrap">
+      材料以最優路線計算（每項取買/製的較低價）
+    </div>
+  ) : null;
+
   // 材料 N/A vs 成品 N/A，資訊不足，不做比對
   if (childrenIsNA && parentIsNA) {
     return (
@@ -1088,6 +1097,7 @@ function PriceComparisonBadge({ parentPrice, childrenTotalPrice, isReady, amount
           title="點擊查看計算公式"
         >
           <div className="flex flex-col items-center gap-0.5 whitespace-nowrap">
+            {optimalRouteHint}
             <div className="flex items-center gap-2 text-xs opacity-80 whitespace-nowrap">
               <span className="flex-shrink-0">材料: {formatPrice(childrenTotalPrice)}</span>
               <span className="flex-shrink-0">vs</span>
@@ -1140,6 +1150,7 @@ function PriceComparisonBadge({ parentPrice, childrenTotalPrice, isReady, amount
           title="點擊查看計算公式"
         >
           <div className="flex flex-col items-center gap-0.5 whitespace-nowrap">
+            {optimalRouteHint}
             {/* Price breakdown */}
             <div className="flex items-center gap-2 text-xs opacity-80 whitespace-nowrap">
               <span className="flex-shrink-0">材料: {formatPrice(childrenTotalPrice)}</span>
@@ -1186,6 +1197,7 @@ function PriceComparisonBadge({ parentPrice, childrenTotalPrice, isReady, amount
         title="點擊查看計算公式"
       >
         <div className="flex flex-col items-center gap-0.5 whitespace-nowrap">
+          {optimalRouteHint}
           {/* Price breakdown */}
           <div className="flex items-center gap-2 text-xs opacity-80 whitespace-nowrap">
             <span className="flex-shrink-0">材料: {formatPrice(childrenTotalPrice)}</span>
@@ -1285,31 +1297,35 @@ function TreeNodeVertical({
     // If not all children are queried yet, return null (still loading)
     if (!allChildrenQueried) return { childrenTotalPrice: null, breakdown: null };
 
-    // For non-root comparison, parent material cost uses direct child market prices.
-    // Child "buy vs craft" optimization is still shown on each child node itself.
+    // Each material is priced on its own optimal route (cheaper of market price vs crafting
+    // it from its own materials) - the same rule the root badge and the combined tree use.
+    // Pricing children at raw market price here made an identical sub-tree report a
+    // different material cost depending on whether it happened to be the root node.
     let total = 0;
     const breakdownData = [];
 
     for (const child of node.children) {
-      const childPrice = effectiveMaterialPrices[child.itemId]?.price;
-      if (childPrice === null || childPrice === undefined) {
+      const childResult = getCheapestCost(child, effectiveMaterialPrices, queriedItemIds);
+      if (childResult.cost === 'N/A') {
         return { childrenTotalPrice: 'N/A', breakdown: null };
       }
+      if (typeof childResult.cost !== 'number') {
+        // Deeper material still loading - hide the badge until it resolves
+        return { childrenTotalPrice: null, breakdown: null };
+      }
 
-      const childTotal = childPrice * child.amount;
+      const childTotal = childResult.cost * child.amount;
       total += childTotal;
       breakdownData.push({
         itemId: child.itemId,
         amount: child.amount,
-        unitCost: childPrice,
+        unitCost: childResult.cost,
         totalCost: childTotal,
-        method: 'buy',
+        method: childResult.method,
       });
     }
 
     return { childrenTotalPrice: total, breakdown: breakdownData };
-    
-    return { childrenTotalPrice: null, breakdown: null };
   }, [hasChildren, node, effectiveMaterialPrices, queriedItemIds]);
 
       const scaledChildrenTotalPrice = typeof childrenTotalPrice === 'number'
