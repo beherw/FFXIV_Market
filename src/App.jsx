@@ -39,6 +39,8 @@ import { detectLanguage, getItemNameForUrl } from './utils/itemLanguage';
 import ItemSEO from './components/ItemSEO';
 import VersionFooter from './components/VersionFooter';
 import { getCosmicMissionRankLabel } from './utils/cosmicMission';
+import { fetchRelatedItemPrices } from './utils/relatedItemPrices';
+import { whenAppPreloadDone } from './utils/preloadAppData';
 
 // Lazy load route-based components with error handling
 const createLazyComponent = (importFn, componentName) => {
@@ -3709,6 +3711,34 @@ function App() {
     };
   }, [isLoadingDB, selectedItem, selectedItemMarketable, selectedServerOption, hqOnly, marketHistoryRangeDays, addToast, selectedWorld, restoreMarketChartScrollPosition]);
 
+  // 可製品 prices normally load when the list is opened. Once everything else on the item page is
+  // done (listings, history, crafting tree, background warm-up), fetch them ahead of time so the
+  // list opens with prices already in.
+  const isItemPageBusy = isLoadingMarket || isLoadingMarketChart || isLoadingCraftingTree || isLoadingRelatedItems;
+  useEffect(() => {
+    if (!selectedItem || !selectedServerOption || isItemPageBusy || isRelatedItemsExpanded || relatedItemIds.length === 0) {
+      return undefined;
+    }
+    let cancelled = false;
+    let idleHandle = null;
+    const timer = setTimeout(() => {
+      whenAppPreloadDone().then(() => {
+        if (cancelled) return;
+        const run = () => { if (!cancelled) fetchRelatedItemPrices(selectedServerOption, relatedItemIds, worlds).catch(() => {}); };
+        if (typeof window.requestIdleCallback === 'function') {
+          idleHandle = window.requestIdleCallback(run, { timeout: 3000 });
+        } else {
+          run();
+        }
+      });
+    }, 1500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      if (idleHandle !== null) window.cancelIdleCallback?.(idleHandle);
+    };
+  }, [selectedItem, selectedServerOption, isItemPageBusy, isRelatedItemsExpanded, relatedItemIds, worlds]);
+
   // Clear item load error when leaving item page
   useEffect(() => {
     if (!currentItemId) {
@@ -5224,6 +5254,8 @@ function App() {
                             itemId={selectedItem?.id}
                             relatedItemIds={relatedItemIds}
                             onItemClick={handleItemSelect}
+                            selectedServerOption={selectedServerOption}
+                            worlds={worlds}
                           />
                         </Suspense>
                       </ErrorBoundary>

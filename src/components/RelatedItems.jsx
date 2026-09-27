@@ -5,11 +5,26 @@ import { getItemById } from '../services/itemDatabase';
 import { getInternalUrl } from '../utils/internalUrl.js';
 import { generateItemUrl } from '../utils/urlSlug';
 import ItemImage from './ItemImage';
+import { fetchRelatedItemPrices } from '../utils/relatedItemPrices';
 
-export default function RelatedItems({ itemId, relatedItemIds: providedRelatedItemIds, onItemClick, compact = false }) {
+function getMinListing(priceInfo) {
+  if (!priceInfo) return null;
+  return priceInfo.priceModes ? priceInfo.priceModes.minListing || null : priceInfo;
+}
+
+function openItemInNewTab(item) {
+  const itemUrl = generateItemUrl(item.id, item.nameTW || item.name || 'item');
+  const url = `${window.location.origin}${getInternalUrl(itemUrl)}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+export default function RelatedItems({ itemId, relatedItemIds: providedRelatedItemIds, onItemClick, compact = false, selectedServerOption = null, worlds }) {
   const [relatedItemIds, setRelatedItemIds] = useState(providedRelatedItemIds || []);
   const [relatedItems, setRelatedItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  // Prices load only once this list is shown, after the item's names/icons
+  const [prices, setPrices] = useState(null);
+  const showPrices = !!selectedServerOption;
 
   // Find related items when itemId changes
   useEffect(() => {
@@ -69,10 +84,18 @@ export default function RelatedItems({ itemId, relatedItemIds: providedRelatedIt
     })();
   }, [relatedItemIds]);
 
-  // Expose loading state and item count to parent
   useEffect(() => {
-    // This will be handled by parent component
-  }, [isLoading, relatedItemIds.length]);
+    setPrices(null);
+    if (!showPrices || relatedItemIds.length === 0) return undefined;
+    let cancelled = false;
+    fetchRelatedItemPrices(selectedServerOption, relatedItemIds, worlds)
+      .then(result => { if (!cancelled) setPrices(result); })
+      .catch(error => {
+        console.error('Failed to load related item prices:', error);
+        if (!cancelled) setPrices({});
+      });
+    return () => { cancelled = true; };
+  }, [showPrices, selectedServerOption, relatedItemIds, worlds]);
 
   // Don't render if no related items (after loading completes)
   if (!isLoading && relatedItemIds.length === 0) {
@@ -128,15 +151,19 @@ export default function RelatedItems({ itemId, relatedItemIds: providedRelatedIt
                   onItemClick(item);
                   return;
                 }
-
-                const itemUrl = generateItemUrl(item.id, item.nameTW || item.name || 'item');
-                const url = `${window.location.origin}${getInternalUrl(itemUrl)}`;
-                window.open(url, '_blank', 'noopener,noreferrer');
+                openItemInNewTab(item);
+              }}
+              onMouseDown={(e) => {
+                // Middle click: open the item in a new tab, like the crafting tree
+                if (e.button !== 1) return;
+                e.preventDefault();
+                e.stopPropagation();
+                openItemInNewTab(item);
               }}
               className={`group relative transition-all duration-200 ${compact
                 ? 'flex min-w-0 flex-col items-center gap-1 rounded-lg border border-slate-600/60 bg-slate-900/70 px-1 py-2 hover:border-ffxiv-gold/55 hover:bg-slate-700/90'
                 : 'flex flex-col items-center gap-2 rounded-lg border border-purple-500/30 bg-slate-800/60 p-3 hover:border-ffxiv-gold/60 hover:bg-slate-700/70'}`}
-              title={item.name}
+              title={`${item.name}（中鍵另開分頁）`}
               aria-label={item.name}
             >
               <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-purple-500/30 bg-purple-900/40 transition-colors duration-200 group-hover:border-ffxiv-gold/60 group-hover:bg-slate-800/80">
@@ -159,6 +186,8 @@ export default function RelatedItems({ itemId, relatedItemIds: providedRelatedIt
                   {item.name}
                 </span>
               )}
+
+              {showPrices && <RelatedItemPrice priceInfo={prices ? prices[item.id] : undefined} isLoading={!prices} compact={compact} />}
             </button>
           ))}
         </div>
@@ -171,5 +200,34 @@ export default function RelatedItems({ itemId, relatedItemIds: providedRelatedIt
         </div>
       )}
     </div>
+  );
+}
+
+function RelatedItemPrice({ priceInfo, isLoading, compact }) {
+  const textSize = compact ? 'text-[10px]' : 'text-xs';
+  if (isLoading) {
+    return <span className={`${textSize} text-gray-500 animate-pulse`}>查詢中...</span>;
+  }
+  if (priceInfo?.untradeable) {
+    return <span className={`${textSize} text-gray-600`}>不可交易</span>;
+  }
+  const listing = getMinListing(priceInfo);
+  if (!listing || !(listing.price > 0)) {
+    return <span className={`${textSize} text-gray-500`}>無販售</span>;
+  }
+  return (
+    <span className="flex max-w-full flex-col items-center leading-tight">
+      <span className="flex items-center gap-1">
+        {listing.isHQ && (
+          <span className="rounded border border-ffxiv-gold/50 bg-ffxiv-gold/10 px-1 text-[10px] font-bold text-ffxiv-gold">HQ</span>
+        )}
+        <span className={`${textSize} font-semibold ${listing.isHQ ? 'text-yellow-400' : 'text-green-400'}`}>
+          {Math.round(listing.price).toLocaleString()}
+        </span>
+      </span>
+      {!compact && listing.worldName && (
+        <span className="max-w-full truncate text-[10px] text-gray-500" title={listing.worldName}>{listing.worldName}</span>
+      )}
+    </span>
   );
 }

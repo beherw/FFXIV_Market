@@ -23,6 +23,13 @@ const preloadItemPageCommon = () => Promise.allSettled([
 ]);
 
 let started = false;
+let resolveDone;
+const done = new Promise(resolve => { resolveDone = resolve; });
+
+/** Resolves once every background warm-up wave has finished. */
+export function whenAppPreloadDone() {
+  return done;
+}
 
 // Each wave waits for idle time and for the page to lift any prefetch hold (see prefetchGate)
 const whenIdle = (fn, timeout = 2000) =>
@@ -76,5 +83,5 @@ export function preloadAppData() {
     if (fastConnection) {
       await whenIdle(() => loadChineseConverter());
     }
-  })();
+  })().finally(resolveDone);
 }
