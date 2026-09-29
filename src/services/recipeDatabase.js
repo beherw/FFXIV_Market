@@ -5,6 +5,7 @@
 // Format: MessagePack binary (~2-3MB, 50%+ smaller than JSON, 5x faster parsing)
 
 import { decode } from '@msgpack/msgpack';
+import { dataUrl } from '../utils/dataUrl';
 
 let recipesDatabase = null;
 let recipesByResult = null;
@@ -66,9 +67,8 @@ export async function loadRecipeDatabase() {
       
       // Fetch MessagePack binary file
       console.log('[Recipe] 📦 Loading recipes from MessagePack...');
-      const baseUrl = import.meta.env.BASE_URL || '/';
       // Bulk table: low priority so small requests the user is waiting on (listings, shards) go first
-      const response = await fetch(`${baseUrl}data/recipes.msgpack`, { priority: 'low' });
+      const response = await fetch(dataUrl('recipes.msgpack'), { priority: 'low' });
       
       if (!response.ok) {
         throw new Error(`Failed to fetch recipes: ${response.status} ${response.statusText}`);
@@ -258,8 +258,7 @@ export async function getAllCompanyCraftResultItemIds() {
   // Prefer the precomputed list (a few KB) over loading the whole recipe table
   if (!companyCraftResultItemIds) {
     try {
-      const baseUrl = import.meta.env.BASE_URL || '/';
-      const res = await fetch(`${baseUrl}data/shards/company-craft-ids.json`);
+      const res = await fetch(dataUrl('shards/company-craft-ids.json'));
       if (res.ok) {
         const ids = await res.json();
         if (Array.isArray(ids) && ids.length > 0) return ids;

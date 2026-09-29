@@ -6,11 +6,10 @@
  */
 
 import { decode } from '@msgpack/msgpack';
-
-const BASE = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '') + '/data';
+import { dataUrl } from '../utils/dataUrl';
 
 function getDataUrl(filename) {
-  return `${BASE}/${filename}`;
+  return dataUrl(filename);
 }
 
 // Per-domain cache and load promise

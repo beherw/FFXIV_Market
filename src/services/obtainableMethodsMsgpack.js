@@ -7,6 +7,7 @@
 import { decode } from '@msgpack/msgpack';
 import { DataType, getTypeIdFromString, getChineseName } from '../constants/dataTypes.js';
 import { loadDomainRecords } from './dataShards.js';
+import { dataUrl } from '../utils/dataUrl';
 
 let dataCache = null;
 let isLoading = false;
@@ -31,8 +32,7 @@ export async function loadObtainableMethodsDatabase() {
       const loadStartTime = performance.now();
 
       console.log('[Obtainable] 📦 Loading database (msgpack)...');
-      const baseUrl = import.meta.env.BASE_URL || '/';
-      const response = await fetch(`${baseUrl}data/obtainable-methods.msgpack`);
+      const response = await fetch(dataUrl('obtainable-methods.msgpack'));
 
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.status}`);

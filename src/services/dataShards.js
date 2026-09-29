@@ -5,8 +5,7 @@
 
 import { decode } from '@msgpack/msgpack';
 import { SHARDED_DOMAINS, shardOf } from '../constants/dataShards.js';
-
-const BASE = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '') + '/data';
+import { dataUrl } from '../utils/dataUrl';
 
 const shardPromises = new Map(); // `${domain}/${shard}` -> Promise<object>
 const fullPromises = new Map(); // domain -> Promise<object>
@@ -36,7 +35,7 @@ function withSignal(promise, signal) {
 
 function loadFull(domain) {
   if (!fullPromises.has(domain)) {
-    const p = fetchMsgpack(`${BASE}/${domain}.msgpack`).catch(err => {
+    const p = fetchMsgpack(dataUrl(`${domain}.msgpack`)).catch(err => {
       fullPromises.delete(domain);
       throw err;
     });
@@ -48,7 +47,7 @@ function loadFull(domain) {
 function loadShard(domain, shard) {
   const key = `${domain}/${shard}`;
   if (!shardPromises.has(key)) {
-    const p = fetchMsgpack(`${BASE}/shards/${domain}/${shard}.msgpack`).catch(err => {
+    const p = fetchMsgpack(dataUrl(`shards/${domain}/${shard}.msgpack`)).catch(err => {
       shardPromises.delete(key);
       throw err;
     });

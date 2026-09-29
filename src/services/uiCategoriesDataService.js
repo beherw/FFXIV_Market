@@ -4,8 +4,9 @@
  */
 
 import { decode } from '@msgpack/msgpack';
+import { dataUrl } from '../utils/dataUrl';
 
-const MSGPACK_URL = '/data/ui_categories.msgpack';
+const MSGPACK_URL = 'ui_categories.msgpack';
 let cached = null;
 let loadPromise = null;
 
@@ -13,8 +14,7 @@ async function load() {
   if (cached) return cached;
   if (loadPromise) return loadPromise;
   loadPromise = (async () => {
-    const base = import.meta.env.BASE_URL || '/';
-    const res = await fetch(`${base}${MSGPACK_URL.replace(/^\//, '')}`, { priority: 'low' }); // bulk table
+    const res = await fetch(dataUrl(MSGPACK_URL), { priority: 'low' }); // bulk table
     if (!res.ok) throw new Error(`Failed to fetch ui_categories: ${res.status}`);
     const buf = await res.arrayBuffer();
     cached = decode(new Uint8Array(buf));
@@ -86,8 +86,7 @@ export async function getTwItemUICategories() {
   if (cached) return cached.twItemUICategories || {};
   // Small names file (built with the shards); fall back to the full table if it's missing
   if (!namesPromise) {
-    const base = import.meta.env.BASE_URL || '/';
-    namesPromise = fetch(`${base}data/shards/ui-category-names.json`)
+    namesPromise = fetch(dataUrl('shards/ui-category-names.json'))
       .then(res => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
       .catch(async () => {
         namesPromise = null;

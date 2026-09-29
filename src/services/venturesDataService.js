@@ -12,6 +12,7 @@
  */
 
 import { decode } from '@msgpack/msgpack';
+import { dataUrl } from '../utils/dataUrl';
 
 export const VENTURE_CATEGORIES = {
   HUNTING: 34,
@@ -35,8 +36,7 @@ export async function loadVenturesData() {
   if (loadPromise) return loadPromise;
 
   loadPromise = (async () => {
-    const baseUrl = import.meta.env.BASE_URL || '/';
-    const response = await fetch(`${baseUrl}data/ventures-data.msgpack`);
+    const response = await fetch(dataUrl('ventures-data.msgpack'));
     if (!response.ok) throw new Error(`Ventures fetch failed: ${response.status}`);
     const buf = await response.arrayBuffer();
     const raw = decode(new Uint8Array(buf));

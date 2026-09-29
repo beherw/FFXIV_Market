@@ -11,10 +11,27 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const TW_JSON_DIR = path.resolve(__dirname, '.tw-json')
 const TC_TW_JSON_DIR = path.resolve(__dirname, 'teamcraft_git/libs/data/src/lib/json/tw')
 
+// Changes on every build. Data files are fetched with ?v=BUILD_ID so a new build never reuses a
+// cached old msgpack, and dist/version.json lets an open tab notice that a newer build is live.
+const BUILD_ID = String(Date.parse(process.env.VITE_BUILD_DATE || '') || Date.now())
+
+function versionJsonPlugin() {
+  return {
+    name: 'version-json',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ buildId: BUILD_ID }) })
+    },
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   base: process.env.GITHUB_PAGES === 'true' ? '/FFXIV_Market/' : '/',
-  plugins: [wasm(), topLevelAwait(), react()],
+  plugins: [wasm(), topLevelAwait(), react(), versionJsonPlugin()],
+  define: {
+    __BUILD_ID__: JSON.stringify(BUILD_ID),
+  },
   resolve: {
     dedupe: ['react', 'react-dom', 'react-router-dom'],
     alias: [

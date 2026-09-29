@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
+import UpdateNotice from './components/UpdateNotice.jsx'
 import './styles/main.css'
 import { preloadAppData } from './utils/preloadAppData'
 // Data is loaded from local msgpack/JSON. No remote DB on startup.
@@ -53,6 +54,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     }}
   >
     <App />
+    <UpdateNotice />
   </BrowserRouter>
 )
 

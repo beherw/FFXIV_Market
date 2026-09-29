@@ -10,8 +10,7 @@ import { decode } from '@msgpack/msgpack';
 import { getFatesByIds, getFateSourcesByItemId } from './fatesData.js';
 import { getTwItemsByIds, getZhItemsByIds, getEnItemsByIds } from './itemsDatabaseMsgpack.js';
 import { loadDomainRecords } from './dataShards.js';
-
-const BASE = (import.meta.env?.BASE_URL || '/').replace(/\/$/, '') + '/data';
+import { dataUrl } from '../utils/dataUrl';
 
 const domainCache = {};
 const domainLoadPromises = {};
@@ -42,7 +41,7 @@ function sliceShopsByNpc(shopsByNpc, npcIds) {
 async function loadDomain(name, signal) {
   if (domainCache[name]) return domainCache[name];
   if (domainLoadPromises[name]) return domainLoadPromises[name];
-  const url = `${BASE}/${name}.msgpack`;
+  const url = dataUrl(`${name}.msgpack`);
   const p = (async () => {
     try {
       const res = await fetch(url, { signal });

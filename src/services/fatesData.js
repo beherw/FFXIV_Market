@@ -11,6 +11,7 @@
 
 import { decode } from '@msgpack/msgpack';
 import { loadDomainRecords } from './dataShards.js';
+import { dataUrl } from '../utils/dataUrl';
 
 let dataCache = null;
 let isLoading = false;
@@ -34,8 +35,7 @@ export async function loadFatesDatabase(signal = null) {
   isLoading = true;
   loadPromise = (async () => {
     try {
-      const baseUrl = import.meta.env.BASE_URL || '/';
-      const response = await fetch(`${baseUrl}data/fates.msgpack`, { signal });
+      const response = await fetch(dataUrl('fates.msgpack'), { signal });
       if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
       const buffer = await response.arrayBuffer();
       dataCache = decode(new Uint8Array(buffer));

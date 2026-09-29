@@ -1,4 +1,5 @@
 import { decode } from '@msgpack/msgpack';
+import { dataUrl } from '../utils/dataUrl';
 
 let lunarCraftingData = null;
 let loadPromise = null;
@@ -8,8 +9,7 @@ export async function loadLunarCraftingData() {
   if (loadPromise) return loadPromise;
 
   loadPromise = (async () => {
-    const baseUrl = import.meta.env.BASE_URL || '/';
-    const response = await fetch(`${baseUrl}data/lunar-crafting.msgpack`);
+    const response = await fetch(dataUrl('lunar-crafting.msgpack'));
     if (!response.ok) {
       throw new Error(`Failed to fetch lunar crafting data: ${response.status}`);
     }
