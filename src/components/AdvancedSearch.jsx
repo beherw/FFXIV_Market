@@ -8,7 +8,7 @@ import TaxRatesModal from './TaxRatesModal';
 import SearchResultsTable from './SearchResultsTable.jsx';
 import ServerSelector from './ServerSelector';
 // RunningLoader is now handled by SearchResultsTable component for centralized loading display
-import { getMarketableItems, getMarketableItemsByIds } from '../services/universalis';
+import { getMarketableItems, getMarketableItemsByIds, fetchAggregated } from '../services/universalis';
 import { searchItems, getSimplifiedChineseName, getItemById } from '../services/itemDatabase';
 import { loadRecipeDatabase, loadRecipesByJobAndLevel } from '../services/recipeDatabase';
 import { getTwJobAbbr, getTwItems, getIlvlsByIds, getRaritiesByIds, getTwItemById, getTwItemsByIds, getItemIdsByIlvlRange } from '../services/gameData';
@@ -803,19 +803,14 @@ export default function AdvancedSearch({
           return;
         }
         
-        const itemIdsString = batch.join(',');
-        
         try {
-          const response = await fetch(`https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`, {
-            signal: abortSignal
-          });
+          const data = await fetchAggregated(queryTarget, batch, { signal: abortSignal });
           
           // Check again after fetch
           if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || currentRequestId !== batchSearchRequestIdRef.current) {
             return;
           }
-          
-          const data = await response.json();
+
           
           if (data && data.results) {
             data.results.forEach(item => {
@@ -2674,19 +2669,13 @@ export default function AdvancedSearch({
               }));
             }
             
-            const itemIdsString = batch.join(',');
-            
             try {
-              const response = await fetch(`https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`, {
-                signal: abortSignal
-              });
+              const data = await fetchAggregated(queryTarget, batch, { signal: abortSignal });
               
               // Check again after fetch
               if (abortSignal.aborted || currentRequestId !== velocityFetchRequestIdRef.current) {
                 return;
               }
-              
-              const data = await response.json();
               
               // Process batch results (same logic as App.jsx)
               const batchVelocities = {};
@@ -3377,18 +3366,13 @@ export default function AdvancedSearch({
                 return;
               }
               
-              const itemIdsString = batch.join(',');
-              
               try {
-                const response = await fetch(`https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`, {
-                  signal: abortSignal
-                });
+                const data = await fetchAggregated(queryTarget, batch, { signal: abortSignal });
                 
                 if (abortSignal.aborted || marketDataRequestId !== velocityFetchRequestIdRef.current || continueSearchRequestId !== filterSearchRequestIdRef.current) {
                   return;
                 }
-                
-                const data = await response.json();
+
                 
                 if (data && data.results) {
                   const batchVelocities = {};

@@ -7,9 +7,8 @@ import TopBar from './TopBar';
 import TaxRatesModal from './TaxRatesModal';
 import SearchResultsTable from './SearchResultsTable.jsx';
 import RunningLoader from './RunningLoader';
-import { getMarketableItemsByIds } from '../services/universalis';
+import { getMarketableItemsByIds, fetchAggregated } from '../services/universalis';
 import { getItemById, getSimplifiedChineseName } from '../services/itemDatabase';
-import axios from 'axios';
 import { getEquipSlotCategories, getItemIdsByIlvl } from '../services/gameData';
 import { getEquipmentByIds } from '../services/itemsDatabaseMsgpack';
 import { APP_VERSION } from '../constants/version';
@@ -335,14 +334,8 @@ export default function MSQPriceChecker({
     // Only query API for tradeable items to avoid 400 errors
     for (let i = 0; i < itemIdsToQuery.length; i += batchSize) {
       const batch = itemIdsToQuery.slice(i, i + batchSize);
-      const itemIdsString = batch.join(',');
-
       try {
-        const response = await axios.get(
-          `https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`
-        );
-
-        const data = response.data;
+        const data = await fetchAggregated(queryTarget, batch);
         if (data && data.results) {
           data.results.forEach(item => {
             const itemId = item.itemId;

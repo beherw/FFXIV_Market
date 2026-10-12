@@ -11,10 +11,9 @@ import SearchResultsTable from './SearchResultsTable.jsx';
 import ServerSelector from './ServerSelector';
 import RunningLoader from './RunningLoader';
 import { loadRecipeDatabase, loadRecipesByJobAndLevel } from '../services/recipeDatabase';
-import { getMarketableItems, getMarketableItemsByIds } from '../services/universalis';
+import { getMarketableItems, getMarketableItemsByIds, fetchAggregated } from '../services/universalis';
 import { getItemById, getSimplifiedChineseName } from '../services/itemDatabase';
 import { getInternalUrl } from '../utils/internalUrl.js';
-import axios from 'axios';
 import { getTwJobAbbr, getIlvlsByIds } from '../services/gameData';
 import { APP_VERSION } from '../constants/version';
 import { PAGINATION_CONFIG } from '../constants/pagination';
@@ -298,14 +297,8 @@ export default function CraftingJobPriceChecker({
         return;
       }
       
-      const itemIdsString = batch.join(',');
-      
       try {
-        const response = await axios.get(
-          `https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`
-        );
-        
-        const data = response.data;
+        const data = await fetchAggregated(queryTarget, batch);
         
         // Process batch results
         const batchVelocities = {};

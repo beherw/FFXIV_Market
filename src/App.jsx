@@ -16,7 +16,7 @@ import ServerUploadTimes from './components/ServerUploadTimes';
 import Toast from './components/Toast';
 import { formatRelativeTime, formatLocalTime } from './utils/timeFormat';
 import { searchItems, searchItemsOCR, getItemById, getSimplifiedChineseName, cancelSimplifiedNameFetch } from './services/itemDatabase';
-import { getMarketData, getMarketableItems, getItemsVelocity, getTaxRates, getAggregatedMarketData, getMarketSaleHistory, prefetchItemMarket } from './services/universalis';
+import { getMarketData, getMarketableItems, getItemsVelocity, getTaxRates, getAggregatedMarketData, getMarketSaleHistory, prefetchItemMarket, fetchAggregated, filterExcludedWorlds } from './services/universalis';
 // Removed containsChinese import - no longer restricting to Chinese input
 import { getAssetPath } from './utils/assetPath.js';
 import ItemImage from './components/ItemImage';
@@ -1154,7 +1154,8 @@ function App() {
     const SERVER_CACHE_KEY = 'universalis-servers-v1';
     let hasSelection = false;
 
-    const applyServerData = (dcData, worldsData) => {
+    const applyServerData = (rawDcData, rawWorldsData) => {
+      const { dataCenters: dcData, worlds: worldsData } = filterExcludedWorlds(rawDcData, rawWorldsData);
       if (!Array.isArray(dcData) || dcData.length === 0 || !Array.isArray(worldsData) || worldsData.length === 0) {
         return false;
       }
@@ -1617,19 +1618,13 @@ function App() {
             }));
           }
           
-          const itemIdsString = batch.join(',');
-          
           try {
-            const response = await fetch(`https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`, {
-              signal: abortSignal
-            });
+            const data = await fetchAggregated(queryTarget, batch, { signal: abortSignal });
             
             // Check again after fetch
             if (abortSignal.aborted || currentRequestId !== velocityFetchRequestIdRef.current) {
               return;
             }
-            
-            const data = await response.json();
             
             // Process batch results
             const batchVelocities = {};
@@ -2117,19 +2112,13 @@ function App() {
               return;
             }
           
-            const itemIdsString = batch.join(',');
-          
             try {
-              const response = await fetch(`https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`, {
-                signal: abortSignal
-              });
+              const data = await fetchAggregated(queryTarget, batch, { signal: abortSignal });
             
               // Check again after fetch
               if (abortSignal.aborted || currentRequestId !== historyFetchRequestIdRef.current) {
                 return;
               }
-            
-              const data = await response.json();
             
               // Process batch results (same logic as search page)
               const batchVelocities = {};

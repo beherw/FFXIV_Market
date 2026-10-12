@@ -3,7 +3,7 @@
  * Shared by MSQ-style pages and Company Craft list (same response parsing as MSQPriceChecker).
  */
 
-import axios from 'axios';
+import { fetchAggregated } from '../services/universalis';
 
 /**
  * @param {object} params
@@ -63,14 +63,8 @@ export async function fetchAggregatedPricesForItemTable({
   });
 
   const processBatch = async (batch) => {
-    const itemIdsString = batch.join(',');
-
     try {
-      const response = await axios.get(
-        `https://universalis.app/api/v2/aggregated/${encodeURIComponent(queryTarget)}/${itemIdsString}`
-      );
-
-      const data = response.data;
+      const data = await fetchAggregated(queryTarget, batch);
       if (data && data.results) {
         data.results.forEach((item) => {
           const itemId = item.itemId;

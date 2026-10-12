@@ -1,9 +1,134 @@
 import axios from 'axios';
 import { requestManager } from '../utils/requestManager';
 import { getMarketItems, getMarketItemsByIds } from './gameData';
+import bundledServers from '../constants/universalisServers.json';
 
 const UNIVERSALIS_BASE_URL = 'https://universalis.app/api/v2';
 const MAX_HISTORY_ENTRIES_TO_RETURN = 99999;
+
+// Worlds Universalis still serves but that are closed in-game. Their last market snapshot never
+// refreshes, so its listings undercut every live world. Hidden from the server list and stripped
+// from every Universalis response before anything is priced or averaged.
+export const EXCLUDED_WORLD_IDS = new Set([
+  4034, // 拉姆 (陸行鳥): closed shortly after opening; listings frozen since 2026-10-05
+]);
+
+const isExcludedWorld = (worldId) => EXCLUDED_WORLD_IDS.has(Number(worldId));
+
+/**
+ * Drop excluded worlds from a data-centers + worlds list (Universalis /data-centers and /worlds shape).
+ */
+export function filterExcludedWorlds(dataCenters, worlds) {
+  return {
+    dataCenters: Array.isArray(dataCenters)
+      ? dataCenters.map(dc => ({ ...dc, worlds: (dc.worlds || []).filter(id => !isExcludedWorld(id)) }))
+      : dataCenters,
+    worlds: Array.isArray(worlds) ? worlds.filter(w => !isExcludedWorld(w.id)) : worlds,
+  };
+}
+
+function withoutExcludedUploadTimes(uploadTimes) {
+  if (!uploadTimes || typeof uploadTimes !== 'object') return uploadTimes;
+  if (Array.isArray(uploadTimes)) return uploadTimes.filter(t => !isExcludedWorld(t.worldId));
+  return Object.fromEntries(Object.entries(uploadTimes).filter(([id]) => !isExcludedWorld(id)));
+}
+
+// Live worlds sharing a data center with an excluded world: their own minimum listings replace a
+// DC/region minimum that Universalis computed from an excluded world.
+const SIBLINGS_OF_EXCLUDED_WORLDS = [...new Set(
+  bundledServers.dataCenters
+    .filter(dc => dc.worlds.some(isExcludedWorld))
+    .flatMap(dc => dc.worlds.filter(id => !isExcludedWorld(id)))
+)];
+
+const toAbortError = (error) => (
+  error?.code === 'ERR_CANCELED' ? Object.assign(new Error('canceled'), { name: 'AbortError' }) : error
+);
+
+async function getAggregatedJson(target, itemIds, signal) {
+  const url = `${UNIVERSALIS_BASE_URL}/aggregated/${encodeURIComponent(target)}/${itemIds.join(',')}`;
+  const response = await axios.get(url, signal ? { signal } : undefined);
+  return response.data;
+}
+
+/**
+ * Remove excluded worlds from an /aggregated response. Universalis bakes them into the DC/region
+ * minimum listing, so affected items get that minimum recomputed from the live sibling worlds.
+ */
+async function stripExcludedFromAggregated(data, signal) {
+  if (!data?.results) return data;
+  const affected = new Set();
+  data.results.forEach(item => {
+    item.worldUploadTimes = withoutExcludedUploadTimes(item.worldUploadTimes);
+    ['nq', 'hq'].forEach(quality => {
+      const minListing = item[quality]?.minListing;
+      if (!minListing) return;
+      ['dc', 'region'].forEach(scope => {
+        if (minListing[scope] && isExcludedWorld(minListing[scope].worldId)) {
+          delete minListing[scope];
+          affected.add(item.itemId);
+        }
+      });
+    });
+  });
+  if (affected.size === 0 || SIBLINGS_OF_EXCLUDED_WORLDS.length === 0) return data;
+
+  const ids = [...affected];
+  const perWorld = await Promise.all(SIBLINGS_OF_EXCLUDED_WORLDS.map(worldId =>
+    getAggregatedJson(worldId, ids, signal).then(json => ({ worldId, json }), error => {
+      if (error?.code === 'ERR_CANCELED') throw toAbortError(error);
+      return { worldId, json: null };
+    })
+  ));
+  const best = {}; // itemId -> { nq, hq } -> { price, worldId }
+  perWorld.forEach(({ worldId, json }) => {
+    (json?.results || []).forEach(item => {
+      ['nq', 'hq'].forEach(quality => {
+        const price = item[quality]?.minListing?.world?.price;
+        if (price === undefined || price === null) return;
+        const entry = (best[item.itemId] ||= {});
+        if (!entry[quality] || price < entry[quality].price) entry[quality] = { price, worldId };
+      });
+    });
+  });
+  data.results.forEach(item => {
+    if (!affected.has(item.itemId)) return;
+    ['nq', 'hq'].forEach(quality => {
+      const replacement = best[item.itemId]?.[quality];
+      const minListing = item[quality]?.minListing;
+      if (!replacement || !minListing) return;
+      // The 繁中服 region is the 陸行鳥 DC alone, so the DC minimum is also the region minimum
+      if (!minListing.dc) minListing.dc = { ...replacement };
+      if (!minListing.region) minListing.region = { ...replacement };
+    });
+  });
+  return data;
+}
+
+/**
+ * Fetch /aggregated for a world/DC/region with excluded worlds removed. Resolves to the parsed JSON
+ * (same shape as Universalis). An aborted request rejects with an error named 'AbortError'.
+ */
+export async function fetchAggregated(target, itemIds, { signal } = {}) {
+  try {
+    const data = await getAggregatedJson(target, itemIds, signal);
+    return await stripExcludedFromAggregated(data, signal);
+  } catch (error) {
+    throw toAbortError(error);
+  }
+}
+
+function stripExcludedFromMarketData(data) {
+  if (!data || typeof data !== 'object') return data;
+  return {
+    ...data,
+    listings: Array.isArray(data.listings) ? data.listings.filter(l => !isExcludedWorld(l.worldID)) : data.listings,
+    recentHistory: Array.isArray(data.recentHistory)
+      ? data.recentHistory.filter(h => !isExcludedWorld(h.worldID))
+      : data.recentHistory,
+    worldUploadTimes: withoutExcludedUploadTimes(data.worldUploadTimes),
+  };
+}
 
 // Cache for marketable items
 let marketableItemsSet = null;
@@ -100,10 +225,9 @@ export async function getItemsVelocity(dcName, itemIds, options = {}) {
 
   try {
     const url = `${UNIVERSALIS_BASE_URL}/aggregated/${encodeURIComponent(dcName)}/${itemIdsString}`;
-    const response = await sharedRequest(`agg|${url}`, () => hedged(() => axios.get(url), 2000), options.signal);
+    const data = await sharedRequest(`agg|${url}`, () => hedged(() => fetchAggregated(dcName, limitedIds), 2000), options.signal);
 
     const results = {};
-    const data = response.data;
 
     // Track which item IDs appear in results (tradable) vs failedItems (non-tradable)
     const tradableItemIds = new Set();
@@ -191,7 +315,7 @@ export async function getMostRecentlyUpdatedItems(dcName, entries = 20, options 
     }
 
     const response = await axios.get(`${UNIVERSALIS_BASE_URL}/extra/stats/most-recently-updated`, config);
-    return response.data?.items || [];
+    return (response.data?.items || []).filter(item => !isExcludedWorld(item.worldID));
   } catch (error) {
     if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || (options.signal && options.signal.aborted)) {
       return null;
@@ -291,6 +415,23 @@ export function prefetchItemMarket(server, itemId, { listings = 20, entries = 0,
   });
 }
 
+// Listings come back cheapest first, so an excluded world's frozen (cheap) listings can fill the whole
+// `listings` page. Ask for a bigger page until enough live listings remain or the page is exhausted.
+async function getMarketDataWithoutExcluded(server, itemId, params) {
+  const wanted = params.listings;
+  let limit = wanted;
+  for (let attempt = 0; ; attempt++) {
+    const response = await axios.get(`${UNIVERSALIS_BASE_URL}/${server}/${itemId}`, { params: { ...params, listings: limit } });
+    const raw = response.data;
+    const data = stripExcludedFromMarketData(raw);
+    const returned = raw?.listings?.length ?? 0;
+    if (!data?.listings || data.listings.length >= wanted || returned < limit || attempt >= 2) {
+      return data?.listings ? { ...data, listings: data.listings.slice(0, wanted) } : data;
+    }
+    limit = Math.min(limit * 4, 1000);
+  }
+}
+
 export async function getMarketData(server, itemId, options = {}) {
   // Don't use request manager if request is aborted
   if (options.signal && options.signal.aborted) {
@@ -310,10 +451,7 @@ export async function getMarketData(server, itemId, options = {}) {
     }
     const key = `md|${server}|${itemId}|${params.listings}|${params.entries}|${params.hq ? 1 : 0}`;
     const data = await sharedRequest(key, () => hedged(() => requestManager.makeRequest(
-      async () => {
-        const response = await axios.get(`${UNIVERSALIS_BASE_URL}/${server}/${itemId}`, { params });
-        return response.data;
-      },
+      () => getMarketDataWithoutExcluded(server, itemId, params),
       {
         maxRetries: 2,
         onRateLimit: (attempt, delay) => {
@@ -383,14 +521,11 @@ export async function getMarketSaleHistory(worldDcRegion, itemId, options = {}) 
       options.signal
     );
 
-    if (options.hq) {
-      return {
-        ...response.data,
-        entries: (response.data?.entries || []).filter(entry => entry.hq),
-      };
-    }
-
-    return response.data;
+    const entries = (response.data?.entries || []).filter(entry => !isExcludedWorld(entry.worldID));
+    return {
+      ...response.data,
+      entries: options.hq ? entries.filter(entry => entry.hq) : entries,
+    };
   } catch (error) {
     if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || (options.signal && options.signal.aborted)) {
       return null;
@@ -460,7 +595,7 @@ export async function getMarketDataByDataCenter(itemId, dataCenter, options = {}
     }
 
     const response = await axios.get(`${UNIVERSALIS_BASE_URL}/${dataCenter}/${itemId}`, config);
-    return response.data;
+    return stripExcludedFromMarketData(response.data);
   } catch (error) {
     // Don't log error if request was aborted
     if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || (options.signal && options.signal.aborted)) {
@@ -508,10 +643,9 @@ export async function getAggregatedMarketData(worldDcRegion, itemIds, worlds = {
 
   try {
     const url = `${UNIVERSALIS_BASE_URL}/aggregated/${encodeURIComponent(worldDcRegion)}/${itemIdsString}`;
-    const response = await sharedRequest(`agg|${url}`, () => hedged(() => axios.get(url), 2000), options.signal);
+    const data = await sharedRequest(`agg|${url}`, () => hedged(() => fetchAggregated(worldDcRegion, limitedIds), 2000), options.signal);
 
     const results = {};
-    const data = response.data;
 
     if (data && data.results) {
       data.results.forEach(item => {
