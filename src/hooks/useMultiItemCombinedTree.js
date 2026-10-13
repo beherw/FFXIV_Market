@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { getValidatedCache, setCache, removeCache } from '../utils/cacheStorage.js';
 
-const STORAGE_KEY = 'ffxiv_multi_item_state';
+export const MULTI_ITEM_STORAGE_KEY = 'ffxiv_multi_item_state';
+const STORAGE_KEY = MULTI_ITEM_STORAGE_KEY;
 
 /**
  * Custom hook for managing multi-item combined tree state with localStorage cache
@@ -11,6 +12,8 @@ export function useMultiItemCombinedTree() {
   const [builtTree, setBuiltTree] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const prevItemListRef = useRef(null);
+  const itemListRef = useRef(itemList);
+  itemListRef.current = itemList;
 
   // Load from localStorage on mount (only if cache is valid/versioned)
   useEffect(() => {
@@ -56,6 +59,8 @@ export function useMultiItemCombinedTree() {
 
   const buildTree = useCallback((items) => {
     setBuiltTree(items);
+    // Persist right away: the tree window opened next reads it from storage on load
+    setCache(STORAGE_KEY, { itemList: itemListRef.current, builtTree: items });
     // Don't clear itemList - allow users to continue editing
   }, []);
 

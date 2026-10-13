@@ -27,6 +27,8 @@ import { generateBracketPatterns } from './utils/searchNormalization';
 import { addSearchToHistory } from './utils/searchHistory';
 import { useHistory } from './hooks/useHistory';
 import { useMultiItemCombinedTree } from './hooks/useMultiItemCombinedTree';
+import { MULTI_ITEM_TREE_PATH, MULTI_ITEM_TREE_WINDOW_NAME, SELECT_ITEM_MESSAGE } from './constants/multiItemTreeWindow.js';
+import { getInternalUrl } from './utils/internalUrl.js';
 import { hasRecipe, buildCraftingTree, findRecipesByResult, findRelatedItems, isCompanyCraftResultItem, isRecipeDatabaseLoaded } from './services/recipeDatabase';
 import { getIlvls, getItemPatch, getPatchNames, getItemSetFromDB, getTwItemsByIds, getKnownMarketability, isItemMarketable } from './services/gameData';
 import { getUICategoriesByIds, getTwItemUICategories } from './services/uiCategoriesDataService';
@@ -90,7 +92,6 @@ const prefetchObtainMethods = (itemId) => {
   }
 };
 const MultiItemListModal = createLazyComponent(() => import('./components/MultiItemListModal.jsx'), 'MultiItemListModal');
-const MultiItemCombinedTree = createLazyComponent(() => import('./components/MultiItemCombinedTree.jsx'), 'MultiItemCombinedTree');
 const CraftingSimulatorDrawer = createLazyComponent(() => import('./components/CraftingSimulatorDrawer.jsx'), 'CraftingSimulatorDrawer');
 const CompanyCraftItemsPage = createLazyComponent(() => import('./components/CompanyCraftItemsPage.jsx'), 'CompanyCraftItemsPage');
 const VenturesPricePage = createLazyComponent(() => import('./components/VenturesPricePage.jsx'), 'VenturesPricePage');
@@ -277,7 +278,6 @@ function App() {
   const multiItemState = useMultiItemCombinedTree();
   // Separate state for list modal and tree modal visibility
   const [isMultiItemListModalOpen, setIsMultiItemListModalOpen] = useState(false);
-  const [isMultiItemCombinedTreeModalOpen, setIsMultiItemCombinedTreeModalOpen] = useState(false);
   // Track item list changes for special effect
   const [hasItemListChanged, setHasItemListChanged] = useState(false);
   const prevItemListLengthRef = useRef(multiItemState.itemList.length);
@@ -4091,8 +4091,10 @@ function App() {
     setIsMultiItemListModalOpen(true);
   }, []);
 
-  // Handle building combined tree
+  // Handle building combined tree: shown in its own browser tab rather than a modal
   const handleBuildCombinedTree = useCallback((items) => {
+    // Open the window now, while still inside the click, so popup blockers allow it
+    const treeWindow = window.open('', MULTI_ITEM_TREE_WINDOW_NAME);
     (async () => {
       try {
         // Build tree for each item before storing
@@ -4106,14 +4108,36 @@ function App() {
         });
         const treesArray = await Promise.all(treesPromises);
         multiItemState.buildTree(treesArray);
-        // Close the list modal and open the tree modal
         setIsMultiItemListModalOpen(false);
-        setIsMultiItemCombinedTreeModalOpen(true);
+        const params = new URLSearchParams();
+        if (selectedServerOption) params.set('server', String(selectedServerOption));
+        if (selectedWorld?.section) params.set('dc', selectedWorld.section);
+        const url = `${window.location.origin}${getInternalUrl(MULTI_ITEM_TREE_PATH)}?${params}`;
+        if (treeWindow && !treeWindow.closed) {
+          treeWindow.location.href = url;
+          treeWindow.focus();
+        } else {
+          window.open(url, MULTI_ITEM_TREE_WINDOW_NAME);
+        }
       } catch (err) {
         console.error('Failed to build combined tree:', err);
+        treeWindow?.close();
+        addToast('建立多物品組合樹失敗', 'error');
       }
     })();
-  }, [multiItemState, excludeCrystals]);
+  }, [multiItemState, excludeCrystals, selectedServerOption, selectedWorld, addToast]);
+
+  // Item clicks inside the tree window show the item here
+  useEffect(() => {
+    const onMessage = (e) => {
+      if (e.origin !== window.location.origin || e.data?.type !== SELECT_ITEM_MESSAGE) return;
+      getItemById(e.data.itemId).then(item => {
+        if (item) handleItemSelect(item);
+      });
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [handleItemSelect]);
 
   // Handle clearing combined tree to return to item list
   const handleClearCombinedTree = useCallback(() => {
@@ -6130,24 +6154,6 @@ function App() {
         selectedServerOption={taxServerOption}
         onServerOptionChange={handleTaxServerOptionChange}
       />
-
-      {/* Multi-Item Combined Tree Modal */}
-      <ErrorBoundary fallbackMessage="多物品組合樹載入失敗，請重新整理頁面">
-        <Suspense fallback={null}>
-          <MultiItemCombinedTree
-            isOpen={isMultiItemCombinedTreeModalOpen}
-            onClose={() => setIsMultiItemCombinedTreeModalOpen(false)}
-            itemList={multiItemState.builtTree}
-            selectedServerOption={selectedServerOption}
-            selectedWorld={selectedWorld}
-            worlds={worlds}
-            onItemSelect={handleItemSelect}
-            excludeCrystals={excludeCrystals}
-            onExcludeCrystalsChange={handleExcludeCrystalsChange}
-            currentItemId={currentItemId}
-          />
-        </Suspense>
-      </ErrorBoundary>
 
       <ErrorBoundary fallbackMessage="模擬製作面板載入失敗，請重新整理頁面">
         <Suspense fallback={null}>

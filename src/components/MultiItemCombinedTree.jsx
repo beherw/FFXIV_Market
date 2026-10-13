@@ -1104,11 +1104,13 @@ function TreeNodeVertical({
 }
 
 /**
- * Main MultiItemCombinedTree Modal component
+ * Main MultiItemCombinedTree component. Renders as a modal, or as a full page when `standalone`
+ * (the separate browser window opened from the multi-item list).
  */
 export default function MultiItemCombinedTree({
   isOpen,
   onClose,
+  standalone = false,
   itemList,
   selectedServerOption,
   selectedWorld,
@@ -1288,20 +1290,20 @@ export default function MultiItemCombinedTree({
   }, [itemList, selectedServerOption, worlds]);
 
   const handleItemClick = useCallback((itemId) => {
-    if (onItemSelect) {
-      getItemById(itemId).then(item => {
-        if (item) {
-          onItemSelect(item);
-        } else {
-          const itemUrl = generateItemUrl(itemId, 'item');
-          const url = `${window.location.origin}${getInternalUrl(itemUrl)}`;
-          window.open(url, '_blank', 'noopener,noreferrer');
-        }
-      });
-    } else {
+    const openInNewTab = () => {
       const itemUrl = generateItemUrl(itemId, 'item');
       const url = `${window.location.origin}${getInternalUrl(itemUrl)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
+    };
+    if (onItemSelect) {
+      getItemById(itemId).then(item => {
+        // onItemSelect returns false when it couldn't show the item (e.g. main window closed)
+        if (!item || onItemSelect(item) === false) {
+          openInNewTab();
+        }
+      });
+    } else {
+      openInNewTab();
     }
   }, [onItemSelect]);
 
@@ -1406,15 +1408,19 @@ export default function MultiItemCombinedTree({
     }
   }, [isDragging, handleDragMove, handleMouseUp]);
 
-  if (!isOpen) return null;
+  if (!isOpen && !standalone) return null;
 
   return (
     <div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={handleBackdropClick}
+      className={standalone
+        ? 'min-h-screen bg-slate-900 flex flex-col'
+        : 'fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4'}
+      onClick={standalone ? undefined : handleBackdropClick}
     >
       <div 
-        className="bg-slate-800 rounded-lg border border-purple-500/50 shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto flex flex-col"
+        className={standalone
+          ? 'bg-slate-800 w-full min-h-screen flex flex-col'
+          : 'bg-slate-800 rounded-lg border border-purple-500/50 shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto flex flex-col'}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1459,14 +1465,16 @@ export default function MultiItemCombinedTree({
               <span>{exportStatus || '匯出全部物品'}</span>
             </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          {!standalone && (
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Content */}
@@ -1516,7 +1524,7 @@ export default function MultiItemCombinedTree({
         </div>
 
         {/* Legend */}
-        <div className="border-t border-purple-500/20 p-4 flex-shrink-0">
+        <div className={`border-t border-purple-500/20 p-4 flex-shrink-0 ${standalone ? 'sticky bottom-0 bg-slate-800' : ''}`}>
           <div className="flex flex-wrap gap-4 text-xs text-gray-400">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded bg-slate-800/60 border border-purple-500/30"></div>

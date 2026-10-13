@@ -1,8 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, useLocation } from 'react-router-dom'
 import App from './App.jsx'
 import UpdateNotice from './components/UpdateNotice.jsx'
+import { MULTI_ITEM_TREE_PATH } from './constants/multiItemTreeWindow.js'
 import './styles/main.css'
 import { preloadAppData } from './utils/preloadAppData'
 // Data is loaded from local msgpack/JSON. No remote DB on startup.
@@ -42,6 +43,21 @@ window.scrollTo(0, 0);
 document.documentElement.scrollTop = 0;
 document.body.scrollTop = 0;
 
+const MultiItemTreeWindow = React.lazy(() => import('./components/MultiItemTreeWindow.jsx'))
+
+// The multi-item tree window is a standalone page; skip the full app shell for it
+function Root() {
+  const location = useLocation()
+  if (location.pathname === MULTI_ITEM_TREE_PATH) {
+    return (
+      <React.Suspense fallback={null}>
+        <MultiItemTreeWindow />
+      </React.Suspense>
+    )
+  }
+  return <App />
+}
+
 // Get basename for React Router (matches vite.config.js base setting)
 const basename = document.location.pathname.includes('/FFXIV_Market') ? '/FFXIV_Market/' : '/';
 
@@ -53,7 +69,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       v7_relativeSplatPath: true
     }}
   >
-    <App />
+    <Root />
     <UpdateNotice />
   </BrowserRouter>
 )
