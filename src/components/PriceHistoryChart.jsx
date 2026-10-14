@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
+import { useTheme } from '../hooks/useTheme';
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 
 // Must match ComposedChart margin.left + YAxis width, and margin.right
@@ -110,6 +111,8 @@ function TooltipContent({ items }) {
 
 
 export default function PriceHistoryChart({ history, rangeDays = 7, rangeOptions = [], onRangeChange }) {
+  // SVG attributes can't follow the CSS theme variables, so pick axis text per theme.
+  const axisTickColor = useTheme().theme === 'light' ? '#475569' : '#9ca3af';
   const [filter, setFilter] = useState('all');
   const [zoomDomain, setZoomDomain] = useState(null);
   const [hoverItems, setHoverItems] = useState(null);
@@ -394,7 +397,7 @@ export default function PriceHistoryChart({ history, rangeDays = 7, rangeOptions
             return `${d.getMonth() + 1}/${d.getDate()}`;
           }}
           stroke="#6b7280"
-          tick={{ fill: '#9ca3af', fontSize: 11 }}
+          tick={{ fill: axisTickColor, fontSize: 11 }}
           tickLine={false}
           axisLine={{ stroke: 'rgba(139,92,246,0.2)' }}
         />
@@ -403,7 +406,7 @@ export default function PriceHistoryChart({ history, rangeDays = 7, rangeOptions
           domain={yDomain}
           tickFormatter={formatPrice}
           stroke="#6b7280"
-          tick={{ fill: '#9ca3af', fontSize: 11 }}
+          tick={{ fill: axisTickColor, fontSize: 11 }}
           tickLine={false}
           axisLine={{ stroke: 'rgba(139,92,246,0.2)' }}
           width={52}

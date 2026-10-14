@@ -31,12 +31,12 @@
     position: fixed;
     inset: 0;
     z-index: -1;
-    background-color: #0f172a;
+    background-color: rgb(var(--c-slate-900));
     background-image: 
-      radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.12) 0%, transparent 50%),
-      radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 60%),
-      radial-gradient(circle at 10% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 40%);
+      radial-gradient(circle at 20% 30%, rgb(var(--c-violet-500) / 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgb(var(--c-pink-500) / 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, rgb(var(--c-blue-500) / 0.08) 0%, transparent 60%),
+      radial-gradient(circle at 10% 80%, rgb(var(--c-purple-500) / 0.1) 0%, transparent 40%);
     pointer-events: none;
   }
 
@@ -66,12 +66,12 @@
     opacity: 1;
     width: 18px;
     background-image:
-      linear-gradient(to bottom, rgba(139, 92, 246, 0.15), rgba(109, 40, 217, 0.25)),
+      linear-gradient(to bottom, rgb(var(--c-violet-500) / 0.15), rgb(var(--c-violet-700) / 0.25)),
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M5 2 L9 6 L1 6 Z' fill='%23a78bfa'/%3E%3Cpath d='M5 12 L1 8 L9 8 Z' fill='%23a78bfa'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: center;
     background-size: auto, 10px 14px;
-    border-left: 1px solid rgba(139, 92, 246, 0.3);
+    border-left: 1px solid rgb(var(--c-violet-500) / 0.3);
     border-radius: 0 4px 4px 0;
     cursor: pointer;
   }
@@ -79,7 +79,7 @@
   input[type='number']:hover::-webkit-inner-spin-button:hover,
   input[type='number']:hover::-webkit-outer-spin-button:hover {
     background-image:
-      linear-gradient(to bottom, rgba(139, 92, 246, 0.35), rgba(109, 40, 217, 0.5)),
+      linear-gradient(to bottom, rgb(var(--c-violet-500) / 0.35), rgb(var(--c-violet-700) / 0.5)),
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M5 2 L9 6 L1 6 Z' fill='%23c4b5fd'/%3E%3Cpath d='M5 12 L1 8 L9 8 Z' fill='%23c4b5fd'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: center;
@@ -98,59 +98,59 @@
 
 @layer utilities {
   .bg-ffxiv-dark {
-    background-color: #0f172a;
+    background-color: rgb(var(--c-slate-900));
   }
   
   .bg-ffxiv-blue {
-    background-color: #1e3a5f;
+    background-color: rgb(var(--c-blue-900));
   }
   
   .bg-ffxiv-purple {
-    background-color: #6b21a8;
+    background-color: rgb(var(--c-purple-800));
   }
   
   .bg-ffxiv-gold {
-    background-color: #fbbf24;
+    background-color: rgb(var(--c-amber-400));
   }
   
   .bg-ffxiv-accent {
-    background-color: #8b5cf6;
+    background-color: rgb(var(--c-violet-500));
   }
   
   .text-ffxiv-gold {
-    color: #fbbf24;
+    color: rgb(var(--c-amber-400));
   }
   
   .text-ffxiv-accent {
-    color: #a78bfa;
+    color: rgb(var(--c-violet-400));
   }
   
   .border-ffxiv-gold {
-    border-color: #fbbf24;
+    border-color: rgb(var(--c-amber-400));
   }
   
   .border-ffxiv-accent {
-    border-color: #8b5cf6;
+    border-color: rgb(var(--c-violet-500));
   }
 
   /* Fantasy game-style effects */
   .glow-gold {
-    box-shadow: 0 0 10px rgba(251, 191, 36, 0.4), 0 0 20px rgba(251, 191, 36, 0.15);
+    box-shadow: 0 0 10px rgb(var(--c-amber-400) / 0.4), 0 0 20px rgb(var(--c-amber-400) / 0.15);
   }
 
   .glow-blue {
-    box-shadow: 0 0 10px rgba(139, 92, 246, 0.4), 0 0 20px rgba(139, 92, 246, 0.15);
+    box-shadow: 0 0 10px rgb(var(--c-violet-500) / 0.4), 0 0 20px rgb(var(--c-violet-500) / 0.15);
   }
 
   .card-glow {
     box-shadow: 
       0 4px 6px rgba(0, 0, 0, 0.3),
-      0 0 20px rgba(251, 191, 36, 0.15),
+      0 0 20px rgb(var(--c-amber-400) / 0.15),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
   .text-glow {
-    text-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
+    text-shadow: 0 0 10px rgb(var(--c-amber-400) / 0.6);
   }
 }
 
@@ -161,19 +161,19 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
-  border-left: 1px solid rgba(139, 92, 246, 0.15);
+  background: rgb(var(--c-slate-900));
+  border-left: 1px solid rgb(var(--c-violet-500) / 0.15);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #8b5cf6 0%, #ec4899 50%, #6366f1 100%);
+  background: linear-gradient(180deg, rgb(var(--c-violet-500)) 0%, rgb(var(--c-pink-500)) 50%, rgb(var(--c-indigo-500)) 100%);
   border-radius: 6px;
-  border: 2px solid #0f172a;
+  border: 2px solid rgb(var(--c-slate-900));
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #a78bfa 0%, #f472b6 50%, #818cf8 100%);
-  box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
+  background: linear-gradient(180deg, rgb(var(--c-violet-400)) 0%, rgb(var(--c-pink-400)) 50%, rgb(var(--c-indigo-400)) 100%);
+  box-shadow: 0 0 10px rgb(var(--c-amber-400) / 0.4);
 }
 
 /* Map modal scrollbar - parchment style */
@@ -182,14 +182,14 @@
 }
 
 .map-modal-scroll::-webkit-scrollbar-track {
-  background: rgba(30, 41, 59, 0.5);
+  background: rgb(var(--c-slate-800) / 0.5);
   border-radius: 4px;
 }
 
 .map-modal-scroll::-webkit-scrollbar-thumb {
   background: rgba(255, 215, 0, 0.5);
   border-radius: 4px;
-  border: 1px solid rgba(30, 41, 59, 0.3);
+  border: 1px solid rgb(var(--c-slate-800) / 0.3);
 }
 
 .map-modal-scroll::-webkit-scrollbar-thumb:hover {
@@ -345,9 +345,9 @@
   animation: shimmer 2s infinite;
   background: linear-gradient(
     90deg,
-    rgba(251, 191, 36, 0.15) 0%,
-    rgba(139, 92, 246, 0.3) 50%,
-    rgba(251, 191, 36, 0.15) 100%
+    rgb(var(--c-amber-400) / 0.15) 0%,
+    rgb(var(--c-violet-500) / 0.3) 50%,
+    rgb(var(--c-amber-400) / 0.15) 100%
   );
   background-size: 1000px 100%;
 }
@@ -355,12 +355,12 @@
 /* Crafting tree button soft pulse animation */
 @keyframes craftingPulse {
   0%, 100% {
-    box-shadow: 0 0 8px rgba(167, 139, 250, 0.3), 0 0 16px rgba(139, 92, 246, 0.15);
-    border-color: rgba(167, 139, 250, 0.4);
+    box-shadow: 0 0 8px rgb(var(--c-violet-400) / 0.3), 0 0 16px rgb(var(--c-violet-500) / 0.15);
+    border-color: rgb(var(--c-violet-400) / 0.4);
   }
   50% {
-    box-shadow: 0 0 12px rgba(251, 191, 36, 0.35), 0 0 24px rgba(251, 191, 36, 0.2);
-    border-color: rgba(251, 191, 36, 0.5);
+    box-shadow: 0 0 12px rgb(var(--c-amber-400) / 0.35), 0 0 24px rgb(var(--c-amber-400) / 0.2);
+    border-color: rgb(var(--c-amber-400) / 0.5);
   }
 }
 
@@ -405,7 +405,7 @@
   border-radius: inherit;
   pointer-events: none;
   z-index: 1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.55), 0 0 28px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 0 0 2px rgb(var(--c-indigo-500) / 0.55), 0 0 28px rgb(var(--c-indigo-500) / 0.3);
   animation: containerJustOpenedGlow 2.5s ease-out forwards;
 }
 
@@ -415,8 +415,8 @@ table tbody tr {
 }
 
 table tbody tr:hover {
-  background-color: rgba(139, 92, 246, 0.15);
-  box-shadow: -2px 0 8px rgba(251, 191, 36, 0.3);
+  background-color: rgb(var(--c-violet-500) / 0.15);
+  box-shadow: -2px 0 8px rgb(var(--c-amber-400) / 0.3);
 }
 
 /* Button effects - specific transitions only for GPU efficiency */
@@ -431,18 +431,18 @@ button:hover {
 /* Input focus effects */
 input:focus {
   box-shadow: 
-    0 0 0 3px rgba(251, 191, 36, 0.15),
-    0 0 12px rgba(139, 92, 246, 0.2);
+    0 0 0 3px rgb(var(--c-amber-400) / 0.15),
+    0 0 12px rgb(var(--c-violet-500) / 0.2);
 }
 
 /* Card effects - removed backdrop-filter:blur for GPU performance */
 .card-fantasy {
   background: linear-gradient(135deg, rgba(30, 20, 60, 0.92) 0%, rgba(40, 18, 50, 0.90) 50%, rgba(25, 22, 55, 0.92) 100%);
-  border: 1px solid rgba(251, 191, 36, 0.25);
+  border: 1px solid rgb(var(--c-amber-400) / 0.25);
   box-shadow: 
     0 8px 16px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 0 30px rgba(251, 191, 36, 0.15);
+    0 0 30px rgb(var(--c-amber-400) / 0.15);
 }
 
 /* Image shatter effect */
@@ -496,9 +496,9 @@ input:focus {
   min-width: 0; /* Allow button to shrink */
   width: 100%; /* Take full width on small screens */
   padding: 0.75rem 1rem; /* Smaller padding on mobile */
-  border: 1px solid #fbbf24; /* border-ffxiv-gold - lighter yellow border */
+  border: 1px solid rgb(var(--c-amber-400)); /* border-ffxiv-gold - lighter yellow border */
   border-radius: 0.5rem; /* rounded-lg */
-  background: #0f172a; /* Dark base for the rotating effect to show through */
+  background: rgb(var(--c-slate-900)); /* Dark base for the rotating effect to show through */
   cursor: pointer;
   overflow: hidden;
   display: flex;
@@ -506,7 +506,7 @@ input:focus {
   justify-content: center;
   transition: all 0.2s ease;
   font-weight: 600; /* font-semibold */
-  color: #fbbf24; /* text-ffxiv-gold */
+  color: rgb(var(--c-amber-400)); /* text-ffxiv-gold */
   box-shadow: 0 0 10px rgba(212, 175, 55, 0.3); /* shadow-[0_0_10px_rgba(212,175,55,0.3)] */
 }
 
@@ -521,7 +521,7 @@ input:focus {
 
 .confirm-button-attention:hover {
   box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
-  border-color: #fbbf24;
+  border-color: rgb(var(--c-amber-400));
 }
 
 .confirm-button-attention:active {
@@ -536,11 +536,11 @@ input:focus {
   border-radius: inherit;
   background: linear-gradient(
     90deg,
-    rgba(251, 191, 36, 0.3) 0%,
-    rgba(251, 191, 36, 0.7) 25%,
+    rgb(var(--c-amber-400) / 0.3) 0%,
+    rgb(var(--c-amber-400) / 0.7) 25%,
     rgba(255, 255, 255, 0.9) 50%,
-    rgba(251, 191, 36, 0.7) 75%,
-    rgba(251, 191, 36, 0.3) 100%
+    rgb(var(--c-amber-400) / 0.7) 75%,
+    rgb(var(--c-amber-400) / 0.3) 100%
   );
   background-size: 200% 100%;
   animation: borderShimmer 3s ease-in-out infinite;
@@ -559,7 +559,7 @@ input:focus {
   position: absolute;
   inset: 2px; /* Inside the border - allows rotating light to show through edges */
   /* Opaque colors that match the visual appearance of selected server button */
-  /* Equivalent to rgba(251, 191, 36, 0.3) and rgba(251, 191, 36, 0.2) over #0f172a */
+  /* Equivalent to rgb(var(--c-amber-400) / 0.3) and rgb(var(--c-amber-400) / 0.2) over rgb(var(--c-slate-900)) */
   background: linear-gradient(to right, 
     rgb(86, 73, 40),   /* from-ffxiv-gold/30 over dark */
     rgb(62, 57, 41)    /* from-ffxiv-gold/20 over dark */
@@ -573,13 +573,13 @@ input:focus {
 .confirm-button-attention > * {
   position: relative;
   z-index: 2;
-  color: #fbbf24;
+  color: rgb(var(--c-amber-400));
 }
 
 .confirm-button-attention span {
   position: relative;
   z-index: 2;
-  color: #fbbf24; /* text-ffxiv-gold */
+  color: rgb(var(--c-amber-400)); /* text-ffxiv-gold */
   font-weight: 600; /* font-semibold */
   white-space: normal; /* Allow text wrapping on small screens */
   word-wrap: break-word;
@@ -619,11 +619,11 @@ input:focus {
   border-radius: inherit;
   background: linear-gradient(
     90deg,
-    rgba(251, 191, 36, 0.3) 0%,
-    rgba(251, 191, 36, 0.7) 25%,
+    rgb(var(--c-amber-400) / 0.3) 0%,
+    rgb(var(--c-amber-400) / 0.7) 25%,
     rgba(255, 255, 255, 0.9) 50%,
-    rgba(251, 191, 36, 0.7) 75%,
-    rgba(251, 191, 36, 0.3) 100%
+    rgb(var(--c-amber-400) / 0.7) 75%,
+    rgb(var(--c-amber-400) / 0.3) 100%
   );
   background-size: 200% 100%;
   animation: borderShimmer 3s ease-in-out infinite;
@@ -638,7 +638,7 @@ input:focus {
   position: absolute;
   inset: 1px; /* Leave 1px border area for light to show through */
   /* Opaque colors that match the box background gradient appearance */
-  /* Equivalent to rgba(251, 191, 36, 0.2) and rgba(234, 179, 8, 0.15) over dark base #0f172a */
+  /* Equivalent to rgb(var(--c-amber-400) / 0.2) and rgb(var(--c-yellow-500) / 0.15) over dark base rgb(var(--c-slate-900)) */
   background: linear-gradient(to bottom right, 
     rgb(60, 54, 38),   /* from-ffxiv-gold/20 over dark */
     rgb(58, 52, 36),   /* via-yellow-500/15 over dark */
@@ -667,7 +667,7 @@ input:focus {
 
 .search-prompt-flow {
   position: relative;
-  color: rgba(156, 163, 175, 0.8); /* gray-400 base color */
+  color: rgb(var(--c-gray-400) / 0.8); /* gray-400 base color */
   display: inline-block;
 }
 
@@ -705,4 +705,30 @@ input:focus {
   background-image: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0) 100%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+/* ---------- Light theme overrides ----------
+ * Palette colors flip automatically via the --c-* variables (see tailwind.config.js).
+ * These cover surfaces that were hand-mixed for the dark background. */
+:root[data-theme='light'] button:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme='light'] .card-fantasy {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 245, 255, 0.95) 50%, rgba(255, 255, 255, 0.95) 100%);
+  box-shadow:
+    0 8px 16px rgba(15, 23, 42, 0.08),
+    0 0 30px rgb(var(--c-amber-400) / 0.1);
+}
+
+:root[data-theme='light'] .confirm-button-attention::after {
+  background: linear-gradient(to right, #fdf0cf, #fef6e2);
+}
+
+:root[data-theme='light'] .server-box-rotating-light::after {
+  background: linear-gradient(to bottom right, #fef6e2, #fefae9, #fef6e2);
+}
+
+:root[data-theme='light'] .skeleton-shimmer {
+  background-image: linear-gradient(90deg, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.06) 50%, rgba(15, 23, 42, 0) 100%);
 }

@@ -770,8 +770,8 @@ const CollectabilityTargetSlider = memo(function CollectabilityTargetSlider({
           className="h-3 w-full cursor-pointer appearance-none rounded-full border border-slate-950/70 shadow-inner outline-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-amber-400 [&::-webkit-slider-thumb]:shadow-lg [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-amber-400"
           style={{
             background: `linear-gradient(to right,
-              #334155 0%,
-              #334155 ${lowPercent}%,
+              rgb(var(--c-slate-700)) 0%,
+              rgb(var(--c-slate-700)) ${lowPercent}%,
               #0ea5e9 ${lowPercent}%,
               #0ea5e9 ${midPercent}%,
               #8b5cf6 ${midPercent}%,

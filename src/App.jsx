@@ -4460,11 +4460,7 @@ function App() {
       {/* Main Content */}
       <div
         className="pb-8"
-        style={{
-          paddingTop: selectedItem
-            ? 'calc(var(--topbar-content-offset, 96px) + clamp(3.5rem, 10vw, 6rem))'
-            : 'var(--topbar-content-offset, 96px)'
-        }}
+        style={{ paddingTop: 'var(--topbar-content-offset, 96px)' }}
       >
         <div className="max-w-7xl mx-auto px-2 sm:px-4">
           {/* History Page */}
@@ -6170,7 +6166,7 @@ function App() {
       {isOnItemInfoPage && createPortal(
         <button
           onClick={() => setIsMultiItemListModalOpen(true)}
-          className={`fixed top-[180px] sm:top-[200px] xl:top-[220px] right-2 sm:right-4 xl:right-12 z-50 flex items-center gap-1.5 sm:gap-2.5 px-2.5 py-1.5 sm:px-3 sm:py-2 xl:px-4 xl:py-2.5 rounded-full text-white transition-all duration-300 ${
+          className={`fixed bottom-4 sm:bottom-6 right-4 sm:right-6 xl:right-12 z-50 flex items-center gap-1.5 sm:gap-2.5 px-2.5 py-1.5 sm:px-3 sm:py-2 xl:px-4 xl:py-2.5 rounded-full text-[#fff] transition-all duration-300 ${
             hasItemListChanged
               ? 'bg-gradient-to-br from-amber-500/95 via-yellow-500/90 to-orange-500/95 border-2 border-ffxiv-gold shadow-[0_0_15px_rgba(212,175,55,0.6),inset_0_1px_0_rgba(255,255,255,0.5)] scale-110'
               : 'bg-gradient-to-br from-purple-600/90 via-purple-500/80 to-indigo-600/90 border-2 border-purple-400/60 hover:from-purple-500 hover:via-purple-400 hover:to-indigo-500 hover:border-ffxiv-gold hover:scale-110 shadow-[0_0_15px_rgba(168,85,247,0.4),inset_0_1px_0_rgba(255,255,255,0.3)]'
@@ -6185,7 +6181,7 @@ function App() {
           </svg>
           <span className="text-xs sm:text-sm font-bold whitespace-nowrap tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">多物品清單</span>
           <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-4 w-4 sm:h-5 sm:w-5">
-            <span className="relative inline-flex rounded-full h-4 w-4 sm:h-5 sm:w-5 bg-purple-500 items-center justify-center text-[9px] sm:text-[10px] font-bold text-white border border-purple-300">
+            <span className="relative inline-flex rounded-full h-4 w-4 sm:h-5 sm:w-5 bg-purple-500 items-center justify-center text-[9px] sm:text-[10px] font-bold text-[#fff] border border-purple-300">
               {multiItemState.itemList.length}
             </span>
           </span>

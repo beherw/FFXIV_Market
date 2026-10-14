@@ -8,6 +8,7 @@ import {
   Cell,
   ResponsiveContainer,
 } from 'recharts';
+import { useTheme } from '../hooks/useTheme';
 import { useMemo } from 'react';
 
 const CustomTooltip = ({ active, payload }) => {
@@ -23,6 +24,8 @@ const CustomTooltip = ({ active, payload }) => {
 };
 
 export default function StackSizeChart({ stackSizeHistogram }) {
+  // SVG attributes can't follow the CSS theme variables, so pick axis text per theme.
+  const axisTickColor = useTheme().theme === 'light' ? '#475569' : '#9ca3af';
   const data = useMemo(() => {
     if (!stackSizeHistogram || typeof stackSizeHistogram !== 'object') return [];
     return Object.entries(stackSizeHistogram)
@@ -53,14 +56,14 @@ export default function StackSizeChart({ stackSizeHistogram }) {
           <XAxis
             dataKey="size"
             stroke="#6b7280"
-            tick={{ fill: '#9ca3af', fontSize: 11 }}
+            tick={{ fill: axisTickColor, fontSize: 11 }}
             tickLine={false}
             axisLine={{ stroke: 'rgba(139,92,246,0.2)' }}
             label={{ value: '堆疊數', position: 'insideBottom', offset: -2, fill: '#6b7280', fontSize: 10 }}
           />
           <YAxis
             stroke="#6b7280"
-            tick={{ fill: '#9ca3af', fontSize: 11 }}
+            tick={{ fill: axisTickColor, fontSize: 11 }}
             tickLine={false}
             axisLine={{ stroke: 'rgba(139,92,246,0.2)' }}
             width={40}

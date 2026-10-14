@@ -1,6 +1,7 @@
 // Item table component - replicates ObservableHQ's item selection table
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ItemImage from './ItemImage';
+import { useTheme } from '../hooks/useTheme';
 import { generateItemUrl } from '../utils/urlSlug';
 import { getTwItemsByIds, getIlvls, getRarities, getItemPatch, getPatchNames } from '../services/gameData';
 
@@ -115,6 +116,7 @@ const ItemNameCell = ({ itemName, addToast, isTwUnsupported = false }) => {
 
 export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null, selectedRarities: externalSelectedRarities, setSelectedRarities: externalSetSelectedRarities, raritiesData: externalRaritiesData, externalRarityFilter = false, externalRarityCounts = null, isServerDataLoaded = true, isRaritySelectorDisabled = false, itemsAlreadyFiltered = false, preserveItemOrder = false, separateTradableInSort = true, openInNewTab = false, onItemHover = null }) {
   const [sortColumn, setSortColumn] = useState('id');
+  const isLightTheme = useTheme().theme === 'light';
   const hoverTimerRef = useRef(null);
   useEffect(() => () => clearTimeout(hoverTimerRef.current), []);
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc' - default to desc for highest ilvl first
@@ -697,12 +699,20 @@ export default function ItemTable({ items, onSelect, selectedItem, marketableIte
     return counts;
   }, [items, itemPatchData, patchNamesData, selectedRarities, raritiesDataToUse, getRarity]);
 
-  const rarityOptions = [
-    { value: 1, label: '普通', color: '#f3f3f3' },
-    { value: 2, label: '精良', color: '#c0ffc0' },
-    { value: 3, label: '稀有', color: '#5990ff' },
-    { value: 4, label: '史诗', color: '#b38cff' }
-  ];
+  // In-game rarity colors are pale for a dark background; light mode uses deeper equivalents.
+  const rarityOptions = isLightTheme
+    ? [
+        { value: 1, label: '普通', color: '#475569' },
+        { value: 2, label: '精良', color: '#15803d' },
+        { value: 3, label: '稀有', color: '#2563eb' },
+        { value: 4, label: '史诗', color: '#7c3aed' }
+      ]
+    : [
+        { value: 1, label: '普通', color: '#f3f3f3' },
+        { value: 2, label: '精良', color: '#c0ffc0' },
+        { value: 3, label: '稀有', color: '#5990ff' },
+        { value: 4, label: '史诗', color: '#b38cff' }
+      ];
 
   return (
     <div className="overflow-x-auto bg-gradient-to-br from-slate-800/60 via-purple-900/20 to-slate-800/60 rounded-lg border border-purple-500/20">
