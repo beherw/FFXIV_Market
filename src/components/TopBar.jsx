@@ -195,15 +195,17 @@ export default function TopBar({
         )}
 
         <div className="tb-tools">
+          <div className="tb-tools-wide">
+            <GameVersionBadge />
+          </div>
           {showNavigationButtons && (
             <HistoryButton onItemSelect={onItemSelect} setSearchText={setSearchText} />
           )}
           <div className="tb-tools-wide">
-            <ThemeToggle />
-            <GameVersionBadge />
             <a href={BUG_REPORT_URL} target="_blank" rel="noopener noreferrer" className="tb-btn tb-btn-icon" title="回報問題" aria-label="回報問題">
               <TopBarIcon name="bug" />
             </a>
+            <ThemeToggle />
           </div>
           <button
             type="button"
@@ -222,12 +224,12 @@ export default function TopBar({
         <div id="tb-menu" className="tb-menu">
           {showNavigationButtons && <nav className="tb-menu-nav" aria-label="頁面功能">{renderNavItems('tb-menu-item')}</nav>}
           <div className="tb-menu-footer">
-            <ThemeToggle showLabel />
             <GameVersionBadge />
             <a href={BUG_REPORT_URL} target="_blank" rel="noopener noreferrer" className="tb-btn">
               <TopBarIcon name="bug" />
               <span>回報問題</span>
             </a>
+            <ThemeToggle showLabel />
           </div>
         </div>
       )}

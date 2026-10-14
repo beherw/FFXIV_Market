@@ -4210,7 +4210,7 @@ function App() {
   if (isOnAdvancedSearchPage) {
     return (
       <Suspense fallback={
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
+        <div className="app-shell min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold"></div>
         </div>
       }>
@@ -4248,7 +4248,7 @@ function App() {
   if (isOnCompanyCraftPage) {
     return (
       <Suspense fallback={
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
+        <div className="app-shell min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold"></div>
         </div>
       }>
@@ -4286,7 +4286,7 @@ function App() {
   if (isOnVenturesPage) {
     return (
       <Suspense fallback={
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
+        <div className="app-shell min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold"></div>
         </div>
       }>
@@ -4324,7 +4324,7 @@ function App() {
   if (isOnMSQPriceCheckerPage) {
     return (
       <Suspense fallback={
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
+        <div className="app-shell min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold"></div>
         </div>
       }>
@@ -4362,7 +4362,7 @@ function App() {
   if (isOnCraftingInspirationPage) {
     return (
       <Suspense fallback={
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
+        <div className="app-shell min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-700 border-t-ffxiv-gold"></div>
         </div>
       }>
@@ -4397,7 +4397,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
+    <div className="app-shell min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
       <TopBar
         onSearch={handleSearch}
         isSearching={isSearching}

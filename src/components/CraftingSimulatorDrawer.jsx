@@ -770,8 +770,8 @@ const CollectabilityTargetSlider = memo(function CollectabilityTargetSlider({
           className="h-3 w-full cursor-pointer appearance-none rounded-full border border-slate-950/70 shadow-inner outline-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-amber-400 [&::-webkit-slider-thumb]:shadow-lg [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-amber-400"
           style={{
             background: `linear-gradient(to right,
-              rgb(var(--c-slate-700)) 0%,
-              rgb(var(--c-slate-700)) ${lowPercent}%,
+              rgb(var(--bg-slate-700)) 0%,
+              rgb(var(--bg-slate-700)) ${lowPercent}%,
               #0ea5e9 ${lowPercent}%,
               #0ea5e9 ${midPercent}%,
               #8b5cf6 ${midPercent}%,
@@ -2451,7 +2451,7 @@ export default function CraftingSimulatorDrawer({ isOpen, item, relatedItemIds =
                               <img src={getCraftingActionIconUrl(action)} alt={formatActionName(action)} className="h-8 w-8 object-contain" loading="lazy" />
                               <span className="truncate max-w-full">{formatActionName(action)}</span>
                               {cpCost > 0 && (
-                                <span className="absolute -top-1 -right-1 rounded bg-pink-600 px-1 text-[9px] text-white">{cpCost}</span>
+                                <span className="absolute -top-1 -right-1 rounded bg-pink-600 px-1 text-[9px] text-on-accent">{cpCost}</span>
                               )}
 
                             </button>

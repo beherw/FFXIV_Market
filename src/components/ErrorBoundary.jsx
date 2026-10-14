@@ -52,7 +52,7 @@ class ErrorBoundary extends React.Component {
                   this.props.onRetry();
                 }
               }}
-              className="mt-4 px-4 py-2 bg-red-600/50 hover:bg-red-600/70 text-white rounded-lg transition-colors"
+              className="mt-4 px-4 py-2 bg-red-600/50 hover:bg-red-600/70 text-on-accent rounded-lg transition-colors"
             >
               重試
             </button>

@@ -31,12 +31,12 @@
     position: fixed;
     inset: 0;
     z-index: -1;
-    background-color: rgb(var(--c-slate-900));
+    background-color: rgb(var(--bg-slate-900));
     background-image: 
-      radial-gradient(circle at 20% 30%, rgb(var(--c-violet-500) / 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 80% 70%, rgb(var(--c-pink-500) / 0.12) 0%, transparent 50%),
-      radial-gradient(circle at 50% 50%, rgb(var(--c-blue-500) / 0.08) 0%, transparent 60%),
-      radial-gradient(circle at 10% 80%, rgb(var(--c-purple-500) / 0.1) 0%, transparent 40%);
+      radial-gradient(circle at 20% 30%, rgb(var(--bg-violet-500) / 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgb(var(--bg-pink-500) / 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, rgb(var(--bg-blue-500) / 0.08) 0%, transparent 60%),
+      radial-gradient(circle at 10% 80%, rgb(var(--bg-purple-500) / 0.1) 0%, transparent 40%);
     pointer-events: none;
   }
 
@@ -66,12 +66,12 @@
     opacity: 1;
     width: 18px;
     background-image:
-      linear-gradient(to bottom, rgb(var(--c-violet-500) / 0.15), rgb(var(--c-violet-700) / 0.25)),
+      linear-gradient(to bottom, rgb(var(--bg-violet-500) / 0.15), rgb(var(--bg-violet-700) / 0.25)),
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M5 2 L9 6 L1 6 Z' fill='%23a78bfa'/%3E%3Cpath d='M5 12 L1 8 L9 8 Z' fill='%23a78bfa'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: center;
     background-size: auto, 10px 14px;
-    border-left: 1px solid rgb(var(--c-violet-500) / 0.3);
+    border-left: 1px solid rgb(var(--bd-violet-500) / 0.3);
     border-radius: 0 4px 4px 0;
     cursor: pointer;
   }
@@ -79,7 +79,7 @@
   input[type='number']:hover::-webkit-inner-spin-button:hover,
   input[type='number']:hover::-webkit-outer-spin-button:hover {
     background-image:
-      linear-gradient(to bottom, rgb(var(--c-violet-500) / 0.35), rgb(var(--c-violet-700) / 0.5)),
+      linear-gradient(to bottom, rgb(var(--bg-violet-500) / 0.35), rgb(var(--bg-violet-700) / 0.5)),
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='14' viewBox='0 0 10 14'%3E%3Cpath d='M5 2 L9 6 L1 6 Z' fill='%23c4b5fd'/%3E%3Cpath d='M5 12 L1 8 L9 8 Z' fill='%23c4b5fd'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: center;
@@ -98,23 +98,23 @@
 
 @layer utilities {
   .bg-ffxiv-dark {
-    background-color: rgb(var(--c-slate-900));
+    background-color: rgb(var(--bg-slate-900));
   }
   
   .bg-ffxiv-blue {
-    background-color: rgb(var(--c-blue-900));
+    background-color: rgb(var(--bg-blue-900));
   }
   
   .bg-ffxiv-purple {
-    background-color: rgb(var(--c-purple-800));
+    background-color: rgb(var(--bg-purple-800));
   }
   
   .bg-ffxiv-gold {
-    background-color: rgb(var(--c-amber-400));
+    background-color: rgb(var(--bg-amber-400));
   }
   
   .bg-ffxiv-accent {
-    background-color: rgb(var(--c-violet-500));
+    background-color: rgb(var(--bg-violet-500));
   }
   
   .text-ffxiv-gold {
@@ -126,26 +126,26 @@
   }
   
   .border-ffxiv-gold {
-    border-color: rgb(var(--c-amber-400));
+    border-color: rgb(var(--bd-amber-400));
   }
   
   .border-ffxiv-accent {
-    border-color: rgb(var(--c-violet-500));
+    border-color: rgb(var(--bd-violet-500));
   }
 
   /* Fantasy game-style effects */
   .glow-gold {
-    box-shadow: 0 0 10px rgb(var(--c-amber-400) / 0.4), 0 0 20px rgb(var(--c-amber-400) / 0.15);
+    box-shadow: 0 0 10px rgb(var(--bg-amber-400) / 0.4), 0 0 20px rgb(var(--bg-amber-400) / 0.15);
   }
 
   .glow-blue {
-    box-shadow: 0 0 10px rgb(var(--c-violet-500) / 0.4), 0 0 20px rgb(var(--c-violet-500) / 0.15);
+    box-shadow: 0 0 10px rgb(var(--bg-violet-500) / 0.4), 0 0 20px rgb(var(--bg-violet-500) / 0.15);
   }
 
   .card-glow {
     box-shadow: 
       0 4px 6px rgba(0, 0, 0, 0.3),
-      0 0 20px rgb(var(--c-amber-400) / 0.15),
+      0 0 20px rgb(var(--bg-amber-400) / 0.15),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
@@ -161,19 +161,19 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgb(var(--c-slate-900));
-  border-left: 1px solid rgb(var(--c-violet-500) / 0.15);
+  background: rgb(var(--bg-slate-900));
+  border-left: 1px solid rgb(var(--bd-violet-500) / 0.15);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgb(var(--c-violet-500)) 0%, rgb(var(--c-pink-500)) 50%, rgb(var(--c-indigo-500)) 100%);
+  background: linear-gradient(180deg, rgb(var(--bg-violet-500)) 0%, rgb(var(--bg-pink-500)) 50%, rgb(var(--bg-indigo-500)) 100%);
   border-radius: 6px;
-  border: 2px solid rgb(var(--c-slate-900));
+  border: 2px solid rgb(var(--bd-slate-900));
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgb(var(--c-violet-400)) 0%, rgb(var(--c-pink-400)) 50%, rgb(var(--c-indigo-400)) 100%);
-  box-shadow: 0 0 10px rgb(var(--c-amber-400) / 0.4);
+  background: linear-gradient(180deg, rgb(var(--bg-violet-400)) 0%, rgb(var(--bg-pink-400)) 50%, rgb(var(--bg-indigo-400)) 100%);
+  box-shadow: 0 0 10px rgb(var(--bg-amber-400) / 0.4);
 }
 
 /* Map modal scrollbar - parchment style */
@@ -182,14 +182,14 @@
 }
 
 .map-modal-scroll::-webkit-scrollbar-track {
-  background: rgb(var(--c-slate-800) / 0.5);
+  background: rgb(var(--bg-slate-800) / 0.5);
   border-radius: 4px;
 }
 
 .map-modal-scroll::-webkit-scrollbar-thumb {
   background: rgba(255, 215, 0, 0.5);
   border-radius: 4px;
-  border: 1px solid rgb(var(--c-slate-800) / 0.3);
+  border: 1px solid rgb(var(--bd-slate-800) / 0.3);
 }
 
 .map-modal-scroll::-webkit-scrollbar-thumb:hover {
@@ -345,9 +345,9 @@
   animation: shimmer 2s infinite;
   background: linear-gradient(
     90deg,
-    rgb(var(--c-amber-400) / 0.15) 0%,
-    rgb(var(--c-violet-500) / 0.3) 50%,
-    rgb(var(--c-amber-400) / 0.15) 100%
+    rgb(var(--bg-amber-400) / 0.15) 0%,
+    rgb(var(--bg-violet-500) / 0.3) 50%,
+    rgb(var(--bg-amber-400) / 0.15) 100%
   );
   background-size: 1000px 100%;
 }
@@ -355,12 +355,12 @@
 /* Crafting tree button soft pulse animation */
 @keyframes craftingPulse {
   0%, 100% {
-    box-shadow: 0 0 8px rgb(var(--c-violet-400) / 0.3), 0 0 16px rgb(var(--c-violet-500) / 0.15);
-    border-color: rgb(var(--c-violet-400) / 0.4);
+    box-shadow: 0 0 8px rgb(var(--bg-violet-400) / 0.3), 0 0 16px rgb(var(--bg-violet-500) / 0.15);
+    border-color: rgb(var(--bd-violet-400) / 0.4);
   }
   50% {
-    box-shadow: 0 0 12px rgb(var(--c-amber-400) / 0.35), 0 0 24px rgb(var(--c-amber-400) / 0.2);
-    border-color: rgb(var(--c-amber-400) / 0.5);
+    box-shadow: 0 0 12px rgb(var(--bg-amber-400) / 0.35), 0 0 24px rgb(var(--bg-amber-400) / 0.2);
+    border-color: rgb(var(--bd-amber-400) / 0.5);
   }
 }
 
@@ -405,7 +405,7 @@
   border-radius: inherit;
   pointer-events: none;
   z-index: 1;
-  box-shadow: 0 0 0 2px rgb(var(--c-indigo-500) / 0.55), 0 0 28px rgb(var(--c-indigo-500) / 0.3);
+  box-shadow: 0 0 0 2px rgb(var(--bg-indigo-500) / 0.55), 0 0 28px rgb(var(--bg-indigo-500) / 0.3);
   animation: containerJustOpenedGlow 2.5s ease-out forwards;
 }
 
@@ -415,8 +415,8 @@ table tbody tr {
 }
 
 table tbody tr:hover {
-  background-color: rgb(var(--c-violet-500) / 0.15);
-  box-shadow: -2px 0 8px rgb(var(--c-amber-400) / 0.3);
+  background-color: rgb(var(--bg-violet-500) / 0.15);
+  box-shadow: -2px 0 8px rgb(var(--bg-amber-400) / 0.3);
 }
 
 /* Button effects - specific transitions only for GPU efficiency */
@@ -431,18 +431,18 @@ button:hover {
 /* Input focus effects */
 input:focus {
   box-shadow: 
-    0 0 0 3px rgb(var(--c-amber-400) / 0.15),
-    0 0 12px rgb(var(--c-violet-500) / 0.2);
+    0 0 0 3px rgb(var(--bg-amber-400) / 0.15),
+    0 0 12px rgb(var(--bg-violet-500) / 0.2);
 }
 
 /* Card effects - removed backdrop-filter:blur for GPU performance */
 .card-fantasy {
   background: linear-gradient(135deg, rgba(30, 20, 60, 0.92) 0%, rgba(40, 18, 50, 0.90) 50%, rgba(25, 22, 55, 0.92) 100%);
-  border: 1px solid rgb(var(--c-amber-400) / 0.25);
+  border: 1px solid rgb(var(--bd-amber-400) / 0.25);
   box-shadow: 
     0 8px 16px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 0 30px rgb(var(--c-amber-400) / 0.15);
+    0 0 30px rgb(var(--bg-amber-400) / 0.15);
 }
 
 /* Image shatter effect */
@@ -496,9 +496,9 @@ input:focus {
   min-width: 0; /* Allow button to shrink */
   width: 100%; /* Take full width on small screens */
   padding: 0.75rem 1rem; /* Smaller padding on mobile */
-  border: 1px solid rgb(var(--c-amber-400)); /* border-ffxiv-gold - lighter yellow border */
+  border: 1px solid rgb(var(--bd-amber-400)); /* border-ffxiv-gold - lighter yellow border */
   border-radius: 0.5rem; /* rounded-lg */
-  background: rgb(var(--c-slate-900)); /* Dark base for the rotating effect to show through */
+  background: rgb(var(--bg-slate-900)); /* Dark base for the rotating effect to show through */
   cursor: pointer;
   overflow: hidden;
   display: flex;
@@ -521,7 +521,7 @@ input:focus {
 
 .confirm-button-attention:hover {
   box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
-  border-color: rgb(var(--c-amber-400));
+  border-color: rgb(var(--bd-amber-400));
 }
 
 .confirm-button-attention:active {
@@ -536,11 +536,11 @@ input:focus {
   border-radius: inherit;
   background: linear-gradient(
     90deg,
-    rgb(var(--c-amber-400) / 0.3) 0%,
-    rgb(var(--c-amber-400) / 0.7) 25%,
+    rgb(var(--bg-amber-400) / 0.3) 0%,
+    rgb(var(--bg-amber-400) / 0.7) 25%,
     rgba(255, 255, 255, 0.9) 50%,
-    rgb(var(--c-amber-400) / 0.7) 75%,
-    rgb(var(--c-amber-400) / 0.3) 100%
+    rgb(var(--bg-amber-400) / 0.7) 75%,
+    rgb(var(--bg-amber-400) / 0.3) 100%
   );
   background-size: 200% 100%;
   animation: borderShimmer 3s ease-in-out infinite;
@@ -619,11 +619,11 @@ input:focus {
   border-radius: inherit;
   background: linear-gradient(
     90deg,
-    rgb(var(--c-amber-400) / 0.3) 0%,
-    rgb(var(--c-amber-400) / 0.7) 25%,
+    rgb(var(--bg-amber-400) / 0.3) 0%,
+    rgb(var(--bg-amber-400) / 0.7) 25%,
     rgba(255, 255, 255, 0.9) 50%,
-    rgb(var(--c-amber-400) / 0.7) 75%,
-    rgb(var(--c-amber-400) / 0.3) 100%
+    rgb(var(--bg-amber-400) / 0.7) 75%,
+    rgb(var(--bg-amber-400) / 0.3) 100%
   );
   background-size: 200% 100%;
   animation: borderShimmer 3s ease-in-out infinite;
@@ -710,6 +710,42 @@ input:focus {
 /* ---------- Light theme overrides ----------
  * Palette colors flip automatically via the --c-* variables (see tailwind.config.js).
  * These cover surfaces that were hand-mixed for the dark background. */
+:root[data-theme='light'] body::before {
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(139, 92, 246, 0.05) 0%, transparent 45%),
+    radial-gradient(circle at 85% 100%, rgba(245, 158, 11, 0.04) 0%, transparent 45%);
+}
+
+/* Page roots use a dark gradient; light mode wants a calm flat surface. */
+:root[data-theme='light'] .app-shell {
+  background-image: none;
+  background-color: #f3f4f6;
+}
+
+:root[data-theme='light'] .card-glow {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme='light'] .glow-gold,
+:root[data-theme='light'] .glow-blue {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme='light'] .text-glow {
+  text-shadow: none;
+}
+
+/* Colored glows read as halos on a light background: swap them for a soft elevation. */
+:root[data-theme='light'] [class*='shadow-[0_0_'],
+:root[data-theme='light'] [class*='shadow-glow-'],
+:root[data-theme='light'] .shadow-fantasy {
+  --tw-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+}
+
+:root[data-theme='light'] [class*='drop-shadow-[0_0_'] {
+  --tw-drop-shadow: drop-shadow(0 0 #0000) !important;
+}
+
 :root[data-theme='light'] button:hover {
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
@@ -718,7 +754,7 @@ input:focus {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 245, 255, 0.95) 50%, rgba(255, 255, 255, 0.95) 100%);
   box-shadow:
     0 8px 16px rgba(15, 23, 42, 0.08),
-    0 0 30px rgb(var(--c-amber-400) / 0.1);
+    0 0 30px rgb(var(--bg-amber-400) / 0.1);
 }
 
 :root[data-theme='light'] .confirm-button-attention::after {

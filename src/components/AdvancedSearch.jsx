@@ -3729,7 +3729,7 @@ export default function AdvancedSearch({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
+    <div className="app-shell min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
       <TopBar
         onSearch={onSearch}
         isSearching={isSearching}
@@ -4493,8 +4493,8 @@ export default function AdvancedSearch({
                     }}
                     className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
                       isFilterSearching || isSearching
-                        ? 'bg-red-600/80 text-white border border-red-500/70 hover:bg-red-600 hover:border-red-400 hover:shadow-[0_0_20px_rgba(220,38,38,0.5)]'
-                        : 'bg-red-600/60 text-white border border-red-500/50 hover:bg-red-600/80 hover:border-red-400/70 hover:shadow-[0_0_20px_rgba(220,38,38,0.5)]'
+                        ? 'bg-red-600/80 text-on-accent border border-red-500/70 hover:bg-red-600 hover:border-red-400 hover:shadow-[0_0_20px_rgba(220,38,38,0.5)]'
+                        : 'bg-red-600/60 text-on-accent border border-red-500/50 hover:bg-red-600/80 hover:border-red-400/70 hover:shadow-[0_0_20px_rgba(220,38,38,0.5)]'
                     }`}
                   >
                     {isFilterSearching || isSearching ? '停止搜尋' : '清空篩選'}
@@ -4517,7 +4517,7 @@ export default function AdvancedSearch({
                         }}
                         className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
                           levelFilterMode === 'equipLevel'
-                            ? 'bg-purple-600/60 text-white shadow-sm'
+                            ? 'bg-purple-600/60 text-on-accent shadow-sm'
                             : 'text-gray-400 hover:text-gray-300'
                         }`}
                         title="裝備等級（玩家等級）"
@@ -4534,7 +4534,7 @@ export default function AdvancedSearch({
                         }}
                         className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
                           levelFilterMode === 'ilvls'
-                            ? 'bg-purple-600/60 text-white shadow-sm'
+                            ? 'bg-purple-600/60 text-on-accent shadow-sm'
                             : 'text-gray-400 hover:text-gray-300'
                         } ${levelFilterAutoSwitchHighlight ? 'animate-pulse ring-2 ring-ffxiv-gold/70 ring-offset-1 ring-offset-slate-900' : ''}`}
                         title="Item level"

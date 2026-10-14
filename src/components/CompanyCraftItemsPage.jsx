@@ -187,7 +187,7 @@ export default function CompanyCraftItemsPage({
   }, [showUntradeable, tradeableResults, untradeableResults]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
+    <div className="app-shell min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 via-purple-950/30 to-slate-950 text-white">
       <TopBar
         onSearch={onSearch}
         isSearching={isSearching}

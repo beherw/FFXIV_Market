@@ -3431,9 +3431,9 @@ export default function OCRButton({
                     </svg>
                     <p className="text-white font-semibold text-base sm:text-lg mb-1 flex items-center justify-center gap-1.5 flex-wrap">
                       <span>使用</span>
-                      <kbd className="px-2.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded text-sm font-bold border border-purple-400 text-white shadow-lg">Ctrl</kbd>
+                      <kbd className="px-2.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded text-sm font-bold border border-purple-400 text-on-accent shadow-lg">Ctrl</kbd>
                       <span className="text-gray-300">+</span>
-                      <kbd className="px-2.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded text-sm font-bold border border-purple-400 text-white shadow-lg">V</kbd>
+                      <kbd className="px-2.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 rounded text-sm font-bold border border-purple-400 text-on-accent shadow-lg">V</kbd>
                       <span>貼上截圖</span>
                     </p>
                     <p className="text-xs text-purple-300 font-medium">
@@ -3476,13 +3476,13 @@ export default function OCRButton({
       <button
         onClick={handleOCRClick}
         disabled={disabled || isProcessing}
-        className="flex items-center justify-center gap-1.5 px-2.5 mid:px-3 py-1.5 mid:py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs mid:text-sm font-semibold rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
+        className="flex items-center justify-center gap-1.5 px-2.5 mid:px-3 py-1.5 mid:py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-on-accent text-xs mid:text-sm font-semibold rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg"
         title="上傳圖片進行 OCR 辨識（繁體中文）"
       >
         {isProcessing ? (
           <>
             {/* 載入中：左邊 spinner，右邊百分比 */}
-            <div className="animate-spin rounded-full h-3 w-3 mid:h-3.5 mid:w-3.5 border-2 border-white border-t-transparent flex-shrink-0"></div>
+            <div className="animate-spin rounded-full h-3 w-3 mid:h-3.5 mid:w-3.5 border-2 border-on-accent border-t-transparent flex-shrink-0"></div>
             <span className="hidden mid:inline whitespace-nowrap">{Math.round(progress * 100)}%</span>
           </>
         ) : (
@@ -3583,7 +3583,7 @@ export default function OCRButton({
               <div className="flex gap-3 w-full justify-center">
                 <button
                   onClick={() => handleDebugConfirmClick(true)}
-                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-on-accent rounded-lg transition-colors font-medium flex items-center gap-2"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -3592,7 +3592,7 @@ export default function OCRButton({
                 </button>
                 <button
                   onClick={() => handleDebugConfirmClick(false)}
-                  className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
+                  className="px-6 py-2 bg-red-600 hover:bg-red-700 text-on-accent rounded-lg transition-colors font-medium flex items-center gap-2"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
