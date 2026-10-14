@@ -98,7 +98,7 @@
 
 @layer utilities {
   .bg-ffxiv-dark {
-    background-color: rgb(var(--bg-slate-900));
+    background-color: rgb(var(--bg-ffxiv-dark));
   }
   
   .bg-ffxiv-blue {
@@ -110,7 +110,7 @@
   }
   
   .bg-ffxiv-gold {
-    background-color: rgb(var(--bg-amber-400));
+    background-color: rgb(var(--bg-ffxiv-gold));
   }
   
   .bg-ffxiv-accent {
@@ -118,15 +118,15 @@
   }
   
   .text-ffxiv-gold {
-    color: rgb(var(--c-amber-400));
+    color: rgb(var(--c-ffxiv-gold));
   }
   
   .text-ffxiv-accent {
-    color: rgb(var(--c-violet-400));
+    color: rgb(var(--c-ffxiv-accent));
   }
   
   .border-ffxiv-gold {
-    border-color: rgb(var(--bd-amber-400));
+    border-color: rgb(var(--bd-ffxiv-gold));
   }
   
   .border-ffxiv-accent {
@@ -506,7 +506,7 @@ input:focus {
   justify-content: center;
   transition: all 0.2s ease;
   font-weight: 600; /* font-semibold */
-  color: rgb(var(--c-amber-400)); /* text-ffxiv-gold */
+  color: rgb(var(--c-ffxiv-gold)); /* text-ffxiv-gold */
   box-shadow: 0 0 10px rgba(212, 175, 55, 0.3); /* shadow-[0_0_10px_rgba(212,175,55,0.3)] */
 }
 
@@ -573,13 +573,13 @@ input:focus {
 .confirm-button-attention > * {
   position: relative;
   z-index: 2;
-  color: rgb(var(--c-amber-400));
+  color: rgb(var(--c-ffxiv-gold));
 }
 
 .confirm-button-attention span {
   position: relative;
   z-index: 2;
-  color: rgb(var(--c-amber-400)); /* text-ffxiv-gold */
+  color: rgb(var(--c-ffxiv-gold)); /* text-ffxiv-gold */
   font-weight: 600; /* font-semibold */
   white-space: normal; /* Allow text wrapping on small screens */
   word-wrap: break-word;

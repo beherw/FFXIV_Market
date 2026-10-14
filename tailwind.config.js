@@ -31,8 +31,9 @@ const NEUTRAL_FAMILIES = ['slate', 'gray', 'zinc', 'neutral', 'stone']
 // Light-mode neutral ramps, indexed by the dark-mode shade a class names.
 const LIGHT_NEUTRAL = {
   text: {
-    50: '#111827', 100: '#1f2937', 200: '#273142', 300: '#374151', 400: '#4b5563', 500: '#6b7280',
-    600: '#9ca3af', 700: '#c4c9d1',
+    50: '#111827', 100: '#1f2937', 200: '#273142', 300: '#374151', 400: '#4b5563', 500: '#5b6472',
+    // 600/700 are hint and disabled text in dark mode; 600 still has to stay readable.
+    600: '#626a77', 700: '#9ca3af',
     // Dark text only ever sits on light/solid fills, so it stays dark.
     800: defaultColors.slate[800], 900: defaultColors.slate[900], 950: defaultColors.slate[950],
   },
@@ -72,6 +73,25 @@ const mix = (hex, target, amount) => {
   const a = hexToRgb(hex)
   const b = hexToRgb(target)
   return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * amount).toString(16).padStart(2, '0')).join('')
+}
+
+// Light-mode text must stay comfortably readable on light surfaces (5:1, above WCAG AA 4.5:1). Mirrored hue
+// shades such as yellow-600 or green-600 fall short, so darken them along their own hue.
+const luminance = (hex) => {
+  const [r, g, b] = hexToRgb(hex).map((v) => {
+    const c = v / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+const contrast = (a, b) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (hi + 0.05) / (lo + 0.05)
+}
+const readableOnLight = (hex) => {
+  let color = hex
+  while (contrast(color, LIGHT_PAGE) < 5) color = mix(color, '#000000', 0.06)
+  return color
 }
 
 const SETS = ['c', 'bg', 'bd']
@@ -118,7 +138,7 @@ for (const family of HUE_FAMILIES) {
   for (const shade of SHADES) {
     const mirrored = ramp[1000 - shade]
     define(`${family}-${shade}`, ramp[shade], {
-      c: mirrored,
+      c: readableOnLight(mirrored),
       bg: shade >= 800 ? mix(mirrored, LIGHT_PAGE, 0.45) : ramp[shade],
       bd: mix(mirrored, LIGHT_BORDER_GRAY, 0.45),
     })
@@ -126,7 +146,7 @@ for (const family of HUE_FAMILIES) {
 }
 
 for (const [name, { dark, text, bg, border }] of Object.entries(BRAND_COLORS)) {
-  define(name, dark, { c: text, bg, bd: border })
+  define(name, dark, { c: readableOnLight(text), bg, bd: border })
 }
 
 const fixed = {
@@ -172,11 +192,13 @@ export default {
     },
   },
   plugins: [
-    plugin(({ addBase }) => {
+    plugin(({ addBase, addVariant }) => {
       addBase({
         ':root': darkVars,
         ':root[data-theme="light"]': lightVars,
       })
+      // One-off light-mode tweaks: `light:text-amber-400` applies only in day mode.
+      addVariant('light', ':root[data-theme="light"] &')
     }),
   ],
 }

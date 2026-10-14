@@ -22,6 +22,8 @@ import { getAssetPath } from './utils/assetPath.js';
 import ItemImage from './components/ItemImage';
 import { cancelAllIconRequests, preloadItemIcon } from './utils/itemImage';
 import HistoryButton from './components/HistoryButton';
+import { useTheme } from './hooks/useTheme';
+import { getVersionColor as getVersionColorForTheme } from './utils/versionColor';
 import { addItemToHistory } from './utils/itemHistory';
 import { generateBracketPatterns } from './utils/searchNormalization';
 import { addSearchToHistory } from './utils/searchHistory';
@@ -772,55 +774,9 @@ function App() {
     return () => { cancelled = true; };
   }, [selectedItem?.id]);
 
-  // Version color palette - colors are assigned sequentially by major version number
-  // This ensures consistent colors across sessions and automatic color assignment for new versions
-  const VERSION_COLOR_PALETTE = [
-    '#4A90E2',   // 0: Blue (for version 2.X - ARR)
-    '#7B68EE',   // 1: Slate Blue (for version 3.X - Heavensward)
-    '#FF6B6B',   // 2: Red (for version 4.X - Stormblood)
-    '#FFD93D',   // 3: Yellow (for version 5.X - Shadowbringers)
-    '#6BCF7F',   // 4: Green (for version 6.X - Endwalker)
-    '#FF8C42',   // 5: Orange (for version 7.X - Dawntrail)
-    '#9B59B6',   // 6: Purple (for future versions)
-    '#1ABC9C',   // 7: Turquoise
-    '#E74C3C',   // 8: Red
-    '#3498DB',   // 9: Light Blue
-    '#F39C12',   // 10: Orange
-    '#16A085',   // 11: Green
-    '#E67E22',   // 12: Dark Orange
-    '#C0392B',   // 13: Dark Red
-    '#8E44AD',   // 14: Dark Purple
-    '#27AE60',   // 15: Dark Green
-    '#2980B9',   // 16: Dark Blue
-    '#D35400',   // 17: Brown
-    '#34495E',   // 18: Dark Gray
-    '#95A5A6',   // 19: Light Gray
-  ];
-
-  // Version color mapping - assigns colors from palette based on major version number
-  // Same color for all patches in the same major version (e.g., 7.0-7.5 all use same color)
-  // Version 2.X uses index 0, version 3.X uses index 1, etc.
-  const getVersionColor = useCallback((versionString) => {
-    if (!versionString) return '#9CA3AF';
-    
-    // Extract major version number (e.g., "7.4" -> 7, "6.5" -> 6)
-    const majorVersion = parseInt(versionString.split('.')[0], 10);
-    
-    // Convert version to palette index: version 2.X -> index 0, version 3.X -> index 1, etc.
-    const paletteIndex = majorVersion - 2;
-    
-    // Use modulo to cycle through palette if version exceeds palette size
-    // This ensures consistent color assignment even for very high version numbers
-    if (paletteIndex >= 0 && paletteIndex < VERSION_COLOR_PALETTE.length) {
-      return VERSION_COLOR_PALETTE[paletteIndex];
-    } else if (paletteIndex >= 0) {
-      // For versions beyond palette, cycle through colors
-      return VERSION_COLOR_PALETTE[paletteIndex % VERSION_COLOR_PALETTE.length];
-    }
-    
-    // Default gray for invalid or very old versions (< 2.X)
-    return '#9CA3AF';
-  }, []);
+  // Version badge colors follow the theme (light mode uses darker, readable variants)
+  const { theme } = useTheme();
+  const getVersionColor = useCallback((versionString) => getVersionColorForTheme(versionString, theme), [theme]);
 
   // Add toast function
   const addToast = useCallback((message, type = 'info') => {
@@ -5362,7 +5318,7 @@ function App() {
                                     isCurrentItem ? 'text-ffxiv-gold font-semibold' : 'text-gray-200'
                                   }`}>
                                     {itemSetNames[id] || `Item ${id}`}
-                                    {isCurrentItem && <span className="block text-[10px] text-amber-400/80 mt-0.5">(當前物品)</span>}
+                                    {isCurrentItem && <span className="block text-[10px] text-amber-400/80 light:text-amber-400 mt-0.5">(當前物品)</span>}
                                   </span>
                                   <span className="text-[10px] text-slate-400">全服平均價格</span>
                                   {isLoadingItemSetPrices ? (
@@ -5851,7 +5807,7 @@ function App() {
                             d="M12 4v16m0 0l-6-6m6 6l6-6" 
                           />
                         </svg>
-                        <span className="text-purple-400/80">沒有她就沒有這個網頁</span>
+                        <span className="text-purple-400/80 light:text-purple-400">沒有她就沒有這個網頁</span>
                       </p>
                     </div>
                     <div className="pt-2 mt-4 border-t border-purple-500/20">
@@ -5908,7 +5864,7 @@ function App() {
                         </p>
                         <p className="text-gray-400 text-xs sm:text-sm italic flex items-center gap-1.5 mb-0 mt-5">
                           或者...
-                          <span className="text-amber-400/80">鼓勵我</span>
+                          <span className="text-amber-400/80 light:text-amber-400">鼓勵我</span>
                           <svg 
                             xmlns="http://www.w3.org/2000/svg" 
                             className="h-4 w-4 text-amber-400" 
@@ -5940,7 +5896,7 @@ function App() {
                         href="https://forum.gamer.com.tw/C.php?bsn=17608&snA=28740" 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2.5 h-[42px] bg-gradient-to-r from-[#11AAC1]/20 to-[#11AAC1]/30 hover:from-[#11AAC1]/30 hover:to-[#11AAC1]/40 rounded-lg border border-[#11AAC1]/30 hover:border-[#11AAC1]/50 transition-all duration-200 group shadow-lg hover:shadow-[#11AAC1]/20 hover:scale-105 text-[#11AAC1]"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 h-[42px] bg-gradient-to-r from-[#11AAC1]/20 to-[#11AAC1]/30 hover:from-[#11AAC1]/30 hover:to-[#11AAC1]/40 rounded-lg border border-[#11AAC1]/30 hover:border-[#11AAC1]/50 transition-all duration-200 group shadow-lg hover:shadow-[#11AAC1]/20 hover:scale-105 text-[#11AAC1] light:text-[#0b6f7f]"
                       >
                         <img 
                           src={getAssetPath('baha_icon.png')} 
@@ -6181,7 +6137,7 @@ function App() {
           </svg>
           <span className="text-xs sm:text-sm font-bold whitespace-nowrap tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">多物品清單</span>
           <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-4 w-4 sm:h-5 sm:w-5">
-            <span className="relative inline-flex rounded-full h-4 w-4 sm:h-5 sm:w-5 bg-purple-500 items-center justify-center text-[9px] sm:text-[10px] font-bold text-[#fff] border border-purple-300">
+            <span className="relative inline-flex rounded-full h-4 w-4 sm:h-5 sm:w-5 bg-purple-600 items-center justify-center text-[9px] sm:text-[10px] font-bold text-[#fff] border border-purple-300">
               {multiItemState.itemList.length}
             </span>
           </span>

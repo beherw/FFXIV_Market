@@ -3,58 +3,8 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import ItemImage from './ItemImage';
 import { useTheme } from '../hooks/useTheme';
 import { generateItemUrl } from '../utils/urlSlug';
+import { getVersionColor as getVersionColorForTheme } from '../utils/versionColor';
 import { getTwItemsByIds, getIlvls, getRarities, getItemPatch, getPatchNames } from '../services/gameData';
-
-// Version color palette - colors are assigned sequentially by major version number
-// This ensures consistent colors across sessions and automatic color assignment for new versions
-const VERSION_COLOR_PALETTE = [
-  '#4A90E2',   // 0: Blue (for version 2.X - ARR)
-  '#7B68EE',   // 1: Slate Blue (for version 3.X - Heavensward)
-  '#FF6B6B',   // 2: Red (for version 4.X - Stormblood)
-  '#FFD93D',   // 3: Yellow (for version 5.X - Shadowbringers)
-  '#6BCF7F',   // 4: Green (for version 6.X - Endwalker)
-  '#FF8C42',   // 5: Orange (for version 7.X - Dawntrail)
-  '#9B59B6',   // 6: Purple (for future versions)
-  '#1ABC9C',   // 7: Turquoise
-  '#E74C3C',   // 8: Red
-  '#3498DB',   // 9: Light Blue
-  '#F39C12',   // 10: Orange
-  '#16A085',   // 11: Green
-  '#E67E22',   // 12: Dark Orange
-  '#C0392B',   // 13: Dark Red
-  '#8E44AD',   // 14: Dark Purple
-  '#27AE60',   // 15: Dark Green
-  '#2980B9',   // 16: Dark Blue
-  '#D35400',   // 17: Brown
-  '#34495E',   // 18: Dark Gray
-  '#95A5A6',   // 19: Light Gray
-];
-
-// Version color mapping - assigns colors from palette based on major version number
-// Same color for all patches in the same major version (e.g., 7.0-7.5 all use same color)
-// Version 2.X uses index 0, version 3.X uses index 1, etc.
-// Supports both "7.4" format and "7.X" format
-const getVersionColor = (versionString) => {
-  if (!versionString) return '#9CA3AF';
-  
-  // Extract major version number (e.g., "7.4" -> 7, "6.5" -> 6, "6.X" -> 6)
-  const majorVersion = parseInt(versionString.split('.')[0], 10);
-  
-  // Convert version to palette index: version 2.X -> index 0, version 3.X -> index 1, etc.
-  const paletteIndex = majorVersion - 2;
-  
-  // Use modulo to cycle through palette if version exceeds palette size
-  // This ensures consistent color assignment even for very high version numbers
-  if (paletteIndex >= 0 && paletteIndex < VERSION_COLOR_PALETTE.length) {
-    return VERSION_COLOR_PALETTE[paletteIndex];
-  } else if (paletteIndex >= 0) {
-    // For versions beyond palette, cycle through colors
-    return VERSION_COLOR_PALETTE[paletteIndex % VERSION_COLOR_PALETTE.length];
-  }
-  
-  // Default gray for invalid or very old versions (< 2.X)
-  return '#9CA3AF';
-};
 
 // Item name cell with copy button (OCR match score only in console log, not shown in UI)
 const ItemNameCell = ({ itemName, addToast, isTwUnsupported = false }) => {
@@ -116,7 +66,9 @@ const ItemNameCell = ({ itemName, addToast, isTwUnsupported = false }) => {
 
 export default function ItemTable({ items, onSelect, selectedItem, marketableItems, itemVelocities, itemAveragePrices, itemMinListings, itemRecentPurchases, itemTradability, isLoadingVelocities, getSimplifiedChineseName, addToast, currentPage = 1, itemsPerPage = null, selectedRarities: externalSelectedRarities, setSelectedRarities: externalSetSelectedRarities, raritiesData: externalRaritiesData, externalRarityFilter = false, externalRarityCounts = null, isServerDataLoaded = true, isRaritySelectorDisabled = false, itemsAlreadyFiltered = false, preserveItemOrder = false, separateTradableInSort = true, openInNewTab = false, onItemHover = null }) {
   const [sortColumn, setSortColumn] = useState('id');
-  const isLightTheme = useTheme().theme === 'light';
+  const { theme } = useTheme();
+  const isLightTheme = theme === 'light';
+  const getVersionColor = (versionString) => getVersionColorForTheme(versionString, theme);
   const hoverTimerRef = useRef(null);
   useEffect(() => () => clearTimeout(hoverTimerRef.current), []);
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc' - default to desc for highest ilvl first
