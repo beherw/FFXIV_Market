@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { BUILD_DATE, GAME_VERSION } from '../constants/version';
 
 function formatBuildDate(value) {
@@ -11,13 +12,14 @@ function formatBuildDate(value) {
 }
 
 export default function GameVersionBadge() {
+  const detailsId = useId();
   return (
     <div className="game-version">
-      <span className="game-version-badge" tabIndex="0" aria-describedby="game-version-details">
-        <span className="game-version-prefix">版本：</span>
+      <span className="game-version-badge" tabIndex="0" aria-describedby={detailsId}>
+        <span className="game-version-prefix">版本</span>
         <span className="game-version-number">{GAME_VERSION}</span>
       </span>
-      <div id="game-version-details" className="game-version-details" role="tooltip">
+      <div id={detailsId} className="game-version-details" role="tooltip">
         <p>更新於 {formatBuildDate(BUILD_DATE)}</p>
       </div>
     </div>

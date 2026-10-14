@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useHistory } from '../hooks/useHistory';
 import ItemImage from './ItemImage';
 
-export default function HistoryButton({ onItemSelect, compact = false, setSearchText, isItemInfoPage = false }) {
+export default function HistoryButton({ onItemSelect, setSearchText }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -100,53 +100,35 @@ export default function HistoryButton({ onItemSelect, compact = false, setSearch
       onMouseLeave={handleMouseLeave}
     >
       <button
+        type="button"
         onClick={handleButtonClick}
         onMouseDown={(e) => e.stopPropagation()}
-        className={isItemInfoPage 
-          ? `topbar-nav-button item-info-page ${isOnHistoryPage ? 'active' : ''}`
-          : `bg-gradient-to-r from-purple-900/40 via-pink-900/30 to-indigo-900/40 border rounded-lg whitespace-nowrap flex items-center transition-colors ${
-              compact 
-                ? 'px-2 h-8 gap-1.5' 
-                : 'px-2 mid:px-3 detail:px-4 h-9 mid:h-12 gap-1.5 mid:gap-2'
-            } ${
-              isOnHistoryPage 
-                ? 'border-ffxiv-gold/70 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
-                : 'border-purple-500/30 hover:border-ffxiv-gold/50'
-            }`
-        }
+        className={`tb-btn ${isOnHistoryPage ? 'is-active' : ''}`}
         title="歷史記錄"
+        aria-current={isOnHistoryPage ? 'page' : undefined}
       >
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          className={isItemInfoPage 
-            ? "topbar-nav-icon item-info-page"
-            : "h-4 w-4 mid:h-5 mid:w-5 text-ffxiv-gold"
-          }
-          fill="none" 
-          viewBox="0 0 24 24" 
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="tb-icon"
+          fill="none"
+          viewBox="0 0 24 24"
           stroke="currentColor"
+          aria-hidden="true"
         >
-          <path 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth={2} 
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
           />
         </svg>
-        {isItemInfoPage ? (
-          <span className="topbar-nav-text item-info-page">歷史記錄</span>
-        ) : (
-          <>
-            <span className="text-xs detail:text-sm font-semibold text-ffxiv-gold hidden mid:inline">歷史記錄</span>
-            <span className="text-xs font-semibold text-ffxiv-gold hidden narrow:inline mid:hidden">歷史</span>
-          </>
-        )}
+        <span className="tb-btn-label">歷史記錄</span>
       </button>
 
       {/* Dropdown Menu */}
       {isOpen && (
         <div 
-          className="absolute top-full left-0 mt-2 w-64 mid:w-80 bg-slate-900/95 border border-purple-500/30 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto"
+          className="absolute top-full right-0 mt-2 w-64 mid:w-80 bg-slate-900/95 border border-purple-500/30 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto"
           onMouseEnter={() => {
             if (timeoutRef.current) {
               clearTimeout(timeoutRef.current);

@@ -1,6 +1,15 @@
 <!doctype html>
 <html lang="zh-TW">
   <head>
+    <!-- Apply the saved theme before first paint to avoid a flash (see src/hooks/useTheme.js) -->
+    <script>
+      (function () {
+        var theme = 'dark';
+        try { if (localStorage.getItem('ffxiv-theme') === 'light') theme = 'light'; } catch (e) {}
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-HP5TD08HLV"></script>
     <script>
