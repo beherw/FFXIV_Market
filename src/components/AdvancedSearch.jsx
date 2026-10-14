@@ -11,7 +11,7 @@ import ServerSelector from './ServerSelector';
 import { getMarketableItems, getMarketableItemsByIds, fetchAggregated } from '../services/universalis';
 import { searchItems, getSimplifiedChineseName, getItemById } from '../services/itemDatabase';
 import { loadRecipeDatabase, loadRecipesByJobAndLevel } from '../services/recipeDatabase';
-import { getTwJobAbbr, getTwItems, getIlvlsByIds, getRaritiesByIds, getTwItemById, getTwItemsByIds, getItemIdsByIlvlRange } from '../services/gameData';
+import { getTwJobAbbr, getTwItems, getIlvlsByIds, getRaritiesByIds, getTwItemById, getTwItemsByIds, getItemIdsByIlvlRange, getItemPatchByIds, getPatchNames } from '../services/gameData';
 import { getTwItemUICategories, getUICategoriesByIds, getItemIdsByCategories } from '../services/uiCategoriesDataService';
 import { getEquipmentByIds, getEquipmentByJobs, getEquipmentBySlotCategories, getEquipmentByJobsAndSlotCategories } from '../services/itemsDatabaseMsgpack';
 import { APP_VERSION } from '../constants/version';
@@ -83,6 +83,8 @@ export default function AdvancedSearch({
   const [levelFilterAutoSwitchHighlight, setLevelFilterAutoSwitchHighlight] = useState(false); // brief highlight when auto-switched to ilvls
   const [itemNameFilter, setItemNameFilter] = useState(''); // Item name filter text
   const [filterFuzzySearch, setFilterFuzzySearch] = useState(true); // Fuzzy search toggle for filter search (true = fuzzy, false = exact) (default: fuzzy enabled)
+  const [versionFilter, setVersionFilter] = useState(''); // Major game version to keep ('6' = all 6.x patches); '' = no filter
+  const [versionOptions, setVersionOptions] = useState([]); // Major versions present in patch data, e.g. [2, 3, ..., 7]
   const [categorySearchTerm, setCategorySearchTerm] = useState(''); // Category search filter text
   
   // Category filter list - categories to exclude from search results
@@ -1153,24 +1155,44 @@ export default function AdvancedSearch({
     }
   }, [isLoadingVelocities, isFilterSearching, velocityFetchInProgress, showUntradeable, searchResults.length, untradeableResults.length, activeTab]);
 
-  // Helper function to get background color class based on job role
+  // Version dropdown options come from the patch data, so a new expansion appears automatically
+  useEffect(() => {
+    let cancelled = false;
+    getPatchNames()
+      .then((patchNames) => {
+        const majors = new Set();
+        Object.values(patchNames).forEach((patch) => {
+          const major = parseInt(patch?.version, 10);
+          if (!Number.isNaN(major)) majors.add(major);
+        });
+        if (!cancelled) setVersionOptions([...majors].sort((a, b) => a - b));
+      })
+      .catch((err) => console.error('[AdvancedSearch] Failed to load patch names for version filter', err));
+    return () => { cancelled = true; };
+  }, []);
+
+  // Job button tile classes by role.
   // FF14官方颜色: Tank (#2d3a80), Healer (#346624), DPS (#732828)
-  const getJobRoleBgColor = (role) => {
-    switch (role) {
-      case 'tank':
-        return 'bg-blue-600/15'; // 深蓝色 - 坦克 (降低透明度使其更自然)
-      case 'healer':
-        return 'bg-green-600/15'; // 深绿色 - 辅助 (降低透明度使其更自然)
-      case 'melee':
-      case 'ranged':
-      case 'caster':
-        return 'bg-red-600/15'; // 深红色 - 输出 (降低透明度使其更自然)
-      case 'crafting':
-      case 'gathering':
-        return 'bg-gray-500/15'; // 灰色 - 生产职业 (降低透明度使其更自然)
-      default:
-        return 'bg-slate-900/50';
+  // The Garland Tools job icons are metallic glyphs drawn for a dark background, so in
+  // dark mode the tile is a faint role tint, while light mode uses a solid deep role
+  // color (like the in-game role icons) instead of a pale pastel the icons get lost in.
+  const JOB_ROLE_TILE = {
+    tank: 'bg-blue-600/15 light:bg-[#35458f]',
+    healer: 'bg-green-600/15 light:bg-[#3b6f2c]',
+    dps: 'bg-red-600/15 light:bg-[#83302f]',
+    crafter: 'bg-gray-500/15 light:bg-[#4b5563]',
+  };
+  const getJobButtonClass = (role, isSelected) => {
+    const tileRole =
+      role === 'tank' || role === 'healer' ? role
+        : role === 'melee' || role === 'ranged' || role === 'caster' ? 'dps'
+        : role === 'crafting' || role === 'gathering' ? 'crafter'
+        : null;
+    const tile = tileRole ? JOB_ROLE_TILE[tileRole] : 'bg-slate-900/50';
+    if (isSelected) {
+      return `bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold light:bg-none ${tile} light:ring-2 light:ring-ffxiv-gold light:ring-offset-1 light:ring-offset-white`;
     }
+    return `${tile} border-purple-500/30 hover:border-purple-500/50 light:border-transparent light:opacity-90 light:hover:opacity-100`;
   };
 
   // Job icons mapping with Garland Tools URLs - separated into 生產 and 戰鬥職業
@@ -2125,7 +2147,21 @@ export default function AdvancedSearch({
       }
     }
 
-    // Check if any items match the filters (after job/category/level/name filtering)
+    // Filter by game version (major version, e.g. '6' keeps every 6.x patch)
+    if (versionFilter && itemIds.size > 0) {
+      const major = Number(versionFilter);
+      const [itemPatches, patchNames] = await Promise.all([
+        getItemPatchByIds(Array.from(itemIds)),
+        getPatchNames(),
+      ]);
+      itemIds = new Set(Array.from(itemIds).filter((id) => {
+        const patch = patchNames[itemPatches[id]];
+        return patch && parseInt(patch.version, 10) === major;
+      }));
+      console.log(`[AdvancedSearch] Version filter ${major}.x: ${itemIds.size} items`);
+    }
+
+    // Check if any items match the filters (after job/category/level/name/version filtering)
     if (itemIds.size === 0) {
       addToast('未找到符合條件的物品', 'warning');
       return null;
@@ -2206,7 +2242,7 @@ export default function AdvancedSearch({
       untradeableItemIds,
       marketableSet 
     };
-  }, [selectedJobs, selectedCategories, selectedWorld, selectedServerOption, minLevel, maxLevel, levelFilterMode, itemNameFilter, filterFuzzySearch, addToast, loadRecipeDatabase, loadEquipmentByJobs, loadEquipmentByJobsAndSlotCategories, loadEquipmentByIds, loadUICategoriesByIds, loadIlvlsData, getJobAbbreviation]);
+  }, [selectedJobs, selectedCategories, selectedWorld, selectedServerOption, minLevel, maxLevel, levelFilterMode, itemNameFilter, filterFuzzySearch, versionFilter, addToast, loadRecipeDatabase, loadEquipmentByJobs, loadEquipmentByJobsAndSlotCategories, loadEquipmentByIds, loadUICategoriesByIds, loadIlvlsData, getJobAbbreviation]);
 
   // Handle filter search
   const handleFilterSearch = useCallback(async () => {
@@ -2512,7 +2548,7 @@ export default function AdvancedSearch({
       setIsLoadingVelocities(false);
       setIsFilterSearching(false);
     }
-  }, [selectedJobs, selectedCategories, selectedWorld, selectedServerOption, addToast, isFilterSearching, isSearching, itemNameFilter, minLevel, maxLevel, filterFuzzySearch, isSearchButtonDisabled]);
+  }, [selectedJobs, selectedCategories, selectedWorld, selectedServerOption, addToast, isFilterSearching, isSearching, itemNameFilter, minLevel, maxLevel, filterFuzzySearch, versionFilter, isSearchButtonDisabled]);
 
   // Fetch velocity, average price, and tradability data for search results (like main search page)
   // This loads prices for TRADEABLE items only when searchResults or selectedServerOption changes
@@ -3970,11 +4006,7 @@ export default function AdvancedSearch({
                             key={job.id}
                             onClick={() => handleJobToggle(job.id)}
                             title={job.name}
-                            className={`p-2 rounded-lg border transition-all relative ${
-                              isSelected
-                                ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
-                            }`}
+                            className={`p-2 rounded-lg border transition-all relative ${getJobButtonClass(job.role, isSelected)}`}
                           >
                             <img 
                               src={job.iconUrl} 
@@ -3994,11 +4026,7 @@ export default function AdvancedSearch({
                             key={job.id}
                             onClick={() => handleJobToggle(job.id)}
                             title={job.name}
-                            className={`p-2 rounded-lg border transition-all relative ${
-                              isSelected
-                                ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
-                            }`}
+                            className={`p-2 rounded-lg border transition-all relative ${getJobButtonClass(job.role, isSelected)}`}
                           >
                             <img 
                               src={job.iconUrl} 
@@ -4019,11 +4047,7 @@ export default function AdvancedSearch({
                             key={job.id}
                             onClick={() => handleJobToggle(job.id)}
                             title={job.name}
-                            className={`p-2 rounded-lg border transition-all relative ${
-                              isSelected
-                                ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
-                            }`}
+                            className={`p-2 rounded-lg border transition-all relative ${getJobButtonClass(job.role, isSelected)}`}
                           >
                             <img 
                               src={job.iconUrl} 
@@ -4043,11 +4067,7 @@ export default function AdvancedSearch({
                             key={job.id}
                             onClick={() => handleJobToggle(job.id)}
                             title={job.name}
-                            className={`p-2 rounded-lg border transition-all relative ${
-                              isSelected
-                                ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
-                            }`}
+                            className={`p-2 rounded-lg border transition-all relative ${getJobButtonClass(job.role, isSelected)}`}
                           >
                             <img 
                               src={job.iconUrl} 
@@ -4071,11 +4091,7 @@ export default function AdvancedSearch({
                                 key={job.id}
                                 onClick={() => handleJobToggle(job.id)}
                                 title={job.name}
-                                className={`p-2 rounded-lg border transition-all relative ${
-                                  isSelected
-                                    ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                    : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
-                                }`}
+                                className={`p-2 rounded-lg border transition-all relative ${getJobButtonClass(job.role, isSelected)}`}
                               >
                                 <img 
                                   src={job.iconUrl} 
@@ -4097,11 +4113,7 @@ export default function AdvancedSearch({
                               key={job.id}
                               onClick={() => handleJobToggle(job.id)}
                               title={job.name}
-                              className={`p-2 rounded-lg border transition-all relative ${
-                                isSelected
-                                  ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                  : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
-                              }`}
+                              className={`p-2 rounded-lg border transition-all relative ${getJobButtonClass(job.role, isSelected)}`}
                             >
                               <img
                                 src={job.iconUrl} 
@@ -4123,11 +4135,7 @@ export default function AdvancedSearch({
                             key={job.id}
                             onClick={() => handleJobToggle(job.id)}
                             title={job.name}
-                            className={`p-2 rounded-lg border transition-all relative ${
-                              isSelected
-                                ? 'bg-gradient-to-r from-ffxiv-gold/20 to-yellow-500/20 border-ffxiv-gold'
-                                : `${getJobRoleBgColor(job.role)} border-purple-500/30 hover:border-purple-500/50`
-                            }`}
+                            className={`p-2 rounded-lg border transition-all relative ${getJobButtonClass(job.role, isSelected)}`}
                           >
                             <img 
                               src={job.iconUrl} 
@@ -4370,10 +4378,10 @@ export default function AdvancedSearch({
                 </div>
               )}
 
-              {/* Item Name Filter, Search Button and Clear Filters Button */}
-              <div className="mb-6 flex gap-3">
+              {/* Item Name Filter, Version Filter, Search Button and Clear Filters Button */}
+              <div className="mb-6 flex flex-wrap md:flex-nowrap items-stretch gap-3">
                 {/* Item Name Filter Input */}
-                <div className="w-[40%] relative">
+                <div className="w-full md:w-auto md:flex-1 min-w-0 relative">
                   <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -4431,10 +4439,33 @@ export default function AdvancedSearch({
                     </span>
                   </div>
                 </div>
+                {/* Version Filter Dropdown */}
+                <div className="relative w-full sm:w-40 shrink-0">
+                  <select
+                    value={versionFilter}
+                    onChange={(e) => setVersionFilter(e.target.value)}
+                    disabled={isFilterSearching || isSearching}
+                    aria-label="版本篩選"
+                    title="只顯示指定版本推出的物品"
+                    className={`w-full h-full py-3 pl-3 pr-9 appearance-none rounded-lg bg-slate-900/90 border text-sm focus:outline-none focus:ring-1 transition-all cursor-pointer ${
+                      isFilterSearching || isSearching
+                        ? 'border-slate-700/30 cursor-not-allowed opacity-60'
+                        : 'border-purple-500/40 focus:border-ffxiv-gold focus:ring-ffxiv-gold/50'
+                    } ${versionFilter ? 'text-ffxiv-gold font-semibold' : 'text-white'}`}
+                  >
+                    <option value="">全部版本</option>
+                    {versionOptions.map((major) => (
+                      <option key={major} value={String(major)}>{major}.x</option>
+                    ))}
+                  </select>
+                  <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
                   <button
                     onClick={handleFilterSearch}
                     disabled={isFilterSearching || isSearching || isSearchButtonDisabled || (selectedJobs.length === 0 && selectedCategories.length === 0) || tooManyItemsWarning !== null}
-                    className={`flex-1 py-3 rounded-lg font-semibold transition-all relative overflow-hidden ${
+                    className={`flex-1 sm:flex-none sm:w-28 py-3 rounded-lg font-semibold transition-all relative overflow-hidden ${
                       isFilterSearching || isSearching
                         ? 'bg-gradient-to-r from-ffxiv-gold to-yellow-500 text-slate-900 hover:shadow-[0_0_20px_rgba(212,175,55,0.5)]'
                         : isSearchButtonDisabled || (selectedJobs.length === 0 && selectedCategories.length === 0) || tooManyItemsWarning !== null
@@ -4480,6 +4511,7 @@ export default function AdvancedSearch({
                       setMinLevel(1);
                       setMaxLevel(999);
                       setItemNameFilter('');
+                      setVersionFilter('');
                       setSearchResults([]);
                       setUntradeableResults([]);
                       setShowUntradeable(false);
@@ -4491,10 +4523,10 @@ export default function AdvancedSearch({
                       setCurrentPage(1);
                       setTooManyItemsWarning(null);
                     }}
-                    className={`flex-1 py-3 rounded-lg font-semibold transition-all ${
+                    className={`shrink-0 px-4 py-3 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                       isFilterSearching || isSearching
-                        ? 'bg-red-600/80 text-on-accent border border-red-500/70 hover:bg-red-600 hover:border-red-400 hover:shadow-[0_0_20px_rgba(220,38,38,0.5)]'
-                        : 'bg-red-600/60 text-on-accent border border-red-500/50 hover:bg-red-600/80 hover:border-red-400/70 hover:shadow-[0_0_20px_rgba(220,38,38,0.5)]'
+                        ? 'bg-red-600/80 text-on-accent border border-red-500/70 hover:bg-red-600 hover:border-red-400'
+                        : 'bg-red-600/10 text-red-400 border border-red-500/40 hover:bg-red-600/20 hover:border-red-400/70'
                     }`}
                   >
                     {isFilterSearching || isSearching ? '停止搜尋' : '清空篩選'}
