@@ -23,13 +23,17 @@
   --tb-accent-border: rgba(251, 191, 36, 0.35);
   --tb-focus: rgba(167, 139, 250, 0.7);
   --tb-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --tb-bar-shadow: none;
   --tb-logo-glow: drop-shadow(0 0 6px rgba(251, 191, 36, 0.5));
 }
 
 :root[data-theme='light'] {
-  --tb-bg: rgba(255, 255, 255, 0.85);
-  --tb-panel: #ffffff;
-  --tb-border: rgba(15, 23, 42, 0.09);
+  /* Same tone as the page (#eef0f3), a step lighter and frosted, so the bar is calm
+     rather than a bright white stripe; the border and a faint shadow separate it. */
+  --tb-bg: rgba(244, 245, 248, 0.86);
+  --tb-panel: #f7f8fa;
+  --tb-border: rgba(15, 23, 42, 0.1);
+  --tb-bar-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   --tb-fg: #1e293b;
   --tb-muted: #64748b;
   --tb-hover: rgba(15, 23, 42, 0.05);
@@ -51,6 +55,7 @@
   z-index: 50;
   background: var(--tb-bg);
   border-bottom: 1px solid var(--tb-border);
+  box-shadow: var(--tb-bar-shadow);
   -webkit-backdrop-filter: blur(14px) saturate(150%);
   backdrop-filter: blur(14px) saturate(150%);
   color: var(--tb-fg);
