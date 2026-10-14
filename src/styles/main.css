@@ -719,7 +719,7 @@ input:focus {
 /* Page roots use a dark gradient; light mode wants a calm flat surface. */
 :root[data-theme='light'] .app-shell {
   background-image: none;
-  background-color: #f3f4f6;
+  background-color: #eef0f3;
 }
 
 :root[data-theme='light'] .card-glow {

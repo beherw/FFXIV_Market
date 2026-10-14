@@ -37,22 +37,28 @@ const LIGHT_NEUTRAL = {
     // Dark text only ever sits on light/solid fills, so it stays dark.
     800: defaultColors.slate[800], 900: defaultColors.slate[900], 950: defaultColors.slate[950],
   },
+  // Page #eef0f3 sits a step below white panels so cards visibly lift off it.
   bg: {
     50: '#1f2937', 100: '#374151', 200: '#4b5563', 300: '#6b7280', 400: '#9ca3af', 500: '#c4c9d1',
-    600: '#dfe2e7', 700: '#eceef1', 800: '#f7f8fa', 900: '#ffffff', 950: '#f3f4f6',
+    600: '#dde1e6', 700: '#e8ebef', 800: '#f6f7f9', 900: '#ffffff', 950: '#eef0f3',
   },
+  // Containers are written as translucent panels (`bg-slate-800/50 border-slate-700/50`).
+  // On a light page the translucent fill barely registers, so borders carry the
+  // separation: these are dark enough that a /50 border still reads as a clear line.
   border: {
-    50: '#1f2937', 100: '#374151', 200: '#4b5563', 300: '#6b7280', 400: '#9ca3af', 500: '#c4c9d1',
-    600: '#d5d9df', 700: '#e3e6ea', 800: '#eceef1', 900: '#eceef1', 950: '#eceef1',
+    50: '#1f2937', 100: '#374151', 200: '#4b5563', 300: '#6b7280', 400: '#8b94a1', 500: '#a3abb6',
+    600: '#b8bfc9', 700: '#c3c9d2', 800: '#cdd2d9', 900: '#d3d8de', 950: '#d3d8de',
   },
 }
 const LIGHT_PAGE = LIGHT_NEUTRAL.bg[950]
-const LIGHT_BORDER_GRAY = '#9ca3af'
+// Colored borders are blended toward this gray: keeps a hint of hue but enough weight
+// that low-alpha borders (`border-purple-500/20`) stay visible on white.
+const LIGHT_BORDER_GRAY = '#6b7280'
 
 // Brand colors: { dark, text, bg, border } (light values)
 const BRAND_COLORS = {
-  'ffxiv-dark': { dark: defaultColors.slate[900], text: '#1f2937', bg: LIGHT_PAGE, border: '#e3e6ea' },
-  'ffxiv-darker': { dark: defaultColors.slate[950], text: '#111827', bg: LIGHT_PAGE, border: '#e3e6ea' },
+  'ffxiv-dark': { dark: defaultColors.slate[900], text: '#1f2937', bg: LIGHT_PAGE, border: '#c3c9d2' },
+  'ffxiv-darker': { dark: defaultColors.slate[950], text: '#111827', bg: LIGHT_PAGE, border: '#c3c9d2' },
   'ffxiv-blue': { dark: defaultColors.blue[500], text: defaultColors.blue[600], bg: defaultColors.blue[500], border: defaultColors.blue[400] },
   'ffxiv-blue-light': { dark: defaultColors.blue[400], text: defaultColors.blue[700], bg: defaultColors.blue[400], border: defaultColors.blue[300] },
   'ffxiv-purple': { dark: defaultColors.violet[500], text: defaultColors.violet[600], bg: defaultColors.violet[500], border: defaultColors.violet[400] },
@@ -140,7 +146,7 @@ for (const family of HUE_FAMILIES) {
     define(`${family}-${shade}`, ramp[shade], {
       c: readableOnLight(mirrored),
       bg: shade >= 800 ? mix(mirrored, LIGHT_PAGE, 0.45) : ramp[shade],
-      bd: mix(mirrored, LIGHT_BORDER_GRAY, 0.45),
+      bd: mix(mirrored, LIGHT_BORDER_GRAY, 0.4),
     })
   }
 }
