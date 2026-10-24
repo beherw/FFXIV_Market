@@ -5,7 +5,7 @@ import { useCallback, useSyncExternalStore } from 'react';
 // updates <html data-theme>.
 export const THEME_STORAGE_KEY = 'ffxiv-theme';
 
-const THEME_COLORS = { dark: '#0f172a', light: '#f8fafc' };
+const THEME_COLORS = { dark: '#0f172a', light: '#F5F7FA' };
 
 function readTheme() {
   return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';

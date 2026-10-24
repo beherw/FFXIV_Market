@@ -830,7 +830,7 @@ function RootPriceComparisonBadge({ tree, purchaseItemPrices, materialItemPrices
             {/* Price breakdown */}
             <div className="flex items-center gap-2 text-sm whitespace-nowrap">
               <span className="flex-shrink-0">最優製作: N/A</span>
-              <span className="opacity-60 flex-shrink-0">vs</span>
+              <span className="opacity-60 flex-shrink-0 light:opacity-100 light:text-gray-500">vs</span>
               <span className="flex-shrink-0">直購成品: {formatPrice(buyTotal)}{rootAmount > 1 ? ` (×${rootAmount})` : ''}</span>
             </div>
             {/* Recommendation */}
@@ -918,7 +918,7 @@ function RootPriceComparisonBadge({ tree, purchaseItemPrices, materialItemPrices
             {/* Price breakdown */}
             <div className="flex items-center gap-2 text-sm whitespace-nowrap">
               <span className="flex-shrink-0">最優製作: {formatPrice(craftTotal)}</span>
-              <span className="opacity-60 flex-shrink-0">vs</span>
+              <span className="opacity-60 flex-shrink-0 light:opacity-100 light:text-gray-500">vs</span>
               <span className="flex-shrink-0">直購成品: {formatPrice(buyTotal)}{rootAmount > 1 ? ` (×${rootAmount})` : ''}</span>
             </div>
             <div className="flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
@@ -965,7 +965,7 @@ function RootPriceComparisonBadge({ tree, purchaseItemPrices, materialItemPrices
           </div>
           <div className="flex items-center gap-2 text-sm whitespace-nowrap">
             <span className="flex-shrink-0">最優製作: {formatPrice(craftTotal)}</span>
-            <span className="opacity-60 flex-shrink-0">vs</span>
+            <span className="opacity-60 flex-shrink-0 light:opacity-100 light:text-gray-500">vs</span>
             <span className="flex-shrink-0">直購成品: {formatPrice(buyTotal)}{rootAmount > 1 ? ` (×${rootAmount})` : ''}</span>
           </div>
           <div className="flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
@@ -1033,7 +1033,7 @@ function PriceComparisonBadge({ parentPrice, childrenTotalPrice, isReady, amount
   // market prices printed on the cards - say so on the badge.
   const usesCraftRoute = Array.isArray(breakdown) && breakdown.some((b) => b.method === 'craft');
   const optimalRouteHint = usesCraftRoute ? (
-    <div className="text-[10px] opacity-60 text-center whitespace-nowrap">
+    <div className="text-[10px] opacity-60 text-center whitespace-nowrap light:opacity-100 light:text-gray-500">
       材料以最優路線計算（每項取買/製的較低價）
     </div>
   ) : null;

@@ -711,19 +711,18 @@ input:focus {
  * Palette colors flip automatically via the --c-* variables (see tailwind.config.js).
  * These cover surfaces that were hand-mixed for the dark background. */
 :root[data-theme='light'] body::before {
-  background-image:
-    radial-gradient(circle at 15% 0%, rgba(139, 92, 246, 0.05) 0%, transparent 45%),
-    radial-gradient(circle at 85% 100%, rgba(245, 158, 11, 0.04) 0%, transparent 45%);
+  background-color: var(--bg-page);
+  background-image: none;
 }
 
-/* Page roots use a dark gradient; light mode wants a calm flat surface. */
+/* Keep the page canvas separate from white content surfaces. */
 :root[data-theme='light'] .app-shell {
   background-image: none;
-  background-color: #eef0f3;
+  background-color: var(--bg-page);
 }
 
 :root[data-theme='light'] .card-glow {
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadow-card);
 }
 
 :root[data-theme='light'] .glow-gold,
@@ -747,14 +746,146 @@ input:focus {
 }
 
 :root[data-theme='light'] button:hover {
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  box-shadow: none;
 }
 
 :root[data-theme='light'] .card-fantasy {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 245, 255, 0.95) 50%, rgba(255, 255, 255, 0.95) 100%);
-  box-shadow:
-    0 8px 16px rgba(15, 23, 42, 0.08),
-    0 0 30px rgb(var(--bg-amber-400) / 0.1);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-card);
+}
+
+:root[data-theme='light'] .app-shell [class^='from-slate-800/'][class*='via-purple-900/'],
+:root[data-theme='light'] .app-shell [class*=' from-slate-800/'][class*='via-purple-900/'],
+:root[data-theme='light'] .app-shell [class^='from-slate-800/'][class*='via-pink-900/'],
+:root[data-theme='light'] .app-shell [class*=' from-slate-800/'][class*='via-pink-900/'],
+:root[data-theme='light'] .app-shell [class^='from-purple-900/'][class*='via-pink-900/'],
+:root[data-theme='light'] .app-shell [class*=' from-purple-900/'][class*='via-pink-900/'] {
+  background: var(--bg-surface) !important;
+  border-color: var(--border-default) !important;
+  box-shadow: var(--shadow-card);
+}
+
+:root[data-theme='light'] .app-shell [class*='shadow-xl'],
+:root[data-theme='light'] .app-shell [class*='absolute'][class*='shadow-lg'] {
+  box-shadow: var(--shadow-floating) !important;
+}
+
+:root[data-theme='light'] [class^='bg-slate-800/'],
+:root[data-theme='light'] [class*=' bg-slate-800/'],
+:root[data-theme='light'] [class^='bg-gray-800/'],
+:root[data-theme='light'] [class*=' bg-gray-800/'],
+:root[data-theme='light'] [class^='bg-zinc-800/'],
+:root[data-theme='light'] [class*=' bg-zinc-800/'],
+:root[data-theme='light'] [class^='bg-neutral-800/'],
+:root[data-theme='light'] [class*=' bg-neutral-800/'],
+:root[data-theme='light'] [class^='bg-stone-800/'],
+:root[data-theme='light'] [class*=' bg-stone-800/'] {
+  background-color: var(--bg-surface) !important;
+}
+
+:root[data-theme='light'] [class^='bg-slate-900/'],
+:root[data-theme='light'] [class*=' bg-slate-900/'],
+:root[data-theme='light'] [class^='bg-gray-900/'],
+:root[data-theme='light'] [class*=' bg-gray-900/'],
+:root[data-theme='light'] [class^='bg-zinc-900/'],
+:root[data-theme='light'] [class*=' bg-zinc-900/'],
+:root[data-theme='light'] [class^='bg-neutral-900/'],
+:root[data-theme='light'] [class*=' bg-neutral-900/'],
+:root[data-theme='light'] [class^='bg-stone-900/'],
+:root[data-theme='light'] [class*=' bg-stone-900/'] {
+  background-color: var(--bg-surface-secondary) !important;
+}
+
+:root[data-theme='light'] [class^='bg-purple-900/'],
+:root[data-theme='light'] [class*=' bg-purple-900/'] {
+  background-color: var(--bg-surface-secondary) !important;
+}
+
+:root[data-theme='light'] [class^='bg-slate-700/'],
+:root[data-theme='light'] [class*=' bg-slate-700/'],
+:root[data-theme='light'] [class^='bg-gray-700/'],
+:root[data-theme='light'] [class*=' bg-gray-700/'],
+:root[data-theme='light'] [class^='bg-zinc-700/'],
+:root[data-theme='light'] [class*=' bg-zinc-700/'],
+:root[data-theme='light'] [class^='bg-neutral-700/'],
+:root[data-theme='light'] [class*=' bg-neutral-700/'],
+:root[data-theme='light'] [class^='bg-stone-700/'],
+:root[data-theme='light'] [class*=' bg-stone-700/'] {
+  background-color: var(--bg-surface-hover) !important;
+}
+
+:root[data-theme='light'] [class*='hover:bg-slate-700/']:hover,
+:root[data-theme='light'] [class*='hover:bg-gray-700/']:hover,
+:root[data-theme='light'] [class*='hover:bg-zinc-700/']:hover,
+:root[data-theme='light'] [class*='hover:bg-neutral-700/']:hover,
+:root[data-theme='light'] [class*='hover:bg-stone-700/']:hover {
+  background-color: var(--bg-surface-hover) !important;
+}
+
+:root[data-theme='light'] [class*='border-slate-'][class*='/'],
+:root[data-theme='light'] [class*='border-gray-'][class*='/'],
+:root[data-theme='light'] [class*='border-zinc-'][class*='/'],
+:root[data-theme='light'] [class*='border-neutral-'][class*='/'],
+:root[data-theme='light'] [class*='border-stone-'][class*='/'],
+:root[data-theme='light'] [class*='border-purple-'][class*='/'],
+:root[data-theme='light'] [class*='border-pink-'][class*='/'] {
+  border-color: var(--border-default) !important;
+}
+
+:root[data-theme='light'] [class*='hover:border-purple-']:hover,
+:root[data-theme='light'] [class*='hover:border-pink-']:hover {
+  border-color: var(--border-strong) !important;
+}
+
+:root[data-theme='light'] .app-shell button.light-secondary-button {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-input) !important;
+  color: #374151 !important;
+}
+
+:root[data-theme='light'] .app-shell button.light-secondary-button:hover {
+  background-color: var(--bg-surface-hover) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+
+:root[data-theme='light'] input:not([type='checkbox']):not([type='radio']):not([type='range']),
+:root[data-theme='light'] select,
+:root[data-theme='light'] textarea {
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border-input) !important;
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+:root[data-theme='light'] input::placeholder,
+:root[data-theme='light'] textarea::placeholder {
+  color: var(--text-placeholder);
+  opacity: 1;
+}
+
+:root[data-theme='light'] input:focus,
+:root[data-theme='light'] select:focus,
+:root[data-theme='light'] textarea:focus {
+  border-color: var(--accent-purple) !important;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+}
+
+:root[data-theme='light'] input:not([type='checkbox']):not([type='radio']):not([type='range']):focus {
+  border-color: var(--accent-purple) !important;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+}
+
+:root[data-theme='light'] input:not([type='checkbox']):not([type='radio']):not([type='range']):hover:not(:focus),
+:root[data-theme='light'] select:hover:not(:focus),
+:root[data-theme='light'] textarea:hover:not(:focus) {
+  border-color: var(--border-strong) !important;
+}
+
+:root[data-theme='light'] table tbody tr:hover {
+  background-color: var(--bg-surface-hover);
+  box-shadow: none;
 }
 
 :root[data-theme='light'] .confirm-button-attention::after {

@@ -166,7 +166,7 @@ export default function RecentUpdatesSection({ onItemSelect, selectedDcName }) {
           className={`px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-md border transition-all duration-200 flex items-center gap-1.5 ${
             refreshCooldownRef.current || isLoading
               ? 'bg-slate-700/60 text-gray-500 border-slate-600/40 cursor-not-allowed'
-              : 'bg-purple-800/60 hover:bg-purple-700/70 text-gray-200 hover:text-white border-purple-500/40 hover:border-purple-400/60'
+              : 'bg-purple-800/60 hover:bg-purple-700/70 text-gray-200 hover:text-white border-purple-500/40 hover:border-purple-400/60 light-secondary-button'
           }`}
           title={refreshCooldownRef.current ? '請稍候再試' : '刷新'}
         >

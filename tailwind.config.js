@@ -12,11 +12,11 @@ import plugin from 'tailwindcss/plugin'
  *   --bd-*  borders and dividers
  * Dark mode uses Tailwind's stock values for all three, so existing class names
  * render exactly as before. Light mode (html[data-theme="light"]) remaps them:
- *   - surfaces: page #f3f4f6, panels white, soft gray borders;
+ *   - surfaces: neutral gray page, white panels, and clear nested/hover levels;
  *   - dark tints (bg-*-800/900/950) become pale, desaturated tints;
  *   - solid accents (bg-*-50…700) keep their real color so buttons stay vivid;
  *   - pale text (text-*-300) becomes deep text (text-*-700);
- *   - `white` (mostly primary text and faint overlays) becomes dark.
+ *   - `text-white` becomes dark primary text; `bg-white` remains a white surface.
  * Hardcoded colors in CSS can use the same variables: rgb(var(--bd-purple-500) / 0.3).
  */
 
@@ -31,42 +31,60 @@ const NEUTRAL_FAMILIES = ['slate', 'gray', 'zinc', 'neutral', 'stone']
 // Light-mode neutral ramps, indexed by the dark-mode shade a class names.
 const LIGHT_NEUTRAL = {
   text: {
-    50: '#111827', 100: '#1f2937', 200: '#273142', 300: '#374151', 400: '#4b5563', 500: '#5b6472',
-    // 600/700 are hint and disabled text in dark mode; 600 still has to stay readable.
-    600: '#626a77', 700: '#9ca3af',
+    50: '#1f2937', 100: '#1f2937', 200: '#273142', 300: '#374151', 400: '#4b5563', 500: '#6b7280',
+    600: '#6b7280', 700: '#6b7280',
     // Dark text only ever sits on light/solid fills, so it stays dark.
     800: defaultColors.slate[800], 900: defaultColors.slate[900], 950: defaultColors.slate[950],
   },
-  // Page #eef0f3 sits a step below white panels so cards visibly lift off it.
+  // Light surfaces retain the distinct page, card, nested, and hover levels.
   bg: {
-    50: '#1f2937', 100: '#374151', 200: '#4b5563', 300: '#6b7280', 400: '#9ca3af', 500: '#c4c9d1',
-    600: '#dde1e6', 700: '#e8ebef', 800: '#f6f7f9', 900: '#ffffff', 950: '#eef0f3',
+    50: '#1f2937', 100: '#374151', 200: '#4b5563', 300: '#6b7280', 400: '#9ca3af', 500: '#c5cdd8',
+    600: '#d8dee8', 700: '#f3f4f6', 800: '#ffffff', 900: '#f8fafc', 950: '#f5f7fa',
   },
-  // Containers are written as translucent panels (`bg-slate-800/50 border-slate-700/50`).
-  // On a light page the translucent fill barely registers, so borders carry the
-  // separation: these are dark enough that a /50 border still reads as a clear line.
+  // Borders use neutral hierarchy rather than tinted accent colors.
   border: {
-    50: '#1f2937', 100: '#374151', 200: '#4b5563', 300: '#6b7280', 400: '#8b94a1', 500: '#a3abb6',
-    600: '#b8bfc9', 700: '#c3c9d2', 800: '#cdd2d9', 900: '#d3d8de', 950: '#d3d8de',
+    50: '#1f2937', 100: '#374151', 200: '#4b5563', 300: '#6b7280', 400: '#9ca3af', 500: '#c5cdd8',
+    600: '#c5cdd8', 700: '#e5e9f0', 800: '#d8dee8', 900: '#d8dee8', 950: '#d8dee8',
   },
 }
-const LIGHT_PAGE = LIGHT_NEUTRAL.bg[950]
-// Colored borders are blended toward this gray: keeps a hint of hue but enough weight
-// that low-alpha borders (`border-purple-500/20`) stay visible on white.
-const LIGHT_BORDER_GRAY = '#6b7280'
+const LIGHT_PAGE = '#F5F7FA'
+const LIGHT_BORDER_GRAY = '#D8DEE8'
+const LIGHT_THEME_TOKENS = {
+  '--bg-page': LIGHT_PAGE,
+  '--bg-surface': '#FFFFFF',
+  '--bg-surface-secondary': '#F8FAFC',
+  '--bg-surface-hover': '#F3F4F6',
+  '--border-default': '#D8DEE8',
+  '--border-subtle': '#E5E9F0',
+  '--border-strong': '#C5CDD8',
+  '--border-input': '#CBD3DF',
+  '--text-primary': '#1F2937',
+  '--text-secondary': '#4B5563',
+  '--text-muted': '#6B7280',
+  '--text-disabled': '#9CA3AF',
+  '--text-placeholder': '#7C8798',
+  '--accent-orange': '#B45309',
+  '--accent-purple': '#7C3AED',
+  '--accent-purple-hover': '#6D28D9',
+  '--accent-purple-soft': '#F3E8FF',
+  '--accent-cyan': '#0891B2',
+  '--accent-cyan-soft': '#ECFEFF',
+  '--shadow-card': '0 1px 2px rgba(15, 23, 42, 0.04)',
+  '--shadow-floating': '0 4px 6px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08)',
+}
 
 // Brand colors: { dark, text, bg, border } (light values)
 const BRAND_COLORS = {
-  'ffxiv-dark': { dark: defaultColors.slate[900], text: '#1f2937', bg: LIGHT_PAGE, border: '#c3c9d2' },
+  'ffxiv-dark': { dark: defaultColors.slate[900], text: '#1f2937', bg: LIGHT_PAGE, border: '#D8DEE8' },
   'ffxiv-darker': { dark: defaultColors.slate[950], text: '#111827', bg: LIGHT_PAGE, border: '#c3c9d2' },
   'ffxiv-blue': { dark: defaultColors.blue[500], text: defaultColors.blue[600], bg: defaultColors.blue[500], border: defaultColors.blue[400] },
   'ffxiv-blue-light': { dark: defaultColors.blue[400], text: defaultColors.blue[700], bg: defaultColors.blue[400], border: defaultColors.blue[300] },
-  'ffxiv-purple': { dark: defaultColors.violet[500], text: defaultColors.violet[600], bg: defaultColors.violet[500], border: defaultColors.violet[400] },
-  'ffxiv-purple-light': { dark: defaultColors.violet[400], text: defaultColors.violet[700], bg: defaultColors.violet[400], border: defaultColors.violet[300] },
-  'ffxiv-gold': { dark: defaultColors.amber[400], text: '#b45309', bg: defaultColors.amber[400], border: defaultColors.amber[500] },
+  'ffxiv-purple': { dark: defaultColors.violet[500], text: '#6D28D9', bg: '#7C3AED', border: '#7C3AED' },
+  'ffxiv-purple-light': { dark: defaultColors.violet[400], text: '#6D28D9', bg: '#F3E8FF', border: '#D8B4FE' },
+  'ffxiv-gold': { dark: defaultColors.amber[400], text: '#B45309', bg: defaultColors.amber[400], border: defaultColors.amber[500] },
   'ffxiv-gold-dark': { dark: defaultColors.amber[500], text: defaultColors.amber[800], bg: defaultColors.amber[500], border: defaultColors.amber[600] },
-  'ffxiv-accent': { dark: defaultColors.violet[400], text: defaultColors.violet[600], bg: defaultColors.violet[400], border: defaultColors.violet[300] },
-  'ffxiv-accent-light': { dark: defaultColors.violet[300], text: defaultColors.violet[700], bg: defaultColors.violet[300], border: defaultColors.violet[200] },
+  'ffxiv-accent': { dark: defaultColors.violet[400], text: '#7C3AED', bg: '#7C3AED', border: '#7C3AED' },
+  'ffxiv-accent-light': { dark: defaultColors.violet[300], text: '#6D28D9', bg: '#F3E8FF', border: '#D8B4FE' },
 }
 
 const hexToRgb = (hex) => {
@@ -127,7 +145,9 @@ const nest = (palette) => {
   return nested
 }
 
-define('white', '#ffffff', { c: '#1f2937', bg: '#0f172a', bd: '#0f172a' })
+define('white', '#ffffff', { c: '#1f2937', bg: '#ffffff', bd: '#d8dee8' })
+darkVars['--bd-default'] = channels(defaultColors.gray[200])
+lightVars['--bd-default'] = channels('#D8DEE8')
 
 for (const family of NEUTRAL_FAMILIES) {
   for (const shade of SHADES) {
@@ -178,7 +198,7 @@ export default {
     colors: textPalette,
     backgroundColor: bgPalette,
     gradientColorStops: bgPalette,
-    borderColor: { ...borderPalette, DEFAULT: 'rgb(var(--bd-gray-200) / <alpha-value>)' },
+    borderColor: { ...borderPalette, DEFAULT: 'rgb(var(--bd-default) / <alpha-value>)' },
     divideColor: borderPalette,
     extend: {
       screens: {
@@ -201,7 +221,7 @@ export default {
     plugin(({ addBase, addVariant }) => {
       addBase({
         ':root': darkVars,
-        ':root[data-theme="light"]': lightVars,
+        ':root[data-theme="light"]': { ...lightVars, ...LIGHT_THEME_TOKENS },
       })
       // One-off light-mode tweaks: `light:text-amber-400` applies only in day mode.
       addVariant('light', ':root[data-theme="light"] &')
