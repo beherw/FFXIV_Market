@@ -229,7 +229,7 @@ export default function ServerUploadTimes({ worldUploadTimes, worlds, dcWorlds }
         <div className="relative overflow-x-auto -mx-2 sm:mx-0">
           <div className="inline-block min-w-full px-2 sm:px-0">
             <div ref={tableRef} className="bg-purple-900/20 rounded border border-purple-500/20 overflow-hidden">
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 divide-x divide-purple-500/20">
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-[repeat(auto-fit,minmax(7rem,1fr))] divide-x divide-purple-500/20">
                 {worldData.map(({ worldId, worldName, uploadTime }) => {
                   const timeColorClass = getTimeColorClass(uploadTime);
                   const nameCellId = `name-${worldId}`;
