@@ -88,20 +88,26 @@ export function cancelSimplifiedNameFetch() {}
  * This is used as a fallback when main search returns no results
  * IMPORTANT: This function ONLY uses precise search (exact substring matching), NEVER fuzzy search
  * @param {string} searchText - Search text in Simplified Chinese
- * @returns {Promise<Array<number>>} - Array of item IDs that match the search
+ * @returns {Promise<Array<{id: number, simplifiedName: string}>>} - Matching items and their source names
  */
-async function searchSimplifiedDatabaseByName(searchText) {
+async function searchSimplifiedDatabaseByName(searchText, signal = null) {
   if (!searchText || searchText.trim() === '') {
     return [];
   }
 
   try {
     const { searchCnItems } = await import('./itemsDatabaseMsgpack.js');
-    const matches = await searchCnItems(searchText.trim(), false);
-    return Object.keys(matches || {})
-      .map(id => parseInt(id, 10))
-      .filter(id => !isNaN(id) && id > 0);
+    const matches = await searchCnItems(searchText.trim(), false, signal);
+    return Object.entries(matches || {})
+      .map(([id, item]) => ({
+        id: parseInt(id, 10),
+        simplifiedName: item.zh || ''
+      }))
+      .filter(item => !isNaN(item.id) && item.id > 0 && item.simplifiedName);
   } catch (error) {
+    if (error.name === 'AbortError' || (signal && signal.aborted)) {
+      throw error;
+    }
     console.error('Failed to search simplified database:', error);
     return [];
   }
@@ -849,29 +855,35 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
     
     // Only search simplified database if the text contains Chinese characters
     if (containsChinese(simplifiedSearchText)) {
-      const matchingItemIds = await searchSimplifiedDatabaseByName(simplifiedSearchText);
+      const matchingItems = await searchSimplifiedDatabaseByName(simplifiedSearchText, signal);
       
-      if (matchingItemIds.length > 0) {
+      if (matchingItems.length > 0) {
         searchedSimplified = true;
         if (!converted) {
           converted = true;
           convertedText = simplifiedSearchText;
         }
         
-        // Fetch items by ID from Traditional Chinese database using targeted queries
-        // Don't load full database - use getTwItemById for each item
+        // Prefer the TW name when it exists; otherwise show the CN name converted for display.
         const itemsById = await Promise.all(
-          matchingItemIds.map(async (itemId) => {
+          matchingItems.map(async ({ id: itemId, simplifiedName }) => {
             try {
+              if (signal && signal.aborted) {
+                throw new DOMException('Request aborted', 'AbortError');
+              }
               const { getTwItemById } = await import('./gameData');
               const itemData = await getTwItemById(itemId);
-              if (!itemData) {
-                return null;
-              }
+              const twName = typeof itemData === 'string' ? itemData : itemData?.tw;
+              const hasTwName = !!twName?.trim();
+              const name = hasTwName
+                ? twName
+                : convertSimplifiedToTraditional(simplifiedName);
               return {
                 'key: #': itemId.toString(),
-                '9: Name': itemData.tw || '',
-                '0: Singular': itemData.tw || '',
+                '9: Name': name,
+                '0: Singular': name,
+                '_isNonTWSearch': !hasTwName,
+                '_simplifiedName': simplifiedName,
                 '11: Level{Item}': '',
                 '25: Price{Mid}': '',
                 '8: Description': '',
@@ -879,19 +891,26 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
                 '27: CanBeHq': 'True',
               };
             } catch (error) {
+              if (error.name === 'AbortError' || (signal && signal.aborted)) {
+                throw error;
+              }
               console.error(`Failed to fetch item ${itemId} for simplified search:`, error);
               return null;
             }
           })
         );
         
-        const validItems = itemsById.filter(item => item !== null && item['9: Name'].trim() !== '');
+        const uniqueItemsById = new Map(
+          itemsById
+            .filter(item => item && item['9: Name'].trim() !== '')
+            .map(item => [item['key: #'], item])
+        );
 
         // Convert items to result format (same as performSearch)
         // NOTE: Do NOT filter by tradeability here - return ALL matching items
         // Tradeability filtering will be done in handleSearch after search completes
         // This allows us to track untradeable items and show them via button
-        results = validItems
+        results = [...uniqueItemsById.values()]
           .map(item => {
             const id = item['key: #'];
             let name = item['9: Name'] || '';
@@ -920,11 +939,14 @@ export async function searchItems(searchText, fuzzy = false, signal = null) {
 
             // Clean name
             const cleanName = name.replace(/^["']|["']$/g, '').trim();
+            const isNonTWSearch = item['_isNonTWSearch'] === true;
 
             return {
               id: parseInt(id, 10) || 0,
               name: cleanName,
-              nameSimplified: cleanName,
+              nameTW: isNonTWSearch ? null : cleanName,
+              searchLanguageName: isNonTWSearch ? cleanName : null,
+              nameSimplified: isNonTWSearch ? item['_simplifiedName'] : cleanName,
               itemLevel: itemLevel,
               shopPrice: shopPrice,
               inShop: inShop,
