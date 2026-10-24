@@ -68,8 +68,6 @@
   align-items: center;
   column-gap: 0.5rem;
   row-gap: 0.25rem;
-  max-width: 1600px;
-  margin: 0 auto;
   padding: 0.5rem 0.75rem;
 }
 
@@ -85,8 +83,8 @@
 
 @media (min-width: 1280px) {
   .tb-inner {
-    /* Nav never shrinks below its content; the search box absorbs the squeeze. */
-    grid-template-columns: auto minmax(220px, 420px) minmax(max-content, 1fr) auto;
+    /* Keep the tools pinned right; let the nav use only the remaining space. */
+    grid-template-columns: auto minmax(220px, 420px) minmax(0, 1fr) auto;
     grid-template-areas: 'logo search nav tools';
     column-gap: 1rem;
     padding: 0.625rem 1.5rem;
@@ -290,6 +288,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  justify-self: end;
   gap: 0.25rem;
 }
 
